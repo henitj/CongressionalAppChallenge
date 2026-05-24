@@ -1,9 +1,0 @@
-{
-  "private": true,
-  "scripts": {
-    "start": "cd EcoTrek && npm run start",
-    "ios": "cd EcoTrek && npm run ios",
-    "android": "cd EcoTrek && npm run android",
-    "web": "cd EcoTrek && npm run web"
-  }
-}
