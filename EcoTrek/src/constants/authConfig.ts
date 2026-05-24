@@ -12,12 +12,17 @@
  * "Continue as guest" button still lets you use the app.
  */
 export const GOOGLE_AUTH = {
-  expoClientId: 'YOUR_EXPO_CLIENT_ID.apps.googleusercontent.com',
-  webClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
-  iosClientId: 'YOUR_IOS_CLIENT_ID.apps.googleusercontent.com',
-  androidClientId: 'YOUR_ANDROID_CLIENT_ID.apps.googleusercontent.com',
+  expoClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
+  webClientId: '140635508834-8p2onen68nm93bgavok2k5inrb1ffl0h.apps.googleusercontent.com',
+  iosClientId: '140635508834-cdba42jq8ifogv0ac0ps0t5p6s840a7k.apps.googleusercontent.com',
+  androidClientId: '',
 };
 
 export function isGoogleConfigured() {
-  return !Object.values(GOOGLE_AUTH).some((v) => v.startsWith('YOUR_'));
+  return (
+    GOOGLE_AUTH.webClientId &&
+    GOOGLE_AUTH.iosClientId &&
+    !GOOGLE_AUTH.webClientId.startsWith('YOUR_') &&
+    !GOOGLE_AUTH.iosClientId.startsWith('YOUR_')
+  );
 }
