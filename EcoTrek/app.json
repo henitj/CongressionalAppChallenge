@@ -1,0 +1,58 @@
+{
+  "expo": {
+    "name": "EcoTrek",
+    "slug": "ecotrek",
+    "scheme": "ecotrek",
+    "version": "1.0.0",
+    "orientation": "portrait",
+    "icon": "./assets/icon.png",
+    "userInterfaceStyle": "light",
+    "newArchEnabled": false,
+    "splash": {
+      "image": "./assets/splash.png",
+      "resizeMode": "contain",
+      "backgroundColor": "#0E3B2E"
+    },
+    "ios": {
+      "supportsTablet": true,
+      "bundleIdentifier": "com.ecotrek.app",
+      "infoPlist": {
+        "NSLocationWhenInUseUsageDescription": "EcoTrek needs your location to track your hikes and bike rides so we can plant trees for every mile you complete.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "EcoTrek needs your location to track your activities in the background.",
+        "CFBundleURLTypes": [
+          {
+            "CFBundleURLSchemes": [
+              "com.googleusercontent.apps.140635508834-cdba42jq8ifogv0ac0ps0t5p6s840a7k"
+            ]
+          }
+        ]
+      }
+    },
+    "android": {
+      "package": "com.ecotrek.app",
+      "edgeToEdgeEnabled": true,
+      "permissions": [
+        "ACCESS_FINE_LOCATION",
+        "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION"
+      ],
+      "adaptiveIcon": {
+        "foregroundImage": "./assets/adaptive-icon.png",
+        "backgroundColor": "#0E3B2E"
+      }
+    },
+    "web": {
+      "favicon": "./assets/favicon.png",
+      "bundler": "metro"
+    },
+    "plugins": [
+      [
+        "expo-location",
+        {
+          "locationAlwaysAndWhenInUsePermission": "Allow EcoTrek to use your location to track trails."
+        }
+      ],
+      "expo-web-browser"
+    ]
+  }
+}
