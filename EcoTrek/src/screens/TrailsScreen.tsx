@@ -1,19 +1,49 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, ActivityIndicator } from 'react-native';
 import Header from '../components/Header';
-import { AUSTIN_TRAILS, Trail } from '../constants/austinTrails';
+// 1. Updated to match your generic, global variables
+import { LOCAL_TRAILS, Trail, discoverNearbyTrailFromGPS } from '../constants/austinTrails'; 
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 
 const TYPES = ['all', 'hike', 'bike', 'mixed'] as const;
 
 export default function TrailsScreen() {
   const [filter, setFilter] = useState<(typeof TYPES)[number]>('all');
+  
+  // 2. Local state array managing dynamically discovered trails 
+  const [localTrails, setLocalTrails] = useState<Trail[]>(LOCAL_TRAILS);
+  const [loading, setLoading] = useState(false);
+
+  // 3. Triggers the GPS location discovery and maps it to UI state
+  const handleDiscover = async () => {
+    setLoading(true);
+    await discoverNearbyTrailFromGPS();
+    // Copy reference so React hooks capture the mutation and re-render
+    setLocalTrails([...LOCAL_TRAILS]);
+    setLoading(false);
+  };
+
   const trails =
-    filter === 'all' ? AUSTIN_TRAILS : AUSTIN_TRAILS.filter((t) => t.type === filter);
+    filter === 'all' ? localTrails : localTrails.filter((t) => t.type === filter);
 
   return (
     <View style={styles.container}>
-      <Header title="Austin Trails" subtitle="Curated green spaces" />
+      {/* 4. Swapped specific Austin text out for dynamic, universal app branding */}
+      <Header title="Trail Explorer" subtitle="Find outdoor paths around you" />
+      
+      {/* 5. Interactive prompt to trigger Gemini search */}
+      <Pressable 
+        style={[styles.discoverBtn, loading && styles.disabledBtn]} 
+        onPress={handleDiscover}
+        disabled={loading}
+      >
+        {loading ? (
+          <ActivityIndicator color="#fff" size="small" />
+        ) : (
+          <Text style={styles.discoverBtnText}>✨ Scan for Local Trails via AI</Text>
+        )}
+      </Pressable>
+
       <View style={styles.filters}>
         {TYPES.map((t) => (
           <Pressable
@@ -21,18 +51,25 @@ export default function TrailsScreen() {
             onPress={() => setFilter(t)}
             style={[styles.chip, filter === t && styles.chipActive]}
           >
-            <Text
-              style={[styles.chipText, filter === t && { color: '#fff' }]}
-            >
+            <Text style={[styles.chipText, filter === t && { color: '#fff' }]}>
               {t.toUpperCase()}
             </Text>
           </Pressable>
         ))}
       </View>
+      
       <ScrollView contentContainerStyle={styles.content}>
-        {trails.map((tr) => (
-          <TrailCard key={tr.id} trail={tr} />
-        ))}
+        {/* 6. Friendly placeholder view when list is completely empty */}
+        {trails.length === 0 ? (
+          <View style={styles.emptyContainer}>
+            <Text style={styles.emptyText}>No trails loaded yet.</Text>
+            <Text style={styles.emptySubtext}>Tap the button above to check your current coordinates for nearby paths!</Text>
+          </View>
+        ) : (
+          trails.map((tr) => (
+            <TrailCard key={tr.id} trail={tr} />
+          ))
+        )}
       </ScrollView>
     </View>
   );
@@ -126,5 +163,43 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '700',
     textAlign: 'right',
+  },
+  // New layout styles added below
+  discoverBtn: {
+    backgroundColor: COLORS.primary,
+    padding: SPACING.md,
+    margin: SPACING.md,
+    borderRadius: RADIUS.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    elevation: 2,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.2,
+    shadowRadius: 1.41,
+  },
+  disabledBtn: {
+    opacity: 0.6,
+  },
+  discoverBtnText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 15,
+  },
+  emptyContainer: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: 40,
+    paddingHorizontal: SPACING.xl,
+  },
+  emptyText: {
+    ...TYPOGRAPHY.h3,
+    color: COLORS.text,
+    marginBottom: SPACING.xs,
+  },
+  emptySubtext: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textMuted,
+    textAlign: 'center',
   },
 });
