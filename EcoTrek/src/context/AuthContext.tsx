@@ -41,7 +41,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const googleConfigured = isGoogleConfigured();
+  const googleConfigured = !!isGoogleConfigured();
 
   // expo-auth-session Google provider — wires up PKCE + redirect URIs
   // automatically for iOS, Android, web, and Expo Go.

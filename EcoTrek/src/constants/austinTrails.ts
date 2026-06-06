@@ -1,7 +1,10 @@
 import { GoogleGenAI, Type } from "@google/genai";
 import { getCurrentPosition } from "../services/location"; 
 
-const ai = new GoogleGenAI({});
+// Initialize using the Expo public environment variable format
+const ai = new GoogleGenAI({
+  apiKey: process.env.EXPO_PUBLIC_GEMINI_API_KEY
+});
 
 export type Trail = {
   id: string;
@@ -9,12 +12,11 @@ export type Trail = {
   type: 'hike' | 'bike' | 'mixed';
   distanceMiles: number;
   difficulty: 'Easy' | 'Moderate' | 'Hard';
-  area: string; // This will now hold whatever city/region they are actually in
+  area: string; 
   description: string;
   safetyTips: string[];
 };
 
-// 1. Rename to a generic list and start it completely empty!
 export const LOCAL_TRAILS: Trail[] = [];
 
 /**
@@ -31,11 +33,11 @@ export async function discoverNearbyTrailFromGPS(): Promise<void> {
     }
 
     const { latitude, longitude } = position;
-    console.log(`Location found: ${latitude}, ${longitude}. Querying Gemini for local trails...`);
+    console.log(`Location found: ${latitude}, ${longitude}. Querying Gemini 3.5 for local trails...`);
 
     const response = await ai.models.generateContent({
-      model: "gemini-2.5-flash",
-      // 2. Updated the prompt to be completely location-agnostic
+      // Swapped to the Gemini 3.5 Flash model name
+      model: "gemini-3.5-flash",
       contents: `You are a local trail expert mapping engine. Find between 2 to 5 real, specific distinct outdoor trails closest to these exact GPS coordinates: Latitude ${latitude}, Longitude ${longitude}. Identify the true local city/neighborhood name for the 'area' field. Provide accurate details for each trail.`,
       config: {
         responseMimeType: "application/json",
@@ -67,7 +69,6 @@ export async function discoverNearbyTrailFromGPS(): Promise<void> {
       const newTrails: Trail[] = JSON.parse(response.text);
       
       newTrails.forEach((trail) => {
-        // Safe sequential ID generation matching the new generic array
         trail.id = (LOCAL_TRAILS.length + 1).toString();
         LOCAL_TRAILS.push(trail);
         console.log(`Success! Added "${trail.name}" located in ${trail.area}`);
