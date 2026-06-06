@@ -30,3 +30,21 @@ Get location data, provide it to gemini and prompt engineer to have it identify 
 type, distance, difficulty, area, description, and tips 
 every time this function is called create a new trail type in the AUSTIN_TRAILS
 */
+
+export const AUSTIN_TRAILS: Trail[] = [
+  {
+    id: '1',
+    name: 'Lady Bird Lake Hike and Bike Trail',
+    type: 'mixed',
+    distanceMiles: 10,
+    difficulty: 'Easy',
+    area: 'Downtown Austin',
+    description:
+      'A scenic trail that loops around Lady Bird Lake, offering beautiful views of the city skyline. Perfect for walking, jogging, biking, and rollerblading.',
+    safetyTips: [
+      'Stay on designated paths to avoid wildlife encounters.',
+      'Be cautious of cyclists if you are walking or jogging.',
+      'Carry water, especially during hot weather.',
+    ],
+  }
+];
