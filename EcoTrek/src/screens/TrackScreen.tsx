@@ -28,7 +28,7 @@ import {
   startTracking,
   Subscription,
 } from '../services/location';
-import { computeTrees, useActivity } from '../constants/ActivityContext';
+import { computeTrees, useActivity } from '../context/ActivityContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 
 type Mode = 'hike' | 'bike';

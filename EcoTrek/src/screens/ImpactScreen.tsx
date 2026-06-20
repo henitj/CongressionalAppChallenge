@@ -9,7 +9,7 @@ import {
 import Header from '../components/Header';
 import TreeIcon from '../components/TreeIcon';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
-import { useActivity } from '../constants/ActivityContext';
+import { useActivity } from '../context/ActivityContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 
 const CO2_PER_TREE_LBS = 48;

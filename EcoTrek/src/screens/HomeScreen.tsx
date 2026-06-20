@@ -19,8 +19,8 @@ import {
   TREE_RULES,
   SHADOWS,
 } from '../constants/theme';
-import { useActivity } from '../constants/ActivityContext';
-import { useAuth } from '../constants/AuthContext';
+import { useActivity } from '../context/ActivityContext';
+import { useAuth } from '../context/AuthContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 
 export default function HomeScreen() {

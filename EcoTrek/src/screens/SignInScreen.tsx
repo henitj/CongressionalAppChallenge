@@ -22,7 +22,7 @@ import {
 } from '../constants/theme';
 import TreeIcon from '../components/TreeIcon';
 import PrimaryButton from '../components/PrimaryButton';
-import { useAuth } from '../constants/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 const FEATURES = [
   { icon: '🗺️', title: 'Trail Discovery', body: 'Find Austin trails near you powered by AI' },

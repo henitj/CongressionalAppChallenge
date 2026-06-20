@@ -1,6 +1,4 @@
 import React, { useState } from 'react';
-import { useEcoPoints } from 'EcoTrek/scr/constants/EcoPointsContext';
-
 import {
   View,
   Text,
@@ -11,7 +9,7 @@ import {
   Platform,
   Animated,
 } from 'react-native';
-import { useAuth } from '../constants/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
 
