@@ -1,25 +1,40 @@
 import React from 'react';
-import { Text, View, StyleSheet } from 'react-native';
+import { View, Text, StyleSheet, Platform } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import HomeScreen from '../screens/HomeScreen';
 import TrackScreen from '../screens/TrackScreen';
 import TrailsScreen from '../screens/TrailsScreen';
 import ImpactScreen from '../screens/ImpactScreen';
 import SafetyScreen from '../screens/SafetyScreen';
-import { COLORS } from '../constants/theme';
+import { COLORS, RADIUS, SHADOWS, TYPOGRAPHY } from '../constants/theme';
 
 const Tab = createBottomTabNavigator();
 
-function TabIcon({ label, focused }: { label: string; focused: boolean }) {
+const TABS = [
+  { name: 'Home', icon: '🏡', label: 'Home' },
+  { name: 'Track', icon: '🥾', label: 'Track' },
+  { name: 'Trails', icon: '🗺️', label: 'Trails' },
+  { name: 'Impact', icon: '🌳', label: 'Impact' },
+  { name: 'Safety', icon: '🛡️', label: 'Safety' },
+];
+
+function TabIcon({
+  icon,
+  label,
+  focused,
+}: {
+  icon: string;
+  label: string;
+  focused: boolean;
+}) {
   return (
-    <View style={styles.iconBox}>
-      <Text style={{ fontSize: 18 }}>{label}</Text>
-      <View
-        style={[
-          styles.dot,
-          { backgroundColor: focused ? COLORS.primary : 'transparent' },
-        ]}
-      />
+    <View style={[styles.tabIconWrap, focused && styles.tabIconActive]}>
+      <Text style={[styles.tabEmoji, focused && styles.tabEmojiActive]}>
+        {icon}
+      </Text>
+      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]}>
+        {label}
+      </Text>
     </View>
   );
 }
@@ -27,28 +42,21 @@ function TabIcon({ label, focused }: { label: string; focused: boolean }) {
 export default function RootNavigator() {
   return (
     <Tab.Navigator
-      screenOptions={({ route }) => ({
-        headerShown: false,
-        tabBarActiveTintColor: COLORS.primary,
-        tabBarInactiveTintColor: COLORS.textMuted,
-        tabBarStyle: {
-          backgroundColor: COLORS.surface,
-          borderTopColor: COLORS.border,
-          height: 64,
-          paddingBottom: 8,
-          paddingTop: 6,
-        },
-        tabBarIcon: ({ focused }) => {
-          const map: Record<string, string> = {
-            Home: '🏠',
-            Track: '🥾',
-            Trails: '🗺️',
-            Impact: '🌳',
-            Safety: '🛡️',
-          };
-          return <TabIcon label={map[route.name]} focused={focused} />;
-        },
-      })}
+      screenOptions={({ route }) => {
+        const tab = TABS.find((t) => t.name === route.name)!;
+        return {
+          headerShown: false,
+          tabBarShowLabel: false,
+          tabBarStyle: styles.tabBar,
+          tabBarIcon: ({ focused }) => (
+            <TabIcon
+              icon={tab.icon}
+              label={tab.label}
+              focused={focused}
+            />
+          ),
+        };
+      }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Track" component={TrackScreen} />
@@ -60,6 +68,42 @@ export default function RootNavigator() {
 }
 
 const styles = StyleSheet.create({
-  iconBox: { alignItems: 'center' },
-  dot: { width: 4, height: 4, borderRadius: 2, marginTop: 2 },
+  tabBar: {
+    backgroundColor: COLORS.surface,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.border,
+    height: Platform.OS === 'ios' ? 84 : 68,
+    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+    paddingTop: 8,
+    ...SHADOWS.lg,
+  },
+  tabIconWrap: {
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: 16,
+    paddingVertical: 6,
+    borderRadius: RADIUS.md,
+    gap: 3,
+    minWidth: 56,
+  },
+  tabIconActive: {
+    backgroundColor: COLORS.primarySurface,
+  },
+  tabEmoji: {
+    fontSize: 20,
+    opacity: 0.5,
+  },
+  tabEmojiActive: {
+    opacity: 1,
+  },
+  tabLabel: {
+    fontSize: 10,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    letterSpacing: 0.3,
+  },
+  tabLabelActive: {
+    color: COLORS.primary,
+    fontWeight: '800',
+  },
 });

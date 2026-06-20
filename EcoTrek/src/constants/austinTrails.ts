@@ -1,16 +1,6 @@
-import { GoogleGenAI } from "@google/genai";
-
-const ai = new GoogleGenAI({});
-
-async function main() {
-  const response = await ai.models.generateContent({
-    model: "gemini-3.5-flash",
-    contents: "Explain how AI works in a few words",
-  });
-  console.log(response.text);
-}
-
-await main();
+// src/constants/austinTrails.ts
+// Trail data is now fetched dynamically via Gemini in TrailsScreen.
+// This file keeps the Trail type and a small static fallback.
 
 export type Trail = {
   id: string;
@@ -21,15 +11,19 @@ export type Trail = {
   area: string;
   description: string;
   safetyTips: string[];
+  imageUrl?: string;
+  rating?: number;
+  petFriendly?: boolean;
+  familyFriendly?: boolean;
+  strollerFriendly?: boolean;
+  restroomsAvailable?: boolean;
+  waterStations?: boolean;
+  elevationGain?: string;
+  estimatedTime?: string;
+  plants?: string[];
+  animals?: string[];
+  ecoPoints?: number;
 };
-
-/*
-ToDO
-Make function to 
-Get location data, provide it to gemini and prompt engineer to have it identify trails, provide ID, Name
-type, distance, difficulty, area, description, and tips 
-every time this function is called create a new trail type in the AUSTIN_TRAILS
-*/
 
 export const AUSTIN_TRAILS: Trail[] = [
   {
@@ -40,11 +34,19 @@ export const AUSTIN_TRAILS: Trail[] = [
     difficulty: 'Easy',
     area: 'Downtown Austin',
     description:
-      'A scenic trail that loops around Lady Bird Lake, offering beautiful views of the city skyline. Perfect for walking, jogging, biking, and rollerblading.',
+      'A scenic trail looping around Lady Bird Lake with beautiful city skyline views. Perfect for all skill levels.',
     safetyTips: [
-      'Stay on designated paths to avoid wildlife encounters.',
-      'Be cautious of cyclists if you are walking or jogging.',
+      'Stay on designated paths to avoid wildlife.',
+      'Be cautious of cyclists if walking or jogging.',
       'Carry water, especially during hot weather.',
     ],
-  }
+    petFriendly: true,
+    familyFriendly: true,
+    restroomsAvailable: true,
+    waterStations: true,
+    rating: 4.8,
+    plants: ['Texas Live Oak', 'Bald Cypress', 'Water Hyacinth'],
+    animals: ['Great Blue Heron', 'Painted Bunting', 'River Otter'],
+    ecoPoints: 25,
+  },
 ];
