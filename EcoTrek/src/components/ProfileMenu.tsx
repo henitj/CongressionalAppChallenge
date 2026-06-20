@@ -7,15 +7,17 @@ import {
   Modal,
   Image,
   Platform,
-  Animated,
+  Alert,
 } from 'react-native';
-import { useAuth } from '../context/AuthContext';
+import { useNavigation } from '@react-navigation/native';
+import { useAuth } from '../constants/AuthContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
 
 export default function ProfileMenu() {
   const { user, signOut } = useAuth();
   const { totalPoints, level } = useEcoPoints();
+  const navigation = useNavigation<any>();
   const [open, setOpen] = useState(false);
 
   if (!user) return null;
@@ -26,6 +28,12 @@ export default function ProfileMenu() {
     .slice(0, 2)
     .join('')
     .toUpperCase();
+
+  const navigate = (screen: string, params?: any) => {
+    setOpen(false);
+    // Navigate within the tab navigator
+    navigation.navigate(screen, params);
+  };
 
   return (
     <>
@@ -43,13 +51,12 @@ export default function ProfileMenu() {
             <Text style={styles.initialsText}>{initials}</Text>
           </View>
         )}
-        {/* Online dot */}
         <View style={styles.onlineDot} />
       </Pressable>
 
       <Modal
         visible={open}
-        animationType="fade"
+        animationType="slide"
         transparent
         onRequestClose={() => setOpen(false)}
         statusBarTranslucent
@@ -59,7 +66,6 @@ export default function ProfileMenu() {
             style={styles.sheet}
             onStartShouldSetResponder={() => true}
           >
-            {/* Handle bar */}
             <View style={styles.handle} />
 
             {/* User info */}
@@ -76,7 +82,6 @@ export default function ProfileMenu() {
                   </View>
                 )}
               </View>
-
               <View style={{ flex: 1 }}>
                 <Text style={styles.name} numberOfLines={1}>
                   {user.name}
@@ -84,20 +89,18 @@ export default function ProfileMenu() {
                 <Text style={styles.email} numberOfLines={1}>
                   {user.email}
                 </Text>
-                <View style={styles.providerRow}>
-                  <View style={styles.providerPill}>
-                    <Text style={styles.providerText}>
-                      {user.provider === 'google' ? '🔐 Google' : '👤 Guest'}
-                    </Text>
-                  </View>
+                <View style={styles.providerPill}>
+                  <Text style={styles.providerText}>
+                    {user.provider === 'google' ? '🔐 Google' : '👤 Guest'}
+                  </Text>
                 </View>
               </View>
             </View>
 
-            {/* EcoPoints card */}
+            {/* Points card */}
             <View style={styles.pointsCard}>
               <View>
-                <Text style={styles.pointsLabel}>EcoPoints</Text>
+                <Text style={styles.pointsLabel}>ECOPOINTS</Text>
                 <Text style={styles.pointsValue}>
                   {totalPoints.toLocaleString()}
                 </Text>
@@ -107,17 +110,47 @@ export default function ProfileMenu() {
               </View>
             </View>
 
-            {/* Divider */}
             <View style={styles.divider} />
 
-            {/* Menu items */}
-            <MenuItem icon="🌍" label="My Impact" onPress={() => setOpen(false)} />
-            <MenuItem icon="🏅" label="My Badges" onPress={() => setOpen(false)} />
-            <MenuItem icon="⚙️" label="Settings" onPress={() => setOpen(false)} />
+            {/* Working menu items */}
+            <MenuItem
+              icon="🌍"
+              label="My Impact"
+              sub="Trees, miles, CO₂"
+              onPress={() => navigate('Impact')}
+            />
+            <MenuItem
+              icon="🏅"
+              label="My Badges"
+              sub="Achievements unlocked"
+              onPress={() => {
+                setOpen(false);
+                navigation.navigate('Impact');
+              }}
+            />
+            <MenuItem
+              icon="👥"
+              label="My Clubs"
+              sub="Leaderboard & clubs"
+              onPress={() => navigate('Clubs')}
+            />
+            <MenuItem
+              icon="⚙️"
+              label="Settings"
+              sub="Units, account, analytics"
+              onPress={() => {
+                setOpen(false);
+                // Push settings as a modal
+                Alert.alert(
+                  'Settings',
+                  'Go to the Settings screen via the Impact tab → Settings button, or we can add a dedicated tab.',
+                  [{ text: 'OK' }]
+                );
+              }}
+            />
 
             <View style={styles.divider} />
 
-            {/* Sign out */}
             <Pressable
               style={({ pressed }) => [
                 styles.signOutBtn,
@@ -132,8 +165,9 @@ export default function ProfileMenu() {
               <Text style={styles.signOutText}>Sign out</Text>
             </Pressable>
 
-            {/* Version */}
-            <Text style={styles.version}>EcoTrek v1.0 · Built for Austin</Text>
+            <Text style={styles.version}>
+              EcoTrek v1.0 · Built for Austin
+            </Text>
           </View>
         </Pressable>
       </Modal>
@@ -144,10 +178,12 @@ export default function ProfileMenu() {
 function MenuItem({
   icon,
   label,
+  sub,
   onPress,
 }: {
   icon: string;
   label: string;
+  sub: string;
   onPress: () => void;
 }) {
   return (
@@ -159,17 +195,17 @@ function MenuItem({
       onPress={onPress}
     >
       <Text style={styles.menuIcon}>{icon}</Text>
-      <Text style={styles.menuLabel}>{label}</Text>
+      <View style={{ flex: 1 }}>
+        <Text style={styles.menuLabel}>{label}</Text>
+        <Text style={styles.menuSub}>{sub}</Text>
+      </View>
       <Text style={styles.menuArrow}>›</Text>
     </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  avatarBtn: {
-    padding: 2,
-    position: 'relative',
-  },
+  avatarBtn: { padding: 2, position: 'relative' },
   avatar: {
     width: 36,
     height: 36,
@@ -182,11 +218,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  initialsText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 13,
-  },
+  initialsText: { color: '#fff', fontWeight: '800', fontSize: 13 },
   onlineDot: {
     position: 'absolute',
     bottom: 2,
@@ -198,8 +230,6 @@ const styles = StyleSheet.create({
     borderWidth: 2,
     borderColor: COLORS.primaryDark,
   },
-
-  // Modal
   backdrop: {
     flex: 1,
     backgroundColor: COLORS.overlay,
@@ -226,18 +256,13 @@ const styles = StyleSheet.create({
     alignSelf: 'center',
     marginBottom: SPACING.lg,
   },
-
-  // User section
   userSection: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
     marginBottom: SPACING.md,
   },
-  avatarLargeWrap: {
-    ...SHADOWS.md,
-    borderRadius: 32,
-  },
+  avatarLargeWrap: { ...SHADOWS.md, borderRadius: 32 },
   bigAvatar: {
     width: 64,
     height: 64,
@@ -250,23 +275,12 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  bigInitials: {
-    color: '#fff',
-    fontWeight: '900',
-    fontSize: 24,
-  },
-  name: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.text,
-  },
-  email: {
-    ...TYPOGRAPHY.small,
-    color: COLORS.textMuted,
-    marginTop: 2,
-  },
-  providerRow: { marginTop: 6 },
+  bigInitials: { color: '#fff', fontWeight: '900', fontSize: 24 },
+  name: { ...TYPOGRAPHY.h3, color: COLORS.text },
+  email: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
   providerPill: {
     alignSelf: 'flex-start',
+    marginTop: 6,
     paddingHorizontal: 10,
     paddingVertical: 3,
     borderRadius: RADIUS.pill,
@@ -274,13 +288,7 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.primaryLight,
   },
-  providerText: {
-    color: COLORS.primaryDark,
-    fontWeight: '700',
-    fontSize: 11,
-  },
-
-  // Points card
+  providerText: { color: COLORS.primaryDark, fontWeight: '700', fontSize: 11 },
   pointsCard: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -291,10 +299,9 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   pointsLabel: {
-    ...TYPOGRAPHY.caption,
-    color: 'rgba(255,255,255,0.6)',
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
+    ...TYPOGRAPHY.micro,
+    color: 'rgba(255,255,255,0.5)',
+    letterSpacing: 1.5,
   },
   pointsValue: {
     color: '#fff',
@@ -308,33 +315,20 @@ const styles = StyleSheet.create({
     paddingVertical: 6,
     borderRadius: RADIUS.pill,
   },
-  levelText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 13,
-  },
-
-  // Divider
-  divider: {
-    height: 1,
-    backgroundColor: COLORS.borderLight,
-    marginVertical: SPACING.sm,
-  },
-
-  // Menu items
+  levelText: { color: '#fff', fontWeight: '700', fontSize: 13 },
+  divider: { height: 1, backgroundColor: COLORS.borderLight, marginVertical: SPACING.sm },
   menuItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 12,
+    paddingVertical: 11,
     paddingHorizontal: SPACING.sm,
     borderRadius: RADIUS.sm,
     gap: SPACING.sm,
   },
-  menuIcon: { fontSize: 20, width: 28 },
-  menuLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flex: 1 },
-  menuArrow: { color: COLORS.textLight, fontSize: 20, fontWeight: '300' },
-
-  // Sign out
+  menuIcon: { fontSize: 22, width: 30 },
+  menuLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  menuSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  menuArrow: { color: COLORS.textLight, fontSize: 22 },
   signOutBtn: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -345,13 +339,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
   signOutIcon: { fontSize: 18 },
-  signOutText: {
-    color: COLORS.danger,
-    fontWeight: '800',
-    fontSize: 15,
-  },
-
-  // Version
+  signOutText: { color: COLORS.danger, fontWeight: '800', fontSize: 15 },
   version: {
     ...TYPOGRAPHY.micro,
     color: COLORS.textLight,

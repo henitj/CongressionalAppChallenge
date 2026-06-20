@@ -1,42 +1,28 @@
 export const COLORS = {
-  primaryMid: '#145C33',
-
-  // Primary greens
   primary: '#1A7A43',
   primaryDark: '#0A2E1A',
+  primaryMid: '#145C33',
   primaryLight: '#4CAF77',
   primaryGlow: '#A8E6C0',
   primarySurface: '#EAF7EF',
-
-  // Accents
   accent: '#F4A300',
   accentLight: '#FFE0A0',
   accentDark: '#C47F00',
-
-  // Earth tones
   bark: '#5B3A1B',
   barkLight: '#8B6040',
   sand: '#F5ECD7',
-
-  // Sky / water
   sky: '#1A91D1',
   skyLight: '#BDE8FF',
-
-  // Neutrals
   background: '#F2F7F4',
   backgroundDark: '#E5EFE9',
   surface: '#FFFFFF',
   surfaceElevated: '#FAFCFB',
   surfaceOverlay: 'rgba(255,255,255,0.95)',
-
-  // Text
   text: '#0F2318',
   textSecondary: '#2D4A38',
   textMuted: '#6B7F74',
   textLight: '#9EAFA7',
   textInverse: '#FFFFFF',
-
-  // Status
   danger: '#D32F2F',
   dangerLight: '#FFEBEE',
   warning: '#E65100',
@@ -45,14 +31,10 @@ export const COLORS = {
   successLight: '#EAF7EF',
   info: '#1565C0',
   infoLight: '#E3F2FD',
-
-  // UI
   border: '#D8E5DC',
   borderLight: '#ECF3EE',
   shadow: '#0A2E1A',
   overlay: 'rgba(10,46,26,0.6)',
-
-  // Gradients (used as array pairs)
   gradientPrimary: ['#1A7A43', '#0A2E1A'] as [string, string],
   gradientAccent: ['#F4A300', '#C47F00'] as [string, string],
   gradientSky: ['#1A91D1', '#0D5F8A'] as [string, string],
@@ -125,6 +107,6 @@ export const SHADOWS = {
 };
 
 export const TREE_RULES = {
-  bikeMilesPerTree: 1,
-  hikeMilesPerTree: 0.5,
+  bikeMilesPerTree: 3,
+  hikeMilesPerTree: 1,
 };

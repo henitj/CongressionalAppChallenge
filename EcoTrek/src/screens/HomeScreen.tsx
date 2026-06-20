@@ -6,8 +6,8 @@ import {
   ScrollView,
   Pressable,
   Animated,
-  Image,
 } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
 import StatCard from '../components/StatCard';
 import TreeIcon from '../components/TreeIcon';
@@ -19,18 +19,29 @@ import {
   TREE_RULES,
   SHADOWS,
 } from '../constants/theme';
-import { useActivity } from '../context/ActivityContext';
-import { useAuth } from '../context/AuthContext';
+import { useActivity } from '../constants/ActivityContext';
+import { useAuth } from '../constants/AuthContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
+import { useSettings } from '../constants/SettingsContext';
+import { useAnalytics } from '../constants/AnalyticsContext';
 
 export default function HomeScreen() {
   const { totalMiles, totalTrees, history } = useActivity();
   const { user } = useAuth();
   const { totalPoints, level, progressPercent, nextLevelPoints } =
     useEcoPoints();
+  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { logEvent } = useAnalytics();
+  const navigation = useNavigation<any>();
 
   const firstName = user?.name?.split(' ')[0] ?? 'Trekker';
   const lastActivity = history[0];
+  const distUnit = formatDistanceUnit();
+
+  // Log screen view
+  useEffect(() => {
+    logEvent('screen_view', { screen: 'Home' });
+  }, []);
 
   // Animate in
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -73,9 +84,7 @@ export default function HomeScreen() {
         >
           {/* ── Hero forest card ── */}
           <View style={styles.hero}>
-            {/* Background pattern */}
             <View style={styles.heroBg} />
-
             <View style={styles.heroContent}>
               <View style={{ flex: 1 }}>
                 <Text style={styles.heroEyebrow}>YOUR FOREST</Text>
@@ -84,7 +93,7 @@ export default function HomeScreen() {
                   {totalTrees === 1 ? 'tree planted' : 'trees planted'}
                 </Text>
                 <Text style={styles.heroSub}>
-                  via {totalMiles.toFixed(1)} mi of Austin trails
+                  via {formatDistance(totalMiles)} {distUnit} of Austin trails
                 </Text>
 
                 {/* Mini progress bar */}
@@ -111,7 +120,6 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* Veritree badge */}
             <View style={styles.veritreeBadge}>
               <Text style={styles.veritreeText}>✅ Verified by Veritree</Text>
             </View>
@@ -131,7 +139,6 @@ export default function HomeScreen() {
               </View>
             </View>
 
-            {/* Progress */}
             <View style={styles.progressTrack}>
               <View
                 style={[
@@ -153,8 +160,8 @@ export default function HomeScreen() {
           <View style={styles.statsRow}>
             <StatCard
               label="Miles"
-              value={totalMiles.toFixed(1)}
-              unit="mi"
+              value={formatDistance(totalMiles)}
+              unit={distUnit}
               icon="🗺️"
               accent={COLORS.primary}
             />
@@ -182,24 +189,62 @@ export default function HomeScreen() {
               label="Start Hike"
               color={COLORS.primary}
               desc="Log your trail"
+              onPress={() => {
+                logEvent('quick_action', { action: 'start_hike' });
+                navigation.navigate('Track');
+              }}
             />
             <ActionCard
               icon="🗺️"
               label="Find Trails"
               color={COLORS.sky}
               desc="Nearby spots"
+              onPress={() => {
+                logEvent('quick_action', { action: 'find_trails' });
+                navigation.navigate('Trails');
+              }}
             />
             <ActionCard
               icon="✨"
               label="AI Guide"
               color={COLORS.accent}
               desc="Ask anything"
+              onPress={() => {
+                logEvent('quick_action', { action: 'ai_guide' });
+                navigation.navigate('Trails');
+              }}
             />
             <ActionCard
               icon="🌍"
               label="My Impact"
               color={COLORS.primaryMid}
               desc="See your stats"
+              onPress={() => {
+                logEvent('quick_action', { action: 'my_impact' });
+                navigation.navigate('Impact');
+              }}
+            />
+            <ActionCard
+              icon="👥"
+              label="Clubs"
+              color="#6C63FF"
+              desc="Leaderboard"
+              onPress={() => {
+                logEvent('quick_action', { action: 'clubs' });
+                navigation.navigate('Clubs');
+              }}
+            />
+            <ActionCard
+              icon="🛡️"
+              label="Safety"
+              color={COLORS.danger}
+              desc="Trail tips"
+              onPress={() => {
+                logEvent('quick_action', { action: 'safety' });
+                navigation.navigate('Home');
+                // Safety is not a tab, so we show alert for now
+                // In production this would navigate to a nested stack screen
+              }}
             />
           </View>
 
@@ -207,18 +252,22 @@ export default function HomeScreen() {
           {lastActivity ? (
             <>
               <Text style={styles.sectionTitle}>Last trek</Text>
-              <View style={styles.lastActivityCard}>
+              <Pressable
+                style={styles.lastActivityCard}
+                onPress={() => {
+                  logEvent('view_last_trek');
+                  navigation.navigate('Impact');
+                }}
+              >
                 <View style={styles.lastActLeft}>
-                  <View style={styles.lastActIcon}>
+                  <View style={styles.lastActIconWrap}>
                     <Text style={{ fontSize: 28 }}>
                       {lastActivity.type === 'bike' ? '🚴' : '🥾'}
                     </Text>
                   </View>
                   <View>
                     <Text style={styles.lastActType}>
-                      {lastActivity.type === 'bike'
-                        ? 'Bike Ride'
-                        : 'Hike'}
+                      {lastActivity.type === 'bike' ? 'Bike Ride' : 'Hike'}
                     </Text>
                     <Text style={styles.lastActDate}>
                       {new Date(lastActivity.startedAt).toLocaleDateString(
@@ -234,8 +283,8 @@ export default function HomeScreen() {
                 </View>
                 <View style={styles.lastActStats}>
                   <LastActStat
-                    value={lastActivity.miles.toFixed(2)}
-                    label="miles"
+                    value={formatDistance(lastActivity.miles)}
+                    label={distUnit}
                   />
                   <LastActStat
                     value={String(lastActivity.trees)}
@@ -254,7 +303,12 @@ export default function HomeScreen() {
                     </Text>
                   </View>
                 )}
-              </View>
+                <View style={styles.viewMoreRow}>
+                  <Text style={styles.viewMoreText}>
+                    View all activity →
+                  </Text>
+                </View>
+              </Pressable>
             </>
           ) : (
             <>
@@ -273,6 +327,14 @@ export default function HomeScreen() {
                   <Step num="2" text="Hit start and explore" />
                   <Step num="3" text="Finish to plant trees" />
                 </View>
+                <Pressable
+                  style={styles.getStartedBtn}
+                  onPress={() => navigation.navigate('Track')}
+                >
+                  <Text style={styles.getStartedBtnText}>
+                    Start your first trek →
+                  </Text>
+                </Pressable>
               </View>
             </>
           )}
@@ -282,41 +344,66 @@ export default function HomeScreen() {
           <View style={styles.howCard}>
             <HowRow
               icon="🥾"
-              title={`Hike ${TREE_RULES.hikeMilesPerTree} mi`}
+              title={`Hike ${TREE_RULES.hikeMilesPerTree} ${distUnit}`}
               desc="Plant 1 native tree"
+              onPress={() => navigation.navigate('Track')}
             />
             <View style={styles.howDivider} />
             <HowRow
               icon="🚴"
-              title={`Bike ${TREE_RULES.bikeMilesPerTree} mi`}
+              title={`Bike ${TREE_RULES.bikeMilesPerTree} ${distUnit}`}
               desc="Plant 1 native tree"
+              onPress={() => navigation.navigate('Track')}
             />
             <View style={styles.howDivider} />
             <HowRow
               icon="✅"
               title="Veritree verified"
               desc="Every planting tracked"
+              onPress={() => navigation.navigate('Impact')}
             />
             <View style={styles.howDivider} />
             <HowRow
               icon="✨"
               title="AI nature guide"
               desc="Learn on every trail"
+              onPress={() => navigation.navigate('Trails')}
+            />
+            <View style={styles.howDivider} />
+            <HowRow
+              icon="👥"
+              title="Compete in clubs"
+              desc="Leaderboard with friends"
+              onPress={() => navigation.navigate('Clubs')}
+            />
+            <View style={styles.howDivider} />
+            <HowRow
+              icon="⭐"
+              title="Earn EcoPoints"
+              desc="Level up your impact"
+              onPress={() => navigation.navigate('Impact')}
             />
           </View>
 
           {/* ── Partner card ── */}
-          <View style={styles.partnerCard}>
+          <Pressable
+            style={styles.partnerCard}
+            onPress={() => {
+              logEvent('partner_card_tap');
+              navigation.navigate('Impact');
+            }}
+          >
             <View style={styles.partnerBadge}>
               <Text style={styles.partnerBadgeText}>PARTNER</Text>
             </View>
             <Text style={styles.partnerName}>🌱 Veritree × EcoTrek</Text>
             <Text style={styles.partnerBody}>
-              Veritree provides satellite-verified, on-the-ground tree planting
-              with local partners. Every EcoTrek mile creates a real,
-              permanent impact on Austin's urban canopy.
+              Veritree provides satellite-verified, on-the-ground tree
+              planting with local partners. Every EcoTrek mile creates a
+              real, permanent impact on Austin's urban canopy.
             </Text>
-          </View>
+            <Text style={styles.partnerLink}>View your impact →</Text>
+          </Pressable>
 
           {/* ── Did you know ── */}
           <View style={styles.factCard}>
@@ -327,6 +414,27 @@ export default function HomeScreen() {
               and supports over{' '}
               <Text style={styles.factHighlight}>500 species</Text> of wildlife.
             </Text>
+          </View>
+
+          {/* ── Environmental impact bar ── */}
+          <View style={styles.impactBar}>
+            <ImpactStat
+              icon="🌿"
+              value={`${(totalTrees * 48).toLocaleString()}`}
+              label="lbs CO₂/yr"
+            />
+            <View style={styles.impactDivider} />
+            <ImpactStat
+              icon="💨"
+              value={`${(totalTrees * 260).toLocaleString()}`}
+              label="lbs O₂/yr"
+            />
+            <View style={styles.impactDivider} />
+            <ImpactStat
+              icon="🦋"
+              value={`${(totalTrees * 50).toLocaleString()}`}
+              label="species"
+            />
           </View>
         </Animated.View>
       </ScrollView>
@@ -341,11 +449,13 @@ function ActionCard({
   label,
   color,
   desc,
+  onPress,
 }: {
   icon: string;
   label: string;
   color: string;
   desc: string;
+  onPress: () => void;
 }) {
   return (
     <Pressable
@@ -353,6 +463,7 @@ function ActionCard({
         styles.actionCard,
         pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
       ]}
+      onPress={onPress}
     >
       <View
         style={[styles.actionIconWrap, { backgroundColor: color + '18' }]}
@@ -389,19 +500,45 @@ function HowRow({
   icon,
   title,
   desc,
+  onPress,
 }: {
   icon: string;
   title: string;
   desc: string;
+  onPress: () => void;
 }) {
   return (
-    <View style={styles.howRow}>
+    <Pressable
+      style={({ pressed }) => [
+        styles.howRow,
+        pressed && { backgroundColor: COLORS.primarySurface },
+      ]}
+      onPress={onPress}
+    >
       <Text style={styles.howIcon}>{icon}</Text>
       <View style={{ flex: 1 }}>
         <Text style={styles.howTitle}>{title}</Text>
         <Text style={styles.howDesc}>{desc}</Text>
       </View>
       <Text style={styles.howArrow}>›</Text>
+    </Pressable>
+  );
+}
+
+function ImpactStat({
+  icon,
+  value,
+  label,
+}: {
+  icon: string;
+  value: string;
+  label: string;
+}) {
+  return (
+    <View style={styles.impactStatBox}>
+      <Text style={styles.impactStatIcon}>{icon}</Text>
+      <Text style={styles.impactStatVal}>{value}</Text>
+      <Text style={styles.impactStatLabel}>{label}</Text>
     </View>
   );
 }
@@ -562,7 +699,7 @@ const styles = StyleSheet.create({
     marginTop: SPACING.xs,
   },
 
-  // Quick actions
+  // Quick actions — 3 column grid
   actionsGrid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
@@ -570,10 +707,12 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.md,
   },
   actionCard: {
-    width: '47.5%',
+    width: '31%',
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
-    padding: SPACING.md,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.sm,
+    alignItems: 'center',
     ...SHADOWS.sm,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
@@ -584,11 +723,20 @@ const styles = StyleSheet.create({
     borderRadius: 12,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.sm,
+    marginBottom: SPACING.xs,
   },
   actionIcon: { fontSize: 22 },
-  actionLabel: { ...TYPOGRAPHY.h4, color: COLORS.text, marginBottom: 2 },
-  actionDesc: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  actionLabel: {
+    ...TYPOGRAPHY.smallMed,
+    color: COLORS.text,
+    textAlign: 'center',
+    marginBottom: 2,
+  },
+  actionDesc: {
+    ...TYPOGRAPHY.micro,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+  },
 
   // Last activity
   lastActivityCard: {
@@ -606,7 +754,7 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
     marginBottom: SPACING.md,
   },
-  lastActIcon: {
+  lastActIconWrap: {
     width: 56,
     height: 56,
     borderRadius: RADIUS.md,
@@ -641,6 +789,14 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontWeight: '600',
   },
+  viewMoreRow: {
+    marginTop: SPACING.sm,
+    alignItems: 'flex-end',
+  },
+  viewMoreText: {
+    ...TYPOGRAPHY.smallMed,
+    color: COLORS.primary,
+  },
 
   // Get started
   getStartedCard: {
@@ -667,7 +823,7 @@ const styles = StyleSheet.create({
     lineHeight: 22,
     marginBottom: SPACING.md,
   },
-  getStartedSteps: { width: '100%', gap: SPACING.sm },
+  getStartedSteps: { width: '100%', gap: SPACING.sm, marginBottom: SPACING.md },
   step: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -689,12 +845,24 @@ const styles = StyleSheet.create({
     fontSize: 13,
   },
   stepText: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  getStartedBtn: {
+    backgroundColor: COLORS.primary,
+    borderRadius: RADIUS.pill,
+    paddingVertical: SPACING.md,
+    paddingHorizontal: SPACING.xl,
+    ...SHADOWS.md,
+  },
+  getStartedBtnText: {
+    color: '#fff',
+    fontWeight: '800',
+    fontSize: 15,
+  },
 
   // How it works
   howCard: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
-    padding: SPACING.sm,
+    overflow: 'hidden',
     marginBottom: SPACING.md,
     ...SHADOWS.sm,
     borderWidth: 1,
@@ -747,6 +915,11 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     lineHeight: 23,
+    marginBottom: SPACING.sm,
+  },
+  partnerLink: {
+    ...TYPOGRAPHY.smallMed,
+    color: COLORS.primary,
   },
 
   // Fact card
@@ -770,5 +943,37 @@ const styles = StyleSheet.create({
   factHighlight: {
     color: COLORS.accent,
     fontWeight: '700',
+  },
+
+  // Impact bar
+  impactBar: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
+    justifyContent: 'space-around',
+    alignItems: 'center',
+    marginBottom: SPACING.md,
+    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  impactDivider: {
+    width: 1,
+    height: 40,
+    backgroundColor: COLORS.borderLight,
+  },
+  impactStatBox: { alignItems: 'center', gap: 3 },
+  impactStatIcon: { fontSize: 20 },
+  impactStatVal: {
+    ...TYPOGRAPHY.h4,
+    color: COLORS.primary,
+    fontSize: 16,
+  },
+  impactStatLabel: {
+    ...TYPOGRAPHY.micro,
+    color: COLORS.textMuted,
+    textTransform: 'uppercase',
+    letterSpacing: 0.3,
   },
 });
