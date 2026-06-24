@@ -10,7 +10,7 @@ import {
   Alert,
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import { useAuth } from '../constants/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
 

@@ -17,7 +17,7 @@ import PrimaryButton from '../components/PrimaryButton';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
 import { useClub } from '../constants/ClubContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
-import { useAuth } from '../constants/AuthContext';
+import { useAuth } from '../context/AuthContext';
 
 type LeaderTab = 'clubs' | 'my_club' | 'global';
 

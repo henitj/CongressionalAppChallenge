@@ -7,6 +7,10 @@ import RootNavigator from './src/navigation/RootNavigator';
 import { ActivityProvider } from './src/context/ActivityContext';
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { EcoPointsProvider } from './src/constants/EcoPointsContext';
+import { SettingsProvider } from './src/constants/SettingsContext'; 
+import { AnalyticsProvider } from './src/constants/AnalyticsContext'; 
+// ADDED: Import your Clubs/Club provider (verify this exact path in your project structure)
+import { ClubProvider } from './src/constants/ClubContext'; 
 import SignInScreen from './src/screens/SignInScreen';
 import { COLORS } from './src/constants/theme';
 
@@ -36,8 +40,15 @@ export default function App() {
       <AuthProvider>
         <ActivityProvider>
           <EcoPointsProvider>
-            <StatusBar style="light" />
-            <Gate />
+            <SettingsProvider>
+              {/* ADDED: Nesting ClubProvider here so useClubs works inside all screens */}
+              <ClubProvider>
+                <AnalyticsProvider>
+                  <StatusBar style="light" />
+                  <Gate />
+                </AnalyticsProvider>
+              </ClubProvider>
+            </SettingsProvider>
           </EcoPointsProvider>
         </ActivityProvider>
       </AuthProvider>
