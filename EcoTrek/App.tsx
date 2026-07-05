@@ -13,6 +13,7 @@ import { AnalyticsProvider } from './src/constants/AnalyticsContext';
 import { ClubProvider } from './src/constants/ClubContext'; 
 import SignInScreen from './src/screens/SignInScreen';
 import { COLORS } from './src/constants/theme';
+import { AppProvider } from './src/context/AppContext';
 
 function Gate() {
   const { user, loading } = useAuth();
@@ -38,19 +39,21 @@ export default function App() {
   return (
     <SafeAreaProvider>
       <AuthProvider>
-        <ActivityProvider>
-          <EcoPointsProvider>
-            <SettingsProvider>
-              {/* ADDED: Nesting ClubProvider here so useClubs works inside all screens */}
-              <ClubProvider>
-                <AnalyticsProvider>
-                  <StatusBar style="light" />
-                  <Gate />
-                </AnalyticsProvider>
-              </ClubProvider>
-            </SettingsProvider>
-          </EcoPointsProvider>
-        </ActivityProvider>
+        <AppProvider>
+          <ActivityProvider>
+            <EcoPointsProvider>
+              <SettingsProvider>
+                {/* ADDED: Nesting ClubProvider here so useClubs works inside all screens */}
+                <ClubProvider>
+                  <AnalyticsProvider>
+                    <StatusBar style="light" />
+                    <Gate />
+                  </AnalyticsProvider>
+                </ClubProvider>
+              </SettingsProvider>
+            </EcoPointsProvider>
+          </ActivityProvider>
+        </AppProvider>
       </AuthProvider>
     </SafeAreaProvider>
   );

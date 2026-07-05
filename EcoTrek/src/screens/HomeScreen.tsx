@@ -1,24 +1,10 @@
 import React, { useRef, useEffect } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Animated,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, Animated } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
 import StatCard from '../components/StatCard';
 import TreeIcon from '../components/TreeIcon';
-import {
-  COLORS,
-  RADIUS,
-  SPACING,
-  TYPOGRAPHY,
-  TREE_RULES,
-  SHADOWS,
-} from '../constants/theme';
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY, TREE_RULES, SHADOWS } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
 import { useAuth } from '../context/AuthContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
@@ -28,20 +14,16 @@ import { useAnalytics } from '../constants/AnalyticsContext';
 export default function HomeScreen() {
   const { totalMiles, totalTrees, history } = useActivity();
   const { user } = useAuth();
-  const { totalPoints, level, progressPercent, nextLevelPoints } =
-    useEcoPoints();
+  const { totalPoints, level, progressPercent, nextLevelPoints } = useEcoPoints();
   const { formatDistance, formatDistanceUnit } = useSettings();
   const { logEvent } = useAnalytics();
   const navigation = useNavigation<any>();
-
   const firstName = user?.name?.split(' ')[0] ?? 'Trekker';
   const lastActivity = history[0];
   const distUnit = formatDistanceUnit();
 
   // Log screen view
-  useEffect(() => {
-    logEvent('screen_view', { screen: 'Home' });
-  }, []);
+  useEffect(() => { logEvent('screen_view', { screen: 'Home' }); }, []);
 
   // Animate in
   const fadeAnim = useRef(new Animated.Value(0)).current;
@@ -205,16 +187,6 @@ export default function HomeScreen() {
               }}
             />
             <ActionCard
-              icon="✨"
-              label="AI Guide"
-              color={COLORS.accent}
-              desc="Ask anything"
-              onPress={() => {
-                logEvent('quick_action', { action: 'ai_guide' });
-                navigation.navigate('Trails');
-              }}
-            />
-            <ActionCard
               icon="🌍"
               label="My Impact"
               color={COLORS.primaryMid}
@@ -222,28 +194,6 @@ export default function HomeScreen() {
               onPress={() => {
                 logEvent('quick_action', { action: 'my_impact' });
                 navigation.navigate('Impact');
-              }}
-            />
-            <ActionCard
-              icon="👥"
-              label="Clubs"
-              color="#6C63FF"
-              desc="Leaderboard"
-              onPress={() => {
-                logEvent('quick_action', { action: 'clubs' });
-                navigation.navigate('Clubs');
-              }}
-            />
-            <ActionCard
-              icon="🛡️"
-              label="Safety"
-              color={COLORS.danger}
-              desc="Trail tips"
-              onPress={() => {
-                logEvent('quick_action', { action: 'safety' });
-                navigation.navigate('Home');
-                // Safety is not a tab, so we show alert for now
-                // In production this would navigate to a nested stack screen
               }}
             />
           </View>

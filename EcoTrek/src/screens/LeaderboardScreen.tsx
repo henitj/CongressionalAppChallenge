@@ -1,17 +1,5 @@
 import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  TextInput,
-  Modal,
-  Alert,
-  Switch,
-  Share,
-  Platform,
-} from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, Alert, Switch, Share, Platform, } from 'react-native';
 import Header from '../components/Header';
 import PrimaryButton from '../components/PrimaryButton';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
@@ -24,15 +12,7 @@ type LeaderTab = 'clubs' | 'my_club' | 'global';
 export default function LeaderboardScreen() {
   const { user } = useAuth();
   const { totalPoints, level } = useEcoPoints();
-  const {
-    myClub,
-    joinedClubs,
-    createClub,
-    joinClub,
-    leaveClub,
-    lockClub,
-    deleteClub,
-  } = useClub();
+  const { myClub, joinedClubs, createClub, joinClub, leaveClub, lockClub, deleteClub, } = useClub();
 
   const [tab, setTab] = useState<LeaderTab>('clubs');
   const [showCreate, setShowCreate] = useState(false);
@@ -55,13 +35,7 @@ export default function LeaderboardScreen() {
     }
     if (!user) return;
     setCreating(true);
-    await createClub(
-      clubName.trim(),
-      clubDesc.trim(),
-      clubLocked,
-      user.name,
-      user.id
-    );
+    await createClub( clubName.trim(), clubDesc.trim(), clubLocked, user.name, user.id );
     setCreating(false);
     setShowCreate(false);
     setClubName('');
