@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, Alert, Switch, Share, Platform, } from 'react-native';
+import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, Alert, Switch, Share, Platform, KeyboardAvoidingView, } from 'react-native';
 import Header from '../components/Header';
 import PrimaryButton from '../components/PrimaryButton';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
@@ -416,71 +416,81 @@ export default function LeaderboardScreen() {
           style={styles.modalBackdrop}
           onPress={() => setShowCreate(false)}
         >
-          <View
-            style={styles.modalSheet}
-            onStartShouldSetResponder={() => true}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'position' : 'height'}
+            keyboardVerticalOffset={0}
           >
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Create a Club</Text>
-            <Text style={styles.modalSubtitle}>
-              Invite friends and family to compete together
-            </Text>
-
-            <Text style={styles.fieldLabel}>Club name *</Text>
-            <TextInput
-              style={styles.input}
-              placeholder="e.g. Barton Creek Crew"
-              placeholderTextColor={COLORS.textMuted}
-              value={clubName}
-              onChangeText={setClubName}
-              maxLength={40}
-            />
-
-            <Text style={styles.fieldLabel}>Description (optional)</Text>
-            <TextInput
-              style={[styles.input, styles.inputMulti]}
-              placeholder="What's your club about?"
-              placeholderTextColor={COLORS.textMuted}
-              value={clubDesc}
-              onChangeText={setClubDesc}
-              multiline
-              maxLength={120}
-            />
-
-            <View style={styles.lockRow}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.lockRowTitle}>
-                  {clubLocked ? '🔒 Locked' : '🔓 Open'}
-                </Text>
-                <Text style={styles.lockRowSub}>
-                  {clubLocked
-                    ? 'Only invited members can join'
-                    : 'Anyone with the code can join'}
-                </Text>
-              </View>
-              <Switch
-                value={clubLocked}
-                onValueChange={setClubLocked}
-                trackColor={{ false: COLORS.border, true: COLORS.primary }}
-                thumbColor={clubLocked ? '#fff' : COLORS.textLight}
-              />
-            </View>
-
-            <PrimaryButton
-              title={creating ? 'Creating…' : 'Create Club'}
-              onPress={handleCreate}
-              loading={creating}
-              icon="🏆"
-              style={{ marginTop: SPACING.md }}
-            />
-
-            <Pressable
-              style={styles.modalCancel}
-              onPress={() => setShowCreate(false)}
+            <View
+              style={[styles.modalSheet, { paddingBottom: 0 }]}
+              onStartShouldSetResponder={() => true}
             >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </Pressable>
-          </View>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 30 : SPACING.lg }}
+              >
+                <View style={styles.modalHandle} />
+                <Text style={styles.modalTitle}>Create a Club</Text>
+                <Text style={styles.modalSubtitle}>
+                  Invite friends and family to compete together
+                </Text>
+
+                <Text style={styles.fieldLabel}>Club name *</Text>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g. Barton Creek Crew"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={clubName}
+                  onChangeText={setClubName}
+                  maxLength={40}
+                />
+
+                <Text style={styles.fieldLabel}>Description (optional)</Text>
+                <TextInput
+                  style={[styles.input, styles.inputMulti]}
+                  placeholder="What's your club about?"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={clubDesc}
+                  onChangeText={setClubDesc}
+                  multiline
+                  maxLength={120}
+                />
+
+                <View style={styles.lockRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.lockRowTitle}>
+                      {clubLocked ? '🔒 Locked' : '🔓 Open'}
+                    </Text>
+                    <Text style={styles.lockRowSub}>
+                      {clubLocked
+                        ? 'Only invited members can join'
+                        : 'Anyone with the code can join'}
+                    </Text>
+                  </View>
+                  <Switch
+                    value={clubLocked}
+                    onValueChange={setClubLocked}
+                    trackColor={{ false: COLORS.border, true: COLORS.primary }}
+                    thumbColor={clubLocked ? '#fff' : COLORS.textLight}
+                  />
+                </View>
+
+                <PrimaryButton
+                  title={creating ? 'Creating…' : 'Create Club'}
+                  onPress={handleCreate}
+                  loading={creating}
+                  icon="🏆"
+                  style={{ marginTop: SPACING.md }}
+                />
+
+                <Pressable
+                  style={styles.modalCancel}
+                  onPress={() => setShowCreate(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </Pressable>
       </Modal>
 
@@ -495,43 +505,53 @@ export default function LeaderboardScreen() {
           style={styles.modalBackdrop}
           onPress={() => setShowJoin(false)}
         >
-          <View
-            style={styles.modalSheet}
-            onStartShouldSetResponder={() => true}
+          <KeyboardAvoidingView
+            behavior={Platform.OS === 'ios' ? 'position' : 'height'}
+            keyboardVerticalOffset={0}
           >
-            <View style={styles.modalHandle} />
-            <Text style={styles.modalTitle}>Join a Club</Text>
-            <Text style={styles.modalSubtitle}>
-              Enter a 6-character club code to join
-            </Text>
-
-            <Text style={styles.fieldLabel}>Club code</Text>
-            <TextInput
-              style={[styles.input, styles.codeInput]}
-              placeholder="ABC123"
-              placeholderTextColor={COLORS.textMuted}
-              value={joinCode}
-              onChangeText={(t) => setJoinCode(t.toUpperCase())}
-              maxLength={6}
-              autoCapitalize="characters"
-              autoFocus
-            />
-
-            <PrimaryButton
-              title={joining ? 'Joining…' : 'Join Club'}
-              onPress={handleJoin}
-              loading={joining}
-              icon="🔑"
-              style={{ marginTop: SPACING.md }}
-            />
-
-            <Pressable
-              style={styles.modalCancel}
-              onPress={() => setShowJoin(false)}
+            <View
+              style={[styles.modalSheet, { paddingBottom: 0 }]}
+              onStartShouldSetResponder={() => true}
             >
-              <Text style={styles.modalCancelText}>Cancel</Text>
-            </Pressable>
-          </View>
+              <ScrollView
+                keyboardShouldPersistTaps="handled"
+                contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 30 : SPACING.lg }}
+              >
+                <View style={styles.modalHandle} />
+                <Text style={styles.modalTitle}>Join a Club</Text>
+                <Text style={styles.modalSubtitle}>
+                  Enter a 6-character club code to join
+                </Text>
+
+                <Text style={styles.fieldLabel}>Club code</Text>
+                <TextInput
+                  style={[styles.input, styles.codeInput]}
+                  placeholder="ABC123"
+                  placeholderTextColor={COLORS.textMuted}
+                  value={joinCode}
+                  onChangeText={(t) => setJoinCode(t.toUpperCase())}
+                  maxLength={6}
+                  autoCapitalize="characters"
+                  autoFocus
+                />
+
+                <PrimaryButton
+                  title={joining ? 'Joining…' : 'Join Club'}
+                  onPress={handleJoin}
+                  loading={joining}
+                  icon="🔑"
+                  style={{ marginTop: SPACING.md }}
+                />
+
+                <Pressable
+                  style={styles.modalCancel}
+                  onPress={() => setShowJoin(false)}
+                >
+                  <Text style={styles.modalCancelText}>Cancel</Text>
+                </Pressable>
+              </ScrollView>
+            </View>
+          </KeyboardAvoidingView>
         </Pressable>
       </Modal>
     </View>
