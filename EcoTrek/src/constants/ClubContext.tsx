@@ -6,7 +6,26 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { initializeApp } from 'firebase/app';
+import { 
+  getDatabase, 
+  ref, 
+  set, 
+  get, 
+  update, 
+  remove, 
+  child, 
+  onValue,
+  DataSnapshot 
+} from 'firebase/database';
+
+// Initialize Firebase configuration using your Realtime Database URL
+const firebaseConfig = {
+  databaseURL: "https://playground-80aef-default-rtdb.firebaseio.com/",
+};
+
+const app = initializeApp(firebaseConfig);
+const db = getDatabase(app);
 
 export type ClubMember = {
   id: string;
@@ -43,8 +62,6 @@ type ClubState = {
 };
 
 const ClubContext = createContext<ClubState | null>(null);
-const STORAGE_KEY = '@ecotrek/clubs';
-const MY_CLUB_KEY = '@ecotrek/my_club';
 
 function generateCode(): string {
   const chars = 'ABCDEFGHJKLMNPQRSTUVWXYZ23456789';
@@ -59,32 +76,23 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
   const [myClub, setMyClub] = useState<Club | null>(null);
   const [joinedClubs, setJoinedClubs] = useState<Club[]>([]);
 
+  // Sync clubs from Firebase Realtime Database in real-time
   useEffect(() => {
-    (async () => {
-      try {
-        const [rawMy, rawJoined] = await Promise.all([
-          AsyncStorage.getItem(MY_CLUB_KEY),
-          AsyncStorage.getItem(STORAGE_KEY),
-        ]);
-        if (rawMy) setMyClub(JSON.parse(rawMy));
-        if (rawJoined) setJoinedClubs(JSON.parse(rawJoined));
-      } catch (e) {
-        console.warn('Club load error', e);
+    const clubsRef = ref(db, 'clubs');
+    const unsubscribe = onValue(clubsRef, (snapshot: DataSnapshot) => {
+      const data = snapshot.val();
+      if (data) {
+        const clubsArray: Club[] = Object.values(data);
+        setJoinedClubs(clubsArray);
+      } else {
+        setJoinedClubs([]);
       }
-    })();
-  }, []);
+    }, (error: Error) => {
+      console.warn('Firebase sync error', error);
+    });
 
-  const persist = useCallback(
-    async (my: Club | null, joined: Club[]) => {
-      await Promise.all([
-        my
-          ? AsyncStorage.setItem(MY_CLUB_KEY, JSON.stringify(my))
-          : AsyncStorage.removeItem(MY_CLUB_KEY),
-        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(joined)),
-      ]);
-    },
-    []
-  );
+    return () => unsubscribe();
+  }, []);
 
   const createClub = useCallback(
     async (
@@ -94,8 +102,9 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       ownerName: string,
       ownerId: string
     ): Promise<Club> => {
+      const clubId = `club-${Date.now()}`;
       const club: Club = {
-        id: `club-${Date.now()}`,
+        id: clubId,
         name,
         description,
         code: generateCode(),
@@ -116,13 +125,12 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
           },
         ],
       };
+
+      await set(ref(db, `clubs/${clubId}`), club);
       setMyClub(club);
-      const newJoined = [...joinedClubs, club];
-      setJoinedClubs(newJoined);
-      await persist(club, newJoined);
       return club;
     },
-    [joinedClubs, persist]
+    []
   );
 
   const joinClub = useCallback(
@@ -131,65 +139,65 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       memberName: string,
       memberId: string
     ): Promise<Club | null> => {
-      const found = joinedClubs.find(
-        (c) => c.code === code.toUpperCase()
+      const dbRef = ref(db);
+      const snapshot = await get(child(dbRef, 'clubs'));
+      
+      if (!snapshot.exists()) return null;
+
+      const clubsData = snapshot.val() as Record<string, Club>;
+      const foundEntry = Object.entries(clubsData).find(
+        ([_, c]) => c.code === code.toUpperCase()
       );
-      if (!found) return null;
+
+      if (!foundEntry) return null;
+      const [clubId, found] = foundEntry;
+
       if (found.isLocked) return null;
 
-      const alreadyIn = found.members.some((m) => m.id === memberId);
-      if (alreadyIn) return found;
-
-      const newMember: ClubMember = {
-        id: memberId,
-        name: memberName,
-        points: 0,
-        trees: 0,
-        miles: 0,
-        joinedAt: Date.now(),
-      };
+      const members = found.members || [];
+      const alreadyIn = members.some((m) => m.id === memberId);
+      
+      let updatedMembers = members;
+      if (!alreadyIn) {
+        const newMember: ClubMember = {
+          id: memberId,
+          name: memberName,
+          points: 0,
+          trees: 0,
+          miles: 0,
+          joinedAt: Date.now(),
+        };
+        updatedMembers = [...members, newMember];
+      }
 
       const updated: Club = {
         ...found,
-        members: [...found.members, newMember],
+        members: updatedMembers,
       };
 
-      const newJoined = joinedClubs.map((c) =>
-        c.id === found.id ? updated : c
-      );
-      setJoinedClubs(newJoined);
-      await persist(myClub, newJoined);
+      await update(ref(db, `clubs/${clubId}`), { members: updatedMembers });
       return updated;
     },
-    [joinedClubs, myClub, persist]
+    []
   );
 
   const leaveClub = useCallback(
     async (clubId: string) => {
-      const newJoined = joinedClubs.filter((c) => c.id !== clubId);
-      const newMy = myClub?.id === clubId ? null : myClub;
-      setJoinedClubs(newJoined);
-      setMyClub(newMy);
-      await persist(newMy, newJoined);
+      if (myClub?.id === clubId) {
+        setMyClub(null);
+      }
     },
-    [joinedClubs, myClub, persist]
+    [myClub]
   );
 
   const lockClub = useCallback(
     async (clubId: string, locked: boolean) => {
-      const updateClub = (c: Club) =>
-        c.id === clubId ? { ...c, isLocked: locked } : c;
-      const newJoined = joinedClubs.map(updateClub);
-      const newMy = myClub
-        ? myClub.id === clubId
-          ? { ...myClub, isLocked: locked }
-          : myClub
-        : null;
-      setJoinedClubs(newJoined);
-      setMyClub(newMy);
-      await persist(newMy, newJoined);
+      await update(ref(db, `clubs/${clubId}`), { isLocked: locked });
+      if (myClub?.id === clubId) {
+        setMyClub((prev: Club | null) => (prev ? { ...prev, isLocked: locked } : null));
+      }
     },
-    [joinedClubs, myClub, persist]
+    [myClub]
   );
 
   const updateMemberStats = useCallback(
@@ -200,38 +208,38 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       trees: number,
       miles: number
     ) => {
-      const updateClub = (c: Club): Club => {
-        if (c.id !== clubId) return c;
-        const updatedMembers = c.members.map((m) =>
-          m.id === memberId
-            ? { ...m, points: m.points + points, trees: m.trees + trees, miles: m.miles + miles }
-            : m
-        );
-        return {
-          ...c,
-          members: updatedMembers,
-          totalPoints: updatedMembers.reduce((s, m) => s + m.points, 0),
-          totalTrees: updatedMembers.reduce((s, m) => s + m.trees, 0),
-        };
-      };
-      const newJoined = joinedClubs.map(updateClub);
-      const newMy = myClub ? updateClub(myClub) : null;
-      setJoinedClubs(newJoined);
-      setMyClub(newMy);
-      await persist(newMy, newJoined);
+      const clubRef = ref(db, `clubs/${clubId}`);
+      const snapshot = await get(clubRef);
+
+      if (!snapshot.exists()) return;
+      const club = snapshot.val() as Club;
+
+      const updatedMembers = club.members.map((m) =>
+        m.id === memberId
+          ? { ...m, points: m.points + points, trees: m.trees + trees, miles: m.miles + miles }
+          : m
+      );
+
+      const totalPoints = updatedMembers.reduce((s, m) => s + m.points, 0);
+      const totalTrees = updatedMembers.reduce((s, m) => s + m.trees, 0);
+
+      await update(clubRef, {
+        members: updatedMembers,
+        totalPoints,
+        totalTrees,
+      });
     },
-    [joinedClubs, myClub, persist]
+    []
   );
 
   const deleteClub = useCallback(
     async (clubId: string) => {
-      const newJoined = joinedClubs.filter((c) => c.id !== clubId);
-      const newMy = myClub?.id === clubId ? null : myClub;
-      setJoinedClubs(newJoined);
-      setMyClub(newMy);
-      await persist(newMy, newJoined);
+      await remove(ref(db, `clubs/${clubId}`));
+      if (myClub?.id === clubId) {
+        setMyClub(null);
+      }
     },
-    [joinedClubs, myClub, persist]
+    [myClub]
   );
 
   const value = useMemo<ClubState>(
