@@ -1,175 +1,144 @@
-# 🌳 EcoTrek
+# EcoTrek
 
-> Hike. Bike. Grow Austin.
+**Hike. Bike. Build the habit.**
 
-EcoTrek is a React Native (Expo **SDK 54**) app that promotes **green space safety** and **public health** in Austin, TX. Every mile a user bikes or hikes triggers a verified tree planting through our partnership with **[Veritree](https://www.veritree.com/)**.
+EcoTrek is a React Native (Expo SDK 54) app for Austin, Texas. It tracks the
+distance you cover under your own power, warns you when it is genuinely unsafe
+to be outside, and gives you five small weekly challenges that add points to
+your club's score.
 
-Built with **Expo SDK 54 + React Native 0.81 + React 19.1** so the **same codebase runs on iOS, Android, and the Web**.
+One codebase runs on iOS, Android and the web.
 
----
-
-## ✨ Key features
-
-| Feature | Description |
-| --- | --- |
-| 🔐 **Google Sign-In** | Real OAuth via `expo-auth-session` on iOS, Android, and Web. Session persisted with AsyncStorage. Guest mode also available. |
-| 🛰️ **Live GPS tracking** | Real-time location tracking on iOS/Android (`expo-location` v19) and Web (`navigator.geolocation.watchPosition`) with accuracy + jitter filtering. |
-| 🗺️ **Real interactive map** | OpenStreetMap tiles via Leaflet on web, Google Maps via `react-native-maps` on iOS/Android. |
-| 🚴 **Bike & 🥾 hike modes** | Different miles-per-tree rules apply. |
-| 🌳 **Veritree integration** | Each completed activity calls `commitPlanting()` to schedule a real, verified planting. |
-| 🗺️ **Curated Austin trails** | Butler Trail, Barton Creek Greenbelt, Walnut Creek, McKinney Falls, the Veloway. |
-| 🛡️ **Safety hub** | Emergency contacts, heat/hydration tips, wildlife alerts, weather guidance. |
-| 📊 **Impact dashboard** | CO₂, O₂, full history with planting receipts. |
+Built for the Congressional App Challenge by Henit Jain, Matan Heber,
+Arjun Averineni and Basil Vinesh.
 
 ---
 
-## 🔐 Authentication
+## What it does
 
-EcoTrek now gates the app behind a sign-in screen.
+| | |
+|---|---|
+| **GPS activity tracking** | Distance, pace and route for hikes and rides, with accuracy and jitter filtering. |
+| **Automatic trail detection** | Start within a third of a mile of a trailhead and EcoTrek recognises which of 14 Austin trails you are on. Cover 70% of its length and it logs a completion. |
+| **Weather and safety warnings** | Live heat index, storms, air quality and UV, plus official National Weather Service flood, tornado and winter warnings. Dangerous conditions block the Start button behind an explanation. |
+| **Daily login streaks** | A streak calendar that distinguishes days you opened the app from days you actually got out. Bonus points every seven days. |
+| **Weekly challenges** | Five per week, the same five for everyone, reset Monday. Two tracked automatically, three you tick off yourself. Points go to you *and* your club. |
+| **Clubs** | Create or join with a six-character code. Ranked roster, contribution share, owner controls. |
+| **Impact profile** | A shareable card with your distance, trees, streak, badges, and any club you are currently topping. |
+| **Local notifications** | Streak reminders, challenge reminders before the week resets, and severe weather alerts. |
 
-* **Google Sign-In** — powered by `expo-auth-session/providers/google` with PKCE. Drop your Google OAuth client IDs into `src/constants/authConfig.ts`. See **[docs/GOOGLE_OAUTH_SETUP.md](./docs/GOOGLE_OAUTH_SETUP.md)** for the 5-minute walkthrough.
-* **Guest mode** — works out of the box so you can preview/test without OAuth credentials.
-* **Persistence** — the session is stored in `@react-native-async-storage/async-storage` under `@ecotrek/auth_user`. Cold-start restore happens before the gate decides whether to show SignIn or the tab navigator.
-* **Sign out** — tap the avatar in the top-right header.
+### About the trees
 
-The auth flow lives in `src/context/AuthContext.tsx`. After a successful Google sign-in, the access token is exchanged for the Google `userinfo` profile (`id`, `name`, `email`, `picture`) and saved as the active user.
-
----
-
-## 📦 Stack (SDK 54)
-
-| Package | Version |
-| --- | --- |
-| `expo` | `~54.0.0` |
-| `react` / `react-dom` | `19.1.0` |
-| `react-native` | `0.81.4` |
-| `react-native-web` | `^0.21.0` |
-| `expo-auth-session` | `~7.0.8` |
-| `expo-web-browser` | `~15.0.7` |
-| `expo-crypto` | `~15.0.7` |
-| `expo-linking` | `~8.0.7` |
-| `expo-location` | `~19.0.8` |
-| `expo-status-bar` | `~3.0.7` |
-| `@react-native-async-storage/async-storage` | `2.2.0` |
-| `react-native-maps` | `1.26.14` |
-| `react-native-safe-area-context` | `~5.6.0` |
-| `react-native-screens` | `~4.16.0` |
-| `react-native-svg` | `15.12.1` |
-| `react-native-gesture-handler` | `~2.28.0` |
-| `@react-navigation/*` | `^7.x` |
-| Node minimum | **20.19.x** |
+Trees in EcoTrek are a **symbolic** measure of effort — one per mile hiked, one
+per three miles biked. **No real trees are planted and no organisation is
+involved.** The app says so in the Impact tab and on the Track screen. An
+earlier version of this project implied a real planting partnership; that claim
+has been removed everywhere.
 
 ---
 
-## 🌱 Planting rules
-
-| Activity | Distance | Trees |
-| --- | --- | --- |
-| 🚴 Bike | 1.0 mile | 1 tree |
-| 🥾 Hike | 0.5 mile | 1 tree |
-
-Native species rotated for Austin's climate: Texas Live Oak, Cedar Elm, Mexican Plum, Bald Cypress, Texas Redbud, Anacacho Orchid Tree.
-
----
-
-## 🛰️ How tracking works
-
-`src/services/location.ts` exposes:
-
-```ts
-startTracking(onCoord, { mode: 'gps' | 'demo', onError })
-```
-
-* **iOS/Android** — `expo-location.watchPositionAsync` with `Accuracy.BestForNavigation`.
-* **Web** — `navigator.geolocation.watchPosition` with `enableHighAccuracy: true`.
-* **Demo** — simulated walker at ~12 mph starting at Lady Bird Lake.
-
-`smoothDelta()` rejects bad fixes (>50 m accuracy), micro-jitter (<2 m), and teleports (>100 mph) before adding the Haversine distance to the total.
-
----
-
-## 🚀 Run it on your phone
+## Running it
 
 ```bash
 cd EcoTrek
-rm -rf node_modules package-lock.json   # if upgrading from earlier
 npm install
-npx expo start
+npm start            # then press w for web, or scan the QR code
 ```
 
-1. Install **Expo Go v54** (latest) from the App Store / Play Store.
-2. Scan the QR.
-3. **Sign in with Google** (after configuring OAuth — see docs) or **Continue as guest**.
-4. Tap **Track → Start ride**.
+No configuration is needed. With an empty `.env` the app works fully offline on
+the device — that includes clubs, streaks, challenges and leaderboards.
 
-Or on web:
 ```bash
-npx expo start --web
+npm test             # 33 logic tests: streaks, weeks, detection, anti-cheat
+npm run typecheck    # tsc --noEmit
 ```
 
 ---
 
-## 🗂 Project structure
+## Configuration
+
+Everything is optional. Copy `.env.example` to `.env` and fill in only what you
+need.
+
+| Variable | Turns on |
+|---|---|
+| `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` | Google sign-in (guest mode works without it) |
+| `EXPO_PUBLIC_API_URL` | Cloud sync via your Neon-backed API |
+| `EXPO_PUBLIC_PRIVACY_URL` | Privacy policy link in Settings and sign-in |
+| `EXPO_PUBLIC_SUPPORT_EMAIL` | Support link in Settings |
+
+> Anything prefixed `EXPO_PUBLIC_` is bundled into the app and readable by
+> anyone who downloads it. Never put a database URL or an API secret there.
+
+---
+
+## Architecture
 
 ```
-EcoTrek/
-├── App.tsx                       # Providers + auth gate
-├── app.json                      # Expo config + URL scheme for OAuth callback
-├── package.json                  # SDK 54
-├── docs/
-│   └── GOOGLE_OAUTH_SETUP.md     # Step-by-step Google client ID setup
-└── src/
-    ├── components/
-    │   ├── Header.tsx            # Now includes ProfileMenu
-    │   ├── LiveMap.web.tsx       # Leaflet + OSM
-    │   ├── LiveMap.native.tsx    # react-native-maps
-    │   ├── ProfileMenu.tsx       # Avatar + signout modal
-    │   ├── PrimaryButton.tsx
-    │   ├── StatCard.tsx
-    │   └── TreeIcon.tsx
-    ├── constants/
-    │   ├── authConfig.ts         # ← drop Google client IDs here
-    │   ├── austinTrails.ts
-    │   └── theme.ts
-    ├── context/
-    │   ├── AuthContext.tsx       # Google OAuth + guest + persistence
-    │   └── ActivityContext.tsx   # Treks + Veritree commits
-    ├── navigation/
-    │   └── RootNavigator.tsx
-    ├── screens/
-    │   ├── SignInScreen.tsx      # Gate
-    │   ├── HomeScreen.tsx        # Greeting personalized to signed-in user
-    │   ├── TrackScreen.tsx
-    │   ├── TrailsScreen.tsx
-    │   ├── ImpactScreen.tsx
-    │   └── SafetyScreen.tsx
-    └── services/
-        ├── location.ts
-        └── veritree.ts
+App.tsx                     provider stack (order matters — see the comment)
+src/
+  components/
+    Icon.tsx                ~70 SVG line icons. No emoji anywhere in the UI.
+    ui.tsx                  Card, Button, Pill, Sheet, Banner, Segmented…
+    ConditionsCard.tsx      the "should I go outside" card
+    StreakStrip.tsx         streak calendar strip
+    ChallengeItem.tsx       one weekly challenge
+  constants/
+    theme.ts                colours, type scale, spacing, shadows
+    challenges.ts           the challenge catalogue + weekly selection
+    austinTrails.ts         14 real trails with trailhead coordinates
+    ClubContext.tsx         clubs, local-first with API sync
+    EcoPointsContext.tsx    points ledger and badges
+  context/
+    AuthContext, AppContext (location), StreakContext, ActivityContext,
+    ChallengeContext, NotificationContext, WeatherContext
+  services/
+    api.ts                  backend adapter (the on/off switch)
+    weather.ts              Open-Meteo + NWS → one safety verdict
+    trailDetection.ts       trail matching, completion, anti-cheat
+    geo.ts / dates.ts       pure helpers, unit tested in plain Node
+    notifications.ts        local scheduled notifications
+db/                         Neon schema, seed data, column reference
+server/                     the API that sits in front of Neon
+docs/                       privacy policy, launch checklist, OAuth setup
+```
+
+### Two modes, one codebase
+
+Every context reads and writes through `src/services/api.ts`. With
+`EXPO_PUBLIC_API_URL` unset it falls back to `AsyncStorage`; with it set it
+talks to your server. No screen knows the difference, and if the server is
+unreachable the app quietly uses local data instead of crashing.
+
+### Data sources
+
+Both are free and need **no API key**, so nothing here expires or needs
+renewing:
+
+- [Open-Meteo](https://open-meteo.com) — conditions, forecast, UV, air quality
+- [weather.gov](https://www.weather.gov/documentation/services-web-api) —
+  official NWS watches, warnings and advisories
+
+---
+
+## Backend
+
+See [`server/README.md`](./server/README.md) to run it, and
+[`db/README.md`](./db/README.md) for the full column reference.
+
+```bash
+cd server && npm install
+cp .env.example .env      # paste your Neon URL + Google client IDs
+npm run migrate           # creates every table and seeds badges and trails
+npm start
 ```
 
 ---
 
-## 🔌 Wiring up the real Veritree API
+## Shipping
 
-Replace the body of `commitPlanting()` in `src/services/veritree.ts`:
-
-```ts
-const res = await fetch('https://api.veritree.com/v1/plantings', {
-  method: 'POST',
-  headers: {
-    Authorization: `Bearer ${process.env.VERITREE_TOKEN}`,
-    'Content-Type': 'application/json',
-  },
-  body: JSON.stringify(req),
-});
-return res.json();
-```
-
----
-
-## 📱 Platform notes
-
-* **iOS** — `NSLocationWhenInUseUsageDescription` declared. For Google Sign-In in a standalone build, add the reversed client id to `CFBundleURLTypes` (see docs).
-* **Android** — `ACCESS_FINE_LOCATION` + `ACCESS_BACKGROUND_LOCATION`. SDK 54 enables edge-to-edge by default. For Google Sign-In add the SHA-1 fingerprint when creating the OAuth Android client.
-* **Web** — must be served over HTTPS (or `localhost`) for Geolocation. The Google popup opens at `accounts.google.com`.
+[`docs/LAUNCH_CHECKLIST.md`](./docs/LAUNCH_CHECKLIST.md) is the full list of
+what is done and what still needs a human. The short version: publish the
+privacy policy, create your own Google Cloud project with a release-keystore
+SHA-1, and submit to internal testing early — the first Play review can take a
+week.

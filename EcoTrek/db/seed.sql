@@ -1,16 +1,29 @@
 -- Seed data for EcoTrek (run AFTER schema.sql)
--- Badges match the ids already used in src/constants/EcoPointsContext.tsx.
+-- Badge ids and icon names match src/constants/EcoPointsContext.tsx exactly,
+-- so the app and the database never disagree about what a badge is.
 
 INSERT INTO badges (id, name, description, icon, tier, criteria, sort_order) VALUES
-  ('first_hike',   'First Steps',      'Complete your first hike',              '🥾', 1, '{"metric":"hike_activities","gte":1}',  10),
-  ('first_bike',   'Wheels Up',        'Complete your first bike ride',         '🚴', 1, '{"metric":"bike_activities","gte":1}',  20),
-  ('ten_miles',    'Ten Miler',        'Cover 10 total miles',                  '🏃', 1, '{"metric":"total_miles","gte":10}',     30),
-  ('fifty_miles',  'Half Century',     'Cover 50 total miles',                  '🔥', 2, '{"metric":"total_miles","gte":50}',     40),
-  ('first_tree',   'Seed Planter',     'Earn your first tree',                  '🌱', 1, '{"metric":"total_trees","gte":1}',      50),
-  ('ten_trees',    'Grove Grower',     'Earn 10 trees',                         '🌳', 2, '{"metric":"total_trees","gte":10}',     60),
-  ('club_member',  'Team Player',      'Join a club',                           '🤝', 1, '{"metric":"clubs_joined","gte":1}',     70),
-  ('week_streak',  'Seven Day Streak', 'Be active 7 days in a row',             '📅', 2, '{"metric":"current_streak","gte":7}',   80),
-  ('trail_master', 'Trail Master',     'Complete 5 different trails',           '🗺️', 3, '{"metric":"trail_completions","gte":5}',90)
+  ('first_hike',          'First Steps',      'Complete your first hike',            'boot',        1, '{"metric":"hikes","gte":1}',              10),
+  ('first_ride',          'Wheels Up',        'Complete your first bike ride',       'bike',        1, '{"metric":"rides","gte":1}',              20),
+  ('first_tree',          'Seed Planter',     'Earn your first tree',                'leaf',        1, '{"metric":"total_trees","gte":1}',        30),
+  ('five_miles',          'Five Miler',       'Cover 5 total miles',                 'activity',    1, '{"metric":"total_miles","gte":5}',        40),
+  ('twenty_five_miles',   'Distance Runner',  'Cover 25 total miles',                'trending-up', 2, '{"metric":"total_miles","gte":25}',       50),
+  ('hundred_miles',       'Century Trekker',  'Cover 100 total miles',               'award',       3, '{"metric":"total_miles","gte":100}',      60),
+  ('ten_trees',           'Mini Forest',      'Earn 10 trees',                       'tree',        2, '{"metric":"total_trees","gte":10}',       70),
+  ('fifty_trees',         'Grove Keeper',     'Earn 50 trees',                       'tree',        3, '{"metric":"total_trees","gte":50}',       80),
+  ('streak_3',            'Warming Up',       'Reach a 3-day streak',                'flame',       1, '{"metric":"longest_streak","gte":3}',     90),
+  ('streak_7',            'Seven Straight',   'Reach a 7-day streak',                'flame',       2, '{"metric":"longest_streak","gte":7}',    100),
+  ('streak_30',           'Unbroken',         'Reach a 30-day streak',               'flame',       3, '{"metric":"longest_streak","gte":30}',   110),
+  ('first_challenge',     'Challenger',       'Finish your first weekly challenge',  'target',      1, '{"metric":"challenges","gte":1}',        120),
+  ('ten_challenges',      'Habit Builder',    'Finish 10 challenges',                'target',      2, '{"metric":"challenges","gte":10}',       130),
+  ('first_trail',         'Trail Bagger',     'Complete a full named trail',         'map',         1, '{"metric":"trail_completions","gte":1}', 140),
+  ('five_trails',         'Trail Master',     'Complete 5 different trails',         'flag',        3, '{"metric":"trail_completions","gte":5}', 150),
+  ('five_hundred_points', 'Point Collector',  'Earn 500 EcoPoints',                  'star',        2, '{"metric":"total_points","gte":500}',    160),
+  ('thousand_points',     'EcoElite',         'Earn 1,000 EcoPoints',                'star',        3, '{"metric":"total_points","gte":1000}',   170),
+  ('trail_steward',       'Trail Steward',    'Reach the Trail Steward level',       'shield',      2, '{"metric":"level_index","gte":4}',       180),
+  ('eco_champion',        'EcoChampion',      'Reach the EcoChampion level',         'crown',       3, '{"metric":"level_index","gte":7}',       190),
+  ('club_member',         'Team Player',      'Join a club',                         'users',       1, '{"metric":"clubs_joined","gte":1}',      200),
+  ('club_founder',        'Club Founder',     'Create a club',                       'crown',       2, '{"metric":"clubs_founded","gte":1}',     210)
 ON CONFLICT (id) DO NOTHING;
 
 INSERT INTO trails (slug, name, type, distance_miles, difficulty, area, description,

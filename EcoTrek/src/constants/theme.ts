@@ -1,43 +1,65 @@
+/**
+ * EcoTrek design system.
+ *
+ * Design intent: this should read like a serious outdoor/fitness product, not a
+ * kids' app. That means a restrained palette, one accent colour, tight type,
+ * soft shadows, and NO emoji anywhere in the UI (use <Icon /> instead).
+ */
+
 export const COLORS = {
-  primary: '#1A7A43',
-  primaryDark: '#0A2E1A',
-  primaryMid: '#145C33',
-  primaryLight: '#4CAF77',
-  primaryGlow: '#A8E6C0',
-  primarySurface: '#EAF7EF',
-  accent: '#F4A300',
-  accentLight: '#FFE0A0',
-  accentDark: '#C47F00',
-  bark: '#5B3A1B',
-  barkLight: '#8B6040',
-  sand: '#F5ECD7',
-  sky: '#1A91D1',
-  skyLight: '#BDE8FF',
-  background: '#F2F7F4',
-  backgroundDark: '#E5EFE9',
+  // ── Brand ────────────────────────────────────────────────────────────────
+  primary: '#16624A',
+  primaryDark: '#0C2E24',
+  primaryMid: '#124F3C',
+  primaryLight: '#2E8B69',
+  primaryGlow: '#8FCFB6',
+  primarySurface: '#EDF5F1',
+
+  accent: '#C8842A',
+  accentLight: '#F7EBD8',
+  accentDark: '#9C6620',
+
+  // ── Neutrals ─────────────────────────────────────────────────────────────
+  background: '#F7F8F7',
+  backgroundDark: '#EFF2F0',
   surface: '#FFFFFF',
-  surfaceElevated: '#FAFCFB',
-  surfaceOverlay: 'rgba(255,255,255,0.95)',
-  text: '#0F2318',
-  textSecondary: '#2D4A38',
-  textMuted: '#6B7F74',
-  textLight: '#9EAFA7',
+  surfaceElevated: '#FFFFFF',
+  surfaceSunken: '#F2F4F3',
+  surfaceOverlay: 'rgba(255,255,255,0.96)',
+
+  text: '#14201B',
+  textSecondary: '#4A574F',
+  textMuted: '#7C8A82',
+  textLight: '#A4AEA8',
   textInverse: '#FFFFFF',
-  danger: '#D32F2F',
-  dangerLight: '#FFEBEE',
-  warning: '#E65100',
-  warningLight: '#FFF3E0',
-  success: '#1A7A43',
-  successLight: '#EAF7EF',
-  info: '#1565C0',
-  infoLight: '#E3F2FD',
-  border: '#D8E5DC',
-  borderLight: '#ECF3EE',
-  shadow: '#0A2E1A',
-  overlay: 'rgba(10,46,26,0.6)',
-  gradientPrimary: ['#1A7A43', '#0A2E1A'] as [string, string],
-  gradientAccent: ['#F4A300', '#C47F00'] as [string, string],
-  gradientSky: ['#1A91D1', '#0D5F8A'] as [string, string],
+
+  border: '#E2E7E4',
+  borderLight: '#EDF0EE',
+  borderStrong: '#D2D9D5',
+
+  // ── Status ───────────────────────────────────────────────────────────────
+  danger: '#C0392B',
+  dangerLight: '#FBEAE8',
+  warning: '#B4761A',
+  warningLight: '#FBF1E1',
+  success: '#16624A',
+  successLight: '#EDF5F1',
+  info: '#1F5F8B',
+  infoLight: '#E8F0F6',
+
+  shadow: '#0C2E24',
+  overlay: 'rgba(12,46,36,0.45)',
+
+  // legacy aliases kept so older screens keep compiling
+  bark: '#5B4636',
+  barkLight: '#8A7561',
+  sand: '#F1EADC',
+  sky: '#1F5F8B',
+  skyLight: '#D6E6F2',
+
+  gradientPrimary: ['#16624A', '#0C2E24'] as [string, string],
+  gradientAccent: ['#C8842A', '#9C6620'] as [string, string],
+  gradientSky: ['#1F5F8B', '#123D5A'] as [string, string],
 };
 
 export const SPACING = {
@@ -54,55 +76,66 @@ export const SPACING = {
 export const RADIUS = {
   xs: 4,
   sm: 8,
-  md: 14,
-  lg: 20,
-  xl: 28,
-  xxl: 36,
+  md: 12,
+  lg: 16,
+  xl: 20,
+  xxl: 28,
   pill: 999,
 };
 
 export const TYPOGRAPHY = {
-  display: { fontSize: 36, fontWeight: '900' as const, letterSpacing: -1 },
-  h1: { fontSize: 28, fontWeight: '800' as const, letterSpacing: -0.5 },
-  h2: { fontSize: 22, fontWeight: '700' as const, letterSpacing: -0.3 },
-  h3: { fontSize: 18, fontWeight: '700' as const, letterSpacing: -0.2 },
-  h4: { fontSize: 15, fontWeight: '700' as const },
-  body: { fontSize: 15, fontWeight: '400' as const, lineHeight: 23 },
-  bodyMed: { fontSize: 15, fontWeight: '500' as const, lineHeight: 23 },
+  display: { fontSize: 34, fontWeight: '700' as const, letterSpacing: -0.8 },
+  h1: { fontSize: 26, fontWeight: '700' as const, letterSpacing: -0.5 },
+  h2: { fontSize: 20, fontWeight: '700' as const, letterSpacing: -0.3 },
+  h3: { fontSize: 17, fontWeight: '600' as const, letterSpacing: -0.2 },
+  h4: { fontSize: 15, fontWeight: '600' as const, letterSpacing: -0.1 },
+  body: { fontSize: 15, fontWeight: '400' as const, lineHeight: 22 },
+  bodyMed: { fontSize: 15, fontWeight: '500' as const, lineHeight: 22 },
   small: { fontSize: 13, fontWeight: '400' as const, lineHeight: 19 },
   smallMed: { fontSize: 13, fontWeight: '600' as const },
-  caption: { fontSize: 11, fontWeight: '600' as const, letterSpacing: 0.5 },
-  micro: { fontSize: 10, fontWeight: '700' as const, letterSpacing: 0.8 },
+  caption: { fontSize: 12, fontWeight: '500' as const, letterSpacing: 0 },
+  // Uppercase eyebrow label
+  overline: {
+    fontSize: 11,
+    fontWeight: '600' as const,
+    letterSpacing: 0.9,
+    textTransform: 'uppercase' as const,
+  },
+  micro: { fontSize: 10, fontWeight: '600' as const, letterSpacing: 0.6 },
+  // Tabular-ish numeral style for stats
+  metric: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -1 },
+  metricLg: { fontSize: 44, fontWeight: '700' as const, letterSpacing: -1.6 },
 };
 
 export const SHADOWS = {
+  none: {},
   sm: {
-    shadowColor: '#0A2E1A',
-    shadowOpacity: 0.06,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowColor: '#0C2E24',
+    shadowOpacity: 0.04,
+    shadowRadius: 4,
+    shadowOffset: { width: 0, height: 1 },
+    elevation: 1,
   },
   md: {
-    shadowColor: '#0A2E1A',
-    shadowOpacity: 0.1,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    shadowColor: '#0C2E24',
+    shadowOpacity: 0.06,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 3,
   },
   lg: {
-    shadowColor: '#0A2E1A',
-    shadowOpacity: 0.15,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    shadowColor: '#0C2E24',
+    shadowOpacity: 0.09,
+    shadowRadius: 18,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 6,
   },
   xl: {
-    shadowColor: '#0A2E1A',
-    shadowOpacity: 0.2,
-    shadowRadius: 30,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 12,
+    shadowColor: '#0C2E24',
+    shadowOpacity: 0.14,
+    shadowRadius: 28,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 10,
   },
 };
 
@@ -110,3 +143,17 @@ export const TREE_RULES = {
   bikeMilesPerTree: 3,
   hikeMilesPerTree: 1,
 };
+
+/** Levels — no emoji, ranked titles only. */
+export const LEVELS = [
+  { name: 'New Trekker', min: 0 },
+  { name: 'Seedling', min: 100 },
+  { name: 'Trail Walker', min: 300 },
+  { name: 'Forest Friend', min: 700 },
+  { name: 'Trail Steward', min: 1500 },
+  { name: 'Forest Guardian', min: 3000 },
+  { name: 'Peak Explorer', min: 6000 },
+  { name: 'EcoChampion', min: 12000 },
+  { name: 'Earth Defender', min: 25000 },
+  { name: 'Trail Legend', min: 50000 },
+];

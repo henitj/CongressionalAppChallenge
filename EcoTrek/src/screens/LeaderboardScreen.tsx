@@ -1,1082 +1,770 @@
-import React, { useState } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, TextInput, Modal, Alert, Switch, Share, Platform, KeyboardAvoidingView, } from 'react-native';
-import Header from '../components/Header';
-import PrimaryButton from '../components/PrimaryButton';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
-import { useClub } from '../constants/ClubContext';
-import { useEcoPoints } from '../constants/EcoPointsContext';
-import { useAuth } from '../context/AuthContext';
+import React, { useMemo, useState } from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  TextInput,
+  Alert,
+  Switch,
+  Share,
+  RefreshControl,
+  ActivityIndicator,
+} from 'react-native';
 
-type LeaderTab = 'clubs' | 'my_club' | 'global';
+import Header from '../components/Header';
+import Icon, { IconName } from '../components/Icon';
+import {
+  Screen,
+  Card,
+  Button,
+  Pill,
+  Segmented,
+  Sheet,
+  EmptyState,
+  Banner,
+  Avatar,
+  Divider,
+  ProgressBar,
+} from '../components/ui';
+
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { Club, sortedMembers, useClub } from '../constants/ClubContext';
+import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../constants/SettingsContext';
+
+type Tab = 'my_club' | 'discover' | 'ranking';
 
 export default function LeaderboardScreen() {
   const { user } = useAuth();
-  const { totalPoints, level } = useEcoPoints();
-  const { myClub, joinedClubs, createClub, joinClub, leaveClub, lockClub, deleteClub, } = useClub();
+  const {
+    myClub,
+    allClubs,
+    myMember,
+    myRank,
+    localOnly,
+    syncing,
+    createClub,
+    joinClub,
+    leaveClub,
+    lockClub,
+    deleteClub,
+    refresh,
+  } = useClub();
+  const { formatDistance, formatDistanceUnit } = useSettings();
 
-  const [tab, setTab] = useState<LeaderTab>('clubs');
+  const [tab, setTab] = useState<Tab>(myClub ? 'my_club' : 'discover');
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
+  const [name, setName] = useState('');
+  const [description, setDescription] = useState('');
+  const [locked, setLocked] = useState(false);
+  const [code, setCode] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
-  // Create form state
-  const [clubName, setClubName] = useState('');
-  const [clubDesc, setClubDesc] = useState('');
-  const [clubLocked, setClubLocked] = useState(false);
-  const [creating, setCreating] = useState(false);
-
-  // Join form state
-  const [joinCode, setJoinCode] = useState('');
-  const [joining, setJoining] = useState(false);
+  const publicClubs = useMemo(
+    () => allClubs.filter((c) => c.isPublic && c.id !== myClub?.id),
+    [allClubs, myClub?.id]
+  );
 
   const handleCreate = async () => {
-    if (!clubName.trim()) {
-      Alert.alert('Name required', 'Please enter a club name.');
+    if (name.trim().length < 3) {
+      setError('Give your club a name of at least 3 characters.');
       return;
     }
-    if (!user) return;
-    setCreating(true);
-    await createClub( clubName.trim(), clubDesc.trim(), clubLocked, user.name, user.id );
-    setCreating(false);
-    setShowCreate(false);
-    setClubName('');
-    setClubDesc('');
-    setClubLocked(false);
-    setTab('my_club');
+    setBusy(true);
+    setError(null);
+    try {
+      await createClub({ name, description, isLocked: locked });
+      setShowCreate(false);
+      setName('');
+      setDescription('');
+      setLocked(false);
+      setTab('my_club');
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not create that club.');
+    } finally {
+      setBusy(false);
+    }
   };
 
   const handleJoin = async () => {
-    if (!joinCode.trim()) {
-      Alert.alert('Code required', 'Please enter a club code.');
-      return;
-    }
-    if (!user) return;
-    setJoining(true);
-    const result = await joinClub(joinCode.trim(), user.name, user.id);
-    setJoining(false);
-    if (!result) {
-      Alert.alert(
-        'Club not found',
-        'No club with that code exists, or the club is locked.'
-      );
-      return;
-    }
-    setShowJoin(false);
-    setJoinCode('');
-    setTab('my_club');
-  };
-
-  const handleShare = async (code: string, name: string) => {
+    setBusy(true);
+    setError(null);
     try {
-      await Share.share({
-        message: `Join my EcoTrek club "${name}"! Use code: ${code} in the Leaderboard tab.`,
-        title: 'Join my EcoTrek Club',
-      });
-    } catch (e) {
-      console.warn('Share failed', e);
+      await joinClub(code);
+      setShowJoin(false);
+      setCode('');
+      setTab('my_club');
+    } catch (e: any) {
+      setError(e?.message ?? 'Could not join that club.');
+    } finally {
+      setBusy(false);
     }
   };
 
-  const handleLock = (clubId: string, locked: boolean) => {
-    Alert.alert(
-      locked ? 'Lock club' : 'Unlock club',
-      locked
-        ? 'Locking will prevent new members from joining.'
-        : 'Unlocking allows anyone with the code to join.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: locked ? 'Lock' : 'Unlock',
-          onPress: () => lockClub(clubId, locked),
-        },
-      ]
-    );
+  const confirmLeave = () => {
+    Alert.alert('Leave this club?', 'Your contribution stays with the club, but you will drop off the roster.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Leave', style: 'destructive', onPress: () => leaveClub().then(() => setTab('discover')) },
+    ]);
   };
 
-  const handleDelete = (clubId: string) => {
-    Alert.alert(
-      'Delete club',
-      'This will permanently delete your club and all member data.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Delete',
-          style: 'destructive',
-          onPress: () => deleteClub(clubId),
-        },
-      ]
-    );
+  const confirmDelete = () => {
+    Alert.alert('Delete this club?', 'This removes it for every member. It cannot be undone.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteClub().then(() => setTab('discover')) },
+    ]);
   };
 
-  // Global leaderboard mock — in production this would be a real API
-  const globalBoard = [
-    { rank: 1, name: 'Austin Hikers United', points: 48200, members: 24, trees: 312 },
-    { rank: 2, name: 'Green Wheel Riders', points: 36750, members: 18, trees: 241 },
-    { rank: 3, name: 'Barton Creek Crew', points: 29100, members: 15, trees: 198 },
-    { rank: 4, name: 'Lady Bird Legends', points: 22400, members: 12, trees: 156 },
-    { rank: 5, name: 'Greenbelt Guardians', points: 18900, members: 20, trees: 134 },
-  ];
+  const shareCode = async () => {
+    if (!myClub) return;
+    await Share.share({
+      message: `Join my EcoTrek club "${myClub.name}" — use code ${myClub.code} in the app.`,
+    });
+  };
 
   return (
-    <View style={styles.container}>
-      <Header title="Leaderboard" subtitle="Clubs · Rankings · Compete" />
+    <Screen
+      refreshControl={
+        <RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={COLORS.textMuted} />
+      }
+    >
+      <Header
+        title="Clubs"
+        subtitle={myClub ? myClub.name : 'Team up'}
+        actions={
+          myClub
+            ? [{ icon: 'share', onPress: shareCode, label: 'Share club code' }]
+            : [{ icon: 'plus', onPress: () => setShowCreate(true), label: 'Create club' }]
+        }
+      />
 
-      {/* Tab bar */}
-      <View style={styles.tabBar}>
-        {(
-          [
-            { key: 'clubs', label: 'My Clubs', icon: '👥' },
-            { key: 'my_club', label: 'Manage', icon: '⚙️' },
-            { key: 'global', label: 'Global', icon: '🌍' },
-          ] as { key: LeaderTab; label: string; icon: string }[]
-        ).map((t) => (
-          <Pressable
-            key={t.key}
-            onPress={() => setTab(t.key)}
-            style={[styles.tab, tab === t.key && styles.tabActive]}
-          >
-            <Text style={styles.tabIcon}>{t.icon}</Text>
-            <Text
-              style={[
-                styles.tabLabel,
-                tab === t.key && styles.tabLabelActive,
-              ]}
-            >
-              {t.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
-
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ══ MY CLUBS TAB ══ */}
-        {tab === 'clubs' && (
-          <>
-            {/* My stats card */}
-            <View style={styles.myStatsCard}>
-              <View style={styles.myStatsLeft}>
-                <Text style={styles.myStatsName}>
-                  {user?.name ?? 'Trekker'}
-                </Text>
-                <Text style={styles.myStatsLevel}>{level}</Text>
-              </View>
-              <View style={styles.myStatsRight}>
-                <Text style={styles.myStatsPts}>
-                  {totalPoints.toLocaleString()}
-                </Text>
-                <Text style={styles.myStatsPtsLabel}>EcoPoints</Text>
-              </View>
-            </View>
-
-            {/* Action buttons */}
-            <View style={styles.actionRow}>
-              <PrimaryButton
-                title="Create Club"
-                onPress={() => setShowCreate(true)}
-                icon="➕"
-                size="sm"
-                style={{ flex: 1 }}
-              />
-              <View style={{ width: SPACING.sm }} />
-              <PrimaryButton
-                title="Join Club"
-                onPress={() => setShowJoin(true)}
-                variant="ghost"
-                icon="🔑"
-                size="sm"
-                style={{ flex: 1 }}
-              />
-            </View>
-
-            {/* Clubs list */}
-            {joinedClubs.length === 0 ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyIcon}>👥</Text>
-                <Text style={styles.emptyTitle}>No clubs yet</Text>
-                <Text style={styles.emptyBody}>
-                  Create a club with friends or family, or join one with a
-                  club code to compete on the leaderboard.
-                </Text>
-              </View>
-            ) : (
-              joinedClubs.map((club) => (
-                <ClubCard
-                  key={club.id}
-                  club={club}
-                  isOwner={club.ownerId === user?.id}
-                  onShare={() => handleShare(club.code, club.name)}
-                  onLeave={() => {
-                    Alert.alert(
-                      'Leave club',
-                      `Leave "${club.name}"?`,
-                      [
-                        { text: 'Cancel', style: 'cancel' },
-                        {
-                          text: 'Leave',
-                          style: 'destructive',
-                          onPress: () => leaveClub(club.id),
-                        },
-                      ]
-                    );
-                  }}
-                />
-              ))
-            )}
-          </>
-        )}
-
-        {/* ══ MANAGE TAB ══ */}
-        {tab === 'my_club' && (
-          <>
-            {!myClub ? (
-              <View style={styles.emptyCard}>
-                <Text style={styles.emptyIcon}>🏆</Text>
-                <Text style={styles.emptyTitle}>
-                  You haven't created a club
-                </Text>
-                <Text style={styles.emptyBody}>
-                  Create a club to manage members, share your club code, and
-                  lock or unlock access.
-                </Text>
-                <PrimaryButton
-                  title="Create my club"
-                  onPress={() => {
-                    setTab('clubs');
-                    setShowCreate(true);
-                  }}
-                  icon="➕"
-                  style={{ marginTop: SPACING.md }}
-                />
-              </View>
-            ) : (
-              <>
-                {/* Club header */}
-                <View style={styles.manageHeader}>
-                  <View style={styles.manageHeaderBg} />
-                  <Text style={styles.manageName}>{myClub.name}</Text>
-                  {myClub.description ? (
-                    <Text style={styles.manageDesc}>
-                      {myClub.description}
-                    </Text>
-                  ) : null}
-
-                  {/* Code */}
-                  <View style={styles.codeBox}>
-                    <Text style={styles.codeLabel}>CLUB CODE</Text>
-                    <Text style={styles.codeValue}>{myClub.code}</Text>
-                    <Pressable
-                      style={styles.shareCodeBtn}
-                      onPress={() =>
-                        handleShare(myClub.code, myClub.name)
-                      }
-                    >
-                      <Text style={styles.shareCodeText}>
-                        Share code 📤
-                      </Text>
-                    </Pressable>
-                  </View>
-
-                  {/* Stats */}
-                  <View style={styles.manageStatsRow}>
-                    <ManageStat
-                      value={myClub.members.length.toString()}
-                      label="Members"
-                    />
-                    <ManageStat
-                      value={myClub.totalPoints.toLocaleString()}
-                      label="Points"
-                    />
-                    <ManageStat
-                      value={myClub.totalTrees.toString()}
-                      label="Trees"
-                    />
-                  </View>
-                </View>
-
-                {/* Lock toggle */}
-                <View style={styles.lockCard}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.lockTitle}>
-                      {myClub.isLocked ? '🔒 Club locked' : '🔓 Club open'}
-                    </Text>
-                    <Text style={styles.lockBody}>
-                      {myClub.isLocked
-                        ? 'New members cannot join without your approval.'
-                        : 'Anyone with the code can join your club.'}
-                    </Text>
-                  </View>
-                  <Switch
-                    value={myClub.isLocked}
-                    onValueChange={(val) => handleLock(myClub.id, val)}
-                    trackColor={{
-                      false: COLORS.border,
-                      true: COLORS.primary,
-                    }}
-                    thumbColor={myClub.isLocked ? '#fff' : COLORS.textLight}
-                  />
-                </View>
-
-                {/* Member leaderboard */}
-                <Text style={styles.sectionTitle}>
-                  Member leaderboard
-                </Text>
-                {myClub.members
-                  .slice()
-                  .sort((a, b) => b.points - a.points)
-                  .map((member, i) => (
-                    <MemberRow
-                      key={member.id}
-                      rank={i + 1}
-                      member={member}
-                      isMe={member.id === user?.id}
-                    />
-                  ))}
-
-                {/* Danger zone */}
-                <View style={styles.dangerZone}>
-                  <Text style={styles.dangerTitle}>Danger zone</Text>
-                  <PrimaryButton
-                    title="Delete club"
-                    onPress={() => handleDelete(myClub.id)}
-                    variant="danger"
-                    icon="🗑️"
-                    size="sm"
-                  />
-                </View>
-              </>
-            )}
-          </>
-        )}
-
-        {/* ══ GLOBAL TAB ══ */}
-        {tab === 'global' && (
-          <>
-            <View style={styles.globalBanner}>
-              <Text style={styles.globalBannerTitle}>
-                🌍 Austin EcoTrek Rankings
-              </Text>
-              <Text style={styles.globalBannerSub}>
-                Top clubs competing to grow Austin's urban forest
-              </Text>
-            </View>
-
-            {globalBoard.map((entry) => (
-              <View
-                key={entry.rank}
-                style={[
-                  styles.globalRow,
-                  entry.rank === 1 && styles.globalRowFirst,
-                ]}
-              >
-                <View style={styles.globalRankWrap}>
-                  <Text style={styles.globalRank}>
-                    {entry.rank === 1
-                      ? '🥇'
-                      : entry.rank === 2
-                      ? '🥈'
-                      : entry.rank === 3
-                      ? '🥉'
-                      : `#${entry.rank}`}
-                  </Text>
-                </View>
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.globalName}>{entry.name}</Text>
-                  <Text style={styles.globalMeta}>
-                    {entry.members} members · {entry.trees} 🌳 planted
-                  </Text>
-                </View>
-                <Text style={styles.globalPts}>
-                  {entry.points.toLocaleString()}
-                  {'\n'}
-                  <Text style={styles.globalPtsLabel}>pts</Text>
-                </Text>
-              </View>
-            ))}
-
-            <View style={styles.globalNote}>
-              <Text style={styles.globalNoteText}>
-                🏆 Global rankings update daily. Create a club and compete
-                with clubs across Austin!
-              </Text>
-            </View>
-          </>
-        )}
-      </ScrollView>
-
-      {/* ── Create club modal ── */}
-      <Modal
-        visible={showCreate}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowCreate(false)}
-      >
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => setShowCreate(false)}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'position' : 'height'}
-            keyboardVerticalOffset={0}
-          >
-            <View
-              style={[styles.modalSheet, { paddingBottom: 0 }]}
-              onStartShouldSetResponder={() => true}
-            >
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 30 : SPACING.lg }}
-              >
-                <View style={styles.modalHandle} />
-                <Text style={styles.modalTitle}>Create a Club</Text>
-                <Text style={styles.modalSubtitle}>
-                  Invite friends and family to compete together
-                </Text>
-
-                <Text style={styles.fieldLabel}>Club name *</Text>
-                <TextInput
-                  style={styles.input}
-                  placeholder="e.g. Barton Creek Crew"
-                  placeholderTextColor={COLORS.textMuted}
-                  value={clubName}
-                  onChangeText={setClubName}
-                  maxLength={40}
-                />
-
-                <Text style={styles.fieldLabel}>Description (optional)</Text>
-                <TextInput
-                  style={[styles.input, styles.inputMulti]}
-                  placeholder="What's your club about?"
-                  placeholderTextColor={COLORS.textMuted}
-                  value={clubDesc}
-                  onChangeText={setClubDesc}
-                  multiline
-                  maxLength={120}
-                />
-
-                <View style={styles.lockRow}>
-                  <View style={{ flex: 1 }}>
-                    <Text style={styles.lockRowTitle}>
-                      {clubLocked ? '🔒 Locked' : '🔓 Open'}
-                    </Text>
-                    <Text style={styles.lockRowSub}>
-                      {clubLocked
-                        ? 'Only invited members can join'
-                        : 'Anyone with the code can join'}
-                    </Text>
-                  </View>
-                  <Switch
-                    value={clubLocked}
-                    onValueChange={setClubLocked}
-                    trackColor={{ false: COLORS.border, true: COLORS.primary }}
-                    thumbColor={clubLocked ? '#fff' : COLORS.textLight}
-                  />
-                </View>
-
-                <PrimaryButton
-                  title={creating ? 'Creating…' : 'Create Club'}
-                  onPress={handleCreate}
-                  loading={creating}
-                  icon="🏆"
-                  style={{ marginTop: SPACING.md }}
-                />
-
-                <Pressable
-                  style={styles.modalCancel}
-                  onPress={() => setShowCreate(false)}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </Pressable>
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-
-      {/* ── Join club modal ── */}
-      <Modal
-        visible={showJoin}
-        animationType="slide"
-        transparent
-        onRequestClose={() => setShowJoin(false)}
-      >
-        <Pressable
-          style={styles.modalBackdrop}
-          onPress={() => setShowJoin(false)}
-        >
-          <KeyboardAvoidingView
-            behavior={Platform.OS === 'ios' ? 'position' : 'height'}
-            keyboardVerticalOffset={0}
-          >
-            <View
-              style={[styles.modalSheet, { paddingBottom: 0 }]}
-              onStartShouldSetResponder={() => true}
-            >
-              <ScrollView
-                keyboardShouldPersistTaps="handled"
-                contentContainerStyle={{ paddingBottom: Platform.OS === 'ios' ? 30 : SPACING.lg }}
-              >
-                <View style={styles.modalHandle} />
-                <Text style={styles.modalTitle}>Join a Club</Text>
-                <Text style={styles.modalSubtitle}>
-                  Enter a 6-character club code to join
-                </Text>
-
-                <Text style={styles.fieldLabel}>Club code</Text>
-                <TextInput
-                  style={[styles.input, styles.codeInput]}
-                  placeholder="ABC123"
-                  placeholderTextColor={COLORS.textMuted}
-                  value={joinCode}
-                  onChangeText={(t) => setJoinCode(t.toUpperCase())}
-                  maxLength={6}
-                  autoCapitalize="characters"
-                  autoFocus
-                />
-
-                <PrimaryButton
-                  title={joining ? 'Joining…' : 'Join Club'}
-                  onPress={handleJoin}
-                  loading={joining}
-                  icon="🔑"
-                  style={{ marginTop: SPACING.md }}
-                />
-
-                <Pressable
-                  style={styles.modalCancel}
-                  onPress={() => setShowJoin(false)}
-                >
-                  <Text style={styles.modalCancelText}>Cancel</Text>
-                </Pressable>
-              </ScrollView>
-            </View>
-          </KeyboardAvoidingView>
-        </Pressable>
-      </Modal>
-    </View>
-  );
-}
-
-// ─── Small components ──────────────────────────────────────────────────────────
-
-function ClubCard({
-  club,
-  isOwner,
-  onShare,
-  onLeave,
-}: {
-  club: any;
-  isOwner: boolean;
-  onShare: () => void;
-  onLeave: () => void;
-}) {
-  return (
-    <View style={styles.clubCard}>
-      <View style={styles.clubCardTop}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.clubName}>{club.name}</Text>
-          {club.description ? (
-            <Text style={styles.clubDesc}>{club.description}</Text>
-          ) : null}
-        </View>
-        <View style={styles.clubStatusBadge}>
-          <Text style={styles.clubStatusText}>
-            {club.isLocked ? '🔒' : '🔓'}
-          </Text>
-        </View>
-      </View>
-
-      {/* Code */}
-      <View style={styles.clubCodeRow}>
-        <Text style={styles.clubCodeLabel}>Code: </Text>
-        <Text style={styles.clubCodeValue}>{club.code}</Text>
-        {isOwner && (
-          <Pressable style={styles.clubShareBtn} onPress={onShare}>
-            <Text style={styles.clubShareText}>Share 📤</Text>
-          </Pressable>
-        )}
-      </View>
-
-      {/* Stats */}
-      <View style={styles.clubStatsRow}>
-        <ClubStat value={club.members.length} label="Members" />
-        <ClubStat
-          value={club.totalPoints.toLocaleString()}
-          label="Points"
+      <View style={styles.body}>
+        <Segmented
+          options={[
+            { value: 'my_club', label: 'My club' },
+            { value: 'discover', label: 'Discover' },
+            { value: 'ranking', label: 'Ranking' },
+          ]}
+          value={tab}
+          onChange={(v) => setTab(v as Tab)}
         />
-        <ClubStat value={club.totalTrees} label="Trees 🌳" />
+
+        {/* ── MY CLUB ─────────────────────────────────────────────────────── */}
+        {tab === 'my_club' ? (
+          myClub ? (
+            <>
+              {/* Club header */}
+              <Card tone="dark" style={styles.clubHeader}>
+                <View style={styles.clubHeaderTop}>
+                  <View style={styles.clubBadge}>
+                    <Icon name="users" size={20} color="#fff" strokeWidth={2} />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.clubTitle} numberOfLines={1}>
+                      {myClub.name}
+                    </Text>
+                    <Text style={styles.clubSub} numberOfLines={2}>
+                      {myClub.description || `${myClub.members.length} members`}
+                    </Text>
+                  </View>
+                  {myClub.isLocked ? <Pill label="Locked" tone="dark" size="sm" icon="lock" /> : null}
+                </View>
+
+                <View style={styles.clubStats}>
+                  <DarkStat value={myClub.totalPoints.toLocaleString()} label="Points" />
+                  <DarkStat value={String(myClub.totalTrees)} label="Trees" />
+                  <DarkStat
+                    value={formatDistance(myClub.totalMiles)}
+                    label={formatDistanceUnit()}
+                  />
+                  <DarkStat value={String(myClub.members.length)} label="Members" />
+                </View>
+
+                <Pressable onPress={shareCode} style={styles.codeRow}>
+                  <View>
+                    <Text style={styles.codeLabel}>Invite code</Text>
+                    <Text style={styles.codeValue}>{myClub.code}</Text>
+                  </View>
+                  <View style={styles.codeShare}>
+                    <Icon name="share" size={15} color="#fff" strokeWidth={2} />
+                    <Text style={styles.codeShareText}>Share</Text>
+                  </View>
+                </Pressable>
+              </Card>
+
+              {/* Your contribution */}
+              {myMember ? (
+                <Card>
+                  <View style={styles.contribHead}>
+                    <Text style={styles.sectionLabel}>Your contribution</Text>
+                    {myRank ? (
+                      <Pill
+                        label={`#${myRank} of ${myClub.members.length}`}
+                        tone={myRank === 1 ? 'accent' : 'neutral'}
+                        size="sm"
+                        icon={myRank === 1 ? 'crown' : undefined}
+                      />
+                    ) : null}
+                  </View>
+                  <View style={styles.contribStats}>
+                    <ContribStat value={myMember.points.toLocaleString()} label="Points" />
+                    <ContribStat value={String(myMember.trees)} label="Trees" />
+                    <ContribStat
+                      value={formatDistance(myMember.miles)}
+                      label={formatDistanceUnit()}
+                    />
+                  </View>
+                  <ProgressBar
+                    percent={
+                      myClub.totalPoints > 0 ? (myMember.points / myClub.totalPoints) * 100 : 0
+                    }
+                    style={{ marginTop: SPACING.md - 4 }}
+                  />
+                  <Text style={styles.contribShare}>
+                    {myClub.totalPoints > 0
+                      ? `${Math.round((myMember.points / myClub.totalPoints) * 100)}% of the club's total`
+                      : 'Be the first to put points on the board'}
+                  </Text>
+                </Card>
+              ) : null}
+
+              {/* Roster */}
+              <View>
+                <Text style={styles.sectionTitle}>Roster</Text>
+                <Card padded={false}>
+                  {sortedMembers(myClub).map((m, i) => {
+                    const isMe = m.id === user?.id;
+                    const topPoints = sortedMembers(myClub)[0]?.points || 1;
+                    return (
+                      <View key={m.id}>
+                        {i > 0 ? <Divider style={{ marginLeft: 60 }} /> : null}
+                        <View style={[styles.memberRow, isMe && styles.memberRowMe]}>
+                          <RankBadge rank={i + 1} />
+                          <Avatar name={m.name} uri={m.avatarUrl} size={34} />
+                          <View style={{ flex: 1 }}>
+                            <View style={styles.memberNameRow}>
+                              <Text style={styles.memberName} numberOfLines={1}>
+                                {m.name}
+                                {isMe ? ' (you)' : ''}
+                              </Text>
+                              {m.role === 'owner' ? (
+                                <Icon name="crown" size={13} color={COLORS.accent} strokeWidth={2} />
+                              ) : null}
+                            </View>
+                            <View style={styles.memberBarTrack}>
+                              <View
+                                style={[
+                                  styles.memberBarFill,
+                                  { width: `${Math.max(3, (m.points / topPoints) * 100)}%` },
+                                ]}
+                              />
+                            </View>
+                          </View>
+                          <View style={styles.memberStats}>
+                            <Text style={styles.memberPoints}>{m.points.toLocaleString()}</Text>
+                            <Text style={styles.memberSub}>
+                              {m.trees} trees · {formatDistance(m.miles)} {formatDistanceUnit()}
+                            </Text>
+                          </View>
+                        </View>
+                      </View>
+                    );
+                  })}
+                </Card>
+              </View>
+
+              {/* Owner controls */}
+              {myClub.ownerId === user?.id ? (
+                <Card>
+                  <Text style={styles.sectionLabel}>Club settings</Text>
+                  <View style={styles.settingRow}>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.settingTitle}>Lock to new members</Text>
+                      <Text style={styles.settingSub}>
+                        Nobody new can join with the code while this is on.
+                      </Text>
+                    </View>
+                    <Switch
+                      value={myClub.isLocked}
+                      onValueChange={lockClub}
+                      trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+                      thumbColor="#fff"
+                    />
+                  </View>
+                  <Divider style={{ marginVertical: SPACING.sm + 2 }} />
+                  <Pressable onPress={confirmDelete} style={styles.dangerRow}>
+                    <Icon name="trash" size={16} color={COLORS.danger} strokeWidth={1.9} />
+                    <Text style={styles.dangerText}>Delete club</Text>
+                  </Pressable>
+                </Card>
+              ) : null}
+
+              <Pressable onPress={confirmLeave} style={styles.leaveBtn}>
+                <Text style={styles.leaveText}>Leave club</Text>
+              </Pressable>
+            </>
+          ) : (
+            <>
+              <Card style={styles.ctaCard}>
+                <View style={styles.ctaIcon}>
+                  <Icon name="users" size={24} color={COLORS.primary} strokeWidth={1.8} />
+                </View>
+                <Text style={styles.ctaTitle}>You are not in a club</Text>
+                <Text style={styles.ctaText}>
+                  Clubs pool everyone's miles, trees and challenge points into one score. Start one
+                  for your school, team or friend group.
+                </Text>
+                <View style={styles.ctaButtons}>
+                  <Button
+                    label="Join with code"
+                    variant="secondary"
+                    icon="plus"
+                    onPress={() => setShowJoin(true)}
+                    style={{ flex: 1 }}
+                  />
+                  <Button label="Create club" icon="users" onPress={() => setShowCreate(true)} style={{ flex: 1 }} />
+                </View>
+              </Card>
+
+              <Card tone="sunken">
+                <Text style={styles.explainTitle}>How club scoring works</Text>
+                <Rule icon="activity" text="Every mile you log adds points to your club." />
+                <Rule icon="target" text="Every weekly challenge you finish adds its points too." />
+                <Rule icon="tree" text="Trees you earn count toward the club's forest." />
+                <Rule icon="crown" text="The roster ranks members by points contributed." />
+              </Card>
+            </>
+          )
+        ) : null}
+
+        {/* ── DISCOVER ────────────────────────────────────────────────────── */}
+        {tab === 'discover' ? (
+          <>
+            <View style={styles.discoverActions}>
+              <Button
+                label="Join with code"
+                variant="secondary"
+                icon="plus"
+                onPress={() => setShowJoin(true)}
+                style={{ flex: 1 }}
+              />
+              <Button
+                label="Create"
+                icon="users"
+                onPress={() => setShowCreate(true)}
+                style={{ flex: 1 }}
+                disabled={!!myClub}
+              />
+            </View>
+
+            {localOnly ? (
+              <Banner
+                tone="neutral"
+                icon="info"
+                title="Clubs are on this device"
+                message="Connect the backend and clubs sync across phones, so your friends see the same roster."
+              />
+            ) : null}
+
+            {publicClubs.length === 0 ? (
+              <EmptyState
+                icon="users"
+                title="No clubs yet"
+                message="Be the first. Create one and share the code with your team."
+                action="Create a club"
+                onAction={() => setShowCreate(true)}
+              />
+            ) : (
+              <View style={{ gap: SPACING.sm }}>
+                {publicClubs.map((c) => (
+                  <ClubRow key={c.id} club={c} disabled={!!myClub} onJoin={() => setShowJoin(true)} />
+                ))}
+              </View>
+            )}
+          </>
+        ) : null}
+
+        {/* ── RANKING ─────────────────────────────────────────────────────── */}
+        {tab === 'ranking' ? (
+          allClubs.length === 0 ? (
+            <EmptyState
+              icon="trending-up"
+              title="Nothing to rank yet"
+              message="Once clubs start logging miles they will appear here, ordered by total points."
+            />
+          ) : (
+            <>
+              {localOnly ? (
+                <Banner
+                  tone="neutral"
+                  icon="info"
+                  title="Local ranking"
+                  message="These are the clubs on this device. Connect the backend for a live global board."
+                />
+              ) : null}
+              <Card padded={false}>
+                {allClubs.map((c, i) => (
+                  <View key={c.id}>
+                    {i > 0 ? <Divider style={{ marginLeft: 60 }} /> : null}
+                    <View style={[styles.rankRow, c.id === myClub?.id && styles.memberRowMe]}>
+                      <RankBadge rank={i + 1} />
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.rankName} numberOfLines={1}>
+                          {c.name}
+                        </Text>
+                        <Text style={styles.rankMeta}>
+                          {c.members.length} member{c.members.length === 1 ? '' : 's'} · {c.totalTrees} trees
+                        </Text>
+                      </View>
+                      <Text style={styles.rankPoints}>{c.totalPoints.toLocaleString()}</Text>
+                    </View>
+                  </View>
+                ))}
+              </Card>
+            </>
+          )
+        ) : null}
       </View>
 
-      {/* Top members */}
-      <Text style={styles.clubMembersTitle}>Top members</Text>
-      {club.members
-        .slice()
-        .sort((a: any, b: any) => b.points - a.points)
-        .slice(0, 3)
-        .map((m: any, i: number) => (
-          <View key={m.id} style={styles.clubMemberRow}>
-            <Text style={styles.clubMemberRank}>
-              {i === 0 ? '🥇' : i === 1 ? '🥈' : '🥉'}
-            </Text>
-            <Text style={styles.clubMemberName}>{m.name}</Text>
-            <Text style={styles.clubMemberPts}>
-              {m.points} pts
-            </Text>
+      {/* ── Create sheet ──────────────────────────────────────────────────── */}
+      <Sheet
+        visible={showCreate}
+        onClose={() => {
+          setShowCreate(false);
+          setError(null);
+        }}
+        title="Create a club"
+        subtitle="You will get a six-character code to share"
+      >
+        <View style={{ gap: SPACING.md }}>
+          <Field label="Club name" value={name} onChange={setName} placeholder="Austin High Trekkers" maxLength={40} />
+          <Field
+            label="Description"
+            value={description}
+            onChange={setDescription}
+            placeholder="What is this club about?"
+            multiline
+            maxLength={140}
+          />
+          <View style={styles.settingRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.settingTitle}>Lock immediately</Text>
+              <Text style={styles.settingSub}>Nobody can join until you unlock it.</Text>
+            </View>
+            <Switch
+              value={locked}
+              onValueChange={setLocked}
+              trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+              thumbColor="#fff"
+            />
           </View>
-        ))}
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Button label="Create club" full loading={busy} onPress={handleCreate} />
+        </View>
+      </Sheet>
 
-      {/* Actions */}
-      <View style={styles.clubActions}>
-        {!isOwner && (
-          <Pressable style={styles.leaveBtn} onPress={onLeave}>
-            <Text style={styles.leaveBtnText}>Leave club</Text>
-          </Pressable>
-        )}
+      {/* ── Join sheet ────────────────────────────────────────────────────── */}
+      <Sheet
+        visible={showJoin}
+        onClose={() => {
+          setShowJoin(false);
+          setError(null);
+        }}
+        title="Join a club"
+        subtitle="Ask a member for their six-character code"
+      >
+        <View style={{ gap: SPACING.md }}>
+          <TextInput
+            value={code}
+            onChangeText={(t) => setCode(t.toUpperCase())}
+            placeholder="ABC123"
+            placeholderTextColor={COLORS.textLight}
+            autoCapitalize="characters"
+            autoCorrect={false}
+            maxLength={6}
+            style={styles.codeInput}
+          />
+          {error ? <Text style={styles.error}>{error}</Text> : null}
+          <Button label="Join club" full loading={busy} onPress={handleJoin} disabled={code.length < 4} />
+        </View>
+      </Sheet>
+    </Screen>
+  );
+}
+
+/* ── Pieces ───────────────────────────────────────────────────────────────── */
+
+function ClubRow({ club, disabled, onJoin }: { club: Club; disabled: boolean; onJoin: () => void }) {
+  return (
+    <Card>
+      <View style={styles.discoverRow}>
+        <View style={styles.discoverIcon}>
+          <Icon name="users" size={18} color={COLORS.primary} strokeWidth={1.9} />
+        </View>
+        <View style={{ flex: 1 }}>
+          <Text style={styles.discoverName} numberOfLines={1}>
+            {club.name}
+          </Text>
+          <Text style={styles.discoverDesc} numberOfLines={2}>
+            {club.description || 'No description yet.'}
+          </Text>
+          <View style={styles.discoverMeta}>
+            <Pill label={`${club.members.length} members`} tone="neutral" size="sm" />
+            <Pill label={`${club.totalPoints.toLocaleString()} pts`} tone="primary" size="sm" />
+            {club.isLocked ? <Pill label="Locked" tone="warning" size="sm" icon="lock" /> : null}
+          </View>
+        </View>
       </View>
+      {!disabled && !club.isLocked ? (
+        <Button
+          label="Join with code"
+          variant="secondary"
+          size="sm"
+          onPress={onJoin}
+          style={{ marginTop: SPACING.sm + 2 }}
+        />
+      ) : null}
+    </Card>
+  );
+}
+
+function RankBadge({ rank }: { rank: number }) {
+  const top = rank <= 3;
+  const bg = rank === 1 ? COLORS.accent : rank === 2 ? '#9AA5A0' : rank === 3 ? '#B98A5E' : COLORS.surfaceSunken;
+  return (
+    <View style={[styles.rankBadge, { backgroundColor: top ? bg : COLORS.surfaceSunken }]}>
+      <Text style={[styles.rankBadgeText, top && { color: '#fff' }]}>{rank}</Text>
     </View>
   );
 }
 
-function MemberRow({
-  rank,
-  member,
-  isMe,
+function DarkStat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={styles.darkStatValue}>{value}</Text>
+      <Text style={styles.darkStatLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function ContribStat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={styles.contribValue}>{value}</Text>
+      <Text style={styles.contribLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function Rule({ icon, text }: { icon: IconName; text: string }) {
+  return (
+    <View style={styles.rule}>
+      <Icon name={icon} size={15} color={COLORS.textMuted} strokeWidth={1.9} />
+      <Text style={styles.ruleText}>{text}</Text>
+    </View>
+  );
+}
+
+function Field({
+  label,
+  value,
+  onChange,
+  placeholder,
+  multiline,
+  maxLength,
 }: {
-  rank: number;
-  member: any;
-  isMe: boolean;
+  label: string;
+  value: string;
+  onChange: (v: string) => void;
+  placeholder?: string;
+  multiline?: boolean;
+  maxLength?: number;
 }) {
   return (
-    <View style={[styles.memberRow, isMe && styles.memberRowMe]}>
-      <Text style={styles.memberRank}>
-        {rank === 1 ? '🥇' : rank === 2 ? '🥈' : rank === 3 ? '🥉' : `#${rank}`}
-      </Text>
-      <View style={{ flex: 1 }}>
-        <Text style={[styles.memberName, isMe && { color: COLORS.primary }]}>
-          {member.name} {isMe ? '(you)' : ''}
-          {member.isOwner ? ' 👑' : ''}
-        </Text>
-        <Text style={styles.memberMeta}>
-          {member.miles.toFixed(1)} mi · {member.trees} 🌳
-        </Text>
-      </View>
-      <Text style={styles.memberPts}>{member.points} pts</Text>
+    <View style={{ gap: 6 }}>
+      <Text style={styles.fieldLabel}>{label}</Text>
+      <TextInput
+        value={value}
+        onChangeText={onChange}
+        placeholder={placeholder}
+        placeholderTextColor={COLORS.textLight}
+        multiline={multiline}
+        maxLength={maxLength}
+        style={[styles.input, multiline && styles.inputMultiline]}
+      />
     </View>
   );
 }
 
-function ManageStat({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={styles.manageStatBox}>
-      <Text style={styles.manageStatVal}>{value}</Text>
-      <Text style={styles.manageStatLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function ClubStat({ value, label }: { value: any; label: string }) {
-  return (
-    <View style={styles.clubStatBox}>
-      <Text style={styles.clubStatVal}>{value}</Text>
-      <Text style={styles.clubStatLabel}>{label}</Text>
-    </View>
-  );
-}
-
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: { padding: SPACING.md, paddingBottom: SPACING.xxxl },
+  body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
 
-  // Tabs
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    gap: 2,
-  },
-  tabActive: {
-    borderBottomWidth: 2.5,
-    borderBottomColor: COLORS.primary,
-  },
-  tabIcon: { fontSize: 16 },
-  tabLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
-  tabLabelActive: { color: COLORS.primary, fontWeight: '800' },
-
-  // My stats
-  myStatsCard: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    ...SHADOWS.md,
-  },
-  myStatsLeft: { flex: 1 },
-  myStatsName: { ...TYPOGRAPHY.h3, color: '#fff' },
-  myStatsLevel: { ...TYPOGRAPHY.small, color: 'rgba(255,255,255,0.55)', marginTop: 2 },
-  myStatsRight: { alignItems: 'flex-end' },
-  myStatsPts: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: COLORS.accent,
-    letterSpacing: -0.5,
-  },
-  myStatsPtsLabel: { ...TYPOGRAPHY.micro, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' },
-
-  // Action row
-  actionRow: {
-    flexDirection: 'row',
-    marginBottom: SPACING.md,
-  },
-
-  // Club card
-  clubCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  clubCardTop: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: SPACING.sm,
-  },
-  clubName: { ...TYPOGRAPHY.h3, color: COLORS.text },
-  clubDesc: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-  clubStatusBadge: {
-    backgroundColor: COLORS.primarySurface,
-    borderRadius: RADIUS.pill,
-    padding: 6,
-  },
-  clubStatusText: { fontSize: 16 },
-  clubCodeRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.sm,
-    padding: SPACING.sm,
-    marginBottom: SPACING.sm,
-    gap: 4,
-  },
-  clubCodeLabel: { ...TYPOGRAPHY.caption, color: COLORS.textMuted },
-  clubCodeValue: {
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-    fontSize: 16,
-    fontWeight: '900',
-    color: COLORS.primary,
-    letterSpacing: 2,
-    flex: 1,
-  },
-  clubShareBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-  },
-  clubShareText: { color: '#fff', fontWeight: '700', fontSize: 12 },
-  clubStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: COLORS.background,
+  clubHeader: { gap: SPACING.md, padding: SPACING.md },
+  clubHeaderTop: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+  clubBadge: {
+    width: 44,
+    height: 44,
     borderRadius: RADIUS.md,
-    padding: SPACING.sm,
-    marginBottom: SPACING.sm,
+    backgroundColor: 'rgba(255,255,255,0.13)',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
-  clubStatBox: { alignItems: 'center' },
-  clubStatVal: { ...TYPOGRAPHY.h3, color: COLORS.primary },
-  clubStatLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
-  clubMembersTitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: SPACING.xs,
-    marginTop: SPACING.xs,
-  },
-  clubMemberRow: {
+  clubTitle: { ...TYPOGRAPHY.h2, color: '#fff' },
+  clubSub: { ...TYPOGRAPHY.small, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
+  clubStats: {
     flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 6,
-    gap: SPACING.sm,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
+    paddingTop: SPACING.md - 2,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.1)',
   },
-  clubMemberRank: { fontSize: 16, width: 28 },
-  clubMemberName: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flex: 1 },
-  clubMemberPts: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
-  clubActions: { marginTop: SPACING.sm },
-  leaveBtn: {
-    alignItems: 'center',
-    padding: SPACING.sm,
-    borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.dangerLight,
-  },
-  leaveBtnText: { color: COLORS.danger, fontWeight: '700' },
-
-  // Manage
-  manageHeader: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-    overflow: 'hidden',
-    ...SHADOWS.lg,
-  },
-  manageHeaderBg: {
-    position: 'absolute',
-    top: -40,
-    right: -40,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  manageName: { ...TYPOGRAPHY.h1, color: '#fff', fontSize: 26, marginBottom: 4 },
-  manageDesc: { ...TYPOGRAPHY.body, color: 'rgba(255,255,255,0.55)', marginBottom: SPACING.md },
-  codeBox: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
-  codeLabel: {
+  darkStatValue: { ...TYPOGRAPHY.h3, color: '#fff' },
+  darkStatLabel: {
     ...TYPOGRAPHY.micro,
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 2,
-    marginBottom: 6,
+    color: 'rgba(255,255,255,0.5)',
+    textTransform: 'uppercase',
+    marginTop: 1,
   },
-  codeValue: {
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-    fontSize: 32,
-    fontWeight: '900',
-    color: COLORS.accent,
-    letterSpacing: 6,
-    marginBottom: SPACING.sm,
-  },
-  shareCodeBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 20,
-    paddingVertical: 8,
-  },
-  shareCodeText: { color: '#fff', fontWeight: '700' },
-  manageStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-  },
-  manageStatBox: { alignItems: 'center' },
-  manageStatVal: { fontSize: 24, fontWeight: '900', color: '#fff' },
-  manageStatLabel: { ...TYPOGRAPHY.micro, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase', marginTop: 2 },
-  lockCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
+  codeRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.md,
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    justifyContent: 'space-between',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm + 4,
   },
-  lockTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  lockBody: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
+  codeLabel: { ...TYPOGRAPHY.micro, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' },
+  codeValue: { ...TYPOGRAPHY.h2, color: '#fff', letterSpacing: 3, marginTop: 2 },
+  codeShare: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  codeShareText: { ...TYPOGRAPHY.smallMed, color: '#fff' },
 
-  // Member rows
-  sectionTitle: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-  },
+  sectionLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  sectionTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, marginBottom: SPACING.sm + 2 },
+
+  contribHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  contribStats: { flexDirection: 'row', marginTop: SPACING.sm + 2 },
+  contribValue: { ...TYPOGRAPHY.h2, color: COLORS.text },
+  contribLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
+  contribShare: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 6 },
+
   memberRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.xs,
-    gap: SPACING.sm,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    gap: SPACING.sm + 2,
+    padding: SPACING.md - 3,
   },
-  memberRowMe: {
-    borderColor: COLORS.primary,
-    backgroundColor: COLORS.primarySurface,
-  },
-  memberRank: { fontSize: 20, width: 32 },
-  memberName: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  memberMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
-  memberPts: { ...TYPOGRAPHY.h4, color: COLORS.primary },
-  dangerZone: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    paddingTop: SPACING.md,
-    marginTop: SPACING.md,
-  },
-  dangerTitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.danger,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: SPACING.sm,
-  },
-
-  // Global
-  globalBanner: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-    alignItems: 'center',
-    ...SHADOWS.lg,
-  },
-  globalBannerTitle: { ...TYPOGRAPHY.h2, color: '#fff', textAlign: 'center' },
-  globalBannerSub: {
-    ...TYPOGRAPHY.body,
-    color: 'rgba(255,255,255,0.5)',
-    textAlign: 'center',
-    marginTop: 4,
-  },
-  globalRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    gap: SPACING.sm,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  globalRowFirst: {
-    borderColor: COLORS.accent,
-    backgroundColor: '#FFFBEF',
-  },
-  globalRankWrap: { width: 40, alignItems: 'center' },
-  globalRank: { fontSize: 22, fontWeight: '900' },
-  globalName: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  globalMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-  globalPts: {
-    fontSize: 18,
-    fontWeight: '900',
-    color: COLORS.primary,
-    textAlign: 'right',
-  },
-  globalPtsLabel: { fontSize: 11, color: COLORS.textMuted, fontWeight: '400' },
-  globalNote: {
-    backgroundColor: COLORS.primarySurface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginTop: SPACING.sm,
-    borderWidth: 1,
-    borderColor: COLORS.primaryGlow,
-  },
-  globalNoteText: { ...TYPOGRAPHY.body, color: COLORS.primaryDark, textAlign: 'center', lineHeight: 22 },
-
-  // Modals
-  modalBackdrop: {
-    flex: 1,
-    backgroundColor: COLORS.overlay,
-    justifyContent: 'flex-end',
-  },
-  modalSheet: {
-    backgroundColor: COLORS.surface,
-    borderTopLeftRadius: RADIUS.xl,
-    borderTopRightRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    paddingBottom: Platform.OS === 'ios' ? 40 : SPACING.lg,
-    ...SHADOWS.xl,
-  },
-  modalHandle: {
-    width: 36,
+  memberRowMe: { backgroundColor: COLORS.primarySurface },
+  memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
+  memberName: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flexShrink: 1 },
+  memberBarTrack: {
     height: 4,
+    backgroundColor: COLORS.surfaceSunken,
     borderRadius: 2,
-    backgroundColor: COLORS.border,
-    alignSelf: 'center',
-    marginBottom: SPACING.md,
+    marginTop: 5,
+    overflow: 'hidden',
   },
-  modalTitle: { ...TYPOGRAPHY.h2, color: COLORS.text, marginBottom: 4 },
-  modalSubtitle: { ...TYPOGRAPHY.body, color: COLORS.textMuted, marginBottom: SPACING.lg },
-  fieldLabel: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: SPACING.xs,
-    marginTop: SPACING.sm,
-  },
-  input: {
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
-    paddingVertical: 13,
-    paddingHorizontal: SPACING.md,
-    fontSize: 15,
-    color: COLORS.text,
-    backgroundColor: COLORS.background,
-  },
-  inputMulti: { height: 80, textAlignVertical: 'top' },
-  codeInput: {
-    fontSize: 28,
-    fontWeight: '900',
-    letterSpacing: 6,
-    textAlign: 'center',
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-  },
-  lockRow: {
+  memberBarFill: { height: '100%', backgroundColor: COLORS.primaryLight, borderRadius: 2 },
+  memberStats: { alignItems: 'flex-end' },
+  memberPoints: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  memberSub: { fontSize: 10.5, color: COLORS.textMuted, marginTop: 1 },
+
+  rankRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginTop: SPACING.md,
-    gap: SPACING.md,
+    gap: SPACING.sm + 2,
+    padding: SPACING.md - 3,
   },
-  lockRowTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  lockRowSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-  modalCancel: {
-    alignItems: 'center',
-    padding: SPACING.md,
-    marginTop: SPACING.xs,
-  },
-  modalCancelText: { color: COLORS.textMuted, fontWeight: '700' },
+  rankName: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  rankMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  rankPoints: { ...TYPOGRAPHY.h4, color: COLORS.primary },
 
-  // Empty
-  emptyCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.xl,
+  rankBadge: {
+    width: 26,
+    height: 26,
+    borderRadius: 13,
     alignItems: 'center',
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    justifyContent: 'center',
   },
-  emptyIcon: { fontSize: 48, marginBottom: SPACING.sm },
-  emptyTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, marginBottom: SPACING.xs },
-  emptyBody: {
-    ...TYPOGRAPHY.body,
+  rankBadgeText: { ...TYPOGRAPHY.smallMed, color: COLORS.textSecondary, fontSize: 12 },
+
+  settingRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.md,
+    marginTop: SPACING.sm + 2,
+  },
+  settingTitle: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  settingSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+
+  dangerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
+  dangerText: { ...TYPOGRAPHY.bodyMed, color: COLORS.danger },
+
+  leaveBtn: { alignSelf: 'center', padding: SPACING.sm },
+  leaveText: { ...TYPOGRAPHY.small, color: COLORS.textMuted, textDecorationLine: 'underline' },
+
+  ctaCard: { alignItems: 'center', paddingVertical: SPACING.lg },
+  ctaIcon: {
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: COLORS.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.md - 2,
+  },
+  ctaTitle: { ...TYPOGRAPHY.h2, color: COLORS.text },
+  ctaText: {
+    ...TYPOGRAPHY.small,
     color: COLORS.textMuted,
     textAlign: 'center',
-    lineHeight: 22,
+    marginTop: 6,
+    maxWidth: 300,
   },
+  ctaButtons: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.lg, alignSelf: 'stretch' },
+
+  discoverActions: { flexDirection: 'row', gap: SPACING.sm },
+  discoverRow: { flexDirection: 'row', gap: SPACING.sm + 4 },
+  discoverIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.sm + 2,
+    backgroundColor: COLORS.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  discoverName: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  discoverDesc: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
+  discoverMeta: { flexDirection: 'row', gap: 6, marginTop: SPACING.sm },
+
+  explainTitle: { ...TYPOGRAPHY.h4, color: COLORS.text, marginBottom: SPACING.sm + 2 },
+  rule: { flexDirection: 'row', gap: SPACING.sm + 2, marginBottom: SPACING.sm },
+  ruleText: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, flex: 1 },
+
+  fieldLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  input: {
+    backgroundColor: COLORS.surfaceSunken,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: SPACING.md - 2,
+    paddingVertical: 12,
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+  },
+  inputMultiline: { minHeight: 78, textAlignVertical: 'top' },
+  codeInput: {
+    backgroundColor: COLORS.surfaceSunken,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingVertical: 16,
+    textAlign: 'center',
+    fontSize: 26,
+    fontWeight: '700',
+    letterSpacing: 8,
+    color: COLORS.text,
+  },
+  error: { ...TYPOGRAPHY.small, color: COLORS.danger },
 });

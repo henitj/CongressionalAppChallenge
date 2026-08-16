@@ -2,7 +2,18 @@ node_modules/
 .expo/
 dist/
 web-build/
-npm-debug.*
-.DS_Store
-*.tsbuildinfo
-.env*
+*.log
+
+# Never commit real credentials
+.env
+.env.local
+.env.*.local
+
+# Native build output
+android/
+ios/
+*.jks
+*.keystore
+*.p8
+*.p12
+*.mobileprovision

@@ -37,7 +37,8 @@ DO $$ BEGIN
 DO $$ BEGIN
   CREATE TYPE eco_action      AS ENUM (
     'hike_mile','bike_mile','tree_earned','plant_identified','photo_uploaded',
-    'trail_completed','cleanup','challenge_completed','club_joined','daily_login'
+    'trail_completed','cleanup','challenge_completed','club_joined','daily_login',
+    'streak_bonus'
   );                                                                          EXCEPTION WHEN duplicate_object THEN NULL; END $$;
 DO $$ BEGIN
   CREATE TYPE challenge_period AS ENUM ('daily','weekly','monthly','special'); EXCEPTION WHEN duplicate_object THEN NULL; END $$;
@@ -69,6 +70,8 @@ CREATE TABLE IF NOT EXISTS users (
   current_streak     INTEGER      NOT NULL DEFAULT 0,
   longest_streak     INTEGER      NOT NULL DEFAULT 0,
   last_active_date   DATE,
+  -- streak length the last 7-day bonus was paid for, so it pays once only
+  last_bonus_streak  INTEGER      NOT NULL DEFAULT 0,
 
   -- settings (mirrors SettingsContext)
   units              TEXT         NOT NULL DEFAULT 'imperial'  CHECK (units IN ('imperial','metric')),
@@ -162,6 +165,11 @@ CREATE TABLE IF NOT EXISTS activities (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
   trail_id        UUID REFERENCES trails(id) ON DELETE SET NULL,
+  trail_slug      TEXT,                            -- slug the app matched, e.g. 'barton-creek'
+  trail_name      TEXT,
+  trail_completed BOOLEAN NOT NULL DEFAULT FALSE,
+  coverage_pct    NUMERIC(5,2),
+  grant_species   TEXT,                            -- cosmetic tree label for this activity
   client_id       TEXT NOT NULL,                   -- 'act-<startedAt>' from the app: makes uploads idempotent
   type            activity_type NOT NULL,
 
@@ -365,14 +373,20 @@ CREATE INDEX IF NOT EXISTS challenges_window_idx ON challenges (is_active, start
 CREATE TABLE IF NOT EXISTS user_challenges (
   id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
   user_id       UUID NOT NULL REFERENCES users(id)      ON DELETE CASCADE,
-  challenge_id  UUID NOT NULL REFERENCES challenges(id) ON DELETE CASCADE,
+  challenge_id  UUID REFERENCES challenges(id) ON DELETE CASCADE,
+  -- The app generates its weekly set locally from a fixed catalogue, so it
+  -- identifies challenges by slug + ISO week rather than a database row.
+  challenge_slug TEXT NOT NULL,
+  week_id        TEXT NOT NULL,                    -- '2026-W34'
+  points         INTEGER NOT NULL DEFAULT 0,
   progress      NUMERIC(10,2) NOT NULL DEFAULT 0,
   is_complete   BOOLEAN NOT NULL DEFAULT FALSE,
   completed_at  TIMESTAMPTZ,
   claimed_at    TIMESTAMPTZ,                       -- when reward was granted
   updated_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
-  UNIQUE (user_id, challenge_id)
+  UNIQUE (user_id, challenge_slug, week_id)
 );
+CREATE INDEX IF NOT EXISTS user_challenges_week_idx ON user_challenges (user_id, week_id);
 DROP TRIGGER IF EXISTS user_challenges_touch ON user_challenges;
 CREATE TRIGGER user_challenges_touch BEFORE UPDATE ON user_challenges
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();

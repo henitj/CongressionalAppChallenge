@@ -1,0 +1,819 @@
+import React from 'react';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  ActivityIndicator,
+  ViewStyle,
+  TextStyle,
+  StyleProp,
+  Modal,
+  ScrollView,
+  Platform,
+  Image,
+} from 'react-native';
+import { SafeAreaView } from 'react-native-safe-area-context';
+import Icon, { IconName } from './Icon';
+import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
+
+/* ════════════════════════════════════════════════════════════════════════
+   Screen — consistent page shell
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function Screen({
+  children,
+  scroll = true,
+  style,
+  contentStyle,
+  refreshControl,
+}: {
+  children: React.ReactNode;
+  scroll?: boolean;
+  style?: StyleProp<ViewStyle>;
+  contentStyle?: StyleProp<ViewStyle>;
+  refreshControl?: React.ReactElement<any>;
+}) {
+  if (!scroll) {
+    return <View style={[ui.screen, style]}>{children}</View>;
+  }
+  return (
+    <View style={[ui.screen, style]}>
+      <ScrollView
+        contentContainerStyle={[ui.scrollContent, contentStyle]}
+        showsVerticalScrollIndicator={false}
+        refreshControl={refreshControl}
+      >
+        {children}
+      </ScrollView>
+    </View>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Card
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function Card({
+  children,
+  style,
+  padded = true,
+  onPress,
+  tone = 'default',
+}: {
+  children: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+  padded?: boolean;
+  onPress?: () => void;
+  tone?: 'default' | 'sunken' | 'dark' | 'accent';
+}) {
+  const toneStyle =
+    tone === 'sunken'
+      ? ui.cardSunken
+      : tone === 'dark'
+      ? ui.cardDark
+      : tone === 'accent'
+      ? ui.cardAccent
+      : null;
+
+  const content = (
+    <View style={[ui.card, toneStyle, padded && ui.cardPad, style]}>{children}</View>
+  );
+  if (!onPress) return content;
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => pressed && ui.pressed}>
+      {content}
+    </Pressable>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Section header
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function SectionHeader({
+  title,
+  action,
+  onAction,
+  style,
+}: {
+  title: string;
+  action?: string;
+  onAction?: () => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[ui.sectionHeader, style]}>
+      <Text style={ui.sectionTitle}>{title}</Text>
+      {action ? (
+        <Pressable onPress={onAction} hitSlop={8} style={ui.sectionAction}>
+          <Text style={ui.sectionActionText}>{action}</Text>
+          <Icon name="chevron-right" size={14} color={COLORS.primary} strokeWidth={2.2} />
+        </Pressable>
+      ) : null}
+    </View>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Button
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function Button({
+  label,
+  onPress,
+  variant = 'primary',
+  size = 'md',
+  icon,
+  iconRight,
+  disabled,
+  loading,
+  full,
+  style,
+  tone,
+}: {
+  label: string;
+  onPress?: () => void;
+  variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'dark';
+  size?: 'sm' | 'md' | 'lg';
+  icon?: IconName;
+  iconRight?: IconName;
+  disabled?: boolean;
+  loading?: boolean;
+  full?: boolean;
+  style?: StyleProp<ViewStyle>;
+  tone?: string;
+}) {
+  const isDisabled = disabled || loading;
+
+  const bg =
+    variant === 'primary'
+      ? tone ?? COLORS.primary
+      : variant === 'dark'
+      ? COLORS.primaryDark
+      : variant === 'danger'
+      ? COLORS.danger
+      : variant === 'secondary'
+      ? COLORS.surface
+      : 'transparent';
+
+  const fg =
+    variant === 'secondary'
+      ? COLORS.text
+      : variant === 'ghost'
+      ? tone ?? COLORS.primary
+      : '#fff';
+
+  const pad =
+    size === 'sm'
+      ? { paddingVertical: 9, paddingHorizontal: 14 }
+      : size === 'lg'
+      ? { paddingVertical: 16, paddingHorizontal: 22 }
+      : { paddingVertical: 13, paddingHorizontal: 18 };
+
+  return (
+    <Pressable
+      onPress={onPress}
+      disabled={isDisabled}
+      style={({ pressed }) => [
+        ui.btn,
+        pad,
+        { backgroundColor: bg },
+        variant === 'secondary' && ui.btnBordered,
+        variant !== 'ghost' && variant !== 'secondary' && SHADOWS.sm,
+        full && { alignSelf: 'stretch' },
+        isDisabled && ui.btnDisabled,
+        pressed && ui.pressed,
+        style,
+      ]}
+    >
+      {loading ? (
+        <ActivityIndicator size="small" color={fg} />
+      ) : (
+        <>
+          {icon ? <Icon name={icon} size={size === 'sm' ? 15 : 17} color={fg} strokeWidth={2} /> : null}
+          <Text
+            style={[
+              ui.btnLabel,
+              { color: fg },
+              size === 'sm' && { fontSize: 13 },
+              size === 'lg' && { fontSize: 16 },
+            ]}
+          >
+            {label}
+          </Text>
+          {iconRight ? (
+            <Icon name={iconRight} size={size === 'sm' ? 15 : 17} color={fg} strokeWidth={2} />
+          ) : null}
+        </>
+      )}
+    </Pressable>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Pill / tag
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function Pill({
+  label,
+  icon,
+  tone = 'neutral',
+  size = 'md',
+  style,
+}: {
+  label: string;
+  icon?: IconName;
+  tone?: 'neutral' | 'primary' | 'accent' | 'danger' | 'warning' | 'info' | 'success' | 'dark';
+  size?: 'sm' | 'md';
+  style?: StyleProp<ViewStyle>;
+}) {
+  const map: Record<string, { bg: string; fg: string }> = {
+    neutral: { bg: COLORS.surfaceSunken, fg: COLORS.textSecondary },
+    primary: { bg: COLORS.primarySurface, fg: COLORS.primary },
+    accent: { bg: COLORS.accentLight, fg: COLORS.accentDark },
+    danger: { bg: COLORS.dangerLight, fg: COLORS.danger },
+    warning: { bg: COLORS.warningLight, fg: COLORS.warning },
+    info: { bg: COLORS.infoLight, fg: COLORS.info },
+    success: { bg: COLORS.successLight, fg: COLORS.success },
+    dark: { bg: 'rgba(255,255,255,0.14)', fg: '#fff' },
+  };
+  const c = map[tone];
+  return (
+    <View
+      style={[
+        ui.pill,
+        { backgroundColor: c.bg },
+        size === 'sm' && { paddingVertical: 3, paddingHorizontal: 8 },
+        style,
+      ]}
+    >
+      {icon ? <Icon name={icon} size={size === 'sm' ? 11 : 13} color={c.fg} strokeWidth={2.2} /> : null}
+      <Text style={[ui.pillText, { color: c.fg }, size === 'sm' && { fontSize: 10.5 }]}>
+        {label}
+      </Text>
+    </View>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Progress bar
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function ProgressBar({
+  percent,
+  color = COLORS.primary,
+  track = COLORS.surfaceSunken,
+  height = 7,
+  style,
+}: {
+  percent: number;
+  color?: string;
+  track?: string;
+  height?: number;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const p = Math.max(0, Math.min(100, percent));
+  return (
+    <View style={[{ height, backgroundColor: track, borderRadius: height / 2, overflow: 'hidden' }, style]}>
+      <View style={{ width: `${p}%`, height: '100%', backgroundColor: color, borderRadius: height / 2 }} />
+    </View>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Stat tile
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function StatTile({
+  value,
+  label,
+  unit,
+  icon,
+  tone = 'light',
+  style,
+}: {
+  value: string | number;
+  label: string;
+  unit?: string;
+  icon?: IconName;
+  tone?: 'light' | 'dark';
+  style?: StyleProp<ViewStyle>;
+}) {
+  const dark = tone === 'dark';
+  return (
+    <View style={[ui.statTile, dark && ui.statTileDark, style]}>
+      {icon ? (
+        <Icon
+          name={icon}
+          size={16}
+          color={dark ? 'rgba(255,255,255,0.65)' : COLORS.textMuted}
+          strokeWidth={1.9}
+        />
+      ) : null}
+      <View style={ui.statValueRow}>
+        <Text style={[ui.statValue, dark && { color: '#fff' }]}>{value}</Text>
+        {unit ? (
+          <Text style={[ui.statUnit, dark && { color: 'rgba(255,255,255,0.65)' }]}>{unit}</Text>
+        ) : null}
+      </View>
+      <Text style={[ui.statLabel, dark && { color: 'rgba(255,255,255,0.6)' }]}>{label}</Text>
+    </View>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Segmented control
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function Segmented<T extends string>({
+  options,
+  value,
+  onChange,
+  style,
+}: {
+  options: { value: T; label: string; icon?: IconName }[];
+  value: T;
+  onChange: (v: T) => void;
+  style?: StyleProp<ViewStyle>;
+}) {
+  return (
+    <View style={[ui.segmented, style]}>
+      {options.map((o) => {
+        const active = o.value === value;
+        return (
+          <Pressable
+            key={o.value}
+            onPress={() => onChange(o.value)}
+            style={[ui.segment, active && ui.segmentActive]}
+          >
+            {o.icon ? (
+              <Icon
+                name={o.icon}
+                size={14}
+                color={active ? COLORS.primary : COLORS.textMuted}
+                strokeWidth={2}
+              />
+            ) : null}
+            <Text style={[ui.segmentText, active && ui.segmentTextActive]}>{o.label}</Text>
+          </Pressable>
+        );
+      })}
+    </View>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   List row
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function ListRow({
+  icon,
+  iconColor,
+  iconBg,
+  title,
+  subtitle,
+  right,
+  onPress,
+  chevron,
+  danger,
+  style,
+}: {
+  icon?: IconName;
+  iconColor?: string;
+  iconBg?: string;
+  title: string;
+  subtitle?: string;
+  right?: React.ReactNode;
+  onPress?: () => void;
+  chevron?: boolean;
+  danger?: boolean;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const body = (
+    <View style={[ui.row, style]}>
+      {icon ? (
+        <View style={[ui.rowIcon, { backgroundColor: iconBg ?? COLORS.surfaceSunken }]}>
+          <Icon
+            name={icon}
+            size={17}
+            color={iconColor ?? (danger ? COLORS.danger : COLORS.primary)}
+            strokeWidth={1.9}
+          />
+        </View>
+      ) : null}
+      <View style={{ flex: 1 }}>
+        <Text style={[ui.rowTitle, danger && { color: COLORS.danger }]} numberOfLines={1}>
+          {title}
+        </Text>
+        {subtitle ? (
+          <Text style={ui.rowSubtitle} numberOfLines={2}>
+            {subtitle}
+          </Text>
+        ) : null}
+      </View>
+      {right}
+      {chevron ? <Icon name="chevron-right" size={17} color={COLORS.textLight} /> : null}
+    </View>
+  );
+  if (!onPress) return body;
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => pressed && ui.pressed}>
+      {body}
+    </Pressable>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Empty state
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function EmptyState({
+  icon = 'info',
+  title,
+  message,
+  action,
+  onAction,
+}: {
+  icon?: IconName;
+  title: string;
+  message?: string;
+  action?: string;
+  onAction?: () => void;
+}) {
+  return (
+    <View style={ui.empty}>
+      <View style={ui.emptyIcon}>
+        <Icon name={icon} size={24} color={COLORS.textLight} strokeWidth={1.7} />
+      </View>
+      <Text style={ui.emptyTitle}>{title}</Text>
+      {message ? <Text style={ui.emptyMessage}>{message}</Text> : null}
+      {action ? (
+        <Button label={action} onPress={onAction} variant="secondary" size="sm" style={{ marginTop: SPACING.md }} />
+      ) : null}
+    </View>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Avatar
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function Avatar({
+  name,
+  uri,
+  size = 40,
+  ring,
+  style,
+}: {
+  name?: string | null;
+  uri?: string | null;
+  size?: number;
+  ring?: string;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const initials = (name ?? '?')
+    .trim()
+    .split(/\s+/)
+    .slice(0, 2)
+    .map((w) => w[0]?.toUpperCase() ?? '')
+    .join('');
+
+  return (
+    <View
+      style={[
+        {
+          width: size,
+          height: size,
+          borderRadius: size / 2,
+          backgroundColor: COLORS.primaryMid,
+          alignItems: 'center',
+          justifyContent: 'center',
+          overflow: 'hidden',
+        },
+        ring ? { borderWidth: 2, borderColor: ring } : null,
+        style,
+      ]}
+    >
+      {uri ? (
+        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} />
+      ) : (
+        <Text style={{ color: '#fff', fontWeight: '600', fontSize: size * 0.38, letterSpacing: 0.2 }}>
+          {initials || '?'}
+        </Text>
+      )}
+    </View>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Bottom sheet modal
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function Sheet({
+  visible,
+  onClose,
+  title,
+  subtitle,
+  children,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  title: string;
+  subtitle?: string;
+  children: React.ReactNode;
+}) {
+  return (
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+      <View style={ui.sheetBackdrop}>
+        <Pressable style={{ flex: 1 }} onPress={onClose} />
+        <SafeAreaView edges={['bottom']} style={ui.sheet}>
+          <View style={ui.sheetGrabber} />
+          <View style={ui.sheetHeader}>
+            <View style={{ flex: 1 }}>
+              <Text style={ui.sheetTitle}>{title}</Text>
+              {subtitle ? <Text style={ui.sheetSubtitle}>{subtitle}</Text> : null}
+            </View>
+            <Pressable onPress={onClose} hitSlop={10} style={ui.sheetClose}>
+              <Icon name="x" size={18} color={COLORS.textSecondary} strokeWidth={2.1} />
+            </Pressable>
+          </View>
+          <ScrollView
+            style={{ maxHeight: 520 }}
+            contentContainerStyle={{ paddingBottom: SPACING.lg }}
+            keyboardShouldPersistTaps="handled"
+            showsVerticalScrollIndicator={false}
+          >
+            {children}
+          </ScrollView>
+        </SafeAreaView>
+      </View>
+    </Modal>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Banner (used for weather warnings, notices)
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function Banner({
+  tone = 'info',
+  icon,
+  title,
+  message,
+  onPress,
+  right,
+  style,
+}: {
+  tone?: 'info' | 'warning' | 'danger' | 'success' | 'neutral';
+  icon?: IconName;
+  title: string;
+  message?: string;
+  onPress?: () => void;
+  right?: React.ReactNode;
+  style?: StyleProp<ViewStyle>;
+}) {
+  const map = {
+    info: { bg: COLORS.infoLight, fg: COLORS.info, border: '#CBDDEA' },
+    warning: { bg: COLORS.warningLight, fg: COLORS.warning, border: '#EBD9B8' },
+    danger: { bg: COLORS.dangerLight, fg: COLORS.danger, border: '#EFCBC6' },
+    success: { bg: COLORS.successLight, fg: COLORS.success, border: '#CBE2D7' },
+    neutral: { bg: COLORS.surfaceSunken, fg: COLORS.textSecondary, border: COLORS.border },
+  }[tone];
+
+  const inner = (
+    <View style={[ui.banner, { backgroundColor: map.bg, borderColor: map.border }, style]}>
+      {icon ? (
+        <View style={{ paddingTop: 1 }}>
+          <Icon name={icon} size={18} color={map.fg} strokeWidth={2} />
+        </View>
+      ) : null}
+      <View style={{ flex: 1 }}>
+        <Text style={[ui.bannerTitle, { color: map.fg }]}>{title}</Text>
+        {message ? <Text style={ui.bannerMessage}>{message}</Text> : null}
+      </View>
+      {right}
+      {onPress ? <Icon name="chevron-right" size={16} color={map.fg} /> : null}
+    </View>
+  );
+
+  if (!onPress) return inner;
+  return (
+    <Pressable onPress={onPress} style={({ pressed }) => pressed && ui.pressed}>
+      {inner}
+    </Pressable>
+  );
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Divider
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
+  return <View style={[ui.divider, style]} />;
+}
+
+/* ════════════════════════════════════════════════════════════════════════
+   Metric — big number with label
+   ════════════════════════════════════════════════════════════════════════ */
+
+export function Metric({
+  value,
+  unit,
+  label,
+  color = COLORS.text,
+  align = 'flex-start',
+  size = 'md',
+}: {
+  value: string | number;
+  unit?: string;
+  label?: string;
+  color?: string;
+  align?: 'flex-start' | 'center';
+  size?: 'md' | 'lg';
+}) {
+  return (
+    <View style={{ alignItems: align }}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
+        <Text style={[size === 'lg' ? TYPOGRAPHY.metricLg : TYPOGRAPHY.metric, { color }]}>
+          {value}
+        </Text>
+        {unit ? <Text style={[TYPOGRAPHY.h4, { color, opacity: 0.55 }]}>{unit}</Text> : null}
+      </View>
+      {label ? (
+        <Text style={[TYPOGRAPHY.overline, { color: COLORS.textMuted, marginTop: 2 }]}>{label}</Text>
+      ) : null}
+    </View>
+  );
+}
+
+const ui = StyleSheet.create({
+  screen: { flex: 1, backgroundColor: COLORS.background },
+  scrollContent: { paddingBottom: 110 },
+
+  pressed: { opacity: 0.72 },
+
+  card: {
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    ...SHADOWS.sm,
+  },
+  cardPad: { padding: SPACING.md },
+  cardSunken: { backgroundColor: COLORS.surfaceSunken, borderColor: COLORS.borderLight, shadowOpacity: 0 },
+  cardDark: { backgroundColor: COLORS.primaryDark, borderColor: 'rgba(255,255,255,0.08)' },
+  cardAccent: { backgroundColor: COLORS.accentLight, borderColor: '#EBD9B8', shadowOpacity: 0 },
+
+  sectionHeader: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: SPACING.sm + 2,
+  },
+  sectionTitle: { ...TYPOGRAPHY.h3, color: COLORS.text },
+  sectionAction: { flexDirection: 'row', alignItems: 'center', gap: 2 },
+  sectionActionText: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
+
+  btn: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    borderRadius: RADIUS.md,
+  },
+  btnBordered: { borderWidth: 1, borderColor: COLORS.borderStrong },
+  btnDisabled: { opacity: 0.45 },
+  btnLabel: { fontSize: 14.5, fontWeight: '600', letterSpacing: -0.1 },
+
+  pill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 4,
+    paddingVertical: 4.5,
+    paddingHorizontal: 10,
+    borderRadius: RADIUS.pill,
+    alignSelf: 'flex-start',
+  },
+  pillText: { fontSize: 11.5, fontWeight: '600', letterSpacing: 0.1 },
+
+  statTile: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md - 2,
+    gap: 5,
+  },
+  statTileDark: { backgroundColor: 'rgba(255,255,255,0.07)', borderColor: 'rgba(255,255,255,0.1)' },
+  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+  statValue: { fontSize: 22, fontWeight: '700', color: COLORS.text, letterSpacing: -0.7 },
+  statUnit: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
+  statLabel: {
+    fontSize: 10.5,
+    fontWeight: '600',
+    color: COLORS.textMuted,
+    letterSpacing: 0.7,
+    textTransform: 'uppercase',
+  },
+
+  segmented: {
+    flexDirection: 'row',
+    backgroundColor: COLORS.surfaceSunken,
+    borderRadius: RADIUS.md,
+    padding: 3.5,
+    gap: 3,
+  },
+  segment: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 5,
+    paddingVertical: 8.5,
+    borderRadius: RADIUS.sm + 1,
+  },
+  segmentActive: { backgroundColor: COLORS.surface, ...SHADOWS.sm },
+  segmentText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
+  segmentTextActive: { color: COLORS.text },
+
+  row: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm + 4,
+    paddingVertical: 13,
+  },
+  rowIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.sm + 2,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  rowTitle: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  rowSubtitle: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+
+  empty: { alignItems: 'center', paddingVertical: SPACING.xl, paddingHorizontal: SPACING.lg },
+  emptyIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: COLORS.surfaceSunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.md - 4,
+  },
+  emptyTitle: { ...TYPOGRAPHY.h4, color: COLORS.textSecondary, textAlign: 'center' },
+  emptyMessage: {
+    ...TYPOGRAPHY.small,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+    marginTop: 4,
+    maxWidth: 280,
+  },
+
+  sheetBackdrop: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'flex-end' },
+  sheet: {
+    backgroundColor: COLORS.surface,
+    borderTopLeftRadius: RADIUS.xxl,
+    borderTopRightRadius: RADIUS.xxl,
+    paddingHorizontal: SPACING.md + 4,
+    paddingTop: SPACING.sm,
+    maxHeight: '90%',
+  },
+  sheetGrabber: {
+    width: 38,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.borderStrong,
+    alignSelf: 'center',
+    marginBottom: SPACING.md,
+  },
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: SPACING.md },
+  sheetTitle: { ...TYPOGRAPHY.h2, color: COLORS.text },
+  sheetSubtitle: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
+  sheetClose: {
+    width: 30,
+    height: 30,
+    borderRadius: 15,
+    backgroundColor: COLORS.surfaceSunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+
+  banner: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    gap: SPACING.sm + 2,
+    padding: SPACING.md - 3,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+  },
+  bannerTitle: { ...TYPOGRAPHY.h4 },
+  bannerMessage: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, marginTop: 2 },
+
+  divider: { height: 1, backgroundColor: COLORS.borderLight },
+});
+
+export { ui as uiStyles };

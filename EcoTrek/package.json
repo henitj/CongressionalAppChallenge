@@ -6,11 +6,11 @@
     "start": "expo start",
     "android": "expo run:android",
     "ios": "expo run:ios",
-    "web": "expo start --web"
+    "web": "expo start --web",
+    "typecheck": "tsc --noEmit",
+    "test": "tsx src/__tests__/logic.test.ts"
   },
   "dependencies": {
-    "@expo/ngrok": "^4.1.3",
-    "@google/genai": "^2.7.0",
     "@react-native-async-storage/async-storage": "2.2.0",
     "@react-navigation/bottom-tabs": "^7.2.0",
     "@react-navigation/native": "^7.0.14",
@@ -19,8 +19,10 @@
     "expo": "~54.0.0",
     "expo-auth-session": "~7.0.8",
     "expo-crypto": "~15.0.7",
+    "expo-device": "~8.0.9",
     "expo-linking": "~8.0.7",
     "expo-location": "~19.0.8",
+    "expo-notifications": "~0.32.12",
     "expo-status-bar": "~3.0.7",
     "expo-web-browser": "~15.0.7",
     "react": "19.1.0",
@@ -36,6 +38,7 @@
   "devDependencies": {
     "@babel/core": "^7.25.2",
     "@types/react": "~19.1.10",
+    "tsx": "^4.19.2",
     "typescript": "~5.9.2"
   },
   "private": true
