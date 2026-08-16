@@ -38,7 +38,7 @@ type FinishResult = {
 
 export default function TrackScreen() {
   const navigation = useNavigation<any>();
-  const { addActivity } = useActivity();
+  const { addActivity, totalActivities } = useActivity();
   const { formatDistance, formatDistanceUnit } = useSettings();
   const { permission, requestLocation, trails } = useApp();
   const { report } = useWeather();
@@ -333,8 +333,8 @@ export default function TrackScreen() {
           </Pressable>
         ) : null}
 
-        {/* How trees work */}
-        {!tracking && !result ? (
+        {/* How trees work — only while it is still news to them */}
+        {!tracking && !result && totalActivities < 3 ? (
           <Card tone="sunken">
             <Text style={styles.explainTitle}>How trees are earned</Text>
             <Text style={styles.explainText}>
@@ -488,7 +488,7 @@ const styles = StyleSheet.create({
 
   statsCard: { alignItems: 'center', gap: SPACING.md - 2 },
   primaryStat: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  distanceValue: { fontSize: 56, fontWeight: '700', color: COLORS.text, letterSpacing: -2.5 },
+  distanceValue: { fontSize: 56, fontWeight: '700', color: COLORS.text, letterSpacing: -0.6 },
   distanceUnit: { ...TYPOGRAPHY.h2, color: COLORS.textMuted, fontWeight: '600' },
   secondaryStats: {
     flexDirection: 'row',

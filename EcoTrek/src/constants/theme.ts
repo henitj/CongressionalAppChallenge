@@ -84,9 +84,9 @@ export const RADIUS = {
 };
 
 export const TYPOGRAPHY = {
-  display: { fontSize: 34, fontWeight: '700' as const, letterSpacing: -0.8 },
-  h1: { fontSize: 26, fontWeight: '700' as const, letterSpacing: -0.5 },
-  h2: { fontSize: 20, fontWeight: '700' as const, letterSpacing: -0.3 },
+  display: { fontSize: 34, fontWeight: '700' as const, letterSpacing: -0.3 },
+  h1: { fontSize: 26, fontWeight: '700' as const, letterSpacing: -0.2 },
+  h2: { fontSize: 20, fontWeight: '700' as const, letterSpacing: -0.15 },
   h3: { fontSize: 17, fontWeight: '600' as const, letterSpacing: -0.2 },
   h4: { fontSize: 15, fontWeight: '600' as const, letterSpacing: -0.1 },
   body: { fontSize: 15, fontWeight: '400' as const, lineHeight: 22 },
@@ -103,8 +103,8 @@ export const TYPOGRAPHY = {
   },
   micro: { fontSize: 10, fontWeight: '600' as const, letterSpacing: 0.6 },
   // Tabular-ish numeral style for stats
-  metric: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -1 },
-  metricLg: { fontSize: 44, fontWeight: '700' as const, letterSpacing: -1.6 },
+  metric: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.3 },
+  metricLg: { fontSize: 44, fontWeight: '700' as const, letterSpacing: -0.5 },
 };
 
 export const SHADOWS = {

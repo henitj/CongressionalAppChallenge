@@ -117,6 +117,7 @@ export const ROUTES = {
   leaderboardUsers: '/api/leaderboard/users',
 
   trails: '/api/trails',
+  assistant: '/api/assistant',
   trailCompletions: '/api/trail-completions',
 
   devices: '/api/devices',

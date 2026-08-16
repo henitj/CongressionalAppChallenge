@@ -275,7 +275,7 @@ const styles = StyleSheet.create({
 
   summaryGrid: { flexDirection: 'row' },
   summaryItem: { flex: 1 },
-  summaryValue: { fontSize: 22, fontWeight: '700', color: COLORS.text, letterSpacing: -0.8 },
+  summaryValue: { fontSize: 22, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
   summaryUnit: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
   summaryLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase', marginTop: 2 },
 
@@ -311,7 +311,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  forestCount: { fontSize: 32, fontWeight: '700', color: COLORS.text, letterSpacing: -1.2 },
+  forestCount: { fontSize: 32, fontWeight: '700', color: COLORS.text, letterSpacing: -0.4 },
   forestLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
   forestRule: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
 
@@ -328,7 +328,7 @@ const styles = StyleSheet.create({
   grantMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
   grantCount: { ...TYPOGRAPHY.h4, color: COLORS.primary },
 
-  pointsTotal: { fontSize: 36, fontWeight: '700', color: COLORS.text, letterSpacing: -1.4 },
+  pointsTotal: { fontSize: 36, fontWeight: '700', color: COLORS.text, letterSpacing: -0.45 },
   pointsLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
 
   pointRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4, padding: SPACING.sm + 4 },

@@ -15,6 +15,7 @@ import { useChallenges } from '../context/ChallengeContext';
 import { useEcoPoints, Badge } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useClub, sortedMembers } from '../constants/ClubContext';
+import { useResponsive } from '../hooks/useResponsive';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
@@ -26,8 +27,12 @@ export default function ProfileScreen() {
     useEcoPoints();
   const { formatDistance, formatDistanceUnit } = useSettings();
   const { myClub, myRank, clubsLeading } = useClub();
+  const { badgeColumns } = useResponsive();
 
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
+
+  // Percentage width per badge tile, leaving room for the 8px gaps.
+  const badgeWidth = `${(100 - (badgeColumns - 1) * 2.6) / badgeColumns}%` as const;
 
   const memberSince = useMemo(() => {
     const ts = myClub?.members.find((m) => m.id === user?.id)?.joinedAt;
@@ -67,10 +72,7 @@ export default function ProfileScreen() {
       <Header
         title="Profile"
         hideAvatar
-        actions={[
-          { icon: 'share', onPress: shareImpact, label: 'Share impact' },
-          { icon: 'sliders', onPress: () => navigation.navigate('Settings'), label: 'Settings' },
-        ]}
+        actions={[{ icon: 'sliders', onPress: () => navigation.navigate('Settings'), label: 'Settings' }]}
       />
 
       <View style={styles.body}>
@@ -174,8 +176,12 @@ export default function ProfileScreen() {
 
         {/* ── Streak ──────────────────────────────────────────────────────── */}
         <View>
-          <SectionHeader title="Consistency" />
-          <Card>
+          <SectionHeader
+            title="Consistency"
+            action="Full streak"
+            onAction={() => navigation.navigate('Streak')}
+          />
+          <Card onPress={() => navigation.navigate('Streak')}>
             <View style={styles.streakStats}>
               <StreakStat value={currentStreak} label="Current streak" icon="flame" highlight />
               <StreakStat value={longestStreak} label="Longest" icon="trending-up" />
@@ -212,7 +218,7 @@ export default function ProfileScreen() {
                 <Pressable
                   key={b.id}
                   onPress={() => setSelectedBadge(b)}
-                  style={[styles.badge, b.unlocked && styles.badgeUnlocked]}
+                  style={[styles.badge, { width: badgeWidth }, b.unlocked && styles.badgeUnlocked]}
                 >
                   <Icon
                     name={b.icon}
@@ -252,6 +258,8 @@ export default function ProfileScreen() {
 
         {/* ── Links ───────────────────────────────────────────────────────── */}
         <Card padded={false}>
+          <LinkRow icon="flame" label="Streak and milestones" onPress={() => navigation.navigate('Streak')} />
+          <Divider style={{ marginLeft: 58 }} />
           <LinkRow icon="target" label="Weekly challenges" onPress={() => navigation.navigate('Challenges')} />
           <Divider style={{ marginLeft: 58 }} />
           <LinkRow icon="shield" label="Trail safety" onPress={() => navigation.navigate('Safety')} />
@@ -391,7 +399,7 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
   },
-  impactStatValue: { fontSize: 22, fontWeight: '700', color: '#fff', letterSpacing: -0.8 },
+  impactStatValue: { fontSize: 22, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
   impactStatUnit: { ...TYPOGRAPHY.micro, color: 'rgba(255,255,255,0.6)' },
   impactStatLabel: {
     ...TYPOGRAPHY.micro,
@@ -450,7 +458,6 @@ const styles = StyleSheet.create({
   badgeCountLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
   badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
   badge: {
-    width: '30.6%',
     aspectRatio: 1,
     borderRadius: RADIUS.md,
     borderWidth: 1,

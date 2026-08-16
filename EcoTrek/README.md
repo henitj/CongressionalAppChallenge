@@ -21,10 +21,11 @@ Arjun Averineni and Basil Vinesh.
 | **GPS activity tracking** | Distance, pace and route for hikes and rides, with accuracy and jitter filtering. |
 | **Automatic trail detection** | Start within a third of a mile of a trailhead and EcoTrek recognises which of 14 Austin trails you are on. Cover 70% of its length and it logs a completion. |
 | **Weather and safety warnings** | Live heat index, storms, air quality and UV, plus official National Weather Service flood, tornado and winter warnings. Dangerous conditions block the Start button behind an explanation. |
-| **Daily login streaks** | A streak calendar that distinguishes days you opened the app from days you actually got out. Bonus points every seven days. |
+| **Daily login streaks** | A dedicated streak screen with a month calendar, seven milestones, thirteen streak badges and a growing bonus every seven days. |
 | **Weekly challenges** | Five per week, the same five for everyone, reset Monday. Two tracked automatically, three you tick off yourself. Points go to you *and* your club. |
-| **Clubs** | Create or join with a six-character code. Ranked roster, contribution share, owner controls. |
+| **Clubs** | Invite-only: joining needs a six-character code. Owner-set member cap, ranked roster, contribution share, and a real worldwide top ten with your own position pinned below it. |
 | **Impact profile** | A shareable card with your distance, trees, streak, badges, and any club you are currently topping. |
+| **Trail assistant** | Ask questions in plain English. It resolves which trail you mean — including nicknames like "the greenbelt" or "the stairmaster" — and remembers it, so "is it dog friendly?" just works. Runs on-device with no API key. |
 | **Local notifications** | Streak reminders, challenge reminders before the week resets, and severe weather alerts. |
 
 ### About the trees
@@ -49,7 +50,7 @@ No configuration is needed. With an empty `.env` the app works fully offline on
 the device — that includes clubs, streaks, challenges and leaderboards.
 
 ```bash
-npm test             # 33 logic tests: streaks, weeks, detection, anti-cheat
+npm test             # 53 logic tests: streaks, weeks, detection, anti-cheat, assistant
 npm run typecheck    # tsc --noEmit
 ```
 
@@ -83,6 +84,8 @@ src/
     ConditionsCard.tsx      the "should I go outside" card
     StreakStrip.tsx         streak calendar strip
     ChallengeItem.tsx       one weekly challenge
+  hooks/
+    useResponsive.ts        one place that decides what "tablet" means
   constants/
     theme.ts                colours, type scale, spacing, shadows
     challenges.ts           the challenge catalogue + weekly selection
@@ -96,6 +99,8 @@ src/
     api.ts                  backend adapter (the on/off switch)
     weather.ts              Open-Meteo + NWS → one safety verdict
     trailDetection.ts       trail matching, completion, anti-cheat
+    assistant.ts            on-device trail Q&A with subject memory
+    streaks.ts              streak runs, perfect weeks, milestones
     geo.ts / dates.ts       pure helpers, unit tested in plain Node
     notifications.ts        local scheduled notifications
 db/                         Neon schema, seed data, column reference

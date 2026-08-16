@@ -216,7 +216,7 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     marginBottom: SPACING.lg,
   },
-  title: { fontSize: 40, fontWeight: '700', color: '#fff', letterSpacing: -1.4 },
+  title: { fontSize: 40, fontWeight: '700', color: '#fff', letterSpacing: -0.45 },
   tagline: {
     ...TYPOGRAPHY.body,
     color: 'rgba(255,255,255,0.68)',

@@ -46,6 +46,7 @@ export type Club = {
   isPublic: boolean;
   ownerId: string;
   createdAt: number;
+  maxMembers: number;
   members: ClubMember[];
   totalPoints: number;
   totalTrees: number;
@@ -54,9 +55,20 @@ export type Club = {
 
 export type Contribution = { points: number; trees: number; miles: number };
 
+export type ClubRanking = {
+  rank: number;
+  club: Club;
+};
+
 type ClubState = {
   myClub: Club | null;
-  allClubs: Club[];
+  /** Every club we know about, ranked by points. */
+  rankedClubs: ClubRanking[];
+  /** The global top ten — all the leaderboard ever shows. */
+  topClubs: ClubRanking[];
+  /** Your club's true position, even when it sits outside the top ten. */
+  myClubRanking: ClubRanking | null;
+  totalClubs: number;
   loading: boolean;
   syncing: boolean;
   /** True when clubs are device-only because no backend is configured. */
@@ -65,14 +77,26 @@ type ClubState = {
   myRank: number | null;
   /** Clubs where this user is the top contributor — shown on the profile. */
   clubsLeading: Club[];
-  createClub: (input: { name: string; description: string; isLocked: boolean }) => Promise<Club>;
+  createClub: (input: {
+    name: string;
+    description: string;
+    isLocked: boolean;
+    maxMembers: number;
+  }) => Promise<Club>;
   joinClub: (code: string) => Promise<Club>;
   leaveClub: () => Promise<void>;
   lockClub: (locked: boolean) => Promise<void>;
+  setMaxMembers: (max: number) => Promise<void>;
   deleteClub: () => Promise<void>;
   contribute: (c: Contribution) => Promise<void>;
   refresh: () => Promise<void>;
 };
+
+/** Options offered when creating a club or changing its cap. */
+export const MEMBER_CAP_OPTIONS = [10, 25, 50, 100, 250];
+export const MIN_MEMBER_CAP = 2;
+export const MAX_MEMBER_CAP = 500;
+export const LEADERBOARD_SIZE = 10;
 
 const ClubContext = createContext<ClubState | null>(null);
 
@@ -87,6 +111,16 @@ function generateCode(existing: Club[]): string {
     if (!existing.some((c) => c.code === code)) return code;
   }
   return `C${Date.now().toString(36).toUpperCase().slice(-5)}`;
+}
+
+function clampCap(n: number): number {
+  if (!Number.isFinite(n)) return 100;
+  return Math.min(MAX_MEMBER_CAP, Math.max(MIN_MEMBER_CAP, Math.round(n)));
+}
+
+/** Clubs stored before member caps existed default to 100. */
+function withDefaults(club: Club): Club {
+  return { ...club, maxMembers: club.maxMembers ?? 100 };
 }
 
 function recalcTotals(club: Club): Club {
@@ -117,13 +151,14 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       if (isBackendConfigured()) {
         const res = await api.get<Club[]>(ROUTES.clubs);
         if (res.ok && Array.isArray(res.data)) {
-          setClubs(res.data);
-          saveJSON(CLUBS_KEY, res.data);
+          const withCaps = res.data.map(withDefaults);
+          setClubs(withCaps);
+          saveJSON(CLUBS_KEY, withCaps);
           return;
         }
       }
       const local = await loadJSON<Club[]>(CLUBS_KEY, []);
-      setClubs(local);
+      setClubs(local.map(withDefaults));
     } finally {
       setSyncing(false);
       setLoading(false);
@@ -168,7 +203,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
   /* ── Mutations ─────────────────────────────────────────────────────────── */
 
   const createClub = useCallback<ClubState['createClub']>(
-    async ({ name, description, isLocked }) => {
+    async ({ name, description, isLocked, maxMembers }) => {
       if (!user) throw new Error('You need to be signed in to create a club.');
       if (myClub) throw new Error('Leave your current club before creating a new one.');
 
@@ -181,6 +216,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
         isPublic: true,
         ownerId: user.id,
         createdAt: Date.now(),
+        maxMembers: clampCap(maxMembers),
         members: [
           {
             id: user.id,
@@ -203,6 +239,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
           name: club.name,
           description: club.description,
           isLocked,
+          maxMembers: club.maxMembers,
         });
         if (res.ok && res.data) {
           persist([...clubs.filter((c) => c.id !== res.data.id), res.data]);
@@ -237,7 +274,9 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       const target = clubs.find((c) => c.code === code);
       if (!target) throw new Error('No club found with that code.');
       if (target.isLocked) throw new Error('That club is locked to new members.');
-      if (target.members.length >= 100) throw new Error('That club is full.');
+      if (target.members.length >= (target.maxMembers ?? 100)) {
+        throw new Error(`That club is full (${target.maxMembers} members).`);
+      }
 
       const updated = recalcTotals({
         ...target,
@@ -299,6 +338,18 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
     [myClub, userId, clubs, persist]
   );
 
+  const setMaxMembers = useCallback(
+    async (max: number) => {
+      if (!myClub || myClub.ownerId !== userId) return;
+      const capped = clampCap(max);
+      // Never set a cap below the number of people already in the club.
+      const safe = Math.max(capped, myClub.members.length);
+      if (isBackendConfigured()) await api.patch(ROUTES.club(myClub.id), { maxMembers: safe });
+      persist(clubs.map((c) => (c.id === myClub.id ? { ...c, maxMembers: safe } : c)));
+    },
+    [myClub, userId, clubs, persist]
+  );
+
   const deleteClub = useCallback(async () => {
     if (!myClub || myClub.ownerId !== userId) return;
     if (isBackendConfigured()) await api.del(ROUTES.club(myClub.id));
@@ -348,10 +399,36 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user?.name, user?.picture, myClub?.id]);
 
+  const rankedClubs = useMemo<ClubRanking[]>(() => {
+    // Rank by points, then trees, then earliest founded — a deterministic
+    // order so two clubs on equal points never swap places between renders.
+    return [...clubs]
+      .sort(
+        (a, b) =>
+          b.totalPoints - a.totalPoints ||
+          b.totalTrees - a.totalTrees ||
+          a.createdAt - b.createdAt
+      )
+      .map((club, i) => ({ rank: i + 1, club }));
+  }, [clubs]);
+
+  const topClubs = useMemo(
+    () => rankedClubs.slice(0, LEADERBOARD_SIZE),
+    [rankedClubs]
+  );
+
+  const myClubRanking = useMemo(
+    () => rankedClubs.find((r) => r.club.id === myClub?.id) ?? null,
+    [rankedClubs, myClub?.id]
+  );
+
   const value = useMemo<ClubState>(
     () => ({
       myClub,
-      allClubs: [...clubs].sort((a, b) => b.totalPoints - a.totalPoints),
+      rankedClubs,
+      topClubs,
+      myClubRanking,
+      totalClubs: clubs.length,
       loading,
       syncing,
       localOnly: !isBackendConfigured(),
@@ -362,13 +439,17 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       joinClub,
       leaveClub,
       lockClub,
+      setMaxMembers,
       deleteClub,
       contribute,
       refresh,
     }),
     [
       myClub,
-      clubs,
+      rankedClubs,
+      topClubs,
+      myClubRanking,
+      clubs.length,
       loading,
       syncing,
       myMember,
@@ -378,6 +459,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       joinClub,
       leaveClub,
       lockClub,
+      setMaxMembers,
       deleteClub,
       contribute,
       refresh,

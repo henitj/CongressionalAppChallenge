@@ -9,7 +9,6 @@ import {
   Switch,
   Share,
   RefreshControl,
-  ActivityIndicator,
 } from 'react-native';
 
 import Header from '../components/Header';
@@ -29,17 +28,29 @@ import {
 } from '../components/ui';
 
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
-import { Club, sortedMembers, useClub } from '../constants/ClubContext';
+import {
+  Club,
+  ClubRanking,
+  LEADERBOARD_SIZE,
+  MAX_MEMBER_CAP,
+  MEMBER_CAP_OPTIONS,
+  MIN_MEMBER_CAP,
+  sortedMembers,
+  useClub,
+} from '../constants/ClubContext';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../constants/SettingsContext';
+import { useActivity } from '../context/ActivityContext';
 
-type Tab = 'my_club' | 'discover' | 'ranking';
+type Tab = 'my_club' | 'ranking';
 
 export default function LeaderboardScreen() {
   const { user } = useAuth();
   const {
     myClub,
-    allClubs,
+    topClubs,
+    myClubRanking,
+    totalClubs,
     myMember,
     myRank,
     localOnly,
@@ -48,25 +59,36 @@ export default function LeaderboardScreen() {
     joinClub,
     leaveClub,
     lockClub,
+    setMaxMembers,
     deleteClub,
     refresh,
   } = useClub();
   const { formatDistance, formatDistanceUnit } = useSettings();
+  const { totalActivities } = useActivity();
 
-  const [tab, setTab] = useState<Tab>(myClub ? 'my_club' : 'discover');
+  const [tab, setTab] = useState<Tab>(myClub ? 'my_club' : 'ranking');
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
+  const [showCap, setShowCap] = useState(false);
+
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
   const [locked, setLocked] = useState(false);
+  const [cap, setCap] = useState(50);
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const publicClubs = useMemo(
-    () => allClubs.filter((c) => c.isPublic && c.id !== myClub?.id),
-    [allClubs, myClub?.id]
-  );
+  // Explainers earn their keep for the first few sessions, then get out of
+  // the way. Nobody needs to be told how scoring works on their tenth visit.
+  const showBasics = totalActivities < 3;
+
+  const resetSheets = () => {
+    setError(null);
+    setShowCreate(false);
+    setShowJoin(false);
+    setShowCap(false);
+  };
 
   const handleCreate = async () => {
     if (name.trim().length < 3) {
@@ -76,8 +98,8 @@ export default function LeaderboardScreen() {
     setBusy(true);
     setError(null);
     try {
-      await createClub({ name, description, isLocked: locked });
-      setShowCreate(false);
+      await createClub({ name, description, isLocked: locked, maxMembers: cap });
+      resetSheets();
       setName('');
       setDescription('');
       setLocked(false);
@@ -94,7 +116,7 @@ export default function LeaderboardScreen() {
     setError(null);
     try {
       await joinClub(code);
-      setShowJoin(false);
+      resetSheets();
       setCode('');
       setTab('my_club');
     } catch (e: any) {
@@ -105,25 +127,27 @@ export default function LeaderboardScreen() {
   };
 
   const confirmLeave = () => {
-    Alert.alert('Leave this club?', 'Your contribution stays with the club, but you will drop off the roster.', [
+    Alert.alert('Leave this club?', 'Your contribution stays with the club, but you drop off the roster.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Leave', style: 'destructive', onPress: () => leaveClub().then(() => setTab('discover')) },
+      { text: 'Leave', style: 'destructive', onPress: () => leaveClub().then(() => setTab('ranking')) },
     ]);
   };
 
   const confirmDelete = () => {
     Alert.alert('Delete this club?', 'This removes it for every member. It cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
-      { text: 'Delete', style: 'destructive', onPress: () => deleteClub().then(() => setTab('discover')) },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteClub().then(() => setTab('ranking')) },
     ]);
   };
 
   const shareCode = async () => {
     if (!myClub) return;
     await Share.share({
-      message: `Join my EcoTrek club "${myClub.name}" — use code ${myClub.code} in the app.`,
+      message: `Join my EcoTrek club "${myClub.name}" — enter code ${myClub.code} in the app.`,
     });
   };
+
+  const spotsLeft = myClub ? myClub.maxMembers - myClub.members.length : 0;
 
   return (
     <Screen
@@ -145,18 +169,16 @@ export default function LeaderboardScreen() {
         <Segmented
           options={[
             { value: 'my_club', label: 'My club' },
-            { value: 'discover', label: 'Discover' },
-            { value: 'ranking', label: 'Ranking' },
+            { value: 'ranking', label: 'World top 10' },
           ]}
           value={tab}
           onChange={(v) => setTab(v as Tab)}
         />
 
-        {/* ── MY CLUB ─────────────────────────────────────────────────────── */}
+        {/* ══ MY CLUB ══════════════════════════════════════════════════════ */}
         {tab === 'my_club' ? (
           myClub ? (
             <>
-              {/* Club header */}
               <Card tone="dark" style={styles.clubHeader}>
                 <View style={styles.clubHeaderTop}>
                   <View style={styles.clubBadge}>
@@ -167,20 +189,30 @@ export default function LeaderboardScreen() {
                       {myClub.name}
                     </Text>
                     <Text style={styles.clubSub} numberOfLines={2}>
-                      {myClub.description || `${myClub.members.length} members`}
+                      {myClub.description || 'No description yet.'}
                     </Text>
                   </View>
                   {myClub.isLocked ? <Pill label="Locked" tone="dark" size="sm" icon="lock" /> : null}
                 </View>
 
+                {myClubRanking ? (
+                  <View style={styles.worldRank}>
+                    <Icon name="globe" size={14} color={COLORS.primaryGlow} strokeWidth={2} />
+                    <Text style={styles.worldRankText}>
+                      Ranked #{myClubRanking.rank} of {totalClubs} club
+                      {totalClubs === 1 ? '' : 's'}
+                    </Text>
+                  </View>
+                ) : null}
+
                 <View style={styles.clubStats}>
                   <DarkStat value={myClub.totalPoints.toLocaleString()} label="Points" />
                   <DarkStat value={String(myClub.totalTrees)} label="Trees" />
+                  <DarkStat value={formatDistance(myClub.totalMiles)} label={formatDistanceUnit()} />
                   <DarkStat
-                    value={formatDistance(myClub.totalMiles)}
-                    label={formatDistanceUnit()}
+                    value={`${myClub.members.length}/${myClub.maxMembers}`}
+                    label="Members"
                   />
-                  <DarkStat value={String(myClub.members.length)} label="Members" />
                 </View>
 
                 <Pressable onPress={shareCode} style={styles.codeRow}>
@@ -193,6 +225,39 @@ export default function LeaderboardScreen() {
                     <Text style={styles.codeShareText}>Share</Text>
                   </View>
                 </Pressable>
+              </Card>
+
+              {/* Capacity */}
+              <Card>
+                <View style={styles.capRow}>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.sectionLabel}>Capacity</Text>
+                    <Text style={styles.capValue}>
+                      {myClub.members.length} of {myClub.maxMembers} spots taken
+                    </Text>
+                  </View>
+                  {myClub.ownerId === user?.id ? (
+                    <Button
+                      label="Change"
+                      variant="secondary"
+                      size="sm"
+                      onPress={() => {
+                        setCap(myClub.maxMembers);
+                        setShowCap(true);
+                      }}
+                    />
+                  ) : null}
+                </View>
+                <ProgressBar
+                  percent={(myClub.members.length / myClub.maxMembers) * 100}
+                  color={spotsLeft <= 2 ? COLORS.warning : COLORS.primary}
+                  style={{ marginTop: SPACING.sm + 2 }}
+                />
+                <Text style={styles.capHint}>
+                  {spotsLeft > 0
+                    ? `${spotsLeft} spot${spotsLeft === 1 ? '' : 's'} left`
+                    : 'Full — nobody else can join until the cap goes up.'}
+                </Text>
               </Card>
 
               {/* Your contribution */}
@@ -212,15 +277,10 @@ export default function LeaderboardScreen() {
                   <View style={styles.contribStats}>
                     <ContribStat value={myMember.points.toLocaleString()} label="Points" />
                     <ContribStat value={String(myMember.trees)} label="Trees" />
-                    <ContribStat
-                      value={formatDistance(myMember.miles)}
-                      label={formatDistanceUnit()}
-                    />
+                    <ContribStat value={formatDistance(myMember.miles)} label={formatDistanceUnit()} />
                   </View>
                   <ProgressBar
-                    percent={
-                      myClub.totalPoints > 0 ? (myMember.points / myClub.totalPoints) * 100 : 0
-                    }
+                    percent={myClub.totalPoints > 0 ? (myMember.points / myClub.totalPoints) * 100 : 0}
                     style={{ marginTop: SPACING.md - 4 }}
                   />
                   <Text style={styles.contribShare}>
@@ -235,13 +295,13 @@ export default function LeaderboardScreen() {
               <View>
                 <Text style={styles.sectionTitle}>Roster</Text>
                 <Card padded={false}>
-                  {sortedMembers(myClub).map((m, i) => {
+                  {sortedMembers(myClub).map((m, i, arr) => {
                     const isMe = m.id === user?.id;
-                    const topPoints = sortedMembers(myClub)[0]?.points || 1;
+                    const top = arr[0]?.points || 1;
                     return (
                       <View key={m.id}>
                         {i > 0 ? <Divider style={{ marginLeft: 60 }} /> : null}
-                        <View style={[styles.memberRow, isMe && styles.memberRowMe]}>
+                        <View style={[styles.memberRow, isMe && styles.rowHighlight]}>
                           <RankBadge rank={i + 1} />
                           <Avatar name={m.name} uri={m.avatarUrl} size={34} />
                           <View style={{ flex: 1 }}>
@@ -258,7 +318,7 @@ export default function LeaderboardScreen() {
                               <View
                                 style={[
                                   styles.memberBarFill,
-                                  { width: `${Math.max(3, (m.points / topPoints) * 100)}%` },
+                                  { width: `${Math.max(3, (m.points / top) * 100)}%` },
                                 ]}
                               />
                             </View>
@@ -284,7 +344,7 @@ export default function LeaderboardScreen() {
                     <View style={{ flex: 1 }}>
                       <Text style={styles.settingTitle}>Lock to new members</Text>
                       <Text style={styles.settingSub}>
-                        Nobody new can join with the code while this is on.
+                        The code stops working while this is on.
                       </Text>
                     </View>
                     <Switch
@@ -314,130 +374,147 @@ export default function LeaderboardScreen() {
                 </View>
                 <Text style={styles.ctaTitle}>You are not in a club</Text>
                 <Text style={styles.ctaText}>
-                  Clubs pool everyone's miles, trees and challenge points into one score. Start one
-                  for your school, team or friend group.
+                  Clubs are invite-only. Get a six-character code from a member, or start your own
+                  and hand the code out.
                 </Text>
                 <View style={styles.ctaButtons}>
                   <Button
-                    label="Join with code"
-                    variant="secondary"
-                    icon="plus"
+                    label="Enter a code"
+                    icon="lock"
                     onPress={() => setShowJoin(true)}
                     style={{ flex: 1 }}
                   />
-                  <Button label="Create club" icon="users" onPress={() => setShowCreate(true)} style={{ flex: 1 }} />
+                  <Button
+                    label="Create club"
+                    variant="secondary"
+                    icon="plus"
+                    onPress={() => setShowCreate(true)}
+                    style={{ flex: 1 }}
+                  />
                 </View>
               </Card>
 
-              <Card tone="sunken">
-                <Text style={styles.explainTitle}>How club scoring works</Text>
-                <Rule icon="activity" text="Every mile you log adds points to your club." />
-                <Rule icon="target" text="Every weekly challenge you finish adds its points too." />
-                <Rule icon="tree" text="Trees you earn count toward the club's forest." />
-                <Rule icon="crown" text="The roster ranks members by points contributed." />
-              </Card>
+              {showBasics ? (
+                <Card tone="sunken">
+                  <Text style={styles.explainTitle}>How club scoring works</Text>
+                  <Rule icon="activity" text="Every mile you log adds points to your club." />
+                  <Rule icon="target" text="Every weekly challenge you finish adds its points too." />
+                  <Rule icon="tree" text="Trees you earn count toward the club's forest." />
+                  <Rule icon="crown" text="The roster ranks members by points contributed." />
+                </Card>
+              ) : null}
             </>
           )
         ) : null}
 
-        {/* ── DISCOVER ────────────────────────────────────────────────────── */}
-        {tab === 'discover' ? (
+        {/* ══ WORLD TOP 10 ═════════════════════════════════════════════════ */}
+        {tab === 'ranking' ? (
           <>
-            <View style={styles.discoverActions}>
-              <Button
-                label="Join with code"
-                variant="secondary"
-                icon="plus"
-                onPress={() => setShowJoin(true)}
-                style={{ flex: 1 }}
-              />
-              <Button
-                label="Create"
-                icon="users"
-                onPress={() => setShowCreate(true)}
-                style={{ flex: 1 }}
-                disabled={!!myClub}
-              />
-            </View>
-
             {localOnly ? (
               <Banner
                 tone="neutral"
                 icon="info"
-                title="Clubs are on this device"
-                message="Connect the backend and clubs sync across phones, so your friends see the same roster."
+                title="Ranking is device-only right now"
+                message="These are the clubs on this phone. Connect the backend and this becomes a live worldwide board."
               />
             ) : null}
 
-            {publicClubs.length === 0 ? (
+            {topClubs.length === 0 ? (
               <EmptyState
-                icon="users"
-                title="No clubs yet"
-                message="Be the first. Create one and share the code with your team."
+                icon="trending-up"
+                title="No clubs on the board yet"
+                message="Nothing is ranked until a club logs its first miles. Create one and put yourself at number one."
                 action="Create a club"
                 onAction={() => setShowCreate(true)}
               />
             ) : (
-              <View style={{ gap: SPACING.sm }}>
-                {publicClubs.map((c) => (
-                  <ClubRow key={c.id} club={c} disabled={!!myClub} onJoin={() => setShowJoin(true)} />
-                ))}
-              </View>
+              <>
+                <View style={styles.rankHeader}>
+                  <Text style={styles.sectionTitle}>Top {LEADERBOARD_SIZE} worldwide</Text>
+                  <Text style={styles.rankCount}>
+                    {totalClubs} club{totalClubs === 1 ? '' : 's'} competing
+                  </Text>
+                </View>
+
+                <Card padded={false}>
+                  {topClubs.map(({ rank, club }, i) => (
+                    <View key={club.id}>
+                      {i > 0 ? <Divider style={{ marginLeft: 60 }} /> : null}
+                      <ClubRankRow
+                        rank={rank}
+                        club={club}
+                        isMine={club.id === myClub?.id}
+                        formatDistance={formatDistance}
+                        unit={formatDistanceUnit()}
+                      />
+                    </View>
+                  ))}
+                </Card>
+
+                {/* Your club, pinned below when it misses the top ten */}
+                {myClubRanking && myClubRanking.rank > LEADERBOARD_SIZE ? (
+                  <View>
+                    <Text style={styles.yourPositionLabel}>Your position</Text>
+                    <Card padded={false}>
+                      <ClubRankRow
+                        rank={myClubRanking.rank}
+                        club={myClubRanking.club}
+                        isMine
+                        formatDistance={formatDistance}
+                        unit={formatDistanceUnit()}
+                      />
+                    </Card>
+                    <Text style={styles.gapHint}>
+                      {(() => {
+                        const above = topClubs[LEADERBOARD_SIZE - 1];
+                        const gap = above
+                          ? above.club.totalPoints - myClubRanking.club.totalPoints
+                          : 0;
+                        return gap > 0
+                          ? `${gap.toLocaleString()} points from breaking into the top ten.`
+                          : 'You are on the edge of the top ten.';
+                      })()}
+                    </Text>
+                  </View>
+                ) : null}
+
+                {!myClub ? (
+                  <Card tone="sunken">
+                    <Text style={styles.explainTitle}>Not competing yet</Text>
+                    <Text style={styles.explainBody}>
+                      Join a club with a code, or start one, and your miles start counting toward a
+                      place on this board.
+                    </Text>
+                    <View style={styles.ctaButtons}>
+                      <Button
+                        label="Enter a code"
+                        icon="lock"
+                        size="sm"
+                        onPress={() => setShowJoin(true)}
+                        style={{ flex: 1 }}
+                      />
+                      <Button
+                        label="Create"
+                        variant="secondary"
+                        size="sm"
+                        onPress={() => setShowCreate(true)}
+                        style={{ flex: 1 }}
+                      />
+                    </View>
+                  </Card>
+                ) : null}
+              </>
             )}
           </>
         ) : null}
-
-        {/* ── RANKING ─────────────────────────────────────────────────────── */}
-        {tab === 'ranking' ? (
-          allClubs.length === 0 ? (
-            <EmptyState
-              icon="trending-up"
-              title="Nothing to rank yet"
-              message="Once clubs start logging miles they will appear here, ordered by total points."
-            />
-          ) : (
-            <>
-              {localOnly ? (
-                <Banner
-                  tone="neutral"
-                  icon="info"
-                  title="Local ranking"
-                  message="These are the clubs on this device. Connect the backend for a live global board."
-                />
-              ) : null}
-              <Card padded={false}>
-                {allClubs.map((c, i) => (
-                  <View key={c.id}>
-                    {i > 0 ? <Divider style={{ marginLeft: 60 }} /> : null}
-                    <View style={[styles.rankRow, c.id === myClub?.id && styles.memberRowMe]}>
-                      <RankBadge rank={i + 1} />
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.rankName} numberOfLines={1}>
-                          {c.name}
-                        </Text>
-                        <Text style={styles.rankMeta}>
-                          {c.members.length} member{c.members.length === 1 ? '' : 's'} · {c.totalTrees} trees
-                        </Text>
-                      </View>
-                      <Text style={styles.rankPoints}>{c.totalPoints.toLocaleString()}</Text>
-                    </View>
-                  </View>
-                ))}
-              </Card>
-            </>
-          )
-        ) : null}
       </View>
 
-      {/* ── Create sheet ──────────────────────────────────────────────────── */}
+      {/* ── Create ────────────────────────────────────────────────────────── */}
       <Sheet
         visible={showCreate}
-        onClose={() => {
-          setShowCreate(false);
-          setError(null);
-        }}
+        onClose={resetSheets}
         title="Create a club"
-        subtitle="You will get a six-character code to share"
+        subtitle="You get a six-character code to hand out"
       >
         <View style={{ gap: SPACING.md }}>
           <Field label="Club name" value={name} onChange={setName} placeholder="Austin High Trekkers" maxLength={40} />
@@ -449,6 +526,25 @@ export default function LeaderboardScreen() {
             multiline
             maxLength={140}
           />
+
+          <View style={{ gap: 8 }}>
+            <Text style={styles.fieldLabel}>Member limit</Text>
+            <View style={styles.capOptions}>
+              {MEMBER_CAP_OPTIONS.map((n) => (
+                <Pressable
+                  key={n}
+                  onPress={() => setCap(n)}
+                  style={[styles.capChip, cap === n && styles.capChipOn]}
+                >
+                  <Text style={[styles.capChipText, cap === n && styles.capChipTextOn]}>{n}</Text>
+                </Pressable>
+              ))}
+            </View>
+            <Text style={styles.fieldHint}>
+              You can change this later. Anywhere from {MIN_MEMBER_CAP} to {MAX_MEMBER_CAP}.
+            </Text>
+          </View>
+
           <View style={styles.settingRow}>
             <View style={{ flex: 1 }}>
               <Text style={styles.settingTitle}>Lock immediately</Text>
@@ -461,25 +557,23 @@ export default function LeaderboardScreen() {
               thumbColor="#fff"
             />
           </View>
+
           {error ? <Text style={styles.error}>{error}</Text> : null}
           <Button label="Create club" full loading={busy} onPress={handleCreate} />
         </View>
       </Sheet>
 
-      {/* ── Join sheet ────────────────────────────────────────────────────── */}
+      {/* ── Join ──────────────────────────────────────────────────────────── */}
       <Sheet
         visible={showJoin}
-        onClose={() => {
-          setShowJoin(false);
-          setError(null);
-        }}
-        title="Join a club"
-        subtitle="Ask a member for their six-character code"
+        onClose={resetSheets}
+        title="Enter a club code"
+        subtitle="Clubs are invite-only — you need the code"
       >
         <View style={{ gap: SPACING.md }}>
           <TextInput
             value={code}
-            onChangeText={(t) => setCode(t.toUpperCase())}
+            onChangeText={(t) => setCode(t.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
             placeholder="ABC123"
             placeholderTextColor={COLORS.textLight}
             autoCapitalize="characters"
@@ -487,8 +581,61 @@ export default function LeaderboardScreen() {
             maxLength={6}
             style={styles.codeInput}
           />
+          <Text style={styles.fieldHint}>
+            Six characters, no lookalikes — there is no letter O or I, only zero-free digits.
+          </Text>
           {error ? <Text style={styles.error}>{error}</Text> : null}
-          <Button label="Join club" full loading={busy} onPress={handleJoin} disabled={code.length < 4} />
+          <Button label="Join club" full loading={busy} onPress={handleJoin} disabled={code.length < 6} />
+        </View>
+      </Sheet>
+
+      {/* ── Capacity ──────────────────────────────────────────────────────── */}
+      <Sheet
+        visible={showCap}
+        onClose={resetSheets}
+        title="Member limit"
+        subtitle={myClub ? `${myClub.members.length} members right now` : undefined}
+      >
+        <View style={{ gap: SPACING.md }}>
+          <View style={styles.capOptions}>
+            {MEMBER_CAP_OPTIONS.map((n) => {
+              const tooSmall = !!myClub && n < myClub.members.length;
+              return (
+                <Pressable
+                  key={n}
+                  onPress={() => !tooSmall && setCap(n)}
+                  disabled={tooSmall}
+                  style={[styles.capChip, cap === n && styles.capChipOn, tooSmall && { opacity: 0.35 }]}
+                >
+                  <Text style={[styles.capChipText, cap === n && styles.capChipTextOn]}>{n}</Text>
+                </Pressable>
+              );
+            })}
+          </View>
+
+          <View style={{ gap: 6 }}>
+            <Text style={styles.fieldLabel}>Or set an exact number</Text>
+            <TextInput
+              value={String(cap)}
+              onChangeText={(t) => setCap(Number(t.replace(/[^0-9]/g, '')) || 0)}
+              keyboardType="number-pad"
+              maxLength={3}
+              style={styles.input}
+            />
+            <Text style={styles.fieldHint}>
+              Between {MIN_MEMBER_CAP} and {MAX_MEMBER_CAP}. It cannot go below the number of
+              people already in the club.
+            </Text>
+          </View>
+
+          <Button
+            label="Save limit"
+            full
+            onPress={async () => {
+              await setMaxMembers(cap);
+              resetSheets();
+            }}
+          />
         </View>
       </Sheet>
     </Screen>
@@ -497,43 +644,43 @@ export default function LeaderboardScreen() {
 
 /* ── Pieces ───────────────────────────────────────────────────────────────── */
 
-function ClubRow({ club, disabled, onJoin }: { club: Club; disabled: boolean; onJoin: () => void }) {
+function ClubRankRow({
+  rank,
+  club,
+  isMine,
+  formatDistance,
+  unit,
+}: {
+  rank: number;
+  club: Club;
+  isMine: boolean;
+  formatDistance: (m: number) => string;
+  unit: string;
+}) {
   return (
-    <Card>
-      <View style={styles.discoverRow}>
-        <View style={styles.discoverIcon}>
-          <Icon name="users" size={18} color={COLORS.primary} strokeWidth={1.9} />
-        </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.discoverName} numberOfLines={1}>
+    <View style={[styles.rankRow, isMine && styles.rowHighlight]}>
+      <RankBadge rank={rank} />
+      <View style={{ flex: 1 }}>
+        <View style={styles.rankNameRow}>
+          <Text style={styles.rankName} numberOfLines={1}>
             {club.name}
           </Text>
-          <Text style={styles.discoverDesc} numberOfLines={2}>
-            {club.description || 'No description yet.'}
-          </Text>
-          <View style={styles.discoverMeta}>
-            <Pill label={`${club.members.length} members`} tone="neutral" size="sm" />
-            <Pill label={`${club.totalPoints.toLocaleString()} pts`} tone="primary" size="sm" />
-            {club.isLocked ? <Pill label="Locked" tone="warning" size="sm" icon="lock" /> : null}
-          </View>
+          {isMine ? <Pill label="You" tone="primary" size="sm" /> : null}
         </View>
+        <Text style={styles.rankMeta}>
+          {club.members.length} member{club.members.length === 1 ? '' : 's'} · {club.totalTrees} trees ·{' '}
+          {formatDistance(club.totalMiles)} {unit}
+        </Text>
       </View>
-      {!disabled && !club.isLocked ? (
-        <Button
-          label="Join with code"
-          variant="secondary"
-          size="sm"
-          onPress={onJoin}
-          style={{ marginTop: SPACING.sm + 2 }}
-        />
-      ) : null}
-    </Card>
+      <Text style={styles.rankPoints}>{club.totalPoints.toLocaleString()}</Text>
+    </View>
   );
 }
 
 function RankBadge({ rank }: { rank: number }) {
   const top = rank <= 3;
-  const bg = rank === 1 ? COLORS.accent : rank === 2 ? '#9AA5A0' : rank === 3 ? '#B98A5E' : COLORS.surfaceSunken;
+  const bg =
+    rank === 1 ? COLORS.accent : rank === 2 ? '#9AA5A0' : rank === 3 ? '#B98A5E' : COLORS.surfaceSunken;
   return (
     <View style={[styles.rankBadge, { backgroundColor: top ? bg : COLORS.surfaceSunken }]}>
       <Text style={[styles.rankBadgeText, top && { color: '#fff' }]}>{rank}</Text>
@@ -614,6 +761,18 @@ const styles = StyleSheet.create({
   },
   clubTitle: { ...TYPOGRAPHY.h2, color: '#fff' },
   clubSub: { ...TYPOGRAPHY.small, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
+
+  worldRank: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    backgroundColor: 'rgba(255,255,255,0.07)',
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: RADIUS.sm,
+  },
+  worldRankText: { ...TYPOGRAPHY.smallMed, color: COLORS.primaryGlow },
+
   clubStats: {
     flexDirection: 'row',
     paddingTop: SPACING.md - 2,
@@ -643,6 +802,22 @@ const styles = StyleSheet.create({
   sectionLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
   sectionTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, marginBottom: SPACING.sm + 2 },
 
+  capRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+  capValue: { ...TYPOGRAPHY.h4, color: COLORS.text, marginTop: 2 },
+  capHint: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 6 },
+  capOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  capChip: {
+    paddingVertical: 9,
+    paddingHorizontal: 16,
+    borderRadius: RADIUS.pill,
+    backgroundColor: COLORS.surfaceSunken,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+  },
+  capChipOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  capChipText: { ...TYPOGRAPHY.smallMed, color: COLORS.textSecondary },
+  capChipTextOn: { color: '#fff' },
+
   contribHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   contribStats: { flexDirection: 'row', marginTop: SPACING.sm + 2 },
   contribValue: { ...TYPOGRAPHY.h2, color: COLORS.text },
@@ -655,7 +830,7 @@ const styles = StyleSheet.create({
     gap: SPACING.sm + 2,
     padding: SPACING.md - 3,
   },
-  memberRowMe: { backgroundColor: COLORS.primarySurface },
+  rowHighlight: { backgroundColor: COLORS.primarySurface },
   memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   memberName: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flexShrink: 1 },
   memberBarTrack: {
@@ -670,15 +845,24 @@ const styles = StyleSheet.create({
   memberPoints: { ...TYPOGRAPHY.h4, color: COLORS.text },
   memberSub: { fontSize: 10.5, color: COLORS.textMuted, marginTop: 1 },
 
+  rankHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
+  rankCount: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
   rankRow: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm + 2,
     padding: SPACING.md - 3,
   },
-  rankName: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  rankNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  rankName: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flexShrink: 1 },
   rankMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
   rankPoints: { ...TYPOGRAPHY.h4, color: COLORS.primary },
+  yourPositionLabel: {
+    ...TYPOGRAPHY.overline,
+    color: COLORS.textMuted,
+    marginBottom: SPACING.sm,
+  },
+  gapHint: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: SPACING.sm },
 
   rankBadge: {
     width: 26,
@@ -689,12 +873,7 @@ const styles = StyleSheet.create({
   },
   rankBadgeText: { ...TYPOGRAPHY.smallMed, color: COLORS.textSecondary, fontSize: 12 },
 
-  settingRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    marginTop: SPACING.sm + 2,
-  },
+  settingRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginTop: SPACING.sm + 2 },
   settingTitle: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
   settingSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
 
@@ -720,29 +899,17 @@ const styles = StyleSheet.create({
     color: COLORS.textMuted,
     textAlign: 'center',
     marginTop: 6,
-    maxWidth: 300,
+    maxWidth: 320,
   },
   ctaButtons: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.lg, alignSelf: 'stretch' },
 
-  discoverActions: { flexDirection: 'row', gap: SPACING.sm },
-  discoverRow: { flexDirection: 'row', gap: SPACING.sm + 4 },
-  discoverIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.sm + 2,
-    backgroundColor: COLORS.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  discoverName: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  discoverDesc: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-  discoverMeta: { flexDirection: 'row', gap: 6, marginTop: SPACING.sm },
-
   explainTitle: { ...TYPOGRAPHY.h4, color: COLORS.text, marginBottom: SPACING.sm + 2 },
+  explainBody: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
   rule: { flexDirection: 'row', gap: SPACING.sm + 2, marginBottom: SPACING.sm },
   ruleText: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, flex: 1 },
 
   fieldLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  fieldHint: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
   input: {
     backgroundColor: COLORS.surfaceSunken,
     borderRadius: RADIUS.md,

@@ -16,6 +16,20 @@ import { challengesForWeek, CHALLENGE_CATALOG, CHALLENGES_PER_WEEK } from '../co
 import { detectTrail, evaluateCompletion, validateActivity } from '../services/trailDetection';
 import { AUSTIN_TRAILS } from '../constants/austinTrails';
 import { Coord } from '../services/geo';
+import {
+  activeDaysInLast,
+  bonusForStreak,
+  computeStreak as computeStreakSvc,
+  DayMap,
+  daysToNextBonus,
+  hasComeback,
+  longestRun,
+  monthGrid,
+  nextMilestone,
+  perfectWeeks,
+  streakRuns,
+} from '../services/streaks';
+import { answerQuestion, resolveTrail } from '../services/assistant';
 
 let passed = 0;
 const results: string[] = [];
@@ -276,6 +290,180 @@ test('a GPS teleport is flagged', () => {
   const res = validateActivity(path, 3, 3600, 'hike');
   assert.equal(res.valid, false);
   assert.equal(res.flagReason, 'teleport');
+});
+
+/* ── Streak service ───────────────────────────────────────────────────────── */
+
+const dayRec = (activities = 0) => ({ opened: true, activities, miles: activities, trees: 0 });
+
+function buildDays(spec: Record<string, number>): DayMap {
+  const out: DayMap = {};
+  for (const [k, v] of Object.entries(spec)) out[k] = dayRec(v);
+  return out;
+}
+
+test('streakRuns finds every unbroken run', () => {
+  const days = buildDays({
+    '2026-08-01': 0, '2026-08-02': 0,
+    '2026-08-05': 0, '2026-08-06': 0, '2026-08-07': 0,
+  });
+  const runs = streakRuns(days);
+  assert.equal(runs.length, 2);
+  assert.equal(runs[0].length, 2);
+  assert.equal(runs[1].length, 3);
+});
+
+test('longestRun reports the best run ever, not the current one', () => {
+  const days = buildDays({
+    '2026-07-01': 0, '2026-07-02': 0, '2026-07-03': 0, '2026-07-04': 0,
+    '2026-08-10': 0,
+  });
+  assert.equal(longestRun(days), 4);
+});
+
+test('activeDaysInLast only counts days with an activity', () => {
+  const today = '2026-08-16';
+  const days = buildDays({
+    [today]: 1,
+    [addDays(today, -1)]: 0, // opened but no activity
+    [addDays(today, -2)]: 3,
+    [addDays(today, -40)]: 5, // outside the window
+  });
+  assert.equal(activeDaysInLast(days, 30, today), 2);
+});
+
+test('perfectWeeks needs an activity on all seven days', () => {
+  // Mon 10 Aug 2026 through Sun 16 Aug
+  const full: Record<string, number> = {};
+  for (let i = 0; i < 7; i++) full[addDays('2026-08-10', i)] = 1;
+  assert.equal(perfectWeeks(buildDays(full)), 1);
+
+  delete full['2026-08-13'];
+  assert.equal(perfectWeeks(buildDays(full)), 0, 'six of seven is not a perfect week');
+});
+
+test('hasComeback needs a lost 7-day streak and a new 3-day one', () => {
+  const long: Record<string, number> = {};
+  for (let i = 0; i < 8; i++) long[addDays('2026-06-01', i)] = 1;
+
+  assert.equal(hasComeback(buildDays(long)), false, 'no comeback without a restart');
+
+  const withRestart = { ...long };
+  for (let i = 0; i < 3; i++) withRestart[addDays('2026-07-01', i)] = 1;
+  assert.equal(hasComeback(buildDays(withRestart)), true);
+});
+
+test('daysToNextBonus counts down to the next multiple of seven', () => {
+  assert.equal(daysToNextBonus(0), 7);
+  assert.equal(daysToNextBonus(1), 6);
+  assert.equal(daysToNextBonus(6), 1);
+  assert.equal(daysToNextBonus(7), 7, 'just paid, so a full week to the next');
+  assert.equal(daysToNextBonus(10), 4);
+});
+
+test('streak bonuses grow with the streak', () => {
+  assert.equal(bonusForStreak(7), 10);
+  assert.equal(bonusForStreak(14), 20);
+  assert.equal(bonusForStreak(70), 100);
+});
+
+test('nextMilestone always points forward', () => {
+  assert.equal(nextMilestone(0)?.days, 3);
+  assert.equal(nextMilestone(7)?.days, 14);
+  assert.equal(nextMilestone(400), null);
+});
+
+test('monthGrid pads to whole weeks', () => {
+  const cells = monthGrid(2026, 7, {}); // August 2026
+  assert.equal(cells.length % 7, 0);
+  assert.equal(cells.filter((c) => c.day !== null).length, 31);
+});
+
+test('service and inline streak maths agree', () => {
+  const today = '2026-08-16';
+  const days = buildDays({ [today]: 1, [addDays(today, -1)]: 1 });
+  assert.equal(computeStreakSvc(days, today), 2);
+});
+
+/* ── Assistant ────────────────────────────────────────────────────────────── */
+
+const ctx = {
+  trails: AUSTIN_TRAILS,
+  weather: null,
+  completedTrailIds: new Set<string>(),
+  userCoords: null,
+  focus: null,
+};
+
+test('resolves a trail from its nickname', () => {
+  assert.equal(resolveTrail('how long is the greenbelt', AUSTIN_TRAILS)?.id, 'barton-creek');
+  assert.equal(resolveTrail('is the stairmaster hard', AUSTIN_TRAILS)?.id, 'river-place');
+  assert.equal(resolveTrail('parking at mount bonnell', AUSTIN_TRAILS)?.id, 'mount-bonnell');
+});
+
+test('resolves a trail from its real name', () => {
+  assert.equal(
+    resolveTrail('tell me about the Barton Creek Greenbelt', AUSTIN_TRAILS)?.id,
+    'barton-creek'
+  );
+});
+
+test('does not invent a trail from an unrelated question', () => {
+  assert.equal(resolveTrail('what is the weather like', AUSTIN_TRAILS), null);
+});
+
+test('carries the subject across a follow-up question', () => {
+  const barton = AUSTIN_TRAILS.find((t) => t.id === 'barton-creek')!;
+  const answer = answerQuestion('are dogs allowed there', { ...ctx, focus: barton });
+  assert.equal(answer.trail?.id, 'barton-creek');
+  assert.match(answer.text, /Barton Creek/);
+});
+
+test('answers a distance question with the real number', () => {
+  const a = answerQuestion('how long is the greenbelt', ctx);
+  assert.match(a.text, /7\.9 mi/);
+});
+
+test('answers dog questions correctly per trail', () => {
+  const yes = answerQuestion('can I bring my dog to turkey creek', ctx);
+  assert.match(yes.text, /^Yes/);
+
+  const no = answerQuestion('dogs on slaughter creek', ctx);
+  assert.match(no.text, /^No/);
+});
+
+test('recommendation respects hard constraints', () => {
+  const a = answerQuestion('easy trail where I can bring my dog', ctx);
+  assert.ok(a.results.length > 0, 'should return options');
+  for (const t of a.results) {
+    assert.equal(t.petFriendly, true, `${t.name} must allow dogs`);
+    assert.equal(t.difficulty, 'Easy', `${t.name} must be easy`);
+  }
+});
+
+test('recommendation excludes trails that fail the filter', () => {
+  const a = answerQuestion('where can I go mountain biking', ctx);
+  for (const t of a.results) {
+    assert.notEqual(t.type, 'hike', `${t.name} is hiking only`);
+  }
+});
+
+test('impossible requests say so instead of guessing', () => {
+  const a = answerQuestion('a hard stroller friendly swimming trail under 1 mile', ctx);
+  assert.equal(a.results.length, 0);
+  assert.match(a.text, /Nothing in the catalogue/);
+});
+
+test('assistant never returns an empty answer', () => {
+  const questions = [
+    'hi', 'help', 'how far is walnut creek', 'is it shaded', 'where can I swim',
+    'restrooms at mckinney falls', 'what animals live on the greenbelt',
+    'best trail for kids', 'nearest trail', 'how much climbing on river place',
+  ];
+  for (const q of questions) {
+    const a = answerQuestion(q, ctx);
+    assert.ok(a.text.trim().length > 10, `empty answer for: ${q}`);
+  }
 });
 
 /* ── Report ───────────────────────────────────────────────────────────────── */

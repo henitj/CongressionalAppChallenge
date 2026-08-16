@@ -13,6 +13,8 @@ import SettingsScreen from '../screens/SettingsScreen';
 import SafetyScreen from '../screens/SafetyScreen';
 import ChallengesScreen from '../screens/ChallengesScreen';
 import ConditionsScreen from '../screens/ConditionsScreen';
+import StreakScreen from '../screens/StreakScreen';
+import AssistantScreen from '../screens/AssistantScreen';
 
 import Icon, { IconName } from '../components/Icon';
 import { COLORS, RADIUS, SPACING } from '../constants/theme';
@@ -80,6 +82,8 @@ export default function RootNavigator() {
       <Stack.Screen name="Impact" component={ImpactScreen} />
       <Stack.Screen name="Challenges" component={ChallengesScreen} />
       <Stack.Screen name="Conditions" component={ConditionsScreen} />
+      <Stack.Screen name="Streak" component={StreakScreen} />
+      <Stack.Screen name="Assistant" component={AssistantScreen} />
       <Stack.Screen name="Safety" component={SafetyScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>

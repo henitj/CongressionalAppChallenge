@@ -15,6 +15,7 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon, { IconName } from './Icon';
+import { useResponsive } from '../hooks/useResponsive';
 import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -34,9 +35,22 @@ export function Screen({
   contentStyle?: StyleProp<ViewStyle>;
   refreshControl?: React.ReactElement<any>;
 }) {
+  const { contentWidth, isTablet } = useResponsive();
+
+  // On a tablet the page content is capped and centred. Without this, cards
+  // stretch to 1000px and the layout falls apart.
+  const column: ViewStyle = isTablet
+    ? { width: contentWidth, alignSelf: 'center' }
+    : { width: '100%' };
+
   if (!scroll) {
-    return <View style={[ui.screen, style]}>{children}</View>;
+    return (
+      <View style={[ui.screen, style]}>
+        <View style={[{ flex: 1 }, column]}>{children}</View>
+      </View>
+    );
   }
+
   return (
     <View style={[ui.screen, style]}>
       <ScrollView
@@ -44,7 +58,7 @@ export function Screen({
         showsVerticalScrollIndicator={false}
         refreshControl={refreshControl}
       >
-        {children}
+        <View style={column}>{children}</View>
       </ScrollView>
     </View>
   );
@@ -459,6 +473,19 @@ export function EmptyState({
    Avatar
    ════════════════════════════════════════════════════════════════════════ */
 
+/**
+ * Deterministic avatar colours. The same name always gets the same shade, so
+ * a club roster reads as a set of distinct people rather than a wall of
+ * identical circles.
+ */
+const AVATAR_COLORS = ['#16624A', '#1F5F8B', '#8A5A2B', '#5A4B8A', '#2E7D6B', '#8A4B4B'];
+
+function colorForName(name: string): string {
+  let h = 0;
+  for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
+  return AVATAR_COLORS[h % AVATAR_COLORS.length];
+}
+
 export function Avatar({
   name,
   uri,
@@ -472,12 +499,14 @@ export function Avatar({
   ring?: string;
   style?: StyleProp<ViewStyle>;
 }) {
-  const initials = (name ?? '?')
-    .trim()
-    .split(/\s+/)
-    .slice(0, 2)
-    .map((w) => w[0]?.toUpperCase() ?? '')
-    .join('');
+  const label = (name ?? '').trim();
+  const initials =
+    label
+      .split(/\s+/)
+      .filter(Boolean)
+      .slice(0, 2)
+      .map((w) => w[0]?.toUpperCase() ?? '')
+      .join('') || '?';
 
   return (
     <View
@@ -486,7 +515,7 @@ export function Avatar({
           width: size,
           height: size,
           borderRadius: size / 2,
-          backgroundColor: COLORS.primaryMid,
+          backgroundColor: colorForName(label || 'trekker'),
           alignItems: 'center',
           justifyContent: 'center',
           overflow: 'hidden',
@@ -496,10 +525,20 @@ export function Avatar({
       ]}
     >
       {uri ? (
-        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} />
+        <Image source={{ uri }} style={{ width: '100%', height: '100%' }} resizeMode="cover" />
       ) : (
-        <Text style={{ color: '#fff', fontWeight: '600', fontSize: size * 0.38, letterSpacing: 0.2 }}>
-          {initials || '?'}
+        <Text
+          style={{
+            color: '#fff',
+            fontWeight: '600',
+            // Scaled to the circle, and never so tight that the second
+            // initial gets clipped.
+            fontSize: Math.round(size * 0.38),
+            letterSpacing: 0.3,
+            includeFontPadding: false,
+          }}
+        >
+          {initials}
         </Text>
       )}
     </View>
@@ -708,7 +747,7 @@ const ui = StyleSheet.create({
   },
   statTileDark: { backgroundColor: 'rgba(255,255,255,0.07)', borderColor: 'rgba(255,255,255,0.1)' },
   statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
-  statValue: { fontSize: 22, fontWeight: '700', color: COLORS.text, letterSpacing: -0.7 },
+  statValue: { fontSize: 22, fontWeight: '700', color: COLORS.text, letterSpacing: -0.25 },
   statUnit: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
   statLabel: {
     fontSize: 10.5,

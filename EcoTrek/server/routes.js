@@ -516,6 +516,56 @@ export const routes = [
     },
   },
 
+  /* ── Trail assistant (optional AI upgrade) ─────────────────────────────── */
+  {
+    method: 'POST',
+    path: '/api/assistant',
+    handler: async ({ body }) => {
+      const key = process.env.GROQ_API_KEY;
+      // No key configured is not an error — the app has a full on-device
+      // assistant and simply keeps using it.
+      if (!key) throw fail(501, 'assistant_not_configured');
+
+      const { question, context } = body;
+      if (!question) throw fail(400, 'question_required');
+
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          Authorization: `Bearer ${key}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          model: process.env.GROQ_MODEL ?? 'llama-3.1-8b-instant',
+          temperature: 0.3,
+          max_tokens: 320,
+          messages: [
+            {
+              role: 'system',
+              content:
+                'You are the trail assistant inside EcoTrek, a hiking app for Austin, Texas. ' +
+                'Answer ONLY from the trail data and weather provided. If the data does not ' +
+                'contain the answer, say so plainly rather than guessing — never invent a trail, ' +
+                'a distance, or a rule. Be brief: two or three sentences. Write plainly, no ' +
+                'bullet lists unless asked, no emoji. Safety comes before encouragement: if the ' +
+                'weather is dangerous, say so first.',
+            },
+            {
+              role: 'user',
+              content: `Trail and conditions data:\n${JSON.stringify(context ?? {})}\n\nQuestion: ${question}`,
+            },
+          ],
+        }),
+      });
+
+      if (!res.ok) throw fail(502, 'assistant_upstream_error');
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content?.trim();
+      if (!text) throw fail(502, 'assistant_empty_response');
+      return { text };
+    },
+  },
+
   /* ── Devices (push tokens) ─────────────────────────────────────────────── */
   {
     method: 'POST',

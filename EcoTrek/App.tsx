@@ -40,7 +40,14 @@ function BadgeSync() {
   const { refreshBadges } = useEcoPoints();
   const { totalMiles, totalTrees, totalActivities, hikes, rides, uniqueTrailsCompleted } =
     useActivity();
-  const { currentStreak, longestStreak } = useStreak();
+  const {
+    currentStreak,
+    longestStreak,
+    totalActiveDays,
+    activeDaysLast30,
+    perfectWeeks,
+    hadComeback,
+  } = useStreak();
   const { lifetimeCompleted } = useChallenges();
   const { myClub, myMember } = useClub();
 
@@ -53,6 +60,10 @@ function BadgeSync() {
       rides,
       currentStreak,
       longestStreak,
+      totalActiveDays,
+      activeDaysLast30,
+      perfectWeeks,
+      hadComeback,
       trailsCompleted: uniqueTrailsCompleted,
       challengesCompleted: lifetimeCompleted,
       clubsJoined: myClub ? 1 : 0,
@@ -67,6 +78,10 @@ function BadgeSync() {
     rides,
     currentStreak,
     longestStreak,
+    totalActiveDays,
+    activeDaysLast30,
+    perfectWeeks,
+    hadComeback,
     uniqueTrailsCompleted,
     lifetimeCompleted,
     myClub,

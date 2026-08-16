@@ -10,36 +10,41 @@ import React, {
 import { AppState } from 'react-native';
 import { useAuth } from './AuthContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
-import { addDays, dayKey, daysBetween, keyFor, loadJSON, saveJSON } from '../services/storage';
+import { addDays, dayKey, daysBetween } from '../services/dates';
+import { keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
+import {
+  activeDaysInLast,
+  bonusForStreak,
+  computeStreak,
+  DayMap,
+  DayRecord,
+  daysToNextBonus,
+  hasComeback,
+  longestRun,
+  monthGrid,
+  nextMilestone,
+  perfectWeeks,
+} from '../services/streaks';
 
 /**
  * Daily login streaks.
  *
- * A day counts once the user opens the app (a "check-in"). Days where they
- * also logged a hike or ride are marked separately so the calendar can show
- * the difference between showing up and getting out.
+ * A day counts once the user opens the app. Days where they also logged a hike
+ * or ride are stored separately, so the calendar can show the difference
+ * between showing up and getting out.
  *
- * Streak rules, kept deliberately forgiving:
- *   • Checking in on consecutive calendar days extends the streak.
- *   • Missing one full day resets it to 1 the next time you open the app.
- *   • Every 7 days of streak pays a bonus, scaled to the streak length.
- *   • Everything uses the device's LOCAL calendar day, never UTC, so the
- *     streak flips at the user's midnight.
+ * All the arithmetic lives in services/streaks.ts and is unit tested; this
+ * file only handles state, persistence and awarding points.
  */
 
-export type DayRecord = {
-  opened: boolean;
-  activities: number;
-  miles: number;
-  trees: number;
-};
+export type { DayRecord };
 
 export type CalendarDay = {
-  day: string; // YYYY-MM-DD
+  day: string;
   date: Date;
   opened: boolean;
-  active: boolean; // logged an activity
+  active: boolean;
   isToday: boolean;
   inStreak: boolean;
 };
@@ -47,53 +52,41 @@ export type CalendarDay = {
 type StreakState = {
   currentStreak: number;
   longestStreak: number;
-  days: Record<string, DayRecord>;
+  days: DayMap;
   checkedInToday: boolean;
   activeToday: boolean;
   totalActiveDays: number;
-  /** Last N days, oldest first — feeds the calendar strip. */
-  calendar: (n: number) => CalendarDay[];
-  /** Days until the next 7-day bonus. */
+  totalCheckIns: number;
+  activeDaysLast30: number;
+  perfectWeeks: number;
+  hadComeback: boolean;
   daysToNextBonus: number;
+  nextBonusPoints: number;
+  nextMilestone: ReturnType<typeof nextMilestone>;
+  calendar: (n: number) => CalendarDay[];
+  monthCells: (year: number, month: number) => ReturnType<typeof monthGrid>;
   recordActivity: (miles: number, trees: number, when?: number) => Promise<void>;
-  /** Fired automatically; exposed for pull-to-refresh. */
   checkIn: () => Promise<void>;
 };
 
 const StreakContext = createContext<StreakState | null>(null);
 
 type Stored = {
-  days: Record<string, DayRecord>;
+  days: DayMap;
   longestStreak: number;
   lastBonusStreak: number;
 };
 
 const EMPTY: Stored = { days: {}, longestStreak: 0, lastBonusStreak: 0 };
 
-function computeStreak(days: Record<string, DayRecord>): number {
-  const today = dayKey();
-  // If today isn't checked in yet, allow the streak to still be "alive" from
-  // yesterday — it only breaks once a whole day is skipped.
-  let cursor = days[today]?.opened ? today : addDays(today, -1);
-  if (!days[cursor]?.opened) return 0;
-
-  let streak = 0;
-  while (days[cursor]?.opened) {
-    streak++;
-    cursor = addDays(cursor, -1);
-  }
-  return streak;
-}
-
 export function StreakProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { award } = useEcoPoints();
-  const userId = user?.id ?? null;
-  const storeKey = keyFor(userId, 'streak');
+  const storeKey = keyFor(user?.id ?? null, 'streak');
 
   const [state, setState] = useState<Stored>(EMPTY);
   const [loaded, setLoaded] = useState(false);
-  const checkingIn = useRef(false);
+  const busy = useRef(false);
 
   /* ── Load ──────────────────────────────────────────────────────────────── */
   useEffect(() => {
@@ -109,7 +102,11 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
         const res = await api.get<Stored>(ROUTES.streak);
         if (!cancelled && res.ok && res.data?.days) {
           setState((prev) => {
-            const merged = { ...prev, ...res.data, days: { ...prev.days, ...res.data.days } };
+            const merged = {
+              ...prev,
+              ...res.data,
+              days: { ...prev.days, ...res.data.days },
+            };
             saveJSON(storeKey, merged);
             return merged;
           });
@@ -132,14 +129,14 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
 
   /* ── Check-in ──────────────────────────────────────────────────────────── */
   const checkIn = useCallback(async () => {
-    if (!loaded || checkingIn.current) return;
-    checkingIn.current = true;
+    if (!loaded || busy.current) return;
+    busy.current = true;
 
     try {
       const today = dayKey();
-      const already = state.days[today]?.opened;
+      const alreadyToday = state.days[today]?.opened;
 
-      const days: Record<string, DayRecord> = {
+      const days: DayMap = {
         ...state.days,
         [today]: {
           opened: true,
@@ -149,19 +146,17 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
         },
       };
 
-      const streak = computeStreak(days);
+      const streak = computeStreak(days, today);
       const longestStreak = Math.max(state.longestStreak, streak);
       let lastBonusStreak = state.lastBonusStreak;
 
-      // Award the daily check-in exactly once per calendar day.
-      if (!already) {
+      if (!alreadyToday) {
         await award('daily_login');
 
-        // Every 7 days of unbroken streak pays a scaling bonus.
+        // Every seventh day pays a bonus that grows with the streak, once.
         if (streak > 0 && streak % 7 === 0 && streak !== lastBonusStreak) {
-          const weeks = streak / 7;
           await award('streak_bonus', {
-            points: 10 * weeks,
+            points: bonusForStreak(streak),
             label: `${streak}-day streak bonus`,
           });
           lastBonusStreak = streak;
@@ -170,18 +165,15 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
 
       persist({ days, longestStreak, lastBonusStreak });
     } finally {
-      checkingIn.current = false;
+      busy.current = false;
     }
   }, [loaded, state, award, persist]);
 
   // Always call the freshest checkIn. Without this ref the AppState listener
-  // would capture the state from mount, and a second foreground event could
-  // award the daily check-in twice.
+  // captures state from mount and can award the daily check-in twice.
   const checkInRef = useRef(checkIn);
   checkInRef.current = checkIn;
 
-  // Check in on mount and whenever the app returns to the foreground (which
-  // is how a streak rolls over for someone who leaves the app open overnight).
   useEffect(() => {
     if (!loaded) return;
     checkInRef.current();
@@ -191,12 +183,12 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
     return () => sub.remove();
   }, [loaded]);
 
-  /* ── Record an activity on a day ───────────────────────────────────────── */
+  /* ── Record an activity ────────────────────────────────────────────────── */
   const recordActivity = useCallback(
     async (miles: number, trees: number, when = Date.now()) => {
       const key = dayKey(when);
       const prev = state.days[key] ?? { opened: true, activities: 0, miles: 0, trees: 0 };
-      const days = {
+      const days: DayMap = {
         ...state.days,
         [key]: {
           opened: true,
@@ -205,10 +197,9 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
           trees: prev.trees + trees,
         },
       };
-      const streak = computeStreak(days);
       persist({
         days,
-        longestStreak: Math.max(state.longestStreak, streak),
+        longestStreak: Math.max(state.longestStreak, computeStreak(days)),
         lastBonusStreak: state.lastBonusStreak,
       });
     },
@@ -240,21 +231,40 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
     [state.days, currentStreak]
   );
 
-  const value = useMemo<StreakState>(
-    () => ({
+  const monthCells = useCallback(
+    (year: number, month: number) => monthGrid(year, month, state.days),
+    [state.days]
+  );
+
+  const stats = useMemo(() => {
+    const values = Object.values(state.days);
+    return {
+      totalActiveDays: values.filter((d) => d.activities > 0).length,
+      totalCheckIns: values.filter((d) => d.opened).length,
+      activeDaysLast30: activeDaysInLast(state.days, 30),
+      perfectWeeks: perfectWeeks(state.days),
+      hadComeback: hasComeback(state.days),
+    };
+  }, [state.days]);
+
+  const value = useMemo<StreakState>(() => {
+    const longest = Math.max(state.longestStreak, longestRun(state.days), currentStreak);
+    return {
       currentStreak,
-      longestStreak: Math.max(state.longestStreak, currentStreak),
+      longestStreak: longest,
       days: state.days,
       checkedInToday: !!state.days[dayKey()]?.opened,
       activeToday: (state.days[dayKey()]?.activities ?? 0) > 0,
-      totalActiveDays: Object.values(state.days).filter((d) => d.activities > 0).length,
+      ...stats,
+      daysToNextBonus: daysToNextBonus(currentStreak),
+      nextBonusPoints: bonusForStreak(currentStreak + daysToNextBonus(currentStreak)),
+      nextMilestone: nextMilestone(currentStreak),
       calendar,
-      daysToNextBonus: currentStreak === 0 ? 7 : 7 - (currentStreak % 7 || 7) + (currentStreak % 7 === 0 ? 7 : 0),
+      monthCells,
       recordActivity,
       checkIn,
-    }),
-    [currentStreak, state, calendar, recordActivity, checkIn]
-  );
+    };
+  }, [currentStreak, state, stats, calendar, monthCells, recordActivity, checkIn]);
 
   if (!loaded) return null;
 

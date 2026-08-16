@@ -70,7 +70,7 @@ export default function HomeScreen() {
         <ConditionsCard />
 
         {/* ── Streak ─────────────────────────────────────────────────────── */}
-        <Card>
+        <Card onPress={() => navigation.navigate('Streak')}>
           <View style={styles.streakHead}>
             <View style={styles.streakLeft}>
               <View style={styles.flameWrap}>
@@ -95,11 +95,14 @@ export default function HomeScreen() {
                 </Text>
               </View>
             </View>
-            <Pill
-              label={`Best ${longestStreak}`}
-              tone={currentStreak >= longestStreak && currentStreak > 0 ? 'accent' : 'neutral'}
-              size="sm"
-            />
+            <View style={styles.streakRight}>
+              <Pill
+                label={`Best ${longestStreak}`}
+                tone={currentStreak >= longestStreak && currentStreak > 0 ? 'accent' : 'neutral'}
+                size="sm"
+              />
+              <Icon name="chevron-right" size={16} color={COLORS.textLight} />
+            </View>
           </View>
 
           <StreakStrip style={{ marginTop: SPACING.md - 2 }} />
@@ -318,6 +321,7 @@ const styles = StyleSheet.create({
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
 
   streakHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  streakRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   streakLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2 },
   flameWrap: {
     width: 38,
@@ -368,7 +372,7 @@ const styles = StyleSheet.create({
     gap: 5,
   },
   metricValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
-  metricValue: { fontSize: 24, fontWeight: '700', color: COLORS.text, letterSpacing: -0.8 },
+  metricValue: { fontSize: 24, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
   metricUnit: { ...TYPOGRAPHY.smallMed, color: COLORS.textMuted },
   metricLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
 

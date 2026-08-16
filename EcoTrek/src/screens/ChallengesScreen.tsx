@@ -7,6 +7,7 @@ import { Screen, Card, Pill, ProgressBar, Banner } from '../components/ui';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useChallenges } from '../context/ChallengeContext';
 import { useClub } from '../constants/ClubContext';
+import { useActivity } from '../context/ActivityContext';
 
 export default function ChallengesScreen() {
   const {
@@ -22,7 +23,11 @@ export default function ChallengesScreen() {
     undoChallenge,
   } = useChallenges();
   const { myClub } = useClub();
+  const { totalActivities } = useActivity();
   const [busyId, setBusyId] = useState<string | null>(null);
+
+  // Explainers are for new users. After a few activities they are just clutter.
+  const showBasics = totalActivities < 3 && lifetimeCompleted < 3;
 
   const handleComplete = async (id: string) => {
     setBusyId(id);
@@ -102,6 +107,7 @@ export default function ChallengesScreen() {
         </View>
 
         {/* How it works */}
+        {showBasics ? (
         <Card tone="sunken">
           <Text style={styles.howTitle}>How challenges work</Text>
           <Rule
@@ -118,6 +124,7 @@ export default function ChallengesScreen() {
           />
           <Rule icon="users" text="Points count toward your personal score and your club's." />
         </Card>
+        ) : null}
       </View>
     </Screen>
   );
@@ -135,7 +142,7 @@ function Rule({ icon, text }: { icon: any; text: string }) {
 const styles = StyleSheet.create({
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
   summaryTop: { flexDirection: 'row', alignItems: 'center' },
-  summaryValue: { fontSize: 34, fontWeight: '700', color: COLORS.text, letterSpacing: -1.2 },
+  summaryValue: { fontSize: 34, fontWeight: '700', color: COLORS.text, letterSpacing: -0.4 },
   summaryTotal: { fontSize: 20, color: COLORS.textLight, fontWeight: '600' },
   summaryLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
   pointsBox: {

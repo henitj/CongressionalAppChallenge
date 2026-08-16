@@ -51,6 +51,10 @@ export type BadgeInputs = {
   rides: number;
   currentStreak: number;
   longestStreak: number;
+  totalActiveDays: number;
+  activeDaysLast30: number;
+  perfectWeeks: number;
+  hadComeback: boolean;
   trailsCompleted: number;
   challengesCompleted: number;
   clubsJoined: number;
@@ -125,19 +129,36 @@ function getLevel(points: number) {
 }
 
 const DEFAULT_BADGES: Badge[] = [
+  // ── Getting started ──────────────────────────────────────────────────────
   { id: 'first_hike', name: 'First Steps', description: 'Complete your first hike', icon: 'boot', unlocked: false },
   { id: 'first_ride', name: 'Wheels Up', description: 'Complete your first bike ride', icon: 'bike', unlocked: false },
   { id: 'first_tree', name: 'Seed Planter', description: 'Earn your first tree', icon: 'leaf', unlocked: false },
+
+  // ── Distance ─────────────────────────────────────────────────────────────
   { id: 'five_miles', name: 'Five Miler', description: 'Cover 5 total miles', icon: 'activity', unlocked: false },
   { id: 'twenty_five_miles', name: 'Distance Runner', description: 'Cover 25 total miles', icon: 'trending-up', unlocked: false },
   { id: 'hundred_miles', name: 'Century Trekker', description: 'Cover 100 total miles', icon: 'award', unlocked: false },
   { id: 'ten_trees', name: 'Mini Forest', description: 'Earn 10 trees', icon: 'tree', unlocked: false },
   { id: 'fifty_trees', name: 'Grove Keeper', description: 'Earn 50 trees', icon: 'tree', unlocked: false },
+
+  // ── Streaks ──────────────────────────────────────────────────────────────
   { id: 'streak_3', name: 'Warming Up', description: 'Reach a 3-day streak', icon: 'flame', unlocked: false },
   { id: 'streak_7', name: 'Seven Straight', description: 'Reach a 7-day streak', icon: 'flame', unlocked: false },
+  { id: 'streak_14', name: 'Two Weeks Deep', description: 'Reach a 14-day streak', icon: 'flame', unlocked: false },
   { id: 'streak_30', name: 'Unbroken', description: 'Reach a 30-day streak', icon: 'flame', unlocked: false },
+  { id: 'streak_60', name: 'Two Month Machine', description: 'Reach a 60-day streak', icon: 'flame', unlocked: false },
+  { id: 'streak_100', name: 'Triple Digits', description: 'Reach a 100-day streak', icon: 'flame', unlocked: false },
+  { id: 'streak_365', name: 'Year of Trails', description: 'Reach a 365-day streak', icon: 'crown', unlocked: false },
+  { id: 'perfect_week', name: 'Perfect Week', description: 'Log an activity all seven days of one week', icon: 'calendar', unlocked: false },
+  { id: 'perfect_weeks_4', name: 'Four Perfect Weeks', description: 'Log four flawless weeks in total', icon: 'calendar', unlocked: false },
+  { id: 'month_20', name: 'Twenty in Thirty', description: 'Get out on 20 days within a single month', icon: 'target', unlocked: false },
+  { id: 'comeback', name: 'Comeback', description: 'Lose a 7-day streak and build a new one', icon: 'refresh', unlocked: false },
+  { id: 'hundred_days', name: 'Hundred Days Out', description: 'Log activities on 100 separate days', icon: 'award', unlocked: false },
+
+  // ── Challenges, trails, clubs ────────────────────────────────────────────
   { id: 'first_challenge', name: 'Challenger', description: 'Finish your first weekly challenge', icon: 'target', unlocked: false },
   { id: 'ten_challenges', name: 'Habit Builder', description: 'Finish 10 challenges', icon: 'target', unlocked: false },
+  { id: 'fifty_challenges', name: 'Relentless', description: 'Finish 50 challenges', icon: 'zap', unlocked: false },
   { id: 'first_trail', name: 'Trail Bagger', description: 'Complete a full named trail', icon: 'map', unlocked: false },
   { id: 'five_trails', name: 'Trail Master', description: 'Complete 5 different trails', icon: 'flag', unlocked: false },
   { id: 'five_hundred_points', name: 'Point Collector', description: 'Earn 500 EcoPoints', icon: 'star', unlocked: false },
@@ -245,9 +266,19 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
           fifty_trees: inputs.totalTrees >= 50,
           streak_3: inputs.longestStreak >= 3,
           streak_7: inputs.longestStreak >= 7,
+          streak_14: inputs.longestStreak >= 14,
           streak_30: inputs.longestStreak >= 30,
+          streak_60: inputs.longestStreak >= 60,
+          streak_100: inputs.longestStreak >= 100,
+          streak_365: inputs.longestStreak >= 365,
+          perfect_week: inputs.perfectWeeks >= 1,
+          perfect_weeks_4: inputs.perfectWeeks >= 4,
+          month_20: inputs.activeDaysLast30 >= 20,
+          comeback: inputs.hadComeback,
+          hundred_days: inputs.totalActiveDays >= 100,
           first_challenge: inputs.challengesCompleted >= 1,
           ten_challenges: inputs.challengesCompleted >= 10,
+          fifty_challenges: inputs.challengesCompleted >= 50,
           first_trail: inputs.trailsCompleted >= 1,
           five_trails: inputs.trailsCompleted >= 5,
           five_hundred_points: totalPoints >= 500,
