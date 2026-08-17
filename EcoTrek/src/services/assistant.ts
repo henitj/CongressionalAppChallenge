@@ -26,6 +26,8 @@ export type AssistantContext = {
   userCoords: { latitude: number; longitude: number } | null;
   /** Trail the conversation is currently about, for pronoun resolution. */
   focus: Trail | null;
+  /** Miles or kilometres, matching the user's Settings choice. */
+  units: 'imperial' | 'metric';
 };
 
 export type AssistantAnswer = {
@@ -194,7 +196,16 @@ function extractConstraints(q: string): Constraints {
 
 /* ── Formatting helpers ───────────────────────────────────────────────────── */
 
-const mi = (n: number) => `${n % 1 === 0 ? n : n.toFixed(1)} mi`;
+/**
+ * Formats a distance in the user's chosen units. The catalogue stores miles,
+ * so metric users would otherwise be told a trail is "7.9 mi" while every
+ * other screen said 12.7 km.
+ */
+function dist(miles: number, units: 'imperial' | 'metric' = 'imperial'): string {
+  const value = units === 'metric' ? miles * 1.60934 : miles;
+  const rounded = Number(value.toFixed(1));
+  return `${rounded} ${units === 'metric' ? 'km' : 'mi'}`;
+}
 
 function duration(t: Trail): string {
   if (!t.estimatedMinutes) return 'no posted time';
@@ -214,6 +225,7 @@ function yesNo(value: boolean | undefined, yes: string, no: string): string {
 export function answerQuestion(question: string, ctx: AssistantContext): AssistantAnswer {
   const q = normalise(question);
   const intent = detectIntent(q);
+  const mi = (n: number) => dist(n, ctx.units);
 
   // Resolve the subject: named trail wins, otherwise carry the conversation.
   const named = resolveTrail(question, ctx.trails);
@@ -528,6 +540,7 @@ function bikeAlternatives(ctx: AssistantContext): string {
 function recommend(question: string, ctx: AssistantContext): AssistantAnswer {
   const q = normalise(question);
   const c = extractConstraints(q);
+  const mi = (n: number) => dist(n, ctx.units);
 
   const scored = ctx.trails
     .map((t) => {

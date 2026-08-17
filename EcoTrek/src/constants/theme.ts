@@ -47,6 +47,17 @@ export const COLORS = {
   info: '#1F5F8B',
   infoLight: '#E8F0F6',
 
+  // Borders that pair with the *Light status backgrounds above. These were
+  // duplicated across four files before they lived here.
+  successBorder: '#CBE2D7',
+  infoBorder: '#CBDDEA',
+  warningBorder: '#EBD9B8',
+  dangerBorder: '#EFCBC6',
+
+  // Leaderboard podium. Gold reuses the brand accent.
+  medalSilver: '#9AA5A0',
+  medalBronze: '#B98A5E',
+
   shadow: '#0C2E24',
   overlay: 'rgba(12,46,36,0.45)',
 
@@ -61,6 +72,19 @@ export const COLORS = {
   gradientAccent: ['#C8842A', '#9C6620'] as [string, string],
   gradientSky: ['#1F5F8B', '#123D5A'] as [string, string],
 };
+
+/**
+ * Avatar backgrounds. Chosen to stay legible under white initials and to sit
+ * beside the brand green without clashing.
+ */
+export const AVATAR_COLORS = [
+  '#16624A',
+  '#1F5F8B',
+  '#8A5A2B',
+  '#5A4B8A',
+  '#2E7D6B',
+  '#8A4B4B',
+];
 
 export const SPACING = {
   xxs: 2,

@@ -71,6 +71,7 @@ function toClub(club, members) {
     isPublic: club.is_public,
     ownerId: club.owner_id,
     createdAt: ms(club.created_at),
+    maxMembers: club.max_members,
     totalPoints: club.total_points,
     totalTrees: club.total_trees,
     totalMiles: Number(club.total_miles),
@@ -108,6 +109,16 @@ async function loadClubs(sql, whereIds = null) {
       members.filter((m) => m.club_id === c.id)
     )
   );
+}
+
+const MIN_MEMBER_CAP = 2;
+const MAX_MEMBER_CAP = 500;
+
+/** Mirrors clampCap in the app so both ends agree on what a legal cap is. */
+function clampCap(n) {
+  const v = Number(n);
+  if (!Number.isFinite(v)) return 100;
+  return Math.min(MAX_MEMBER_CAP, Math.max(MIN_MEMBER_CAP, Math.round(v)));
 }
 
 function generateCode() {
@@ -262,14 +273,24 @@ export const routes = [
     handler: async ({ user, body, sql }) => {
       const { days = {}, longestStreak = 0, lastBonusStreak = 0 } = body;
 
-      // Only write the recent window; the client keeps the full history but
-      // there is no need to rewrite a year of rows on every check-in.
-      const entries = Object.entries(days).slice(-60);
-      for (const [day, rec] of entries) {
+      // Only the recent window is written; the client keeps the full history.
+      // These go up as ONE statement — a row-at-a-time loop meant up to 60
+      // HTTP round trips on every single check-in.
+      const entries = Object.entries(days)
+        .sort(([a], [b]) => (a < b ? -1 : 1))
+        .slice(-60);
+
+      if (entries.length) {
         await sql`
           INSERT INTO daily_streaks (user_id, day, opened_app, activities, miles, trees)
-          VALUES (${user.id}, ${day}::date, ${!!rec.opened}, ${rec.activities ?? 0},
-                  ${rec.miles ?? 0}, ${rec.trees ?? 0})
+          SELECT ${user.id}, d::date, o, a, m, t
+          FROM unnest(
+            ${entries.map(([d]) => d)}::date[],
+            ${entries.map(([, r]) => !!r.opened)}::boolean[],
+            ${entries.map(([, r]) => r.activities ?? 0)}::int[],
+            ${entries.map(([, r]) => r.miles ?? 0)}::numeric[],
+            ${entries.map(([, r]) => r.trees ?? 0)}::int[]
+          ) AS s(d, o, a, m, t)
           ON CONFLICT (user_id, day) DO UPDATE
             SET opened_app = daily_streaks.opened_app OR EXCLUDED.opened_app,
                 activities = GREATEST(daily_streaks.activities, EXCLUDED.activities),
@@ -355,9 +376,9 @@ export const routes = [
       for (let i = 0; i < 5 && !club; i++) {
         try {
           const rows = await sql`
-            INSERT INTO clubs (name, code, description, owner_id, is_locked)
+            INSERT INTO clubs (name, code, description, owner_id, is_locked, max_members)
             VALUES (${name}, ${generateCode()}, ${(body.description ?? '').trim()},
-                    ${user.id}, ${!!body.isLocked})
+                    ${user.id}, ${!!body.isLocked}, ${clampCap(body.maxMembers)})
             RETURNING *`;
           club = rows[0];
         } catch (e) {
@@ -436,6 +457,35 @@ export const routes = [
         RETURNING id`;
       if (!rows.length) throw fail(403, 'not_the_owner');
       return { ok: true };
+    },
+  },
+  {
+    method: 'PATCH',
+    path: '/api/clubs/:id',
+    handler: async ({ user, params, body, sql }) => {
+      const [club] = await sql`
+        SELECT * FROM clubs WHERE id = ${params.id} AND owner_id = ${user.id}`;
+      if (!club) throw fail(403, 'not_the_owner');
+
+      // A cap below the current headcount would leave members stranded
+      // outside their own club, so it is floored at the roster size.
+      const cap =
+        body.maxMembers == null
+          ? club.max_members
+          : Math.max(clampCap(body.maxMembers), club.member_count);
+
+      const rows = await sql`
+        UPDATE clubs SET
+          name         = COALESCE(${body.name ?? null}, name),
+          description  = COALESCE(${body.description ?? null}, description),
+          max_members  = ${cap},
+          is_locked    = COALESCE(${body.isLocked ?? null}, is_locked)
+        WHERE id = ${params.id}
+        RETURNING id`;
+      if (!rows.length) throw fail(404, 'club_not_found');
+
+      const [full] = await loadClubs(sql, [params.id]);
+      return full;
     },
   },
   {

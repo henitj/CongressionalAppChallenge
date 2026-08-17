@@ -113,7 +113,7 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
       if (rolled !== stored) saveJSON(storeKey, rolled);
 
       if (isBackendConfigured()) {
-        const res = await api.get<Stored>(ROUTES.challenges);
+        const res = await api.get<Stored>(`${ROUTES.challenges}?week=${current}`);
         if (!cancelled && res.ok && res.data?.weekId === current) {
           setStore((prev) => {
             const merged = {

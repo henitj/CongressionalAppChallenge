@@ -31,7 +31,6 @@ export type Responsive = {
 };
 
 const PHONE_MAX = 600;
-const TABLET_MAX = 900;
 
 export function useResponsive(): Responsive {
   const { width, height } = useWindowDimensions();

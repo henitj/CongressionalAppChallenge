@@ -94,7 +94,7 @@ export default function ConditionsScreen() {
           <Banner
             tone="info"
             icon="clock"
-            title={`Best window today: ${report.bestWindow}`}
+            title={`Best window: ${report.bestWindow}`}
             message="Coolest stretch with the lowest rain chance in the next 14 hours."
           />
         ) : null}
@@ -109,7 +109,7 @@ export default function ConditionsScreen() {
                   key={a.id}
                   style={[
                     styles.alertCard,
-                    a.level === 'danger' && { borderColor: '#EFCBC6', backgroundColor: COLORS.dangerLight },
+                    a.level === 'danger' && { borderColor: COLORS.dangerBorder, backgroundColor: COLORS.dangerLight },
                   ]}
                 >
                   <View style={styles.alertHead}>

@@ -118,6 +118,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
           const merged = [...byId.values()].sort((a, b) => b.startedAt - a.startedAt);
           setHistory(merged);
           saveJSON(storeKey, merged);
+          /* eslint-disable-next-line no-void */
         }
       }
     })();
@@ -126,10 +127,18 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     };
   }, [storeKey]);
 
+  /**
+   * Updates history from the previous value rather than a captured one.
+   * The old version read `history` out of the closure, so two saves landing
+   * in the same tick could drop the first.
+   */
   const persist = useCallback(
-    (next: Activity[]) => {
-      setHistory(next);
-      saveJSON(storeKey, next);
+    (update: (prev: Activity[]) => Activity[]) => {
+      setHistory((prev) => {
+        const next = update(prev);
+        saveJSON(storeKey, next);
+        return next;
+      });
     },
     [storeKey]
   );
@@ -186,8 +195,9 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
 
       activity.points = pointsAwarded;
 
-      const next = [activity, ...history].slice(0, 500);
-      persist(next);
+      // Replace rather than append if this id already exists, so a
+      // double-tapped Finish button cannot create a duplicate.
+      persist((prev) => [activity, ...prev.filter((a) => a.id !== activity.id)].slice(0, 500));
 
       if (validation.valid) {
         // 4. Streak calendar.
@@ -213,19 +223,19 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         rejectionReason: validation.flagReason,
       };
     },
-    [history, persist, award, recordActivity, contribute, myClub, userId]
+    [persist, award, recordActivity, contribute, myClub, userId]
   );
 
   const deleteActivity = useCallback(
     async (id: string) => {
-      persist(history.filter((a) => a.id !== id));
+      persist((prev) => prev.filter((a) => a.id !== id));
       if (isBackendConfigured()) api.del(ROUTES.activity(id));
     },
-    [history, persist]
+    [persist]
   );
 
   const clearHistory = useCallback(async () => {
-    persist([]);
+    persist(() => []);
   }, [persist]);
 
   /* ── Aggregates (invalid activities never count) ───────────────────────── */

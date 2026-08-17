@@ -14,7 +14,9 @@
       "resizeMode": "contain",
       "backgroundColor": "#0C2E24"
     },
-    "assetBundlePatterns": ["**/*"],
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ecotrek.app",

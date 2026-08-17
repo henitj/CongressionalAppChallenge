@@ -1,7 +1,7 @@
 import React from 'react';
 import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import Icon from './Icon';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { COLORS, RADIUS, TYPOGRAPHY } from '../constants/theme';
 import { useStreak } from '../context/StreakContext';
 
 const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];

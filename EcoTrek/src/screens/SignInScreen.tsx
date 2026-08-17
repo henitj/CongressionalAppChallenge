@@ -5,7 +5,6 @@ import {
   StyleSheet,
   TextInput,
   Animated,
-  Pressable,
   Linking,
   KeyboardAvoidingView,
   Platform,
@@ -249,7 +248,7 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     padding: SPACING.sm + 4,
   },
-  errorText: { ...TYPOGRAPHY.small, color: '#FFD9D4', flex: 1 },
+  errorText: { ...TYPOGRAPHY.small, color: COLORS.dangerLight, flex: 1 },
 
   configNote: {
     flexDirection: 'row',

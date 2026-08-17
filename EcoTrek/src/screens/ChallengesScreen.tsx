@@ -4,7 +4,7 @@ import Header from '../components/Header';
 import Icon from '../components/Icon';
 import ChallengeItem from '../components/ChallengeItem';
 import { Screen, Card, Pill, ProgressBar, Banner } from '../components/ui';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useChallenges } from '../context/ChallengeContext';
 import { useClub } from '../constants/ClubContext';
 import { useActivity } from '../context/ActivityContext';

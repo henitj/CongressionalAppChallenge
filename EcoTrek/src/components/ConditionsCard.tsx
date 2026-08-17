@@ -8,10 +8,10 @@ import { LEVEL_META, SafetyLevel } from '../services/weather';
 import { useSettings } from '../constants/SettingsContext';
 
 const TONE: Record<SafetyLevel, { bg: string; fg: string; border: string }> = {
-  good: { bg: COLORS.successLight, fg: COLORS.success, border: '#CBE2D7' },
-  caution: { bg: COLORS.infoLight, fg: COLORS.info, border: '#CBDDEA' },
-  warning: { bg: COLORS.warningLight, fg: COLORS.warning, border: '#EBD9B8' },
-  danger: { bg: COLORS.dangerLight, fg: COLORS.danger, border: '#EFCBC6' },
+  good: { bg: COLORS.successLight, fg: COLORS.success, border: COLORS.successBorder },
+  caution: { bg: COLORS.infoLight, fg: COLORS.info, border: COLORS.infoBorder },
+  warning: { bg: COLORS.warningLight, fg: COLORS.warning, border: COLORS.warningBorder },
+  danger: { bg: COLORS.dangerLight, fg: COLORS.danger, border: COLORS.dangerBorder },
 };
 
 /**
@@ -92,7 +92,7 @@ export default function ConditionsCard({ compact }: { compact?: boolean }) {
             <View style={styles.bestWindow}>
               <Icon name="clock" size={13} color={COLORS.textSecondary} strokeWidth={2} />
               <Text style={styles.bestWindowText}>
-                Better window today: <Text style={styles.bestWindowBold}>{report.bestWindow}</Text>
+                Better window: <Text style={styles.bestWindowBold}>{report.bestWindow}</Text>
               </Text>
             </View>
           ) : null}

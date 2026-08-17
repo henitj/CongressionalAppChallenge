@@ -1,5 +1,5 @@
 import React from 'react';
-import Svg, { Path, Circle, Rect, Line, Polyline, Polygon } from 'react-native-svg';
+import Svg, { Path, Circle, Rect, Polygon } from 'react-native-svg';
 import { COLORS } from '../constants/theme';
 
 /**
@@ -113,18 +113,12 @@ export default function Icon({
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
-      {render(name, s, solid, filled, color)}
+      {render(name, s, solid, filled)}
     </Svg>
   );
 }
 
-function render(
-  name: IconName,
-  s: any,
-  solid: any,
-  filled: boolean,
-  color: string
-) {
+function render(name: IconName, s: any, solid: any, filled: boolean) {
   switch (name) {
     case 'home':
       return (
@@ -339,9 +333,9 @@ function render(
     case 'cloud-lightning':
       return (
         <>
-          <Path {...s} d="M19 15.5H7.5A4.5 4.5 0 1 1 8.3 6.6 6.5 6.5 0 0 1 20.6 8a3.8 3.8 0 0 1-1.6 7.5z" />
-          <Path {...s} d="M13.5 17 10 21.5h4L11.5 25" />
-          <Path {...s} d="M13.5 17 10 21.5h3.6" />
+          <Path {...s} d="M18.5 14H7.5A4.5 4.5 0 1 1 8.3 5.1 6.5 6.5 0 0 1 20.1 6.5 3.8 3.8 0 0 1 18.5 14z" />
+          {/* Bolt kept inside the 24x24 box so it is never clipped. */}
+          <Path {...s} d="M13.4 15.5 9.8 19.8h3.1l-1 3.2" />
         </>
       );
     case 'cloud-fog':

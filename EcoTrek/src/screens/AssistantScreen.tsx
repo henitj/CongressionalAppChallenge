@@ -21,6 +21,7 @@ import { Trail } from '../constants/austinTrails';
 import { useApp } from '../context/AppContext';
 import { useWeather } from '../context/WeatherContext';
 import { useActivity } from '../context/ActivityContext';
+import { useSettings } from '../constants/SettingsContext';
 import {
   answerQuestion,
   AssistantContext,
@@ -43,8 +44,14 @@ export default function AssistantScreen() {
   const { trails, coords } = useApp();
   const { report } = useWeather();
   const { history } = useActivity();
+  const { units } = useSettings();
 
-  const initialTrail: Trail | null = route.params?.trail ?? null;
+  // Only an id crosses the navigation boundary — params must stay
+  // serialisable or React Navigation cannot persist or deep-link state.
+  const initialTrail: Trail | null = useMemo(
+    () => trails.find((t) => t.id === route.params?.trailId) ?? null,
+    [trails, route.params?.trailId]
+  );
 
   const [messages, setMessages] = useState<Message[]>(() =>
     initialTrail
@@ -77,8 +84,9 @@ export default function AssistantScreen() {
       completedTrailIds,
       userCoords: coords,
       focus: focusRef.current,
+      units,
     }),
-    [trails, report, completedTrailIds, coords]
+    [trails, report, completedTrailIds, coords, units]
   );
 
   const send = useCallback(

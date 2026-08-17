@@ -25,6 +25,24 @@ const NWS_HEADERS = {
 
 export type SafetyLevel = 'good' | 'caution' | 'warning' | 'danger';
 
+/**
+ * The slice of an NWS alert we actually read. The real payload has around
+ * thirty fields; typing only what we use documents the dependency and keeps
+ * the parser honest if the feed changes shape.
+ */
+type NwsAlertFeature = {
+  properties?: {
+    id?: string;
+    event?: string;
+    severity?: string;
+    headline?: string;
+    description?: string;
+    senderName?: string;
+    ends?: string;
+    expires?: string;
+  };
+};
+
 export type Advisory = {
   id: string;
   level: SafetyLevel;
@@ -243,7 +261,7 @@ export async function getWeatherReport(
       ? Math.round(airRes.value.current.us_aqi)
       : null;
 
-  const nwsFeatures: any[] =
+  const nwsFeatures: NwsAlertFeature[] =
     alertsRes.status === 'fulfilled' && Array.isArray(alertsRes.value?.features)
       ? alertsRes.value.features
       : [];
@@ -576,7 +594,10 @@ function findBestWindow(hourlyRaw: any, startIdx: number): string | null {
   if (!best) return null;
   const start = new Date(times[best.idx]);
   const end = new Date(start.getTime() + 2 * 3600000);
-  return `${fmtHour(start)} – ${fmtHour(end)}`;
+  // The search runs 14 hours ahead, which can land on tomorrow morning.
+  // Saying "today" then would be wrong.
+  const tomorrow = start.getDate() !== new Date().getDate();
+  return `${fmtHour(start)} – ${fmtHour(end)}${tomorrow ? ' tomorrow' : ''}`;
 }
 
 function fmtHour(d: Date) {

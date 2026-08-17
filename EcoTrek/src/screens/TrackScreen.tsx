@@ -409,7 +409,7 @@ function ResultCard({
 }) {
   if (result.rejected) {
     return (
-      <Card style={{ borderColor: '#EBD9B8', backgroundColor: COLORS.warningLight }}>
+      <Card style={{ borderColor: COLORS.warningBorder, backgroundColor: COLORS.warningLight }}>
         <View style={styles.resultHead}>
           <Icon name="alert-circle" size={20} color={COLORS.warning} strokeWidth={2} />
           <Text style={styles.resultTitle}>Not counted</Text>

@@ -40,7 +40,7 @@ export default function TrailsScreen() {
   const route = useRoute<any>();
   const { trails, trailsLoading, refreshTrails, permission, requestLocation, usingFallbackLocation } =
     useApp();
-  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { formatDistanceCompact, formatDistanceUnit } = useSettings();
   const { history } = useActivity();
   const { isTablet } = useResponsive();
 
@@ -235,7 +235,7 @@ export default function TrailsScreen() {
                   completed={completedIds.has(t.id)}
                   visited={visitedIds.has(t.id)}
                   onPress={() => setSelected(t)}
-                  formatDistance={formatDistance}
+                  formatDistance={formatDistanceCompact}
                   unit={formatDistanceUnit()}
                 />
               </View>
@@ -288,7 +288,7 @@ export default function TrailsScreen() {
             <View style={styles.detailStats}>
               <DetailStat
                 icon="activity"
-                value={`${formatDistance(selected.distanceMiles)} ${formatDistanceUnit()}`}
+                value={`${formatDistanceCompact(selected.distanceMiles)} ${formatDistanceUnit()}`}
                 label="Length"
               />
               <DetailStat
@@ -370,7 +370,7 @@ export default function TrailsScreen() {
                   onPress={() => {
                     const t = selected;
                     setSelected(null);
-                    navigation.navigate('Assistant', { trail: t });
+                    navigation.navigate('Assistant', { trailId: t.id });
                   }}
                 />
                 <Button

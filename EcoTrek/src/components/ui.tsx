@@ -6,17 +6,17 @@ import {
   Pressable,
   ActivityIndicator,
   ViewStyle,
-  TextStyle,
   StyleProp,
   Modal,
   ScrollView,
+  KeyboardAvoidingView,
   Platform,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import Icon, { IconName } from './Icon';
 import { useResponsive } from '../hooks/useResponsive';
-import { COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { AVATAR_COLORS, COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
 
 /* ════════════════════════════════════════════════════════════════════════
    Screen — consistent page shell
@@ -478,8 +478,6 @@ export function EmptyState({
  * a club roster reads as a set of distinct people rather than a wall of
  * identical circles.
  */
-const AVATAR_COLORS = ['#16624A', '#1F5F8B', '#8A5A2B', '#5A4B8A', '#2E7D6B', '#8A4B4B'];
-
 function colorForName(name: string): string {
   let h = 0;
   for (let i = 0; i < name.length; i++) h = (h * 31 + name.charCodeAt(i)) >>> 0;
@@ -564,7 +562,12 @@ export function Sheet({
 }) {
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      <View style={ui.sheetBackdrop}>
+      {/* Sheets contain text inputs (club codes, names), so they have to lift
+          clear of the keyboard rather than sitting behind it. */}
+      <KeyboardAvoidingView
+        style={ui.sheetBackdrop}
+        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+      >
         <Pressable style={{ flex: 1 }} onPress={onClose} />
         <SafeAreaView edges={['bottom']} style={ui.sheet}>
           <View style={ui.sheetGrabber} />
@@ -586,7 +589,7 @@ export function Sheet({
             {children}
           </ScrollView>
         </SafeAreaView>
-      </View>
+      </KeyboardAvoidingView>
     </Modal>
   );
 }
@@ -613,10 +616,10 @@ export function Banner({
   style?: StyleProp<ViewStyle>;
 }) {
   const map = {
-    info: { bg: COLORS.infoLight, fg: COLORS.info, border: '#CBDDEA' },
-    warning: { bg: COLORS.warningLight, fg: COLORS.warning, border: '#EBD9B8' },
-    danger: { bg: COLORS.dangerLight, fg: COLORS.danger, border: '#EFCBC6' },
-    success: { bg: COLORS.successLight, fg: COLORS.success, border: '#CBE2D7' },
+    info: { bg: COLORS.infoLight, fg: COLORS.info, border: COLORS.infoBorder },
+    warning: { bg: COLORS.warningLight, fg: COLORS.warning, border: COLORS.warningBorder },
+    danger: { bg: COLORS.dangerLight, fg: COLORS.danger, border: COLORS.dangerBorder },
+    success: { bg: COLORS.successLight, fg: COLORS.success, border: COLORS.successBorder },
     neutral: { bg: COLORS.surfaceSunken, fg: COLORS.textSecondary, border: COLORS.border },
   }[tone];
 
@@ -702,7 +705,7 @@ const ui = StyleSheet.create({
   cardPad: { padding: SPACING.md },
   cardSunken: { backgroundColor: COLORS.surfaceSunken, borderColor: COLORS.borderLight, shadowOpacity: 0 },
   cardDark: { backgroundColor: COLORS.primaryDark, borderColor: 'rgba(255,255,255,0.08)' },
-  cardAccent: { backgroundColor: COLORS.accentLight, borderColor: '#EBD9B8', shadowOpacity: 0 },
+  cardAccent: { backgroundColor: COLORS.accentLight, borderColor: COLORS.warningBorder, shadowOpacity: 0 },
 
   sectionHeader: {
     flexDirection: 'row',

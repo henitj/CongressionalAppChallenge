@@ -66,7 +66,23 @@ Without it the app works fully — clubs just live on one device.
       on-device to cloud. No other change.
 - [ ] **[done]** Schema, migration script, API and client adapter all written.
 
-## 5. Store assets
+## 5. Android map key (hard blocker for a usable build)
+
+react-native-maps on Android needs a Google Maps key or the map is a blank
+grey rectangle. It is free for mobile map display.
+
+- [ ] **[you]** In your Cloud project, enable **Maps SDK for Android**.
+- [ ] **[you]** Create an API key, then restrict it: Application restriction →
+      Android apps → add package `com.ecotrek.app` with your release SHA-1.
+      An unrestricted key can be lifted out of your APK and used by anyone.
+- [ ] **[you]** Put it in `.env` as `GOOGLE_MAPS_ANDROID_KEY`, and add the same
+      value as an EAS secret so release builds pick it up:
+      `eas secret:create --name GOOGLE_MAPS_ANDROID_KEY --value <key>`
+- [ ] **[done]** `app.config.js` injects it at build time and warns during an
+      Android EAS build if it is missing.
+- iOS needs nothing here — it uses Apple Maps, which requires no key.
+
+## 6. Store assets
 
 - [ ] **[done]** App icon, adaptive icon, splash, favicon, notification icon —
       all generated in `assets/`.
@@ -79,7 +95,7 @@ Without it the app works fully — clubs just live on one device.
 - [ ] **[you]** Short description, 80 characters max.
 - [ ] **[you]** Full description, 4000 characters max.
 
-## 6. Play Console forms
+## 7. Play Console forms
 
 - [ ] **[you]** **Data safety** — declare exactly this:
       - Location (approximate + precise): collected, **not** shared, optional,
@@ -98,7 +114,7 @@ Without it the app works fully — clubs just live on one device.
       credentials.
 - [ ] **[you]** **Ads** — declare none. There are none.
 
-## 7. Build and submit
+## 8. Build and submit
 
 ```bash
 npm install -g eas-cli
@@ -119,7 +135,7 @@ eas submit --platform android
 - [ ] **[you]** Use **internal testing** first. It reviews in hours instead of
       days and catches the obvious rejections.
 
-## 8. Timing
+## 9. Timing
 
 Today is **16 August 2026**. The Congressional App Challenge closes in
 **late October**.
@@ -149,3 +165,7 @@ Today is **16 August 2026**. The Congressional App Challenge closes in
 | Hardcoded mock global leaderboard presented as real | Real data only, with an honest note when it is device-local |
 | No account deletion | Settings → Delete account |
 | Unused `@expo/ngrok` and `@google/genai` dependencies | Removed |
+| Android map had no API key configured — blank grey box on release | `app.config.js` injects it and warns if absent |
+| iOS Google sign-in URL scheme was missing from the config | Derived automatically from the iOS client id |
+| `PATCH /api/clubs/:id` did not exist, so member caps silently failed in cloud mode | Route added; cap round-trips correctly |
+| Streak sync made up to 60 HTTP round trips per check-in | Collapsed into a single batched upsert |

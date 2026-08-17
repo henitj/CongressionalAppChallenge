@@ -29,7 +29,7 @@ import {
   perfectWeeks,
   streakRuns,
 } from '../services/streaks';
-import { answerQuestion, resolveTrail } from '../services/assistant';
+import { answerQuestion, AssistantContext, resolveTrail } from '../services/assistant';
 
 let passed = 0;
 const results: string[] = [];
@@ -387,12 +387,13 @@ test('service and inline streak maths agree', () => {
 
 /* ── Assistant ────────────────────────────────────────────────────────────── */
 
-const ctx = {
+const ctx: AssistantContext = {
   trails: AUSTIN_TRAILS,
   weather: null,
   completedTrailIds: new Set<string>(),
   userCoords: null,
   focus: null,
+  units: 'imperial',
 };
 
 test('resolves a trail from its nickname', () => {
@@ -452,6 +453,15 @@ test('impossible requests say so instead of guessing', () => {
   const a = answerQuestion('a hard stroller friendly swimming trail under 1 mile', ctx);
   assert.equal(a.results.length, 0);
   assert.match(a.text, /Nothing in the catalogue/);
+});
+
+test('assistant answers in the user\'s chosen units', () => {
+  const imperial = answerQuestion('how long is the greenbelt', ctx);
+  assert.match(imperial.text, /7\.9 mi/);
+
+  const metric = answerQuestion('how long is the greenbelt', { ...ctx, units: 'metric' });
+  assert.match(metric.text, /12\.7 km/);
+  assert.doesNotMatch(metric.text, /\bmi\b/, 'metric users should never see miles');
 });
 
 test('assistant never returns an empty answer', () => {

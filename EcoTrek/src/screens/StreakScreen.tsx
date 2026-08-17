@@ -22,7 +22,6 @@ export default function StreakScreen() {
     longestStreak,
     totalActiveDays,
     totalCheckIns,
-    activeDaysLast30,
     perfectWeeks,
     daysToNextBonus,
     nextBonusPoints,

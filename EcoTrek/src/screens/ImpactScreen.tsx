@@ -15,7 +15,7 @@ export default function ImpactScreen() {
   const { history, totalMiles, totalTrees, totalActivities, uniqueTrailsCompleted, deleteActivity } =
     useActivity();
   const { history: pointHistory, totalPoints } = useEcoPoints();
-  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
   const [tab, setTab] = useState<Tab>('activities');
 
   const grants = useMemo(
@@ -38,7 +38,7 @@ export default function ImpactScreen() {
         {/* Summary */}
         <Card>
           <View style={styles.summaryGrid}>
-            <Summary value={formatDistance(totalMiles)} unit={formatDistanceUnit()} label="Distance" />
+            <Summary value={formatDistanceCompact(totalMiles)} unit={formatDistanceUnit()} label="Distance" />
             <Summary value={String(totalTrees)} label="Trees" />
             <Summary value={String(totalActivities)} label="Activities" />
             <Summary value={String(uniqueTrailsCompleted)} label="Trails" />

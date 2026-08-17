@@ -6,7 +6,6 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import { Platform } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
@@ -60,7 +59,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
         const raw = await AsyncStorage.getItem(STORAGE_KEY);
         if (raw) setUser(JSON.parse(raw));
       } catch (e) {
-        console.warn('Failed to restore session', e);
+        console.warn('[auth] could not restore session', e);
       } finally {
         setLoading(false);
       }

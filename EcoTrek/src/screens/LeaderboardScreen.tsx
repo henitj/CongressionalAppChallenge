@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useState } from 'react';
 import {
   View,
   Text,
@@ -30,7 +30,6 @@ import {
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import {
   Club,
-  ClubRanking,
   LEADERBOARD_SIZE,
   MAX_MEMBER_CAP,
   MEMBER_CAP_OPTIONS,
@@ -63,7 +62,7 @@ export default function LeaderboardScreen() {
     deleteClub,
     refresh,
   } = useClub();
-  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { formatDistanceCompact: formatDistance, formatDistanceUnit } = useSettings();
   const { totalActivities } = useActivity();
 
   const [tab, setTab] = useState<Tab>(myClub ? 'my_club' : 'ranking');
@@ -680,7 +679,13 @@ function ClubRankRow({
 function RankBadge({ rank }: { rank: number }) {
   const top = rank <= 3;
   const bg =
-    rank === 1 ? COLORS.accent : rank === 2 ? '#9AA5A0' : rank === 3 ? '#B98A5E' : COLORS.surfaceSunken;
+    rank === 1
+      ? COLORS.accent
+      : rank === 2
+      ? COLORS.medalSilver
+      : rank === 3
+      ? COLORS.medalBronze
+      : COLORS.surfaceSunken;
   return (
     <View style={[styles.rankBadge, { backgroundColor: top ? bg : COLORS.surfaceSunken }]}>
       <Text style={[styles.rankBadgeText, top && { color: '#fff' }]}>{rank}</Text>

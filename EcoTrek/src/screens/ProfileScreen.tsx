@@ -5,7 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import StreakStrip from '../components/StreakStrip';
-import { Screen, Card, Button, Pill, SectionHeader, Avatar, Divider, ProgressBar, Sheet } from '../components/ui';
+import { Screen, Card, Pill, SectionHeader, Avatar, Divider, ProgressBar, Sheet } from '../components/ui';
 
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
@@ -23,9 +23,9 @@ export default function ProfileScreen() {
   const { totalMiles, totalTrees, totalActivities, uniqueTrailsCompleted } = useActivity();
   const { currentStreak, longestStreak, totalActiveDays } = useStreak();
   const { lifetimeCompleted } = useChallenges();
-  const { totalPoints, level, levelIndex, progressPercent, nextLevelPoints, badges, unlockedBadges } =
+  const { totalPoints, level, progressPercent, nextLevelPoints, badges, unlockedBadges } =
     useEcoPoints();
-  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { formatDistanceCompact: formatDistance, formatDistanceUnit } = useSettings();
   const { myClub, myRank, clubsLeading } = useClub();
   const { badgeColumns } = useResponsive();
 

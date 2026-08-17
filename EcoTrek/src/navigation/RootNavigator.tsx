@@ -17,7 +17,7 @@ import StreakScreen from '../screens/StreakScreen';
 import AssistantScreen from '../screens/AssistantScreen';
 
 import Icon, { IconName } from '../components/Icon';
-import { COLORS, RADIUS, SPACING } from '../constants/theme';
+import { COLORS } from '../constants/theme';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();

@@ -28,7 +28,7 @@ export default function HomeScreen() {
   const { challenges, completedCount, totalCount, timeLeftLabel, completeChallenge } =
     useChallenges();
   const { totalPoints, level, progressPercent, nextLevelPoints } = useEcoPoints();
-  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
   const { myClub, myRank } = useClub();
   const { logEvent } = useAnalytics();
   const { refresh: refreshWeather, loading: weatherLoading } = useWeather();
@@ -160,7 +160,7 @@ export default function HomeScreen() {
           <View style={styles.tileRow}>
             <MetricTile
               icon="activity"
-              value={formatDistance(totalMiles)}
+              value={formatDistanceCompact(totalMiles)}
               unit={formatDistanceUnit()}
               label="Distance"
             />
