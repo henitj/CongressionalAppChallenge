@@ -17,3 +17,6 @@ ios/
 *.p8
 *.p12
 *.mobileprovision
+
+# Test artifacts
+coverage/

@@ -50,11 +50,22 @@ npm install
 npm start            # then press w for web, or scan the QR code
 ```
 
+### Tests
+
+Three layers, all runnable with no device and no network:
+
+| Command | What it proves |
+|---|---|
+| `npm run test:logic` | 73 assertions on the pure logic — streak maths, DST-safe dates, week rollover, trail detection, anti-cheat, records, recap, the assistant |
+| `npm run test:render` | Every one of the 15 screens actually renders inside the real provider stack, on an empty account, plus 17 behaviour tests that record activities, join clubs and log species and check what happened to the points |
+| `npm run verify` | Typecheck with unused-code detection, then both suites |
+
 No configuration is needed. With an empty `.env` the app works fully offline on
 the device — that includes clubs, streaks, challenges and leaderboards.
 
 ```bash
-npm test             # 73 logic tests: streaks, records, recap, species, detection, assistant
+npm test             # 73 logic tests + 40 render and behaviour tests
+npm run verify       # typecheck (incl. unused code) then the full suite
 npm run typecheck    # tsc --noEmit
 ```
 

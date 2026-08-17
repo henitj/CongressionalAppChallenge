@@ -52,6 +52,12 @@ type Stored = {
   completed: Record<string, number>; // challengeId -> completedAt
   lifetimeCompleted: number;
   lifetimePoints: number;
+  /**
+   * Finished weeks, so the Sunday recap can say how many challenges you
+   * cleared. `completed` only holds the current week and is wiped on
+   * rollover, so without this the recap could only ever report zero.
+   */
+  history: Record<string, { completed: number; points: number }>;
 };
 
 type ChallengeState = {
@@ -66,6 +72,8 @@ type ChallengeState = {
   pointsEarnedThisWeek: number;
   lifetimeCompleted: number;
   allDone: boolean;
+  /** Challenges finished in a past week, for the recap. */
+  completedInWeek: (weekId: string) => number;
   completeChallenge: (id: string) => Promise<{ points: number; title: string } | null>;
   undoChallenge: (id: string) => Promise<void>;
 };
@@ -77,7 +85,23 @@ const emptyStored = (weekId: string): Stored => ({
   completed: {},
   lifetimeCompleted: 0,
   lifetimePoints: 0,
+  history: {},
 });
+
+/** Files the outgoing week away before its completions are cleared. */
+function archiveWeek(prev: Stored, templates: { id: string; points: number }[]): Stored['history'] {
+  const ids = Object.keys(prev.completed);
+  if (ids.length === 0) return prev.history ?? {};
+
+  const points = ids.reduce(
+    (sum, id) => sum + (templates.find((t) => t.id === id)?.points ?? 0),
+    0
+  );
+  return {
+    ...(prev.history ?? {}),
+    [prev.weekId]: { completed: ids.length, points },
+  };
+}
 
 export function ChallengeProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -104,8 +128,13 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
 
       const rolled =
         stored.weekId === current
-          ? stored
-          : { ...stored, weekId: current, completed: {} };
+          ? { ...stored, history: stored.history ?? {} }
+          : {
+              ...stored,
+              weekId: current,
+              completed: {},
+              history: archiveWeek(stored, challengesForWeek(stored.weekId)),
+            };
 
       setWeekId(current);
       setStore(rolled);
@@ -139,7 +168,12 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
       if (current !== weekId) {
         setWeekId(current);
         setStore((prev) => {
-          const next = { ...prev, weekId: current, completed: {} };
+          const next = {
+            ...prev,
+            weekId: current,
+            completed: {},
+            history: archiveWeek(prev, challengesForWeek(prev.weekId)),
+          };
           saveJSON(storeKey, next);
           return next;
         });
@@ -295,6 +329,8 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
       pointsEarnedThisWeek,
       lifetimeCompleted: store.lifetimeCompleted,
       allDone: completedCount === challenges.length && challenges.length > 0,
+      completedInWeek: (id: string) =>
+        id === weekId ? completedCount : (store.history?.[id]?.completed ?? 0),
       completeChallenge,
       undoChallenge,
     }),
@@ -307,6 +343,7 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
       pointsAvailable,
       pointsEarnedThisWeek,
       store.lifetimeCompleted,
+      store.history,
       completeChallenge,
       undoChallenge,
     ]

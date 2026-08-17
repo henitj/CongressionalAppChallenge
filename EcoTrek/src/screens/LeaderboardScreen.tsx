@@ -71,7 +71,10 @@ export default function LeaderboardScreen() {
   const { formatDistanceCompact: formatDistance, formatDistanceUnit } = useSettings();
   const { totalActivities } = useActivity();
 
-  const [tab, setTab] = useState<Tab>(myClub ? 'my_club' : 'ranking');
+  // Always open on My club. With a club it is the useful view; without one it
+  // is the only place that explains how to join, so sending a new user to the
+  // ranking board instead just showed them an empty list.
+  const [tab, setTab] = useState<Tab>('my_club');
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [showCap, setShowCap] = useState(false);

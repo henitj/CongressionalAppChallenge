@@ -88,6 +88,17 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
   const [loaded, setLoaded] = useState(false);
   const busy = useRef(false);
 
+  /**
+   * Mirrors the latest state for the async writers below.
+   *
+   * checkIn and recordActivity both await point awards partway through, so by
+   * the time they write, the state they captured at render can already be
+   * stale — two activities saved in quick succession would lose the first.
+   * Reading through a ref means every write starts from the current value.
+   */
+  const stateRef = useRef<Stored>(EMPTY);
+  stateRef.current = state;
+
   /* ── Load ──────────────────────────────────────────────────────────────── */
   useEffect(() => {
     let cancelled = false;
@@ -120,6 +131,7 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
 
   const persist = useCallback(
     (next: Stored) => {
+      stateRef.current = next;
       setState(next);
       saveJSON(storeKey, next);
       if (isBackendConfigured()) api.post(ROUTES.streakCheckIn, next);
@@ -133,22 +145,23 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
     busy.current = true;
 
     try {
+      const current = stateRef.current;
       const today = dayKey();
-      const alreadyToday = state.days[today]?.opened;
+      const alreadyToday = current.days[today]?.opened;
 
       const days: DayMap = {
-        ...state.days,
+        ...current.days,
         [today]: {
           opened: true,
-          activities: state.days[today]?.activities ?? 0,
-          miles: state.days[today]?.miles ?? 0,
-          trees: state.days[today]?.trees ?? 0,
+          activities: current.days[today]?.activities ?? 0,
+          miles: current.days[today]?.miles ?? 0,
+          trees: current.days[today]?.trees ?? 0,
         },
       };
 
       const streak = computeStreak(days, today);
-      const longestStreak = Math.max(state.longestStreak, streak);
-      let lastBonusStreak = state.lastBonusStreak;
+      const longestStreak = Math.max(current.longestStreak, streak);
+      let lastBonusStreak = current.lastBonusStreak;
 
       if (!alreadyToday) {
         await award('daily_login');
@@ -167,7 +180,7 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
     } finally {
       busy.current = false;
     }
-  }, [loaded, state, award, persist]);
+  }, [loaded, award, persist]);
 
   // Always call the freshest checkIn. Without this ref the AppState listener
   // captures state from mount and can award the daily check-in twice.
@@ -186,10 +199,11 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
   /* ── Record an activity ────────────────────────────────────────────────── */
   const recordActivity = useCallback(
     async (miles: number, trees: number, when = Date.now()) => {
+      const current = stateRef.current;
       const key = dayKey(when);
-      const prev = state.days[key] ?? { opened: true, activities: 0, miles: 0, trees: 0 };
+      const prev = current.days[key] ?? { opened: true, activities: 0, miles: 0, trees: 0 };
       const days: DayMap = {
-        ...state.days,
+        ...current.days,
         [key]: {
           opened: true,
           activities: prev.activities + 1,
@@ -199,11 +213,11 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
       };
       persist({
         days,
-        longestStreak: Math.max(state.longestStreak, computeStreak(days)),
-        lastBonusStreak: state.lastBonusStreak,
+        longestStreak: Math.max(current.longestStreak, computeStreak(days)),
+        lastBonusStreak: current.lastBonusStreak,
       });
     },
-    [state, persist]
+    [persist]
   );
 
   /* ── Derived ───────────────────────────────────────────────────────────── */

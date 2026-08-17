@@ -8,7 +8,10 @@
     "ios": "expo run:ios",
     "web": "expo start --web",
     "typecheck": "tsc --noEmit",
-    "test": "tsx src/__tests__/logic.test.ts"
+    "test": "tsx src/__tests__/logic.test.ts && jest",
+    "test:logic": "tsx src/__tests__/logic.test.ts",
+    "test:render": "jest",
+    "verify": "tsc --noEmit --noUnusedLocals --noUnusedParameters && npm test"
   },
   "dependencies": {
     "@react-native-async-storage/async-storage": "2.2.0",
@@ -37,7 +40,12 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@testing-library/react-native": "^12.9.0",
+    "@types/jest": "^30.0.0",
     "@types/react": "~19.1.10",
+    "jest": "^29.7.0",
+    "jest-expo": "~54.0.0",
+    "react-test-renderer": "^19.1.0",
     "tsx": "^4.19.2",
     "typescript": "~5.9.2"
   },

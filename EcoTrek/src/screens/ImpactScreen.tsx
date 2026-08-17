@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/Header';
@@ -23,6 +23,13 @@ export default function ImpactScreen() {
   const { speciesLogged, totalSpecies, cleanupCount, litterCollected } = useLogbook();
   const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
   const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'activities');
+
+  // Navigating here again with a different tab (from Profile, say) has to
+  // switch the view. Initial state alone would ignore the second visit.
+  const requestedTab: Tab | undefined = route.params?.tab;
+  useEffect(() => {
+    if (requestedTab) setTab(requestedTab);
+  }, [requestedTab]);
 
   const records = useMemo(
     () => computeRecords(history, formatDistanceCompact, formatDistanceUnit()),

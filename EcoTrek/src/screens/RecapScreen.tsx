@@ -14,6 +14,7 @@ import { useLogbook } from '../context/LogbookContext';
 import { useChallenges } from '../context/ChallengeContext';
 import { useSettings } from '../constants/SettingsContext';
 import { buildRecap, lastWeekStart, RecapMetric } from '../services/recap';
+import { weekKey } from '../services/dates';
 import { computeRecords } from '../services/records';
 
 /**
@@ -29,7 +30,7 @@ export default function RecapScreen() {
   const { history: pointHistory } = useEcoPoints();
   const { days } = useStreak();
   const { sightingsInRange, cleanupsInRange } = useLogbook();
-  const { lifetimeCompleted } = useChallenges();
+  const { lifetimeCompleted, completedInWeek } = useChallenges();
   const { formatDistanceCompact, formatDistanceUnit } = useSettings();
 
   const weekStartMs = useMemo(() => lastWeekStart().getTime(), []);
@@ -44,14 +45,12 @@ export default function RecapScreen() {
       activities: history,
       points: pointHistory,
       activeDays,
-      // Challenges are stored per week, so this counts the ones finished in
-      // the recap window rather than a lifetime figure.
-      challengesCompleted: 0,
+      challengesCompleted: completedInWeek(weekKey(new Date(weekStartMs))),
       sightings: sightingsInRange(weekStartMs, weekStartMs + 7 * 86400000),
       cleanups: cleanupsInRange(weekStartMs, weekStartMs + 7 * 86400000),
       weekStartMs,
     });
-  }, [history, pointHistory, days, sightingsInRange, cleanupsInRange, weekStartMs]);
+  }, [history, pointHistory, days, sightingsInRange, cleanupsInRange, completedInWeek, weekStartMs]);
 
   const records = useMemo(
     () => computeRecords(history, formatDistanceCompact, formatDistanceUnit()),
@@ -126,7 +125,10 @@ export default function RecapScreen() {
             </View>
 
             {/* Extras */}
-            {recap.trailsCompleted > 0 || recap.sightings > 0 || recap.cleanups > 0 ? (
+            {recap.trailsCompleted > 0 ||
+            recap.sightings > 0 ||
+            recap.cleanups > 0 ||
+            recap.challengesCompleted > 0 ? (
               <Card>
                 <Text style={styles.sectionLabel}>Also last week</Text>
                 <View style={styles.extras}>
@@ -142,6 +144,13 @@ export default function RecapScreen() {
                       icon="eye"
                       value={recap.sightings}
                       label={`species logged`}
+                    />
+                  ) : null}
+                  {recap.challengesCompleted > 0 ? (
+                    <Extra
+                      icon="target"
+                      value={recap.challengesCompleted}
+                      label={`challenge${recap.challengesCompleted === 1 ? '' : 's'} finished`}
                     />
                   ) : null}
                   {recap.cleanups > 0 ? (
