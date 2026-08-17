@@ -119,9 +119,9 @@ export default function TrackScreen() {
         setPath((p) => [...p, coord]);
       },
       {
-        mode: 'gps',
         onError: (err) => {
           console.warn('[track]', err);
+          Alert.alert('Location unavailable', err.message);
         },
       }
     );

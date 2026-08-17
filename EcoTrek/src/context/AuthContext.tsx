@@ -10,6 +10,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { GOOGLE_AUTH, isGoogleConfigured } from '../constants/authConfig';
+import { setAuthTokenProvider } from '../services/api';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -19,7 +20,10 @@ export type User = {
   email: string;
   picture?: string;
   provider: 'google' | 'guest';
+  /** Google access token, used to read the profile. */
   accessToken?: string;
+  /** Google ID token. Preferred for authenticating with our own API. */
+  idToken?: string;
 };
 
 type AuthState = {
@@ -49,7 +53,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     iosClientId: GOOGLE_AUTH.iosClientId,
     androidClientId: GOOGLE_AUTH.androidClientId,
     webClientId: GOOGLE_AUTH.webClientId,
-    scopes: ['profile', 'email'],
+    // `openid` is what makes Google return an ID token alongside the access
+    // token. The API prefers the ID token because it is signed and can be
+    // verified offline.
+    scopes: ['openid', 'profile', 'email'],
   });
 
   // Load any persisted session on cold start
@@ -73,6 +80,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const accessToken =
         (response as any).authentication?.accessToken ??
         (response as any).params?.access_token;
+      const idToken =
+        (response as any).authentication?.idToken ?? (response as any).params?.id_token;
+
       if (accessToken) {
         fetchGoogleProfile(accessToken)
           .then(async (profile) => {
@@ -83,6 +93,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               picture: profile.picture,
               provider: 'google',
               accessToken,
+              idToken,
             };
             setUser(u);
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(u));
@@ -130,6 +141,18 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setError(null);
     await AsyncStorage.removeItem(STORAGE_KEY);
   }, []);
+
+  /**
+   * Hands the API client the current token.
+   *
+   * Without this every authenticated request went out with no Authorization
+   * header, so the backend rejected all of them. The ID token is preferred
+   * because the server can verify its signature; the access token is a
+   * fallback the server validates against Google's tokeninfo endpoint.
+   */
+  useEffect(() => {
+    setAuthTokenProvider(() => user?.idToken ?? user?.accessToken ?? null);
+  }, [user?.idToken, user?.accessToken]);
 
   const value = useMemo<AuthState>(
     () => ({

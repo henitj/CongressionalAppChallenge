@@ -28,7 +28,6 @@ export type Coords = { latitude: number; longitude: number };
 
 /** Fallback so weather and trails still work if permission is refused. */
 export const DEFAULT_LOCATION: Coords = { latitude: 30.2672, longitude: -97.7431 }; // Austin
-export const DEFAULT_LOCATION_LABEL = 'Austin, TX';
 
 export type PermissionState = 'unknown' | 'granted' | 'denied' | 'unavailable';
 

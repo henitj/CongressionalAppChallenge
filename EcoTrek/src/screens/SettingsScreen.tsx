@@ -15,6 +15,7 @@ import { useNotifications } from '../context/NotificationContext';
 import { useApp } from '../context/AppContext';
 import { clearUserData } from '../services/storage';
 import { isBackendConfigured } from '../services/api';
+import { googleConfigProblems } from '../constants/authConfig';
 import { PRIVACY_POLICY_URL, SUPPORT_EMAIL, APP_VERSION } from '../constants/appInfo';
 
 export default function SettingsScreen() {
@@ -27,6 +28,11 @@ export default function SettingsScreen() {
   const notif = useNotifications();
 
   const [busy, setBusy] = useState(false);
+
+  // Setup problems are shown during development only. A real user cannot act
+  // on "the Android client ID is missing", but the team needs to see it before
+  // they ship a build where sign-in silently fails.
+  const configProblems = __DEV__ ? googleConfigProblems() : [];
 
   const enableNotifications = async (on: boolean) => {
     if (on) {
@@ -184,6 +190,14 @@ export default function SettingsScreen() {
                 />
                 <Divider style={{ marginLeft: 58 }} />
                 <ToggleRow
+                  icon="calendar"
+                  title="Sunday recap"
+                  subtitle="A summary of your week, every Sunday evening"
+                  value={notif.weeklyRecap}
+                  onChange={(v) => notif.setPref('weeklyRecap', v)}
+                />
+                <Divider style={{ marginLeft: 58 }} />
+                <ToggleRow
                   icon="alert-triangle"
                   title="Severe weather alerts"
                   subtitle="Flood, storm and extreme heat warnings for your area"
@@ -249,6 +263,15 @@ export default function SettingsScreen() {
             </View>
           </Card>
         </View>
+
+        {configProblems.length > 0 ? (
+          <Banner
+            tone="warning"
+            icon="alert-triangle"
+            title="Setup incomplete (development only)"
+            message={configProblems.join(' ')}
+          />
+        ) : null}
 
         {/* Data */}
         <View>

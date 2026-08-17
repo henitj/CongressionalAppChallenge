@@ -23,8 +23,12 @@ Arjun Averineni and Basil Vinesh.
 | **Weather and safety warnings** | Live heat index, storms, air quality and UV, plus official National Weather Service flood, tornado and winter warnings. Dangerous conditions block the Start button behind an explanation. |
 | **Daily login streaks** | A dedicated streak screen with a month calendar, seven milestones, thirteen streak badges and a growing bonus every seven days. |
 | **Weekly challenges** | Five per week, the same five for everyone, reset Monday. Two tracked automatically, three you tick off yourself. Points go to you *and* your club. |
-| **Clubs** | Invite-only: joining needs a six-character code. Owner-set member cap, ranked roster, contribution share, and a real worldwide top ten with your own position pinned below it. |
+| **Clubs** | Invite-only: joining needs a six-character code. Owner-set member cap, shared weekly goals, ranked roster, and a worldwide top ten with your own position pinned below it. |
 | **Impact profile** | A shareable card with your distance, trees, streak, badges, and any club you are currently topping. |
+| **Species checklist** | 66 plants and animals, generated from the trail data itself. Tap to log what you spot; each one counts once. |
+| **Cleanup log** | Record litter you picked up. Small on purpose. |
+| **Personal records** | Longest, fastest, biggest day and week — derived from history, never stored, so deleting an activity correctly retracts its record. |
+| **Sunday recap** | Last week versus the week before, with any records you set. |
 | **Trail assistant** | Ask questions in plain English. It resolves which trail you mean — including nicknames like "the greenbelt" or "the stairmaster" — and remembers it, so "is it dog friendly?" just works. Runs on-device with no API key. |
 | **Local notifications** | Streak reminders, challenge reminders before the week resets, and severe weather alerts. |
 
@@ -50,7 +54,7 @@ No configuration is needed. With an empty `.env` the app works fully offline on
 the device — that includes clubs, streaks, challenges and leaderboards.
 
 ```bash
-npm test             # 53 logic tests: streaks, weeks, detection, anti-cheat, assistant
+npm test             # 73 logic tests: streaks, records, recap, species, detection, assistant
 npm run typecheck    # tsc --noEmit
 ```
 
@@ -101,6 +105,8 @@ src/
     trailDetection.ts       trail matching, completion, anti-cheat
     assistant.ts            on-device trail Q&A with subject memory
     streaks.ts              streak runs, perfect weeks, milestones
+    records.ts              personal bests, derived not stored
+    recap.ts                weekly summary and week-on-week comparison
     geo.ts / dates.ts       pure helpers, unit tested in plain Node
     notifications.ts        local scheduled notifications
 db/                         Neon schema, seed data, column reference

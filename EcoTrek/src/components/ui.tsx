@@ -296,47 +296,6 @@ export function ProgressBar({
 }
 
 /* ════════════════════════════════════════════════════════════════════════
-   Stat tile
-   ════════════════════════════════════════════════════════════════════════ */
-
-export function StatTile({
-  value,
-  label,
-  unit,
-  icon,
-  tone = 'light',
-  style,
-}: {
-  value: string | number;
-  label: string;
-  unit?: string;
-  icon?: IconName;
-  tone?: 'light' | 'dark';
-  style?: StyleProp<ViewStyle>;
-}) {
-  const dark = tone === 'dark';
-  return (
-    <View style={[ui.statTile, dark && ui.statTileDark, style]}>
-      {icon ? (
-        <Icon
-          name={icon}
-          size={16}
-          color={dark ? 'rgba(255,255,255,0.65)' : COLORS.textMuted}
-          strokeWidth={1.9}
-        />
-      ) : null}
-      <View style={ui.statValueRow}>
-        <Text style={[ui.statValue, dark && { color: '#fff' }]}>{value}</Text>
-        {unit ? (
-          <Text style={[ui.statUnit, dark && { color: 'rgba(255,255,255,0.65)' }]}>{unit}</Text>
-        ) : null}
-      </View>
-      <Text style={[ui.statLabel, dark && { color: 'rgba(255,255,255,0.6)' }]}>{label}</Text>
-    </View>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════════════════
    Segmented control
    ════════════════════════════════════════════════════════════════════════ */
 
@@ -374,67 +333,6 @@ export function Segmented<T extends string>({
         );
       })}
     </View>
-  );
-}
-
-/* ════════════════════════════════════════════════════════════════════════
-   List row
-   ════════════════════════════════════════════════════════════════════════ */
-
-export function ListRow({
-  icon,
-  iconColor,
-  iconBg,
-  title,
-  subtitle,
-  right,
-  onPress,
-  chevron,
-  danger,
-  style,
-}: {
-  icon?: IconName;
-  iconColor?: string;
-  iconBg?: string;
-  title: string;
-  subtitle?: string;
-  right?: React.ReactNode;
-  onPress?: () => void;
-  chevron?: boolean;
-  danger?: boolean;
-  style?: StyleProp<ViewStyle>;
-}) {
-  const body = (
-    <View style={[ui.row, style]}>
-      {icon ? (
-        <View style={[ui.rowIcon, { backgroundColor: iconBg ?? COLORS.surfaceSunken }]}>
-          <Icon
-            name={icon}
-            size={17}
-            color={iconColor ?? (danger ? COLORS.danger : COLORS.primary)}
-            strokeWidth={1.9}
-          />
-        </View>
-      ) : null}
-      <View style={{ flex: 1 }}>
-        <Text style={[ui.rowTitle, danger && { color: COLORS.danger }]} numberOfLines={1}>
-          {title}
-        </Text>
-        {subtitle ? (
-          <Text style={ui.rowSubtitle} numberOfLines={2}>
-            {subtitle}
-          </Text>
-        ) : null}
-      </View>
-      {right}
-      {chevron ? <Icon name="chevron-right" size={17} color={COLORS.textLight} /> : null}
-    </View>
-  );
-  if (!onPress) return body;
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => pressed && ui.pressed}>
-      {body}
-    </Pressable>
   );
 }
 
@@ -739,26 +637,6 @@ const ui = StyleSheet.create({
   },
   pillText: { fontSize: 11.5, fontWeight: '600', letterSpacing: 0.1 },
 
-  statTile: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: SPACING.md - 2,
-    gap: 5,
-  },
-  statTileDark: { backgroundColor: 'rgba(255,255,255,0.07)', borderColor: 'rgba(255,255,255,0.1)' },
-  statValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
-  statValue: { fontSize: 22, fontWeight: '700', color: COLORS.text, letterSpacing: -0.25 },
-  statUnit: { fontSize: 12, fontWeight: '600', color: COLORS.textMuted },
-  statLabel: {
-    fontSize: 10.5,
-    fontWeight: '600',
-    color: COLORS.textMuted,
-    letterSpacing: 0.7,
-    textTransform: 'uppercase',
-  },
 
   segmented: {
     flexDirection: 'row',
@@ -780,21 +658,6 @@ const ui = StyleSheet.create({
   segmentText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
   segmentTextActive: { color: COLORS.text },
 
-  row: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm + 4,
-    paddingVertical: 13,
-  },
-  rowIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.sm + 2,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  rowTitle: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  rowSubtitle: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
 
   empty: { alignItems: 'center', paddingVertical: SPACING.xl, paddingHorizontal: SPACING.lg },
   emptyIcon: {

@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react';
+import React, { useCallback, useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -6,6 +6,7 @@ import { NavigationContainer } from '@react-navigation/native';
 
 import RootNavigator from './src/navigation/RootNavigator';
 import SignInScreen from './src/screens/SignInScreen';
+import OnboardingGate from './src/components/OnboardingGate';
 import { COLORS } from './src/constants/theme';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -15,10 +16,12 @@ import { SettingsProvider } from './src/constants/SettingsContext';
 import { ClubProvider, useClub } from './src/constants/ClubContext';
 import { StreakProvider, useStreak } from './src/context/StreakContext';
 import { ActivityProvider, useActivity } from './src/context/ActivityContext';
+import { LogbookProvider, useLogbook } from './src/context/LogbookContext';
 import { ChallengeProvider, useChallenges } from './src/context/ChallengeContext';
 import { NotificationProvider, useNotifications } from './src/context/NotificationContext';
 import { WeatherProvider } from './src/context/WeatherContext';
 import { AnalyticsProvider } from './src/constants/AnalyticsContext';
+import { useClubGoalRewards } from './src/hooks/useClubGoalRewards';
 
 /**
  * Provider order matters — each layer may only use hooks from layers ABOVE it.
@@ -29,14 +32,20 @@ import { AnalyticsProvider } from './src/constants/AnalyticsContext';
  *   Settings    → units
  *   Club        → clubs (needs Auth)
  *   Streak      → daily check-ins (awards points, so needs EcoPoints)
- *   Activity    → hikes/rides (records streak days + club contributions)
+ *   Activity    → hikes and rides (records streak days + club contributions)
+ *   Logbook     → species sightings and cleanups (awards points, pays club)
  *   Challenge   → weekly challenges (reads Activity + Streak, pays Club)
  *   Notification→ reminders (reads Streak + Challenge)
  *   Weather     → conditions (fires safety alerts if notifications are on)
  */
 
-/** Recomputes badge unlocks whenever any underlying stat moves. */
-function BadgeSync() {
+/**
+ * Recomputes badge unlocks and pays the club goal bonus.
+ *
+ * Sits at the bottom of the stack because it is the only place with a view of
+ * every store at once. Renders nothing.
+ */
+function ProgressSync() {
   const { refreshBadges } = useEcoPoints();
   const { totalMiles, totalTrees, totalActivities, hikes, rides, uniqueTrailsCompleted } =
     useActivity();
@@ -50,6 +59,8 @@ function BadgeSync() {
   } = useStreak();
   const { lifetimeCompleted } = useChallenges();
   const { myClub, myMember } = useClub();
+  const { speciesLogged, plantsLogged, animalsLogged, cleanupCount, litterCollected } = useLogbook();
+  const { clubGoalsMet } = useClubGoalRewards();
 
   useEffect(() => {
     refreshBadges({
@@ -68,6 +79,12 @@ function BadgeSync() {
       challengesCompleted: lifetimeCompleted,
       clubsJoined: myClub ? 1 : 0,
       clubsFounded: myMember?.role === 'owner' ? 1 : 0,
+      speciesLogged,
+      plantsLogged,
+      animalsLogged,
+      cleanups: cleanupCount,
+      litterCollected,
+      clubGoalsMet,
     });
   }, [
     refreshBadges,
@@ -86,12 +103,18 @@ function BadgeSync() {
     lifetimeCompleted,
     myClub,
     myMember?.role,
+    speciesLogged,
+    plantsLogged,
+    animalsLogged,
+    cleanupCount,
+    litterCollected,
+    clubGoalsMet,
   ]);
 
   return null;
 }
 
-/** Weather needs to know whether it's allowed to fire safety notifications. */
+/** Weather needs to know whether it may fire safety notifications. */
 function WeatherLayer({ children }: { children: React.ReactNode }) {
   const { enabled, safetyAlerts, permissionGranted } = useNotifications();
   return (
@@ -99,6 +122,20 @@ function WeatherLayer({ children }: { children: React.ReactNode }) {
       {children}
     </WeatherProvider>
   );
+}
+
+/**
+ * Clubs sit above EcoPoints, so joining cannot award its own points. This
+ * layer closes that loop — without it, `club_joined` was a scoring rule that
+ * never fired.
+ */
+function ClubLayer({ children }: { children: React.ReactNode }) {
+  const { award } = useEcoPoints();
+  const handleJoined = useCallback(() => {
+    award('club_joined');
+  }, [award]);
+
+  return <ClubProvider onJoined={handleJoined}>{children}</ClubProvider>;
 }
 
 function Gate() {
@@ -114,29 +151,33 @@ function Gate() {
 
   if (!user) return <SignInScreen />;
 
-  // Everything below here requires a signed-in user, so the stores can be
+  // Everything below requires a signed-in user, so each store can be
   // namespaced by user id and never leak between accounts.
   return (
     <EcoPointsProvider>
       <SettingsProvider>
-        <ClubProvider>
+        <ClubLayer>
           <StreakProvider>
             <ActivityProvider>
-              <ChallengeProvider>
-                <NotificationProvider>
-                  <WeatherLayer>
-                    <AnalyticsProvider>
-                      <BadgeSync />
-                      <NavigationContainer>
-                        <RootNavigator />
-                      </NavigationContainer>
-                    </AnalyticsProvider>
-                  </WeatherLayer>
-                </NotificationProvider>
-              </ChallengeProvider>
+              <LogbookProvider>
+                <ChallengeProvider>
+                  <NotificationProvider>
+                    <WeatherLayer>
+                      <AnalyticsProvider>
+                        <ProgressSync />
+                        <OnboardingGate>
+                          <NavigationContainer>
+                            <RootNavigator />
+                          </NavigationContainer>
+                        </OnboardingGate>
+                      </AnalyticsProvider>
+                    </WeatherLayer>
+                  </NotificationProvider>
+                </ChallengeProvider>
+              </LogbookProvider>
             </ActivityProvider>
           </StreakProvider>
-        </ClubProvider>
+        </ClubLayer>
       </SettingsProvider>
     </EcoPointsProvider>
   );

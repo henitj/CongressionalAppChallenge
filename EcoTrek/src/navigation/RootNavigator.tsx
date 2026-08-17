@@ -15,6 +15,9 @@ import ChallengesScreen from '../screens/ChallengesScreen';
 import ConditionsScreen from '../screens/ConditionsScreen';
 import StreakScreen from '../screens/StreakScreen';
 import AssistantScreen from '../screens/AssistantScreen';
+import SpeciesScreen from '../screens/SpeciesScreen';
+import ActivityDetailScreen from '../screens/ActivityDetailScreen';
+import RecapScreen from '../screens/RecapScreen';
 
 import Icon, { IconName } from '../components/Icon';
 import { COLORS } from '../constants/theme';
@@ -84,6 +87,9 @@ export default function RootNavigator() {
       <Stack.Screen name="Conditions" component={ConditionsScreen} />
       <Stack.Screen name="Streak" component={StreakScreen} />
       <Stack.Screen name="Assistant" component={AssistantScreen} />
+      <Stack.Screen name="Species" component={SpeciesScreen} />
+      <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
+      <Stack.Screen name="Recap" component={RecapScreen} />
       <Stack.Screen name="Safety" component={SafetyScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
     </Stack.Navigator>

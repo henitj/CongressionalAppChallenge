@@ -30,6 +30,18 @@ import {
   streakRuns,
 } from '../services/streaks';
 import { answerQuestion, AssistantContext, resolveTrail } from '../services/assistant';
+import {
+  rarityLabel,
+  SPECIES,
+  SPECIES_BY_ID,
+  speciesForTrail,
+  TOTAL_ANIMALS,
+  TOTAL_PLANTS,
+  TOTAL_SPECIES,
+  trailsForSpecies,
+} from '../constants/species';
+import { computeRecords, RecordActivity } from '../services/records';
+import { buildRecap, lastWeekStart, RecapActivity } from '../services/recap';
 
 let passed = 0;
 const results: string[] = [];
@@ -474,6 +486,224 @@ test('assistant never returns an empty answer', () => {
     const a = answerQuestion(q, ctx);
     assert.ok(a.text.trim().length > 10, `empty answer for: ${q}`);
   }
+});
+
+/* ── Species catalogue ────────────────────────────────────────────────────── */
+
+test('catalogue is built from the trail data', () => {
+  assert.ok(TOTAL_SPECIES > 50, 'should have a real number of species');
+  assert.equal(TOTAL_PLANTS + TOTAL_ANIMALS, TOTAL_SPECIES);
+});
+
+test('species ids are unique and resolvable', () => {
+  const ids = SPECIES.map((s) => s.id);
+  assert.equal(new Set(ids).size, ids.length, 'no duplicate ids');
+  for (const s of SPECIES) {
+    assert.equal(SPECIES_BY_ID.get(s.id)?.name, s.name);
+  }
+});
+
+test('every species is findable on at least one trail', () => {
+  for (const s of SPECIES) {
+    assert.ok(s.trailIds.length >= 1, `${s.name} is on no trail`);
+    assert.ok(trailsForSpecies(s.id).length >= 1, `${s.name} resolves to no trail`);
+  }
+});
+
+test('a species listed twice is merged, not duplicated', () => {
+  // Ashe Juniper appears on several trails in the catalogue.
+  const juniper = SPECIES.find((s) => s.name === 'Ashe Juniper');
+  assert.ok(juniper, 'expected Ashe Juniper in the catalogue');
+  assert.ok(juniper!.trailIds.length > 1, 'should be merged across trails');
+});
+
+test('trail species lists are non-empty and internally consistent', () => {
+  for (const trail of AUSTIN_TRAILS) {
+    const listed = speciesForTrail(trail.id);
+    const expected = (trail.plants?.length ?? 0) + (trail.animals?.length ?? 0);
+    assert.equal(listed.length, expected, `${trail.name} species count mismatch`);
+  }
+});
+
+test('rarity reflects how many trails list it', () => {
+  for (const s of SPECIES) {
+    const label = rarityLabel(s);
+    if (s.trailIds.length === 1) assert.equal(label, 'Rare');
+    if (s.trailIds.length >= 4) assert.equal(label, 'Common');
+  }
+});
+
+/* ── Personal records ─────────────────────────────────────────────────────── */
+
+const fmt = (m: number) => String(Number(m.toFixed(2)));
+
+function act(over: Partial<RecordActivity> = {}): RecordActivity {
+  return {
+    id: `a-${Math.random()}`,
+    type: 'hike',
+    startedAt: new Date(2026, 7, 10, 9).getTime(),
+    miles: 3,
+    durationSec: 3600,
+    trees: 3,
+    valid: true,
+    ...over,
+  };
+}
+
+test('no activities means no records', () => {
+  assert.deepEqual(computeRecords([], fmt, 'mi'), []);
+});
+
+test('records pick the right activity', () => {
+  const short = act({ id: 'short', miles: 2, durationSec: 1800 });
+  const long = act({ id: 'long', miles: 9, durationSec: 10800 });
+  const records = computeRecords([short, long], fmt, 'mi');
+
+  const longest = records.find((r) => r.id === 'longest_distance');
+  assert.equal(longest?.activityId, 'long');
+  assert.equal(longest?.value, '9');
+});
+
+test('invalid activities can never set a record', () => {
+  const real = act({ id: 'real', miles: 4 });
+  const cheated = act({ id: 'cheated', miles: 500, valid: false });
+  const records = computeRecords([real, cheated], fmt, 'mi');
+
+  const longest = records.find((r) => r.id === 'longest_distance');
+  assert.equal(longest?.activityId, 'real', 'a flagged activity must not hold a record');
+});
+
+test('pace records ignore anything under a mile', () => {
+  // A 0.2 mi sprint would otherwise post an unbeatable pace.
+  const sprint = act({ id: 'sprint', miles: 0.2, durationSec: 60 });
+  const real = act({ id: 'real', miles: 3, durationSec: 1800 });
+  const records = computeRecords([sprint, real], fmt, 'mi');
+
+  const pace = records.find((r) => r.id === 'fastest_pace');
+  assert.equal(pace?.activityId, 'real');
+});
+
+test('biggest day sums every activity on that day', () => {
+  const morning = act({ startedAt: new Date(2026, 7, 12, 7).getTime(), miles: 3 });
+  const evening = act({ startedAt: new Date(2026, 7, 12, 19).getTime(), miles: 4 });
+  const other = act({ startedAt: new Date(2026, 7, 14, 9).getTime(), miles: 5 });
+  const records = computeRecords([morning, evening, other], fmt, 'mi');
+
+  assert.equal(records.find((r) => r.id === 'biggest_day')?.raw, 7);
+});
+
+test('records use the caller\'s unit formatter', () => {
+  const km = (m: number) => String(Number((m * 1.60934).toFixed(1)));
+  const records = computeRecords([act({ miles: 10 })], km, 'km');
+  assert.equal(records.find((r) => r.id === 'longest_distance')?.value, '16.1');
+});
+
+/* ── Weekly recap ─────────────────────────────────────────────────────────── */
+
+const MON = new Date(2026, 7, 10).getTime(); // Monday 10 Aug 2026
+const DAY = 86400000;
+
+function ract(dayOffset: number, over: Partial<RecapActivity> = {}): RecapActivity {
+  return {
+    startedAt: MON + dayOffset * DAY + 9 * 3600000,
+    miles: 2,
+    trees: 2,
+    valid: true,
+    ...over,
+  };
+}
+
+test('recap only counts the week it covers', () => {
+  const recap = buildRecap({
+    activities: [ract(0), ract(3), ract(-4), ract(9)],
+    points: [],
+    activeDays: {},
+    challengesCompleted: 0,
+    sightings: 0,
+    cleanups: 0,
+    weekStartMs: MON,
+  });
+  assert.equal(recap.activities, 2, 'activities outside the window must be excluded');
+  assert.equal(recap.miles, 4);
+});
+
+test('recap compares against the previous week', () => {
+  const recap = buildRecap({
+    activities: [ract(0, { miles: 10 }), ract(-6, { miles: 5 })],
+    points: [],
+    activeDays: {},
+    challengesCompleted: 0,
+    sightings: 0,
+    cleanups: 0,
+    weekStartMs: MON,
+  });
+  const distance = recap.metrics.find((m) => m.label === 'Distance')!;
+  assert.equal(distance.value, 10);
+  assert.equal(distance.previous, 5);
+  assert.equal(distance.changePercent, 100);
+});
+
+test('recap reports new rather than a division by zero', () => {
+  const recap = buildRecap({
+    activities: [ract(1, { miles: 3 })],
+    points: [],
+    activeDays: {},
+    challengesCompleted: 0,
+    sightings: 0,
+    cleanups: 0,
+    weekStartMs: MON,
+  });
+  assert.equal(recap.metrics.find((m) => m.label === 'Distance')!.changePercent, null);
+});
+
+test('recap excludes invalid activities', () => {
+  const recap = buildRecap({
+    activities: [ract(0, { miles: 100, valid: false }), ract(1, { miles: 2 })],
+    points: [],
+    activeDays: {},
+    challengesCompleted: 0,
+    sightings: 0,
+    cleanups: 0,
+    weekStartMs: MON,
+  });
+  assert.equal(recap.miles, 2);
+});
+
+test('an empty week is flagged and worded kindly', () => {
+  const recap = buildRecap({
+    activities: [],
+    points: [],
+    activeDays: {},
+    challengesCompleted: 0,
+    sightings: 0,
+    cleanups: 0,
+    weekStartMs: MON,
+  });
+  assert.equal(recap.empty, true);
+  assert.doesNotMatch(recap.headline, /0%|down/i, 'should not scold an empty week');
+});
+
+test('seven active days earns the perfect week headline', () => {
+  const activeDays: Record<string, boolean> = {};
+  for (let i = 0; i < 7; i++) activeDays[dayKey(MON + i * DAY)] = true;
+
+  const recap = buildRecap({
+    activities: [ract(0)],
+    points: [],
+    activeDays,
+    challengesCompleted: 0,
+    sightings: 0,
+    cleanups: 0,
+    weekStartMs: MON,
+  });
+  assert.equal(recap.activeDays, 7);
+  assert.match(recap.headline, /perfect week/i);
+});
+
+test('lastWeekStart lands on the Monday before this one', () => {
+  const start = lastWeekStart(new Date(2026, 7, 16)); // Sunday 16 Aug
+  assert.equal(start.getDay(), 1, 'must be a Monday');
+  assert.equal(dayKey(start), '2026-08-03');
 });
 
 /* ── Report ───────────────────────────────────────────────────────────────── */

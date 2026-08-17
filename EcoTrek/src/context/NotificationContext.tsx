@@ -17,6 +17,7 @@ import {
   requestPermission,
   scheduleChallengeReminder,
   scheduleStreakReminder,
+  scheduleWeeklyRecap,
 } from '../services/notifications';
 
 /**
@@ -31,6 +32,7 @@ export type NotificationPrefs = {
   enabled: boolean;
   streakReminder: boolean;
   challengeReminder: boolean;
+  weeklyRecap: boolean;
   safetyAlerts: boolean;
   reminderHour: number;
 };
@@ -39,6 +41,7 @@ const DEFAULTS: NotificationPrefs = {
   enabled: false,
   streakReminder: true,
   challengeReminder: true,
+  weeklyRecap: true,
   safetyAlerts: true,
   reminderHour: 18,
 };
@@ -105,6 +108,9 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
       if (prefs.challengeReminder) {
         await scheduleChallengeReminder(Math.max(0, totalCount - completedCount));
       }
+      if (prefs.weeklyRecap) {
+        await scheduleWeeklyRecap();
+      }
     })();
   }, [
     loaded,
@@ -112,6 +118,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     prefs.enabled,
     prefs.streakReminder,
     prefs.challengeReminder,
+    prefs.weeklyRecap,
     prefs.reminderHour,
     permissionGranted,
     currentStreak,

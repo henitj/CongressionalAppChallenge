@@ -48,6 +48,7 @@ export const CHANNELS = {
 export const IDENTIFIERS = {
   streak: 'streak-reminder',
   challenge: 'challenge-reminder',
+  recap: 'weekly-recap',
 };
 
 /* ── Permissions ──────────────────────────────────────────────────────────── */
@@ -164,6 +165,39 @@ export async function scheduleChallengeReminder(remaining: number) {
     });
   } catch (e) {
     console.warn('[notifications] challenge schedule failed', e);
+  }
+}
+
+/**
+ * Sunday evening: the week just closed, go and look at it.
+ *
+ * The body is deliberately generic. A scheduled local notification is composed
+ * when it is scheduled, not when it fires, so it cannot quote figures that
+ * would be days out of date by the time it arrives.
+ */
+export async function scheduleWeeklyRecap() {
+  const N = getModule();
+  if (!N || Platform.OS === 'web') return;
+
+  await cancel(IDENTIFIERS.recap);
+
+  try {
+    await N.scheduleNotificationAsync({
+      identifier: IDENTIFIERS.recap,
+      content: {
+        title: 'Your week is in',
+        body: 'See how far you went, and what you beat.',
+        ...(Platform.OS === 'android' ? { channelId: CHANNELS.reminders } : {}),
+      },
+      trigger: {
+        type: N.SchedulableTriggerInputTypes.WEEKLY,
+        weekday: 1, // Sunday (1 = Sunday)
+        hour: 18,
+        minute: 0,
+      },
+    });
+  } catch (e) {
+    console.warn('[notifications] recap schedule failed', e);
   }
 }
 

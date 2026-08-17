@@ -72,6 +72,7 @@ function toClub(club, members) {
     ownerId: club.owner_id,
     createdAt: ms(club.created_at),
     maxMembers: club.max_members,
+    goal: club.goal ?? null,
     totalPoints: club.total_points,
     totalTrees: club.total_trees,
     totalMiles: Number(club.total_miles),
@@ -474,12 +475,18 @@ export const routes = [
           ? club.max_members
           : Math.max(clampCap(body.maxMembers), club.member_count);
 
+      // `goal` is deliberately three-valued: absent leaves it alone, null
+      // clears it, an object replaces it.
+      const goal =
+        body.goal === undefined ? club.goal : body.goal === null ? null : JSON.stringify(body.goal);
+
       const rows = await sql`
         UPDATE clubs SET
           name         = COALESCE(${body.name ?? null}, name),
           description  = COALESCE(${body.description ?? null}, description),
           max_members  = ${cap},
-          is_locked    = COALESCE(${body.isLocked ?? null}, is_locked)
+          is_locked    = COALESCE(${body.isLocked ?? null}, is_locked),
+          goal         = ${goal}::jsonb
         WHERE id = ${params.id}
         RETURNING id`;
       if (!rows.length) throw fail(404, 'club_not_found');
@@ -505,12 +512,46 @@ export const routes = [
     path: '/api/clubs/:id/contribute',
     handler: async ({ user, params, body, sql }) => {
       const { points = 0, trees = 0, miles = 0 } = body;
+      const { activities = 0, weekId = null } = body;
+
       await sql`
         UPDATE club_members
         SET points = GREATEST(0, points + ${points}),
             trees  = GREATEST(0, trees + ${trees}),
             miles  = GREATEST(0, miles + ${miles})
         WHERE club_id = ${params.id} AND user_id = ${user.id} AND left_at IS NULL`;
+
+      // Advance the shared weekly goal. Progress resets automatically when the
+      // stored weekId no longer matches the caller's, so no scheduled job is
+      // needed to roll it over.
+      if (weekId) {
+        const amount =
+          { miles, trees, activities, points }[
+            (await sql`SELECT goal->>'metric' AS m FROM clubs WHERE id = ${params.id}`)[0]?.m ??
+              'points'
+          ] ?? 0;
+
+        await sql`
+          UPDATE clubs
+          SET goal = jsonb_build_object(
+                'metric',   goal->>'metric',
+                'target',   (goal->>'target')::numeric,
+                'weekId',   ${weekId}::text,
+                'progress', CASE WHEN goal->>'weekId' = ${weekId}
+                                 THEN (goal->>'progress')::numeric + ${amount}
+                                 ELSE ${amount} END,
+                'metAt',    CASE
+                              WHEN goal->>'weekId' = ${weekId} AND goal->>'metAt' <> 'null'
+                                THEN goal->'metAt'
+                              WHEN (CASE WHEN goal->>'weekId' = ${weekId}
+                                         THEN (goal->>'progress')::numeric + ${amount}
+                                         ELSE ${amount} END) >= (goal->>'target')::numeric
+                                THEN to_jsonb(EXTRACT(EPOCH FROM now()) * 1000)
+                              ELSE 'null'::jsonb END
+              )
+          WHERE id = ${params.id} AND goal IS NOT NULL`;
+      }
+
       // clubs.total_* are maintained by the refresh_club_totals trigger.
       return { ok: true };
     },
@@ -520,7 +561,54 @@ export const routes = [
   {
     method: 'GET',
     path: '/api/leaderboard/clubs',
-    handler: async ({ sql }) => sql`SELECT * FROM global_club_leaderboard LIMIT 100`,
+    handler: async ({ user, query, sql }) => {
+      const limit = Math.min(50, Math.max(1, Number(query.get('limit')) || 10));
+
+      // Ranking happens in Postgres. The app used to download every club and
+      // sort on the phone, which stops working the moment there are more than
+      // a few hundred.
+      const ranked = await sql`
+        WITH ranked AS (
+          SELECT c.*,
+                 ROW_NUMBER() OVER (
+                   ORDER BY c.total_points DESC, c.total_trees DESC, c.created_at ASC
+                 ) AS rank
+          FROM clubs c
+          WHERE c.deleted_at IS NULL AND c.is_public
+        )
+        SELECT * FROM ranked WHERE rank <= ${limit}`;
+
+      const mine = await sql`
+        WITH ranked AS (
+          SELECT c.id,
+                 ROW_NUMBER() OVER (
+                   ORDER BY c.total_points DESC, c.total_trees DESC, c.created_at ASC
+                 ) AS rank
+          FROM clubs c
+          WHERE c.deleted_at IS NULL AND c.is_public
+        )
+        SELECT r.rank, r.id
+        FROM ranked r
+        JOIN club_members m ON m.club_id = r.id AND m.user_id = ${user.id} AND m.left_at IS NULL
+        LIMIT 1`;
+
+      const [{ count }] = await sql`
+        SELECT COUNT(*)::int AS count FROM clubs WHERE deleted_at IS NULL AND is_public`;
+
+      const ids = [...new Set([...ranked.map((c) => c.id), ...mine.map((m) => m.id)])];
+      const full = ids.length ? await loadClubs(sql, ids) : [];
+      const byId = new Map(full.map((c) => [c.id, c]));
+
+      return {
+        total: count,
+        top: ranked
+          .filter((c) => byId.has(c.id))
+          .map((c) => ({ rank: Number(c.rank), club: byId.get(c.id) })),
+        me: mine.length && byId.has(mine[0].id)
+          ? { rank: Number(mine[0].rank), club: byId.get(mine[0].id) }
+          : null,
+      };
+    },
   },
   {
     method: 'GET',

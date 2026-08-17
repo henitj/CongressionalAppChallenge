@@ -263,6 +263,10 @@ CREATE TABLE IF NOT EXISTS clubs (
   is_locked    BOOLEAN NOT NULL DEFAULT FALSE,     -- locked = no new joins
   is_public    BOOLEAN NOT NULL DEFAULT TRUE,      -- shows in "discover clubs" list
   max_members  INTEGER NOT NULL DEFAULT 100,
+  -- Shared weekly target: { metric, target, weekId, progress, metAt }.
+  -- Stored as JSONB because it is read and written as one unit and never
+  -- queried field by field.
+  goal         JSONB,
   city         TEXT DEFAULT 'Austin, TX',
 
   -- denormalized totals, maintained by trigger

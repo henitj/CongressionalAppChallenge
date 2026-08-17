@@ -205,7 +205,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
 
         // 5. Club contribution.
         if (myClub) {
-          await contribute({ points: pointsAwarded, trees, miles: input.miles });
+          await contribute({ points: pointsAwarded, trees, miles: input.miles, activities: 1 });
         }
       }
 

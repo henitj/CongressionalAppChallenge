@@ -18,4 +18,3 @@ export const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'ecotrek.s
 
 export const APP_NAME = 'EcoTrek';
 
-export const APP_TAGLINE = 'Trails, tracked. Habits, built.';

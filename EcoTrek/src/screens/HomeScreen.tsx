@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -7,6 +7,7 @@ import Icon, { IconName } from '../components/Icon';
 import StreakStrip from '../components/StreakStrip';
 import ConditionsCard from '../components/ConditionsCard';
 import ChallengeItem from '../components/ChallengeItem';
+import CleanupSheet from '../components/CleanupSheet';
 import { Screen, Card, SectionHeader, Pill, ProgressBar, Button } from '../components/ui';
 
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
@@ -19,6 +20,7 @@ import { useSettings } from '../constants/SettingsContext';
 import { useClub } from '../constants/ClubContext';
 import { useAnalytics } from '../constants/AnalyticsContext';
 import { useWeather } from '../context/WeatherContext';
+import { useLogbook } from '../context/LogbookContext';
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
@@ -32,6 +34,8 @@ export default function HomeScreen() {
   const { myClub, myRank } = useClub();
   const { logEvent } = useAnalytics();
   const { refresh: refreshWeather, loading: weatherLoading } = useWeather();
+  const { speciesLogged, totalSpecies } = useLogbook();
+  const [showCleanup, setShowCleanup] = useState(false);
 
   useEffect(() => {
     logEvent('screen_view', { screen: 'Home' });
@@ -43,6 +47,14 @@ export default function HomeScreen() {
     if (h < 12) return 'Good morning';
     if (h < 18) return 'Good afternoon';
     return 'Good evening';
+  }, []);
+
+  // The recap covers the week that just ended, so it is only interesting from
+  // Sunday evening until the end of Monday.
+  const showRecap = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    return (day === 0 && now.getHours() >= 17) || day === 1;
   }, []);
 
   const nextUp = challenges.find((c) => !c.completed);
@@ -68,6 +80,35 @@ export default function HomeScreen() {
       <View style={styles.body}>
         {/* ── Conditions first: should you even go out? ─────────────────── */}
         <ConditionsCard />
+
+        {showRecap ? (
+          <Pressable style={styles.recapBanner} onPress={() => navigation.navigate('Recap')}>
+            <View style={styles.recapIcon}>
+              <Icon name="calendar" size={17} color={COLORS.accentDark} strokeWidth={2} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.recapTitle}>Your week is in</Text>
+              <Text style={styles.recapSub}>See how last week went</Text>
+            </View>
+            <Icon name="chevron-right" size={17} color={COLORS.textLight} />
+          </Pressable>
+        ) : null}
+
+        {/* ── Quick actions ───────────────────────────────────────────────── */}
+        <View style={styles.quickRow}>
+          <QuickAction
+            icon="play"
+            label="Track"
+            onPress={() => navigation.navigate('Track')}
+          />
+          <QuickAction
+            icon="eye"
+            label="Species"
+            hint={`${speciesLogged}/${totalSpecies}`}
+            onPress={() => navigation.navigate('Species')}
+          />
+          <QuickAction icon="trash" label="Cleanup" onPress={() => setShowCleanup(true)} />
+        </View>
 
         {/* ── Streak ─────────────────────────────────────────────────────── */}
         <Card onPress={() => navigation.navigate('Streak')}>
@@ -235,7 +276,10 @@ export default function HomeScreen() {
               {recent.map((a, i) => (
                 <View key={a.id}>
                   {i > 0 ? <View style={styles.sep} /> : null}
-                  <View style={styles.activityRow}>
+                  <Pressable
+                    onPress={() => navigation.navigate('ActivityDetail', { activityId: a.id })}
+                    style={({ pressed }) => [styles.activityRow, pressed && { opacity: 0.7 }]}
+                  >
                     <View style={styles.activityIcon}>
                       <Icon
                         name={a.type === 'bike' ? 'bike' : 'boot'}
@@ -264,7 +308,8 @@ export default function HomeScreen() {
                         <Text style={styles.treeCountText}>{a.trees}</Text>
                       </View>
                     ) : null}
-                  </View>
+                    <Icon name="chevron-right" size={15} color={COLORS.textLight} />
+                  </Pressable>
                 </View>
               ))}
             </Card>
@@ -290,7 +335,35 @@ export default function HomeScreen() {
           </Card>
         )}
       </View>
+
+      <CleanupSheet visible={showCleanup} onClose={() => setShowCleanup(false)} />
     </Screen>
+  );
+}
+
+function QuickAction({
+  icon,
+  label,
+  hint,
+  onPress,
+}: {
+  icon: IconName;
+  label: string;
+  hint?: string;
+  onPress: () => void;
+}) {
+  return (
+    <Pressable
+      onPress={onPress}
+      style={({ pressed }) => [styles.quickAction, pressed && { opacity: 0.75 }]}
+      accessibilityLabel={label}
+    >
+      <View style={styles.quickIcon}>
+        <Icon name={icon} size={18} color={COLORS.primary} strokeWidth={1.9} />
+      </View>
+      <Text style={styles.quickLabel}>{label}</Text>
+      {hint ? <Text style={styles.quickHint}>{hint}</Text> : null}
+    </Pressable>
   );
 }
 
@@ -319,6 +392,49 @@ function MetricTile({
 
 const styles = StyleSheet.create({
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
+
+  recapBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm + 4,
+    backgroundColor: COLORS.accentLight,
+    borderWidth: 1,
+    borderColor: COLORS.warningBorder,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md - 3,
+  },
+  recapIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recapTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  recapSub: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, marginTop: 1 },
+
+  quickRow: { flexDirection: 'row', gap: SPACING.sm },
+  quickAction: {
+    flex: 1,
+    alignItems: 'center',
+    gap: 5,
+    paddingVertical: SPACING.md - 2,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    borderRadius: RADIUS.md,
+  },
+  quickIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
+    backgroundColor: COLORS.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  quickLabel: { ...TYPOGRAPHY.smallMed, color: COLORS.text },
+  quickHint: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
 
   streakHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   streakRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },

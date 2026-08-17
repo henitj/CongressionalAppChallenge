@@ -169,3 +169,8 @@ Today is **16 August 2026**. The Congressional App Challenge closes in
 | iOS Google sign-in URL scheme was missing from the config | Derived automatically from the iOS client id |
 | `PATCH /api/clubs/:id` did not exist, so member caps silently failed in cloud mode | Route added; cap round-trips correctly |
 | Streak sync made up to 60 HTTP round trips per check-in | Collapsed into a single batched upsert |
+| The API auth token was never attached to any request, so every backend call would have failed with 401 | `setAuthTokenProvider` is now wired from AuthContext |
+| Client held a Google *access* token while the server verified an *ID* token | Server accepts and validates either, checking the audience both ways |
+| Location fell back to a simulated walker when permission was denied, inventing distance and awarding real trees | Simulator deleted; failures now surface an error and record nothing |
+| `club_joined`, `plant_identified`, `photo_uploaded` and `cleanup` were scoring rules with no feature behind them | All now have features, except `photo_uploaded` which was removed |
+| Leaderboard ranked every club on the phone | Ranking moved into Postgres, top ten plus your own row |

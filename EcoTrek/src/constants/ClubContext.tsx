@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { loadJSON, saveJSON } from '../services/storage';
+import { weekKey } from '../services/dates';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 
 /**
@@ -47,13 +48,44 @@ export type Club = {
   ownerId: string;
   createdAt: number;
   maxMembers: number;
+  goal: ClubGoal | null;
   members: ClubMember[];
   totalPoints: number;
   totalTrees: number;
   totalMiles: number;
 };
 
-export type Contribution = { points: number; trees: number; miles: number };
+export type Contribution = {
+  points: number;
+  trees: number;
+  miles: number;
+  /** Number of activities this contribution represents. Defaults to 0. */
+  activities?: number;
+};
+
+export type GoalMetric = 'miles' | 'points' | 'trees' | 'activities';
+
+/**
+ * A shared weekly target for the whole club. Progress accumulates from every
+ * member's contributions and resets when the ISO week rolls over, so a goal is
+ * always about *this* week rather than all time.
+ */
+export type ClubGoal = {
+  metric: GoalMetric;
+  target: number;
+  /** Week the progress belongs to, e.g. "2026-W34". */
+  weekId: string;
+  progress: number;
+  /** Set once the target is first reached, so it can be celebrated. */
+  metAt: number | null;
+};
+
+export const GOAL_METRIC_LABEL: Record<GoalMetric, string> = {
+  miles: 'miles covered',
+  points: 'points earned',
+  trees: 'trees earned',
+  activities: 'activities logged',
+};
 
 export type ClubRanking = {
   rank: number;
@@ -87,6 +119,10 @@ type ClubState = {
   leaveClub: () => Promise<void>;
   lockClub: (locked: boolean) => Promise<void>;
   setMaxMembers: (max: number) => Promise<void>;
+  setGoal: (metric: GoalMetric, target: number) => Promise<void>;
+  clearGoal: () => Promise<void>;
+  /** This week's goal with stale progress zeroed out. */
+  activeGoal: ClubGoal | null;
   deleteClub: () => Promise<void>;
   contribute: (c: Contribution) => Promise<void>;
   refresh: () => Promise<void>;
@@ -97,6 +133,14 @@ export const MEMBER_CAP_OPTIONS = [10, 25, 50, 100, 250];
 export const MIN_MEMBER_CAP = 2;
 export const MAX_MEMBER_CAP = 500;
 export const LEADERBOARD_SIZE = 10;
+
+/** Suggested targets when setting a club goal, per metric. */
+export const GOAL_PRESETS: Record<GoalMetric, number[]> = {
+  miles: [10, 25, 50, 100],
+  points: [250, 500, 1000, 2500],
+  trees: [5, 10, 25, 50],
+  activities: [5, 10, 20, 40],
+};
 
 const ClubContext = createContext<ClubState | null>(null);
 
@@ -118,9 +162,34 @@ function clampCap(n: number): number {
   return Math.min(MAX_MEMBER_CAP, Math.max(MIN_MEMBER_CAP, Math.round(n)));
 }
 
-/** Clubs stored before member caps existed default to 100. */
+/** Backfills fields added after a club was first stored. */
 function withDefaults(club: Club): Club {
-  return { ...club, maxMembers: club.maxMembers ?? 100 };
+  return { ...club, maxMembers: club.maxMembers ?? 100, goal: club.goal ?? null };
+}
+
+/**
+ * A goal only counts for the week it was set in. Rather than needing a
+ * scheduled reset, stale progress is zeroed on read — the same trick the
+ * weekly challenges use.
+ */
+function currentGoal(club: Club | null): ClubGoal | null {
+  if (!club?.goal) return null;
+  const week = weekKey();
+  if (club.goal.weekId === week) return club.goal;
+  return { ...club.goal, weekId: week, progress: 0, metAt: null };
+}
+
+function goalAmount(goal: ClubGoal, c: Contribution): number {
+  switch (goal.metric) {
+    case 'miles':
+      return c.miles;
+    case 'trees':
+      return c.trees;
+    case 'activities':
+      return c.activities ?? 0;
+    default:
+      return c.points;
+  }
 }
 
 function recalcTotals(club: Club): Club {
@@ -136,22 +205,60 @@ export function sortedMembers(club: Club): ClubMember[] {
   return [...club.members].sort((a, b) => b.points - a.points || b.miles - a.miles);
 }
 
-export function ClubProvider({ children }: { children: React.ReactNode }) {
+export function ClubProvider({
+  children,
+  onJoined,
+}: {
+  children: React.ReactNode;
+  /**
+   * Fired after a successful join. Clubs cannot award points directly —
+   * EcoPoints sits above this provider — so the app wires the reward in.
+   */
+  onJoined?: () => void;
+}) {
   const { user } = useAuth();
   const userId = user?.id ?? null;
 
   const [clubs, setClubs] = useState<Club[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  /**
+   * Ranking computed by the server. Null in local mode, where there are few
+   * enough clubs to rank on the device.
+   */
+  const [remoteBoard, setRemoteBoard] = useState<{
+    total: number;
+    top: ClubRanking[];
+    me: ClubRanking | null;
+  } | null>(null);
 
   /* ── Load ──────────────────────────────────────────────────────────────── */
   const refresh = useCallback(async () => {
     setSyncing(true);
     try {
       if (isBackendConfigured()) {
-        const res = await api.get<Club[]>(ROUTES.clubs);
-        if (res.ok && Array.isArray(res.data)) {
-          const withCaps = res.data.map(withDefaults);
+        // Two calls: the clubs this user can act on, and the ranked board.
+        // Ranking is the server's job — pulling every club down to sort it on
+        // the phone stops working past a few hundred clubs.
+        const [clubsRes, boardRes] = await Promise.all([
+          api.get<Club[]>(ROUTES.clubs),
+          api.get<{ total: number; top: ClubRanking[]; me: ClubRanking | null }>(
+            `${ROUTES.leaderboardClubs}?limit=${LEADERBOARD_SIZE}`
+          ),
+        ]);
+
+        if (boardRes.ok && boardRes.data) {
+          setRemoteBoard({
+            total: boardRes.data.total,
+            top: boardRes.data.top.map((r) => ({ rank: r.rank, club: withDefaults(r.club) })),
+            me: boardRes.data.me
+              ? { rank: boardRes.data.me.rank, club: withDefaults(boardRes.data.me.club) }
+              : null,
+          });
+        }
+
+        if (clubsRes.ok && Array.isArray(clubsRes.data)) {
+          const withCaps = clubsRes.data.map(withDefaults);
           setClubs(withCaps);
           saveJSON(CLUBS_KEY, withCaps);
           return;
@@ -217,6 +324,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
         ownerId: user.id,
         createdAt: Date.now(),
         maxMembers: clampCap(maxMembers),
+        goal: null,
         members: [
           {
             id: user.id,
@@ -296,9 +404,10 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       });
 
       persist(clubs.map((c) => (c.id === updated.id ? updated : c)));
+      onJoined?.();
       return updated;
     },
-    [user, myClub, clubs, persist]
+    [user, myClub, clubs, persist, onJoined]
   );
 
   const leaveClub = useCallback(async () => {
@@ -350,6 +459,28 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
     [myClub, userId, clubs, persist]
   );
 
+  const setGoal = useCallback(
+    async (metric: GoalMetric, target: number) => {
+      if (!myClub || myClub.ownerId !== userId) return;
+      const goal: ClubGoal = {
+        metric,
+        target: Math.max(1, Math.round(target)),
+        weekId: weekKey(),
+        progress: 0,
+        metAt: null,
+      };
+      if (isBackendConfigured()) await api.patch(ROUTES.club(myClub.id), { goal });
+      persist(clubs.map((c) => (c.id === myClub.id ? { ...c, goal } : c)));
+    },
+    [myClub, userId, clubs, persist]
+  );
+
+  const clearGoal = useCallback(async () => {
+    if (!myClub || myClub.ownerId !== userId) return;
+    if (isBackendConfigured()) await api.patch(ROUTES.club(myClub.id), { goal: null });
+    persist(clubs.map((c) => (c.id === myClub.id ? { ...c, goal: null } : c)));
+  }, [myClub, userId, clubs, persist]);
+
   const deleteClub = useCallback(async () => {
     if (!myClub || myClub.ownerId !== userId) return;
     if (isBackendConfigured()) await api.del(ROUTES.club(myClub.id));
@@ -361,11 +492,27 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       if (!myClub || !userId) return;
 
       if (isBackendConfigured()) {
-        api.post(ROUTES.clubContribute(myClub.id), c);
+        api.post(ROUTES.clubContribute(myClub.id), { ...c, weekId: weekKey() });
       }
+
+      // Roll the weekly goal forward before adding to it, so a contribution
+      // landing in a new week starts that week's progress rather than topping
+      // up last week's.
+      const goal = currentGoal(myClub);
+      const nextGoal: ClubGoal | null = goal
+        ? (() => {
+            const progress = Math.max(0, goal.progress + goalAmount(goal, c));
+            return {
+              ...goal,
+              progress: Math.round(progress * 100) / 100,
+              metAt: goal.metAt ?? (progress >= goal.target ? Date.now() : null),
+            };
+          })()
+        : null;
 
       const updated = recalcTotals({
         ...myClub,
+        goal: nextGoal,
         members: myClub.members.map((m) =>
           m.id === userId
             ? {
@@ -412,15 +559,17 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       .map((club, i) => ({ rank: i + 1, club }));
   }, [clubs]);
 
+  // The server's ranking wins when we have it: it sees every club, not just
+  // the ones cached on this device.
   const topClubs = useMemo(
-    () => rankedClubs.slice(0, LEADERBOARD_SIZE),
-    [rankedClubs]
+    () => remoteBoard?.top ?? rankedClubs.slice(0, LEADERBOARD_SIZE),
+    [remoteBoard, rankedClubs]
   );
 
-  const myClubRanking = useMemo(
-    () => rankedClubs.find((r) => r.club.id === myClub?.id) ?? null,
-    [rankedClubs, myClub?.id]
-  );
+  const myClubRanking = useMemo(() => {
+    if (remoteBoard) return remoteBoard.me;
+    return rankedClubs.find((r) => r.club.id === myClub?.id) ?? null;
+  }, [remoteBoard, rankedClubs, myClub?.id]);
 
   const value = useMemo<ClubState>(
     () => ({
@@ -428,7 +577,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       rankedClubs,
       topClubs,
       myClubRanking,
-      totalClubs: clubs.length,
+      totalClubs: remoteBoard?.total ?? clubs.length,
       loading,
       syncing,
       localOnly: !isBackendConfigured(),
@@ -440,6 +589,9 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       leaveClub,
       lockClub,
       setMaxMembers,
+      setGoal,
+      clearGoal,
+      activeGoal: currentGoal(myClub),
       deleteClub,
       contribute,
       refresh,
@@ -449,6 +601,7 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       rankedClubs,
       topClubs,
       myClubRanking,
+      remoteBoard,
       clubs.length,
       loading,
       syncing,
@@ -460,6 +613,8 @@ export function ClubProvider({ children }: { children: React.ReactNode }) {
       leaveClub,
       lockClub,
       setMaxMembers,
+      setGoal,
+      clearGoal,
       deleteClub,
       contribute,
       refresh,

@@ -6,12 +6,13 @@ export type { Coord };
 export { haversineMiles };
 
 export type Subscription = { remove: () => void };
-export type TrackingMode = 'gps' | 'demo';
 
 export type StartOptions = {
-  mode?: TrackingMode;
   onError?: (err: Error) => void;
 };
+
+/** Returned when tracking cannot start, so callers always get a safe handle. */
+const NO_OP_SUBSCRIPTION: Subscription = { remove: () => {} };
 
 /**
  * Get a one-shot current position to drop the user's pin before they start.
@@ -37,19 +38,21 @@ export async function getCurrentPosition(): Promise<Coord | null> {
       );
     });
   }
+
   try {
     const Location = await import('expo-location');
-    const { status } = await Location.requestForegroundPermissionsAsync();
+    const { status } = await Location.getForegroundPermissionsAsync();
     if (status !== 'granted') return null;
-    const loc = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.BestForNavigation,
+
+    const pos = await Location.getCurrentPositionAsync({
+      accuracy: Location.Accuracy.Balanced,
     });
     return {
-      latitude: loc.coords.latitude,
-      longitude: loc.coords.longitude,
-      timestamp: loc.timestamp,
-      accuracy: loc.coords.accuracy ?? undefined,
-      speed: loc.coords.speed ?? undefined,
+      latitude: pos.coords.latitude,
+      longitude: pos.coords.longitude,
+      timestamp: pos.timestamp,
+      accuracy: pos.coords.accuracy ?? undefined,
+      speed: pos.coords.speed ?? undefined,
     };
   } catch {
     return null;
@@ -57,23 +60,27 @@ export async function getCurrentPosition(): Promise<Coord | null> {
 }
 
 /**
- * Cross-platform location tracking.
- * - Web: navigator.geolocation.watchPosition with high accuracy
- * - Native (iOS/Android): expo-location.watchPositionAsync
- * - Demo mode: simulated walker around downtown Austin (for testing)
+ * Streams the device's real position.
+ *
+ * There is deliberately no simulated fallback. An earlier version dropped into
+ * a fake "walker around Lady Bird Lake" whenever permission was denied or the
+ * browser had no geolocation — which meant the app invented distance and
+ * awarded real trees for it. If we cannot read the GPS we say so and record
+ * nothing.
+ *
+ * - Web: navigator.geolocation.watchPosition
+ * - Native: expo-location.watchPositionAsync at navigation accuracy
  */
 export async function startTracking(
   onCoord: (c: Coord) => void,
   opts: StartOptions = {}
 ): Promise<Subscription> {
-  const mode = opts.mode ?? 'gps';
-  if (mode === 'demo') return startSimulator(onCoord);
-
   if (Platform.OS === 'web') {
     if (typeof navigator === 'undefined' || !navigator.geolocation) {
-      opts.onError?.(new Error('Geolocation not supported in this browser'));
-      return startSimulator(onCoord);
+      opts.onError?.(new Error('This browser cannot provide your location.'));
+      return NO_OP_SUBSCRIPTION;
     }
+
     const watchId = navigator.geolocation.watchPosition(
       (pos) =>
         onCoord({
@@ -83,45 +90,48 @@ export async function startTracking(
           accuracy: pos.coords.accuracy,
           speed: pos.coords.speed ?? undefined,
         }),
-      (err) => {
-        opts.onError?.(new Error(err.message));
-      },
+      (err) => opts.onError?.(new Error(err.message)),
       { enableHighAccuracy: true, maximumAge: 1000, timeout: 15000 }
     );
     return { remove: () => navigator.geolocation.clearWatch(watchId) };
   }
 
-  const Location = await import('expo-location');
-  const { status } = await Location.requestForegroundPermissionsAsync();
-  if (status !== 'granted') {
-    opts.onError?.(new Error('Location permission denied'));
-    return startSimulator(onCoord);
-  }
+  try {
+    const Location = await import('expo-location');
+    const { status } = await Location.requestForegroundPermissionsAsync();
+    if (status !== 'granted') {
+      opts.onError?.(new Error('Location permission denied'));
+      return NO_OP_SUBSCRIPTION;
+    }
 
-  const sub = await Location.watchPositionAsync(
-    {
-      accuracy: Location.Accuracy.BestForNavigation,
-      timeInterval: 1000,
-      distanceInterval: 2, // meters
-    },
-    (loc) =>
-      onCoord({
-        latitude: loc.coords.latitude,
-        longitude: loc.coords.longitude,
-        timestamp: loc.timestamp,
-        accuracy: loc.coords.accuracy ?? undefined,
-        speed: loc.coords.speed ?? undefined,
-      })
-  );
-  return { remove: () => sub.remove() };
+    const sub = await Location.watchPositionAsync(
+      {
+        accuracy: Location.Accuracy.BestForNavigation,
+        timeInterval: 1000,
+        distanceInterval: 2, // metres
+      },
+      (loc) =>
+        onCoord({
+          latitude: loc.coords.latitude,
+          longitude: loc.coords.longitude,
+          timestamp: loc.timestamp,
+          accuracy: loc.coords.accuracy ?? undefined,
+          speed: loc.coords.speed ?? undefined,
+        })
+    );
+    return { remove: () => sub.remove() };
+  } catch (e: any) {
+    opts.onError?.(new Error(e?.message ?? 'Could not start location tracking'));
+    return NO_OP_SUBSCRIPTION;
+  }
 }
 
 /**
- * Smooths a new coordinate against the previous one:
- *   - Rejects points with poor accuracy (>50m)
- *   - Rejects points that imply teleportation (>100mph)
- *   - Rejects micro-noise (<2m) so a stationary phone doesn't accumulate distance
- * Returns the miles to add (0 if rejected).
+ * Smooths a new coordinate against the previous one and returns the miles to
+ * add. Returns 0 when the point should be discarded:
+ *   - accuracy worse than 50 m
+ *   - movement under 2 m, which is a stationary phone's GPS wandering
+ *   - implied speed over 100 mph, which is a GPS glitch, not a person
  */
 export function smoothDelta(prev: Coord | undefined, next: Coord): number {
   if (!prev) return 0;
@@ -129,36 +139,12 @@ export function smoothDelta(prev: Coord | undefined, next: Coord): number {
 
   const dtSec = Math.max(0.1, (next.timestamp - prev.timestamp) / 1000);
   const miles = haversineMiles(prev, next);
-  const meters = miles * 1609.34;
+  const metres = miles * 1609.34;
 
-  // Reject GPS jitter when stationary
-  if (meters < 2) return 0;
+  if (metres < 2) return 0;
 
-  // Reject impossible speeds (>100mph)
   const mph = miles / (dtSec / 3600);
   if (mph > 100) return 0;
 
   return miles;
-}
-
-function startSimulator(onCoord: (c: Coord) => void): Subscription {
-  // Simulates a 12 mph bike ride starting at Lady Bird Lake (Butler Trail)
-  let lat = 30.2628;
-  let lng = -97.7484;
-  let bearing = Math.random() * Math.PI * 2;
-  const interval = setInterval(() => {
-    bearing += (Math.random() - 0.5) * 0.4;
-    // ~ 12 mph = 5.4 m/s. Tick is 1s, so ~5m per tick = ~0.00005 deg
-    const step = 0.00005;
-    lat += Math.cos(bearing) * step;
-    lng += Math.sin(bearing) * step;
-    onCoord({
-      latitude: lat,
-      longitude: lng,
-      timestamp: Date.now(),
-      accuracy: 5,
-      speed: 5.4,
-    });
-  }, 1000);
-  return { remove: () => clearInterval(interval) };
 }

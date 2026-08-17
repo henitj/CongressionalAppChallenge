@@ -15,6 +15,7 @@ import { useChallenges } from '../context/ChallengeContext';
 import { useEcoPoints, Badge } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useClub, sortedMembers } from '../constants/ClubContext';
+import { useLogbook } from '../context/LogbookContext';
 import { useResponsive } from '../hooks/useResponsive';
 
 export default function ProfileScreen() {
@@ -28,6 +29,7 @@ export default function ProfileScreen() {
   const { formatDistanceCompact: formatDistance, formatDistanceUnit } = useSettings();
   const { myClub, myRank, clubsLeading } = useClub();
   const { badgeColumns } = useResponsive();
+  const { speciesLogged, totalSpecies, cleanupCount } = useLogbook();
 
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
 
@@ -252,12 +254,22 @@ export default function ProfileScreen() {
             <Divider style={{ marginLeft: 58 }} />
             <StatRow icon="target" label="Challenges finished" value={String(lifetimeCompleted)} />
             <Divider style={{ marginLeft: 58 }} />
+            <StatRow icon="eye" label="Species logged" value={`${speciesLogged} / ${totalSpecies}`} />
+            <Divider style={{ marginLeft: 58 }} />
+            <StatRow icon="trash" label="Cleanups logged" value={String(cleanupCount)} />
+            <Divider style={{ marginLeft: 58 }} />
             <StatRow icon="star" label="EcoPoints" value={totalPoints.toLocaleString()} />
           </Card>
         </View>
 
         {/* ── Links ───────────────────────────────────────────────────────── */}
         <Card padded={false}>
+          <LinkRow icon="eye" label="Species checklist" onPress={() => navigation.navigate('Species')} />
+          <Divider style={{ marginLeft: 58 }} />
+          <LinkRow icon="calendar" label="Last week's recap" onPress={() => navigation.navigate('Recap')} />
+          <Divider style={{ marginLeft: 58 }} />
+          <LinkRow icon="award" label="Personal records" onPress={() => navigation.navigate('Impact', { tab: 'records' })} />
+          <Divider style={{ marginLeft: 58 }} />
           <LinkRow icon="flame" label="Streak and milestones" onPress={() => navigation.navigate('Streak')} />
           <Divider style={{ marginLeft: 58 }} />
           <LinkRow icon="target" label="Weekly challenges" onPress={() => navigation.navigate('Challenges')} />

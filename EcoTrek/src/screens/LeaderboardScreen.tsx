@@ -30,6 +30,9 @@ import {
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import {
   Club,
+  GOAL_METRIC_LABEL,
+  GOAL_PRESETS,
+  GoalMetric,
   LEADERBOARD_SIZE,
   MAX_MEMBER_CAP,
   MEMBER_CAP_OPTIONS,
@@ -59,6 +62,9 @@ export default function LeaderboardScreen() {
     leaveClub,
     lockClub,
     setMaxMembers,
+    setGoal,
+    clearGoal,
+    activeGoal,
     deleteClub,
     refresh,
   } = useClub();
@@ -69,6 +75,9 @@ export default function LeaderboardScreen() {
   const [showCreate, setShowCreate] = useState(false);
   const [showJoin, setShowJoin] = useState(false);
   const [showCap, setShowCap] = useState(false);
+  const [showGoal, setShowGoal] = useState(false);
+  const [goalMetric, setGoalMetric] = useState<GoalMetric>('miles');
+  const [goalTarget, setGoalTarget] = useState(25);
 
   const [name, setName] = useState('');
   const [description, setDescription] = useState('');
@@ -87,6 +96,7 @@ export default function LeaderboardScreen() {
     setShowCreate(false);
     setShowJoin(false);
     setShowCap(false);
+    setShowGoal(false);
   };
 
   const handleCreate = async () => {
@@ -225,6 +235,84 @@ export default function LeaderboardScreen() {
                   </View>
                 </Pressable>
               </Card>
+
+              {/* Weekly goal */}
+              {activeGoal ? (
+                <Card>
+                  <View style={styles.goalHead}>
+                    <View style={[styles.goalIcon, !!activeGoal.metAt && styles.goalIconMet]}>
+                      <Icon
+                        name={activeGoal.metAt ? 'check' : 'target'}
+                        size={17}
+                        color={activeGoal.metAt ? '#fff' : COLORS.primary}
+                        strokeWidth={activeGoal.metAt ? 2.6 : 2}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.sectionLabel}>This week's goal</Text>
+                      <Text style={styles.goalTitle}>
+                        {activeGoal.target} {GOAL_METRIC_LABEL[activeGoal.metric]}
+                      </Text>
+                    </View>
+                    {activeGoal.metAt ? <Pill label="Met" tone="primary" size="sm" icon="check" /> : null}
+                  </View>
+
+                  <ProgressBar
+                    percent={(activeGoal.progress / activeGoal.target) * 100}
+                    color={activeGoal.metAt ? COLORS.primary : COLORS.accent}
+                    style={{ marginTop: SPACING.md - 2 }}
+                  />
+                  <Text style={styles.goalProgress}>
+                    {activeGoal.metAt
+                      ? `Goal met together. Everyone who contributed earned a bonus.`
+                      : `${formatGoalValue(activeGoal.progress)} of ${activeGoal.target} — ${formatGoalValue(
+                          Math.max(0, activeGoal.target - activeGoal.progress)
+                        )} to go`}
+                  </Text>
+
+                  {myClub.ownerId === user?.id ? (
+                    <View style={styles.goalActions}>
+                      <Button
+                        label="Change goal"
+                        variant="secondary"
+                        size="sm"
+                        style={{ flex: 1 }}
+                        onPress={() => {
+                          setGoalMetric(activeGoal.metric);
+                          setGoalTarget(activeGoal.target);
+                          setShowGoal(true);
+                        }}
+                      />
+                      <Button
+                        label="Remove"
+                        variant="ghost"
+                        tone={COLORS.textMuted}
+                        size="sm"
+                        onPress={clearGoal}
+                      />
+                    </View>
+                  ) : null}
+                </Card>
+              ) : myClub.ownerId === user?.id ? (
+                <Card tone="sunken">
+                  <View style={styles.goalEmpty}>
+                    <Icon name="target" size={18} color={COLORS.textMuted} strokeWidth={1.9} />
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.goalEmptyTitle}>No weekly goal set</Text>
+                      <Text style={styles.goalEmptyText}>
+                        Give the club one number to chase together. It resets every Monday.
+                      </Text>
+                    </View>
+                  </View>
+                  <Button
+                    label="Set a goal"
+                    icon="target"
+                    size="sm"
+                    style={{ marginTop: SPACING.sm + 2 }}
+                    onPress={() => setShowGoal(true)}
+                  />
+                </Card>
+              ) : null}
 
               {/* Capacity */}
               <Card>
@@ -588,6 +676,73 @@ export default function LeaderboardScreen() {
         </View>
       </Sheet>
 
+      {/* ── Weekly goal ───────────────────────────────────────────────────── */}
+      <Sheet
+        visible={showGoal}
+        onClose={resetSheets}
+        title="Weekly club goal"
+        subtitle="One shared target. Resets Monday."
+      >
+        <View style={{ gap: SPACING.md }}>
+          <View style={{ gap: 8 }}>
+            <Text style={styles.fieldLabel}>What are you chasing?</Text>
+            <View style={styles.capOptions}>
+              {(Object.keys(GOAL_PRESETS) as GoalMetric[]).map((m) => (
+                <Pressable
+                  key={m}
+                  onPress={() => {
+                    setGoalMetric(m);
+                    setGoalTarget(GOAL_PRESETS[m][1]);
+                  }}
+                  style={[styles.capChip, goalMetric === m && styles.capChipOn]}
+                >
+                  <Text style={[styles.capChipText, goalMetric === m && styles.capChipTextOn]}>
+                    {GOAL_METRIC_LABEL[m]}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+          </View>
+
+          <View style={{ gap: 8 }}>
+            <Text style={styles.fieldLabel}>Target</Text>
+            <View style={styles.capOptions}>
+              {GOAL_PRESETS[goalMetric].map((n) => (
+                <Pressable
+                  key={n}
+                  onPress={() => setGoalTarget(n)}
+                  style={[styles.capChip, goalTarget === n && styles.capChipOn]}
+                >
+                  <Text style={[styles.capChipText, goalTarget === n && styles.capChipTextOn]}>
+                    {n}
+                  </Text>
+                </Pressable>
+              ))}
+            </View>
+            <TextInput
+              value={String(goalTarget)}
+              onChangeText={(t) => setGoalTarget(Number(t.replace(/[^0-9]/g, '')) || 0)}
+              keyboardType="number-pad"
+              maxLength={5}
+              style={styles.input}
+            />
+            <Text style={styles.fieldHint}>
+              Everyone's contributions add up. Whoever crosses the line, the whole club gets credit.
+            </Text>
+          </View>
+
+          <Button
+            label="Set goal"
+            full
+            disabled={goalTarget < 1}
+            onPress={async () => {
+              await setGoal(goalMetric, goalTarget);
+              resetSheets();
+            }}
+          />
+        </View>
+      </Sheet>
+
       {/* ── Capacity ──────────────────────────────────────────────────────── */}
       <Sheet
         visible={showCap}
@@ -674,6 +829,11 @@ function ClubRankRow({
       <Text style={styles.rankPoints}>{club.totalPoints.toLocaleString()}</Text>
     </View>
   );
+}
+
+/** Goal progress can be fractional for miles but never for counts. */
+function formatGoalValue(n: number): string {
+  return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(1)));
 }
 
 function RankBadge({ rank }: { rank: number }) {
@@ -806,6 +966,23 @@ const styles = StyleSheet.create({
 
   sectionLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
   sectionTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, marginBottom: SPACING.sm + 2 },
+
+  goalHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+  goalIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.sm + 2,
+    backgroundColor: COLORS.primarySurface,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  goalIconMet: { backgroundColor: COLORS.primary },
+  goalTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, marginTop: 1 },
+  goalProgress: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 6 },
+  goalActions: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginTop: SPACING.md - 2 },
+  goalEmpty: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+  goalEmptyTitle: { ...TYPOGRAPHY.h4, color: COLORS.textSecondary },
+  goalEmptyText: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
 
   capRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
   capValue: { ...TYPOGRAPHY.h4, color: COLORS.text, marginTop: 2 },

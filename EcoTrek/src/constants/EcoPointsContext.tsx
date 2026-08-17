@@ -8,6 +8,7 @@ import React, {
 } from 'react';
 import { IconName } from '../components/Icon';
 import { LEVELS } from './theme';
+import { TOTAL_SPECIES } from './species';
 import { useAuth } from '../context/AuthContext';
 import { keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
@@ -16,12 +17,12 @@ export type EcoAction =
   | 'hike_mile'
   | 'bike_mile'
   | 'tree_earned'
-  | 'plant_identified'
-  | 'photo_uploaded'
+  | 'species_logged'
   | 'trail_completed'
   | 'cleanup'
   | 'challenge_completed'
   | 'club_joined'
+  | 'club_goal'
   | 'daily_login'
   | 'streak_bonus';
 
@@ -59,6 +60,12 @@ export type BadgeInputs = {
   challengesCompleted: number;
   clubsJoined: number;
   clubsFounded: number;
+  speciesLogged: number;
+  plantsLogged: number;
+  animalsLogged: number;
+  cleanups: number;
+  litterCollected: number;
+  clubGoalsMet: number;
 };
 
 type EcoPointsState = {
@@ -84,12 +91,12 @@ export const POINT_VALUES: Record<EcoAction, number> = {
   hike_mile: 5,
   bike_mile: 3,
   tree_earned: 8,
-  plant_identified: 2,
-  photo_uploaded: 1,
+  species_logged: 4,
   trail_completed: 25,
   cleanup: 15,
   challenge_completed: 25,
   club_joined: 5,
+  club_goal: 20,
   daily_login: 2,
   streak_bonus: 10,
 };
@@ -98,12 +105,12 @@ export const ACTION_LABELS: Record<EcoAction, string> = {
   hike_mile: 'Hiked a mile',
   bike_mile: 'Biked a mile',
   tree_earned: 'Tree earned',
-  plant_identified: 'Plant identified',
-  photo_uploaded: 'Photo uploaded',
+  species_logged: 'Species spotted',
   trail_completed: 'Trail completed',
   cleanup: 'Trail cleanup',
   challenge_completed: 'Challenge completed',
   club_joined: 'Joined a club',
+  club_goal: 'Club goal met',
   daily_login: 'Daily check-in',
   streak_bonus: 'Streak bonus',
 };
@@ -155,6 +162,17 @@ const DEFAULT_BADGES: Badge[] = [
   { id: 'comeback', name: 'Comeback', description: 'Lose a 7-day streak and build a new one', icon: 'refresh', unlocked: false },
   { id: 'hundred_days', name: 'Hundred Days Out', description: 'Log activities on 100 separate days', icon: 'award', unlocked: false },
 
+  // ── Field log ────────────────────────────────────────────────────────────
+  { id: 'first_sighting', name: 'First Sighting', description: 'Log your first species', icon: 'eye', unlocked: false },
+  { id: 'ten_species', name: 'Naturalist', description: 'Log 10 different species', icon: 'eye', unlocked: false },
+  { id: 'thirty_species', name: 'Field Guide', description: 'Log 30 different species', icon: 'search', unlocked: false },
+  { id: 'all_species', name: 'Completionist', description: 'Log every species in the catalogue', icon: 'award', unlocked: false },
+  { id: 'botanist', name: 'Botanist', description: 'Log 15 different plants', icon: 'leaf', unlocked: false },
+  { id: 'tracker', name: 'Tracker', description: 'Log 15 different animals', icon: 'eye', unlocked: false },
+  { id: 'first_cleanup', name: 'Cleanup Crew', description: 'Log your first trail cleanup', icon: 'trash', unlocked: false },
+  { id: 'ten_cleanups', name: 'Trail Keeper', description: 'Log 10 cleanups', icon: 'trash', unlocked: false },
+  { id: 'hundred_pieces', name: 'Hundred Pieces', description: 'Collect 100 pieces of litter', icon: 'shield', unlocked: false },
+
   // ── Challenges, trails, clubs ────────────────────────────────────────────
   { id: 'first_challenge', name: 'Challenger', description: 'Finish your first weekly challenge', icon: 'target', unlocked: false },
   { id: 'ten_challenges', name: 'Habit Builder', description: 'Finish 10 challenges', icon: 'target', unlocked: false },
@@ -167,6 +185,8 @@ const DEFAULT_BADGES: Badge[] = [
   { id: 'eco_champion', name: 'EcoChampion', description: 'Reach the EcoChampion level', icon: 'crown', unlocked: false },
   { id: 'club_member', name: 'Team Player', description: 'Join a club', icon: 'users', unlocked: false },
   { id: 'club_founder', name: 'Club Founder', description: 'Create a club', icon: 'crown', unlocked: false },
+  { id: 'goal_getter', name: 'Goal Getter', description: 'Help your club hit a weekly goal', icon: 'target', unlocked: false },
+  { id: 'goal_streak', name: 'In Formation', description: 'Hit five club weekly goals', icon: 'users', unlocked: false },
 ];
 
 const EcoPointsContext = createContext<EcoPointsState | null>(null);
@@ -287,6 +307,17 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
           eco_champion: levelIndex >= 7,
           club_member: inputs.clubsJoined >= 1,
           club_founder: inputs.clubsFounded >= 1,
+          first_sighting: inputs.speciesLogged >= 1,
+          ten_species: inputs.speciesLogged >= 10,
+          thirty_species: inputs.speciesLogged >= 30,
+          all_species: TOTAL_SPECIES > 0 && inputs.speciesLogged >= TOTAL_SPECIES,
+          botanist: inputs.plantsLogged >= 15,
+          tracker: inputs.animalsLogged >= 15,
+          first_cleanup: inputs.cleanups >= 1,
+          ten_cleanups: inputs.cleanups >= 10,
+          hundred_pieces: inputs.litterCollected >= 100,
+          goal_getter: inputs.clubGoalsMet >= 1,
+          goal_streak: inputs.clubGoalsMet >= 5,
         };
 
         let changed = false;

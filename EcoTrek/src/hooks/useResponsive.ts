@@ -55,12 +55,3 @@ export function useResponsive(): Responsive {
     badgeColumns: isLarge ? 6 : isTablet ? 5 : 3,
   };
 }
-
-/**
- * Width percentage for one cell in an n-column grid that uses `gap`.
- * Returned as a number of points so it survives nested flex containers,
- * which percentage widths do not always do on Android.
- */
-export function gridItemWidth(available: number, columns: number, gap: number): number {
-  return (available - gap * (columns - 1)) / columns;
-}

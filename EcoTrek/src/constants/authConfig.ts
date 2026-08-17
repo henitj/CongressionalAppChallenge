@@ -50,13 +50,6 @@ export const GOOGLE_AUTH = {
   androidClientId: env.android || fallback.android,
 };
 
-/** Reversed iOS client id, needed for the iOS URL scheme in app.json. */
-export function iosUrlScheme(): string | null {
-  const id = GOOGLE_AUTH.iosClientId;
-  if (!id) return null;
-  return `com.googleusercontent.apps.${id.replace('.apps.googleusercontent.com', '')}`;
-}
-
 function looksReal(id: string): boolean {
   return id.length > 0 && !id.startsWith('YOUR_') && id.endsWith('.apps.googleusercontent.com');
 }

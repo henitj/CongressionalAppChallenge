@@ -27,26 +27,77 @@ const CLIENT_IDS = (process.env.GOOGLE_CLIENT_IDS ?? '')
 const oauth = new OAuth2Client();
 
 /**
- * Verifies a Google ID token and returns the profile.
+ * Verifies a token from Google and returns the profile behind it.
  *
  * This is the security boundary of the whole system. The app sends a token,
- * NOT a user id — otherwise anyone could POST someone else's user id and write
- * to their account. Google signs the token; we check that signature and that
- * it was issued for one of our clients.
+ * never a user id — otherwise anyone could POST someone else's id and write to
+ * their account.
+ *
+ * Two token types are accepted, because which one the app holds depends on the
+ * platform and the OAuth flow:
+ *
+ *   1. An ID token — a signed JWT. Verified offline against Google's public
+ *      keys. This is the preferred path.
+ *   2. An access token — an opaque string. Validated by asking Google's
+ *      tokeninfo endpoint who it belongs to.
+ *
+ * Both paths check the audience against our own client IDs, so a token minted
+ * for some other app cannot be replayed against this API.
  */
-export async function verifyGoogleToken(idToken) {
+export async function verifyGoogleToken(token) {
   if (CLIENT_IDS.length === 0) {
     throw new Error('GOOGLE_CLIENT_IDS is not configured on the server');
   }
-  const ticket = await oauth.verifyIdToken({ idToken, audience: CLIENT_IDS });
-  const p = ticket.getPayload();
-  if (!p?.sub) throw new Error('Token has no subject');
+
+  // An ID token is a JWT: three dot-separated segments.
+  const looksLikeJwt = token.split('.').length === 3;
+
+  if (looksLikeJwt) {
+    const ticket = await oauth.verifyIdToken({ idToken: token, audience: CLIENT_IDS });
+    const p = ticket.getPayload();
+    if (!p?.sub) throw new Error('Token has no subject');
+    return {
+      googleSub: p.sub,
+      email: p.email ?? null,
+      emailVerified: !!p.email_verified,
+      name: p.name ?? p.email ?? 'Trekker',
+      picture: p.picture ?? null,
+    };
+  }
+
+  return verifyAccessToken(token);
+}
+
+/**
+ * Validates an opaque access token. tokeninfo tells us the audience and
+ * subject; userinfo fills in the display name and picture.
+ */
+async function verifyAccessToken(accessToken) {
+  const infoRes = await fetch(
+    `https://oauth2.googleapis.com/tokeninfo?access_token=${encodeURIComponent(accessToken)}`
+  );
+  if (!infoRes.ok) throw new Error('Access token rejected by Google');
+
+  const info = await infoRes.json();
+  if (!info.sub) throw new Error('Access token has no subject');
+  if (!CLIENT_IDS.includes(info.aud)) {
+    throw new Error('Access token was issued for a different application');
+  }
+  if (info.expires_in != null && Number(info.expires_in) <= 0) {
+    throw new Error('Access token has expired');
+  }
+
+  const profileRes = await fetch('https://www.googleapis.com/oauth2/v3/userinfo', {
+    headers: { Authorization: `Bearer ${accessToken}` },
+  });
+  const profile = profileRes.ok ? await profileRes.json() : {};
+
   return {
-    googleSub: p.sub,
-    email: p.email ?? null,
-    emailVerified: !!p.email_verified,
-    name: p.name ?? p.email ?? 'Trekker',
-    picture: p.picture ?? null,
+    googleSub: info.sub,
+    email: info.email ?? profile.email ?? null,
+    emailVerified: info.email_verified === 'true' || profile.email_verified === true,
+    name: profile.name ?? info.email ?? 'Trekker',
+    picture: profile.picture ?? null,
   };
 }
 

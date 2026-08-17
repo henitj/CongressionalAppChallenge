@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, Segmented, EmptyState, Pill, Divider, Banner } from '../components/ui';
@@ -8,15 +9,25 @@ import { useActivity } from '../context/ActivityContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
 import { TREES_DISCLAIMER } from '../services/trees';
+import { computeRecords } from '../services/records';
+import { useLogbook } from '../context/LogbookContext';
 
-type Tab = 'activities' | 'forest' | 'points';
+type Tab = 'activities' | 'forest' | 'records' | 'points';
 
 export default function ImpactScreen() {
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
   const { history, totalMiles, totalTrees, totalActivities, uniqueTrailsCompleted, deleteActivity } =
     useActivity();
   const { history: pointHistory, totalPoints } = useEcoPoints();
+  const { speciesLogged, totalSpecies, cleanupCount, litterCollected } = useLogbook();
   const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
-  const [tab, setTab] = useState<Tab>('activities');
+  const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'activities');
+
+  const records = useMemo(
+    () => computeRecords(history, formatDistanceCompact, formatDistanceUnit()),
+    [history, formatDistanceCompact, formatDistanceUnit]
+  );
 
   const grants = useMemo(
     () => history.filter((a) => a.grant && a.trees > 0),
@@ -49,6 +60,7 @@ export default function ImpactScreen() {
           options={[
             { value: 'activities', label: 'Activities' },
             { value: 'forest', label: 'Forest' },
+            { value: 'records', label: 'Records' },
             { value: 'points', label: 'Points' },
           ]}
           value={tab}
@@ -66,7 +78,7 @@ export default function ImpactScreen() {
           ) : (
             <View style={{ gap: SPACING.sm }}>
               {history.map((a) => (
-                <Card key={a.id}>
+                <Card key={a.id} onPress={() => navigation.navigate('ActivityDetail', { activityId: a.id })}>
                   <View style={styles.activityHead}>
                     <View style={[styles.activityIcon, !a.valid && styles.activityIconInvalid]}>
                       <Icon
@@ -179,6 +191,62 @@ export default function ImpactScreen() {
           </>
         ) : null}
 
+        {/* ── Records ─────────────────────────────────────────────────────── */}
+        {tab === 'records' ? (
+          records.length === 0 ? (
+            <EmptyState
+              icon="award"
+              title="No records yet"
+              message="Log an activity and your first personal bests appear here."
+            />
+          ) : (
+            <>
+              <Card padded={false}>
+                {records.map((r, i) => (
+                  <View key={r.id}>
+                    {i > 0 ? <Divider style={{ marginLeft: 58 }} /> : null}
+                    <Pressable
+                      onPress={() =>
+                        r.activityId
+                          ? navigation.navigate('ActivityDetail', { activityId: r.activityId })
+                          : undefined
+                      }
+                      disabled={!r.activityId}
+                      style={({ pressed }) => [styles.recordRow, pressed && { opacity: 0.7 }]}
+                    >
+                      <View style={styles.recordIcon}>
+                        <Icon name="award" size={16} color={COLORS.accentDark} strokeWidth={2} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.recordLabel}>{r.label}</Text>
+                        <Text style={styles.recordDetail} numberOfLines={1}>
+                          {r.detail}
+                        </Text>
+                      </View>
+                      <Text style={styles.recordValue}>
+                        {r.value}
+                        {r.unit ? <Text style={styles.recordUnit}> {r.unit}</Text> : null}
+                      </Text>
+                      {r.activityId ? (
+                        <Icon name="chevron-right" size={15} color={COLORS.textLight} />
+                      ) : null}
+                    </Pressable>
+                  </View>
+                ))}
+              </Card>
+
+              <Card>
+                <Text style={styles.sectionLabel}>Field log</Text>
+                <View style={styles.fieldStats}>
+                  <FieldStat value={`${speciesLogged}/${totalSpecies}`} label="Species" />
+                  <FieldStat value={String(cleanupCount)} label="Cleanups" />
+                  <FieldStat value={String(litterCollected)} label="Litter picked up" />
+                </View>
+              </Card>
+            </>
+          )
+        ) : null}
+
         {/* ── Points ──────────────────────────────────────────────────────── */}
         {tab === 'points' ? (
           <>
@@ -250,6 +318,15 @@ function Summary({ value, unit, label }: { value: string; unit?: string; label: 
         {unit ? <Text style={styles.summaryUnit}>{unit}</Text> : null}
       </View>
       <Text style={styles.summaryLabel}>{label}</Text>
+    </View>
+  );
+}
+
+function FieldStat({ value, label }: { value: string; label: string }) {
+  return (
+    <View style={{ flex: 1 }}>
+      <Text style={styles.fieldValue}>{value}</Text>
+      <Text style={styles.fieldLabel}>{label}</Text>
     </View>
   );
 }
@@ -330,6 +407,31 @@ const styles = StyleSheet.create({
 
   pointsTotal: { fontSize: 36, fontWeight: '700', color: COLORS.text, letterSpacing: -0.45 },
   pointsLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+
+  recordRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm + 4,
+    paddingVertical: 13,
+    paddingHorizontal: SPACING.md - 2,
+  },
+  recordIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  recordLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  recordDetail: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  recordValue: { ...TYPOGRAPHY.h4, color: COLORS.accentDark },
+  recordUnit: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+
+  sectionLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  fieldStats: { flexDirection: 'row', marginTop: SPACING.sm + 2 },
+  fieldValue: { ...TYPOGRAPHY.h2, color: COLORS.text },
+  fieldLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
 
   pointRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4, padding: SPACING.sm + 4 },
   pointIcon: {
