@@ -1,463 +1,400 @@
-import React from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-  Switch,
-  Alert,
-} from 'react-native';
+import React, { useState } from 'react';
+import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
+
 import Header from '../components/Header';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
+import Icon, { IconName } from '../components/Icon';
+import { Screen, Card, SectionHeader, Segmented, Divider, Banner, Button } from '../components/ui';
+
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useSettings } from '../constants/SettingsContext';
-import { useAuth } from '../constants/AuthContext';
+import { useAuth } from '../context/AuthContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
-import { useAnalytics } from '../constants/AnalyticsContext';
+import { useActivity } from '../context/ActivityContext';
+import { useNotifications } from '../context/NotificationContext';
+import { useApp } from '../context/AppContext';
+import { clearUserData } from '../services/storage';
+import { isBackendConfigured } from '../services/api';
+import { googleConfigProblems } from '../constants/authConfig';
+import { PRIVACY_POLICY_URL, SUPPORT_EMAIL, APP_VERSION } from '../constants/appInfo';
 
 export default function SettingsScreen() {
+  const navigation = useNavigation<any>();
   const { units, tempUnit, setUnits, setTempUnit } = useSettings();
   const { user, signOut } = useAuth();
-  const { totalPoints, level, badges, resetPoints } = useEcoPoints();
-  const { getSummary } = useAnalytics();
+  const { resetPoints } = useEcoPoints();
+  const { clearHistory } = useActivity();
+  const { permission, requestLocation } = useApp();
+  const notif = useNotifications();
 
-  const summary = getSummary();
-  const unlockedBadges = badges.filter((b) => b.unlocked).length;
+  const [busy, setBusy] = useState(false);
 
-  const handleReset = () => {
+  // Setup problems are shown during development only. A real user cannot act
+  // on "the Android client ID is missing", but the team needs to see it before
+  // they ship a build where sign-in silently fails.
+  const configProblems = __DEV__ ? googleConfigProblems() : [];
+
+  const enableNotifications = async (on: boolean) => {
+    if (on) {
+      const ok = await notif.enable();
+      if (!ok) {
+        Alert.alert(
+          'Notifications are off',
+          'Turn on notifications for EcoTrek in your phone settings to get streak and challenge reminders.',
+          [
+            { text: 'Not now', style: 'cancel' },
+            { text: 'Open settings', onPress: () => Linking.openSettings() },
+          ]
+        );
+      }
+    } else {
+      await notif.disable();
+    }
+  };
+
+  const confirmReset = () => {
     Alert.alert(
-      'Reset EcoPoints',
-      'This will permanently delete all your points, badges, and history. Are you sure?',
+      'Erase all your data?',
+      'This deletes your activities, points, badges and streaks from this device. It cannot be undone.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
-          text: 'Reset',
+          text: 'Erase everything',
           style: 'destructive',
-          onPress: resetPoints,
+          onPress: async () => {
+            setBusy(true);
+            await Promise.all([resetPoints(), clearHistory()]);
+            await clearUserData(user?.id);
+            setBusy(false);
+            Alert.alert('Done', 'Your data has been erased from this device.');
+          },
+        },
+      ]
+    );
+  };
+
+  const confirmDeleteAccount = () => {
+    Alert.alert(
+      'Delete your account?',
+      'This erases everything on this device and signs you out. If you signed in with Google, EcoTrek stops storing anything about you.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete account',
+          style: 'destructive',
+          onPress: async () => {
+            await clearUserData(user?.id);
+            await signOut();
+          },
         },
       ]
     );
   };
 
   return (
-    <View style={styles.container}>
-      <Header title="Settings" subtitle="Preferences · Analytics" />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Profile summary */}
-        <View style={styles.profileCard}>
-          <View style={styles.profileAvatar}>
-            <Text style={styles.profileInitial}>
-              {user?.name?.[0]?.toUpperCase() ?? '?'}
-            </Text>
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.profileName}>{user?.name ?? 'Trekker'}</Text>
-            <Text style={styles.profileEmail}>{user?.email ?? ''}</Text>
-            <Text style={styles.profileLevel}>{level}</Text>
-          </View>
-          <View style={styles.profilePoints}>
-            <Text style={styles.profilePtsVal}>{totalPoints}</Text>
-            <Text style={styles.profilePtsLabel}>pts</Text>
-          </View>
-        </View>
+    <Screen>
+      <Header title="Settings" back />
 
-        {/* Units section */}
-        <SectionHeader title="Units & Measurements" />
-        <View style={styles.card}>
-          <SettingRow
-            icon="📏"
-            title="Distance"
-            subtitle={units === 'imperial' ? 'Miles (mi)' : 'Kilometers (km)'}
-          >
-            <View style={styles.segmentControl}>
-              <Pressable
-                style={[
-                  styles.segment,
-                  units === 'imperial' && styles.segmentActive,
-                ]}
-                onPress={() => setUnits('imperial')}
-              >
-                <Text
-                  style={[
-                    styles.segmentText,
-                    units === 'imperial' && styles.segmentTextActive,
-                  ]}
-                >
-                  mi
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.segment,
-                  units === 'metric' && styles.segmentActive,
-                ]}
-                onPress={() => setUnits('metric')}
-              >
-                <Text
-                  style={[
-                    styles.segmentText,
-                    units === 'metric' && styles.segmentTextActive,
-                  ]}
-                >
-                  km
-                </Text>
-              </Pressable>
-            </View>
-          </SettingRow>
-
-          <View style={styles.settingDivider} />
-
-          <SettingRow
-            icon="🌡️"
-            title="Temperature"
-            subtitle={tempUnit === 'F' ? 'Fahrenheit (°F)' : 'Celsius (°C)'}
-          >
-            <View style={styles.segmentControl}>
-              <Pressable
-                style={[
-                  styles.segment,
-                  tempUnit === 'F' && styles.segmentActive,
-                ]}
-                onPress={() => setTempUnit('F')}
-              >
-                <Text
-                  style={[
-                    styles.segmentText,
-                    tempUnit === 'F' && styles.segmentTextActive,
-                  ]}
-                >
-                  °F
-                </Text>
-              </Pressable>
-              <Pressable
-                style={[
-                  styles.segment,
-                  tempUnit === 'C' && styles.segmentActive,
-                ]}
-                onPress={() => setTempUnit('C')}
-              >
-                <Text
-                  style={[
-                    styles.segmentText,
-                    tempUnit === 'C' && styles.segmentTextActive,
-                  ]}
-                >
-                  °C
-                </Text>
-              </Pressable>
-            </View>
-          </SettingRow>
-        </View>
-
-        {/* App analytics */}
-        <SectionHeader title="App Usage (Your Device)" />
-        <View style={styles.card}>
-          <View style={styles.analyticsGrid}>
-            <AnalyticTile
-              icon="📱"
-              label="Sessions"
-              value={summary.sessionCount.toString()}
-            />
-            <AnalyticTile
-              icon="🏅"
-              label="Badges"
-              value={`${unlockedBadges}/${badges.length}`}
-            />
-            <AnalyticTile
-              icon="⭐"
-              label="EcoPoints"
-              value={totalPoints.toLocaleString()}
-            />
-            <AnalyticTile
-              icon="📅"
-              label="First used"
-              value={summary.firstSeen}
-            />
-          </View>
-          <View style={styles.settingDivider} />
-          <View style={styles.deviceIdRow}>
-            <Text style={styles.deviceIdLabel}>Device ID</Text>
-            <Text style={styles.deviceIdValue}>{summary.deviceId}</Text>
-          </View>
-        </View>
-
-        {/* Top events */}
-        {summary.topEvents.length > 0 && (
-          <>
-            <SectionHeader title="Top Actions (Your Device)" />
-            <View style={styles.card}>
-              {summary.topEvents.map((e) => (
-                <View key={e.event} style={styles.topEventRow}>
-                  <Text style={styles.topEventName}>{e.event}</Text>
-                  <View style={styles.topEventBadge}>
-                    <Text style={styles.topEventCount}>{e.count}×</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
+      <View style={styles.body}>
         {/* Account */}
-        <SectionHeader title="Account" />
-        <View style={styles.card}>
-          <SettingRow
-            icon="👤"
-            title="Provider"
-            subtitle={user?.provider === 'google' ? 'Google account' : 'Guest account'}
+        <View>
+          <SectionHeader title="Account" />
+          <Card>
+            <View style={styles.accountRow}>
+              <View style={styles.accountIcon}>
+                <Icon name="user" size={18} color={COLORS.primary} strokeWidth={1.9} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.accountName}>{user?.name ?? 'Trekker'}</Text>
+                <Text style={styles.accountEmail}>
+                  {user?.provider === 'guest' ? 'Guest account' : user?.email}
+                </Text>
+              </View>
+            </View>
+            {user?.provider === 'guest' ? (
+              <Banner
+                tone="neutral"
+                icon="info"
+                title="Guest data stays on this phone"
+                message="Sign in with Google to keep your progress if you change devices."
+                style={{ marginTop: SPACING.md - 2 }}
+              />
+            ) : null}
+          </Card>
+        </View>
+
+        {/* Units */}
+        <View>
+          <SectionHeader title="Units" />
+          <Card style={{ gap: SPACING.md - 2 }}>
+            <View>
+              <Text style={styles.settingLabel}>Distance</Text>
+              <Segmented
+                options={[
+                  { value: 'imperial', label: 'Miles' },
+                  { value: 'metric', label: 'Kilometres' },
+                ]}
+                value={units}
+                onChange={(v) => setUnits(v as any)}
+                style={{ marginTop: 6 }}
+              />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>Temperature</Text>
+              <Segmented
+                options={[
+                  { value: 'F', label: 'Fahrenheit' },
+                  { value: 'C', label: 'Celsius' },
+                ]}
+                value={tempUnit}
+                onChange={(v) => setTempUnit(v as any)}
+                style={{ marginTop: 6 }}
+              />
+            </View>
+          </Card>
+        </View>
+
+        {/* Notifications */}
+        <View>
+          <SectionHeader title="Notifications" />
+          <Card padded={false}>
+            <ToggleRow
+              icon="bell"
+              title="Enable notifications"
+              subtitle={
+                notif.supported
+                  ? 'Reminders and severe weather alerts'
+                  : 'Not available on this device'
+              }
+              value={notif.enabled && notif.permissionGranted}
+              onChange={enableNotifications}
+              disabled={!notif.supported}
+            />
+            {notif.enabled && notif.permissionGranted ? (
+              <>
+                <Divider style={{ marginLeft: 58 }} />
+                <ToggleRow
+                  icon="flame"
+                  title="Streak reminder"
+                  subtitle="A nudge each evening if you have not been out"
+                  value={notif.streakReminder}
+                  onChange={(v) => notif.setPref('streakReminder', v)}
+                />
+                <Divider style={{ marginLeft: 58 }} />
+                <ToggleRow
+                  icon="target"
+                  title="Challenge reminder"
+                  subtitle="Saturday morning, before the week resets"
+                  value={notif.challengeReminder}
+                  onChange={(v) => notif.setPref('challengeReminder', v)}
+                />
+                <Divider style={{ marginLeft: 58 }} />
+                <ToggleRow
+                  icon="calendar"
+                  title="Sunday recap"
+                  subtitle="A summary of your week, every Sunday evening"
+                  value={notif.weeklyRecap}
+                  onChange={(v) => notif.setPref('weeklyRecap', v)}
+                />
+                <Divider style={{ marginLeft: 58 }} />
+                <ToggleRow
+                  icon="alert-triangle"
+                  title="Severe weather alerts"
+                  subtitle="Flood, storm and extreme heat warnings for your area"
+                  value={notif.safetyAlerts}
+                  onChange={(v) => notif.setPref('safetyAlerts', v)}
+                />
+              </>
+            ) : null}
+          </Card>
+        </View>
+
+        {/* Permissions */}
+        <View>
+          <SectionHeader title="Permissions" />
+          <Card padded={false}>
+            <Pressable
+              onPress={() => (permission === 'granted' ? Linking.openSettings() : requestLocation())}
+              style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+            >
+              <View style={styles.rowIcon}>
+                <Icon name="map-pin" size={16} color={COLORS.primary} strokeWidth={1.9} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Location</Text>
+                <Text style={styles.rowSub}>
+                  {permission === 'granted'
+                    ? 'Granted — used only while you are tracking'
+                    : 'Off — distance tracking will not work'}
+                </Text>
+              </View>
+              <Text style={styles.rowAction}>{permission === 'granted' ? 'Manage' : 'Enable'}</Text>
+            </Pressable>
+          </Card>
+          <Text style={styles.note}>
+            EcoTrek only reads your location while the app is open and you are recording. It never
+            tracks you in the background.
+          </Text>
+        </View>
+
+        {/* About */}
+        <View>
+          <SectionHeader title="About" />
+          <Card padded={false}>
+            <LinkRow icon="shield" title="Privacy policy" onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} />
+            <Divider style={{ marginLeft: 58 }} />
+            <LinkRow
+              icon="help-circle"
+              title="Contact support"
+              onPress={() => Linking.openURL(`mailto:${SUPPORT_EMAIL}`)}
+            />
+            <Divider style={{ marginLeft: 58 }} />
+            <LinkRow icon="alert-triangle" title="Trail safety" onPress={() => navigation.navigate('Safety')} />
+            <Divider style={{ marginLeft: 58 }} />
+            <View style={styles.row}>
+              <View style={styles.rowIcon}>
+                <Icon name="info" size={16} color={COLORS.textMuted} strokeWidth={1.9} />
+              </View>
+              <Text style={[styles.rowTitle, { flex: 1 }]}>Version</Text>
+              <Text style={styles.rowValue}>
+                {APP_VERSION}
+                {isBackendConfigured() ? ' · cloud' : ' · on-device'}
+              </Text>
+            </View>
+          </Card>
+        </View>
+
+        {configProblems.length > 0 ? (
+          <Banner
+            tone="warning"
+            icon="alert-triangle"
+            title="Setup incomplete (development only)"
+            message={configProblems.join(' ')}
           />
-          <View style={styles.settingDivider} />
-          <SettingRow icon="📧" title="Email" subtitle={user?.email ?? '—'} />
+        ) : null}
+
+        {/* Data */}
+        <View>
+          <SectionHeader title="Your data" />
+          <Card padded={false}>
+            <Pressable
+              onPress={confirmReset}
+              disabled={busy}
+              style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+            >
+              <View style={[styles.rowIcon, { backgroundColor: COLORS.warningLight }]}>
+                <Icon name="refresh" size={16} color={COLORS.warning} strokeWidth={1.9} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.rowTitle}>Erase my data</Text>
+                <Text style={styles.rowSub}>Clears activities, points, badges and streaks</Text>
+              </View>
+            </Pressable>
+            <Divider style={{ marginLeft: 58 }} />
+            <Pressable
+              onPress={confirmDeleteAccount}
+              style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+            >
+              <View style={[styles.rowIcon, { backgroundColor: COLORS.dangerLight }]}>
+                <Icon name="trash" size={16} color={COLORS.danger} strokeWidth={1.9} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={[styles.rowTitle, { color: COLORS.danger }]}>Delete account</Text>
+                <Text style={styles.rowSub}>Erases everything and signs you out</Text>
+              </View>
+            </Pressable>
+          </Card>
         </View>
 
-        {/* Danger */}
-        <SectionHeader title="Danger Zone" />
-        <View style={styles.card}>
-          <Pressable
-            style={({ pressed }) => [
-              styles.dangerBtn,
-              pressed && { opacity: 0.8 },
-            ]}
-            onPress={handleReset}
-          >
-            <Text style={styles.dangerIcon}>🗑️</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.dangerTitle}>Reset EcoPoints</Text>
-              <Text style={styles.dangerSub}>
-                Permanently deletes all points, badges, and history
-              </Text>
-            </View>
-          </Pressable>
-          <View style={styles.settingDivider} />
-          <Pressable
-            style={({ pressed }) => [
-              styles.dangerBtn,
-              pressed && { opacity: 0.8 },
-            ]}
-            onPress={async () => {
-              await signOut();
-            }}
-          >
-            <Text style={styles.dangerIcon}>🚪</Text>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.dangerTitle}>Sign out</Text>
-              <Text style={styles.dangerSub}>
-                You will need to sign in again
-              </Text>
-            </View>
-          </Pressable>
-        </View>
-
-        <Text style={styles.version}>EcoTrek v1.0 · Built for Austin 🤘</Text>
-      </ScrollView>
-    </View>
+        <Button label="Sign out" variant="secondary" icon="log-out" full onPress={signOut} />
+      </View>
+    </Screen>
   );
 }
 
-function SectionHeader({ title }: { title: string }) {
-  return (
-    <Text style={styles.sectionHeader}>{title}</Text>
-  );
-}
-
-function SettingRow({
+function ToggleRow({
   icon,
   title,
   subtitle,
-  children,
+  value,
+  onChange,
+  disabled,
 }: {
-  icon: string;
+  icon: IconName;
   title: string;
   subtitle?: string;
-  children?: React.ReactNode;
+  value: boolean;
+  onChange: (v: boolean) => void;
+  disabled?: boolean;
 }) {
   return (
-    <View style={styles.settingRow}>
-      <Text style={styles.settingIcon}>{icon}</Text>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.settingTitle}>{title}</Text>
-        {subtitle && (
-          <Text style={styles.settingSubtitle}>{subtitle}</Text>
-        )}
+    <View style={[styles.row, disabled && { opacity: 0.5 }]}>
+      <View style={styles.rowIcon}>
+        <Icon name={icon} size={16} color={COLORS.primary} strokeWidth={1.9} />
       </View>
-      {children}
+      <View style={{ flex: 1 }}>
+        <Text style={styles.rowTitle}>{title}</Text>
+        {subtitle ? <Text style={styles.rowSub}>{subtitle}</Text> : null}
+      </View>
+      <Switch
+        value={value}
+        onValueChange={onChange}
+        disabled={disabled}
+        trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+        thumbColor="#fff"
+      />
     </View>
   );
 }
 
-function AnalyticTile({
-  icon,
-  label,
-  value,
-}: {
-  icon: string;
-  label: string;
-  value: string;
-}) {
+function LinkRow({ icon, title, onPress }: { icon: IconName; title: string; onPress: () => void }) {
   return (
-    <View style={styles.analyticTile}>
-      <Text style={styles.analyticIcon}>{icon}</Text>
-      <Text style={styles.analyticValue}>{value}</Text>
-      <Text style={styles.analyticLabel}>{label}</Text>
-    </View>
+    <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
+      <View style={styles.rowIcon}>
+        <Icon name={icon} size={16} color={COLORS.primary} strokeWidth={1.9} />
+      </View>
+      <Text style={[styles.rowTitle, { flex: 1 }]}>{title}</Text>
+      <Icon name="chevron-right" size={16} color={COLORS.textLight} />
+    </Pressable>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: { padding: SPACING.md, paddingBottom: SPACING.xxxl },
+  body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
 
-  // Profile
-  profileCard: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    marginBottom: SPACING.md,
-    ...SHADOWS.md,
-  },
-  profileAvatar: {
-    width: 56,
-    height: 56,
-    borderRadius: 28,
-    backgroundColor: COLORS.primary,
+  accountRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+  accountIcon: {
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.sm + 2,
+    backgroundColor: COLORS.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 2,
-    borderColor: COLORS.primaryLight,
   },
-  profileInitial: { color: '#fff', fontSize: 24, fontWeight: '900' },
-  profileName: { ...TYPOGRAPHY.h3, color: '#fff' },
-  profileEmail: { ...TYPOGRAPHY.small, color: 'rgba(255,255,255,0.5)', marginTop: 2 },
-  profileLevel: { ...TYPOGRAPHY.caption, color: COLORS.accent, marginTop: 4, fontWeight: '700' },
-  profilePoints: { alignItems: 'flex-end' },
-  profilePtsVal: { fontSize: 28, fontWeight: '900', color: COLORS.accent },
-  profilePtsLabel: { ...TYPOGRAPHY.micro, color: 'rgba(255,255,255,0.4)', textTransform: 'uppercase' },
+  accountName: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  accountEmail: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
 
-  // Section header
-  sectionHeader: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 1,
-    marginBottom: SPACING.xs,
-    marginTop: SPACING.md,
-    paddingHorizontal: SPACING.xs,
-  },
+  settingLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
 
-  // Card
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.sm,
-    marginBottom: SPACING.sm,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-
-  // Setting row
-  settingRow: {
+  row: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
-    gap: SPACING.sm,
+    gap: SPACING.sm + 4,
+    paddingVertical: 13,
+    paddingHorizontal: SPACING.md - 2,
   },
-  settingIcon: { fontSize: 22, width: 30 },
-  settingTitle: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  settingSubtitle: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-  settingDivider: { height: 1, backgroundColor: COLORS.borderLight, marginHorizontal: SPACING.md },
-
-  // Segment control
-  segmentControl: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.background,
+  rowIcon: {
+    width: 30,
+    height: 30,
     borderRadius: RADIUS.sm,
-    padding: 3,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  segment: {
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-    borderRadius: RADIUS.xs,
-  },
-  segmentActive: { backgroundColor: COLORS.primary },
-  segmentText: { fontWeight: '700', fontSize: 13, color: COLORS.textMuted },
-  segmentTextActive: { color: '#fff' },
-
-  // Analytics
-  analyticsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    padding: SPACING.sm,
-    gap: SPACING.sm,
-  },
-  analyticTile: {
-    width: '47%',
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
+    backgroundColor: COLORS.surfaceSunken,
     alignItems: 'center',
-    gap: 4,
+    justifyContent: 'center',
   },
-  analyticIcon: { fontSize: 24 },
-  analyticValue: { ...TYPOGRAPHY.h3, color: COLORS.primary },
-  analyticLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.5 },
-  deviceIdRow: {
-    padding: SPACING.md,
-    gap: 4,
-  },
-  deviceIdLabel: { ...TYPOGRAPHY.caption, color: COLORS.textMuted, textTransform: 'uppercase', letterSpacing: 0.8 },
-  deviceIdValue: {
-    fontFamily: Platform.select({ ios: 'Menlo', android: 'monospace', default: 'monospace' }),
-    fontSize: 13,
-    color: COLORS.text,
-    fontWeight: '600',
-  },
+  rowTitle: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  rowSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  rowValue: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  rowAction: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
 
-  // Top events
-  topEventRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-  },
-  topEventName: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flex: 1 },
-  topEventBadge: {
-    backgroundColor: COLORS.primarySurface,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-  },
-  topEventCount: { color: COLORS.primary, fontWeight: '800', fontSize: 13 },
-
-  // Danger
-  dangerBtn: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    padding: SPACING.md,
-    gap: SPACING.sm,
-  },
-  dangerIcon: { fontSize: 22, width: 30 },
-  dangerTitle: { ...TYPOGRAPHY.bodyMed, color: COLORS.danger },
-  dangerSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-
-  version: {
-    ...TYPOGRAPHY.micro,
-    color: COLORS.textLight,
-    textAlign: 'center',
-    marginTop: SPACING.md,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
+  note: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: SPACING.sm },
 });
-
-// Fix missing Platform import
-import { Platform } from 'react-native';

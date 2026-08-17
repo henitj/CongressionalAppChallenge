@@ -6,19 +6,25 @@ import React, {
   useMemo,
   useState,
 } from 'react';
-import AsyncStorage from '@react-native-async-storage/async-storage';
+import { IconName } from '../components/Icon';
+import { LEVELS } from './theme';
+import { TOTAL_SPECIES } from './species';
+import { useAuth } from '../context/AuthContext';
+import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { api, isBackendConfigured, ROUTES } from '../services/api';
 
 export type EcoAction =
   | 'hike_mile'
   | 'bike_mile'
-  | 'tree_planted'
-  | 'plant_identified'
-  | 'photo_uploaded'
+  | 'tree_earned'
+  | 'species_logged'
   | 'trail_completed'
   | 'cleanup'
   | 'challenge_completed'
   | 'club_joined'
-  | 'daily_login';
+  | 'club_goal'
+  | 'daily_login'
+  | 'streak_bonus';
 
 export type PointEvent = {
   id: string;
@@ -32,9 +38,34 @@ export type Badge = {
   id: string;
   name: string;
   description: string;
-  icon: string;
+  icon: IconName;
   unlocked: boolean;
   unlockedAt?: number;
+};
+
+/** Stats the badge engine needs but doesn't own. Fed in by other contexts. */
+export type BadgeInputs = {
+  totalMiles: number;
+  totalTrees: number;
+  totalActivities: number;
+  hikes: number;
+  rides: number;
+  currentStreak: number;
+  longestStreak: number;
+  totalActiveDays: number;
+  activeDaysLast30: number;
+  perfectWeeks: number;
+  hadComeback: boolean;
+  trailsCompleted: number;
+  challengesCompleted: number;
+  clubsJoined: number;
+  clubsFounded: number;
+  speciesLogged: number;
+  plantsLogged: number;
+  animalsLogged: number;
+  cleanups: number;
+  litterCollected: number;
+  clubGoalsMet: number;
 };
 
 type EcoPointsState = {
@@ -42,56 +73,47 @@ type EcoPointsState = {
   level: string;
   levelIndex: number;
   nextLevelPoints: number;
+  currentLevelPoints: number;
   progressPercent: number;
   history: PointEvent[];
   badges: Badge[];
+  unlockedBadges: Badge[];
+  /** Fixed-value award, e.g. award('daily_login'). */
+  award: (action: EcoAction, opts?: { points?: number; label?: string; multiplier?: number }) => Promise<number>;
+  /** Back-compat alias used by older screens. */
   addPoints: (action: EcoAction, multiplier?: number) => Promise<number>;
+  refreshBadges: (inputs: BadgeInputs) => void;
+  pointsSince: (timestamp: number) => number;
   resetPoints: () => Promise<void>;
 };
 
-const STORAGE_KEY = '@ecotrek/ecopoints';
-const BADGES_KEY = '@ecotrek/badges';
-
-// ─── Much harder point values ─────────────────────────────────────────────────
 export const POINT_VALUES: Record<EcoAction, number> = {
   hike_mile: 5,
   bike_mile: 3,
-  tree_planted: 8,
-  plant_identified: 2,
-  photo_uploaded: 1,
-  trail_completed: 10,
+  tree_earned: 8,
+  species_logged: 4,
+  trail_completed: 25,
   cleanup: 15,
-  challenge_completed: 30,
+  challenge_completed: 25,
   club_joined: 5,
-  daily_login: 1,
+  club_goal: 20,
+  daily_login: 2,
+  streak_bonus: 10,
 };
 
 export const ACTION_LABELS: Record<EcoAction, string> = {
   hike_mile: 'Hiked a mile',
   bike_mile: 'Biked a mile',
-  tree_planted: 'Tree planted',
-  plant_identified: 'Plant identified',
-  photo_uploaded: 'Photo uploaded',
+  tree_earned: 'Tree earned',
+  species_logged: 'Species spotted',
   trail_completed: 'Trail completed',
-  cleanup: 'Cleanup crew',
+  cleanup: 'Trail cleanup',
   challenge_completed: 'Challenge completed',
   club_joined: 'Joined a club',
-  daily_login: 'Daily login',
+  club_goal: 'Club goal met',
+  daily_login: 'Daily check-in',
+  streak_bonus: 'Streak bonus',
 };
-
-// ─── Much harder levels ───────────────────────────────────────────────────────
-const LEVELS = [
-  { name: '🥾 New Trekker', min: 0 },
-  { name: '🌱 Seedling', min: 100 },
-  { name: '🌿 Trail Walker', min: 300 },
-  { name: '🌳 Forest Friend', min: 700 },
-  { name: '🦅 Trail Steward', min: 1500 },
-  { name: '🌲 Forest Guardian', min: 3000 },
-  { name: '🏔️ Peak Explorer', min: 6000 },
-  { name: '🌍 EcoChampion', min: 12000 },
-  { name: '🦁 Earth Defender', min: 25000 },
-  { name: '🌟 Legend of the Trail', min: 50000 },
-];
 
 function getLevel(points: number) {
   let idx = 0;
@@ -101,289 +123,268 @@ function getLevel(points: number) {
       break;
     }
   }
-  const next = LEVELS[idx + 1]?.min ?? LEVELS[idx].min + 50000;
   const prev = LEVELS[idx].min;
+  const next = LEVELS[idx + 1]?.min ?? prev + 25000;
   const progress = Math.min(((points - prev) / (next - prev)) * 100, 100);
   return {
     level: LEVELS[idx].name,
     levelIndex: idx,
+    currentLevelPoints: prev,
     nextLevelPoints: next,
     progressPercent: progress,
   };
 }
 
-// ─── Badges ───────────────────────────────────────────────────────────────────
 const DEFAULT_BADGES: Badge[] = [
-  {
-    id: 'first_hike',
-    name: 'First Steps',
-    description: 'Complete your first hike',
-    icon: '🥾',
-    unlocked: false,
-  },
-  {
-    id: 'first_tree',
-    name: 'Tree Planter',
-    description: 'Plant your first tree',
-    icon: '🌱',
-    unlocked: false,
-  },
-  {
-    id: 'five_miles',
-    name: 'Five Miler',
-    description: 'Log 5 total miles',
-    icon: '🏃',
-    unlocked: false,
-  },
-  {
-    id: 'twenty_five_miles',
-    name: 'Marathon Trekker',
-    description: 'Log 25 total miles',
-    icon: '🏅',
-    unlocked: false,
-  },
-  {
-    id: 'hundred_miles',
-    name: 'Century Trekker',
-    description: 'Log 100 total miles',
-    icon: '💯',
-    unlocked: false,
-  },
-  {
-    id: 'ten_trees',
-    name: 'Mini Forest',
-    description: 'Plant 10 trees',
-    icon: '🌳',
-    unlocked: false,
-  },
-  {
-    id: 'fifty_trees',
-    name: 'Grove Keeper',
-    description: 'Plant 50 trees',
-    icon: '🌲',
-    unlocked: false,
-  },
-  {
-    id: 'plant_id',
-    name: 'Botanist',
-    description: 'Identify your first plant',
-    icon: '🌿',
-    unlocked: false,
-  },
-  {
-    id: 'five_hundred_points',
-    name: 'Point Collector',
-    description: 'Earn 500 EcoPoints',
-    icon: '⭐',
-    unlocked: false,
-  },
-  {
-    id: 'thousand_points',
-    name: 'EcoElite',
-    description: 'Earn 1,000 EcoPoints',
-    icon: '🌟',
-    unlocked: false,
-  },
-  {
-    id: 'trail_steward',
-    name: 'Trail Steward',
-    description: 'Reach Trail Steward level',
-    icon: '🛡️',
-    unlocked: false,
-  },
-  {
-    id: 'eco_champion',
-    name: 'EcoChampion',
-    description: 'Reach EcoChampion level',
-    icon: '🦅',
-    unlocked: false,
-  },
-  {
-    id: 'cleanup_crew',
-    name: 'Cleanup Crew',
-    description: 'Log a trail cleanup',
-    icon: '🧹',
-    unlocked: false,
-  },
-  {
-    id: 'photographer',
-    name: 'Nature Photographer',
-    description: 'Upload 5 trail photos',
-    icon: '📸',
-    unlocked: false,
-  },
-  {
-    id: 'club_founder',
-    name: 'Club Founder',
-    description: 'Create your first club',
-    icon: '🏆',
-    unlocked: false,
-  },
-  {
-    id: 'social_trekker',
-    name: 'Social Trekker',
-    description: 'Join a club',
-    icon: '👥',
-    unlocked: false,
-  },
+  // ── Getting started ──────────────────────────────────────────────────────
+  { id: 'first_hike', name: 'First Steps', description: 'Complete your first hike', icon: 'boot', unlocked: false },
+  { id: 'first_ride', name: 'Wheels Up', description: 'Complete your first bike ride', icon: 'bike', unlocked: false },
+  { id: 'first_tree', name: 'Seed Planter', description: 'Earn your first tree', icon: 'leaf', unlocked: false },
+
+  // ── Distance ─────────────────────────────────────────────────────────────
+  { id: 'five_miles', name: 'Five Miler', description: 'Cover 5 total miles', icon: 'activity', unlocked: false },
+  { id: 'twenty_five_miles', name: 'Distance Runner', description: 'Cover 25 total miles', icon: 'trending-up', unlocked: false },
+  { id: 'hundred_miles', name: 'Century Trekker', description: 'Cover 100 total miles', icon: 'award', unlocked: false },
+  { id: 'ten_trees', name: 'Mini Forest', description: 'Earn 10 trees', icon: 'tree', unlocked: false },
+  { id: 'fifty_trees', name: 'Grove Keeper', description: 'Earn 50 trees', icon: 'tree', unlocked: false },
+
+  // ── Streaks ──────────────────────────────────────────────────────────────
+  { id: 'streak_3', name: 'Warming Up', description: 'Reach a 3-day streak', icon: 'flame', unlocked: false },
+  { id: 'streak_7', name: 'Seven Straight', description: 'Reach a 7-day streak', icon: 'flame', unlocked: false },
+  { id: 'streak_14', name: 'Two Weeks Deep', description: 'Reach a 14-day streak', icon: 'flame', unlocked: false },
+  { id: 'streak_30', name: 'Unbroken', description: 'Reach a 30-day streak', icon: 'flame', unlocked: false },
+  { id: 'streak_60', name: 'Two Month Machine', description: 'Reach a 60-day streak', icon: 'flame', unlocked: false },
+  { id: 'streak_100', name: 'Triple Digits', description: 'Reach a 100-day streak', icon: 'flame', unlocked: false },
+  { id: 'streak_365', name: 'Year of Trails', description: 'Reach a 365-day streak', icon: 'crown', unlocked: false },
+  { id: 'perfect_week', name: 'Perfect Week', description: 'Log an activity all seven days of one week', icon: 'calendar', unlocked: false },
+  { id: 'perfect_weeks_4', name: 'Four Perfect Weeks', description: 'Log four flawless weeks in total', icon: 'calendar', unlocked: false },
+  { id: 'month_20', name: 'Twenty in Thirty', description: 'Get out on 20 days within a single month', icon: 'target', unlocked: false },
+  { id: 'comeback', name: 'Comeback', description: 'Lose a 7-day streak and build a new one', icon: 'refresh', unlocked: false },
+  { id: 'hundred_days', name: 'Hundred Days Out', description: 'Log activities on 100 separate days', icon: 'award', unlocked: false },
+
+  // ── Field log ────────────────────────────────────────────────────────────
+  { id: 'first_sighting', name: 'First Sighting', description: 'Log your first species', icon: 'eye', unlocked: false },
+  { id: 'ten_species', name: 'Naturalist', description: 'Log 10 different species', icon: 'eye', unlocked: false },
+  { id: 'thirty_species', name: 'Field Guide', description: 'Log 30 different species', icon: 'search', unlocked: false },
+  { id: 'all_species', name: 'Completionist', description: 'Log every species in the catalogue', icon: 'award', unlocked: false },
+  { id: 'botanist', name: 'Botanist', description: 'Log 15 different plants', icon: 'leaf', unlocked: false },
+  { id: 'tracker', name: 'Tracker', description: 'Log 15 different animals', icon: 'eye', unlocked: false },
+  { id: 'first_cleanup', name: 'Cleanup Crew', description: 'Log your first trail cleanup', icon: 'trash', unlocked: false },
+  { id: 'ten_cleanups', name: 'Trail Keeper', description: 'Log 10 cleanups', icon: 'trash', unlocked: false },
+  { id: 'hundred_pieces', name: 'Hundred Pieces', description: 'Collect 100 pieces of litter', icon: 'shield', unlocked: false },
+
+  // ── Challenges, trails, clubs ────────────────────────────────────────────
+  { id: 'first_challenge', name: 'Challenger', description: 'Finish your first weekly challenge', icon: 'target', unlocked: false },
+  { id: 'ten_challenges', name: 'Habit Builder', description: 'Finish 10 challenges', icon: 'target', unlocked: false },
+  { id: 'fifty_challenges', name: 'Relentless', description: 'Finish 50 challenges', icon: 'zap', unlocked: false },
+  { id: 'first_trail', name: 'Trail Bagger', description: 'Complete a full named trail', icon: 'map', unlocked: false },
+  { id: 'five_trails', name: 'Trail Master', description: 'Complete 5 different trails', icon: 'flag', unlocked: false },
+  { id: 'five_hundred_points', name: 'Point Collector', description: 'Earn 500 EcoPoints', icon: 'star', unlocked: false },
+  { id: 'thousand_points', name: 'EcoElite', description: 'Earn 1,000 EcoPoints', icon: 'star', unlocked: false },
+  { id: 'trail_steward', name: 'Trail Steward', description: 'Reach the Trail Steward level', icon: 'shield', unlocked: false },
+  { id: 'eco_champion', name: 'EcoChampion', description: 'Reach the EcoChampion level', icon: 'crown', unlocked: false },
+  { id: 'club_member', name: 'Team Player', description: 'Join a club', icon: 'users', unlocked: false },
+  { id: 'club_founder', name: 'Club Founder', description: 'Create a club', icon: 'crown', unlocked: false },
+  { id: 'goal_getter', name: 'Goal Getter', description: 'Help your club hit a weekly goal', icon: 'target', unlocked: false },
+  { id: 'goal_streak', name: 'In Formation', description: 'Hit five club weekly goals', icon: 'users', unlocked: false },
 ];
 
 const EcoPointsContext = createContext<EcoPointsState | null>(null);
 
 export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
+
   const [history, setHistory] = useState<PointEvent[]>([]);
   const [badges, setBadges] = useState<Badge[]>(DEFAULT_BADGES);
   const [loaded, setLoaded] = useState(false);
 
+  const histKey = keyFor(userId, 'points');
+  const badgeKey = keyFor(userId, 'badges');
+
   useEffect(() => {
+    let cancelled = false;
+    setLoaded(false);
     (async () => {
-      try {
-        const [rawH, rawB] = await Promise.all([
-          AsyncStorage.getItem(STORAGE_KEY),
-          AsyncStorage.getItem(BADGES_KEY),
-        ]);
-        if (rawH) setHistory(JSON.parse(rawH));
-        if (rawB) setBadges(JSON.parse(rawB));
-      } catch (e) {
-        console.warn('EcoPoints load error', e);
-      } finally {
-        setLoaded(true);
+      const [h, b] = await Promise.all([
+        loadJSON<PointEvent[]>(histKey, []),
+        loadJSON<Badge[]>(badgeKey, DEFAULT_BADGES),
+      ]);
+      if (cancelled) return;
+
+      // Merge in any badges added by an app update.
+      const merged = DEFAULT_BADGES.map((d) => b.find((x) => x.id === d.id) ?? d);
+
+      setHistory(h);
+      setBadges(merged);
+      setLoaded(true);
+
+      if (isBackendConfigured()) {
+        const res = await api.get<PointEvent[]>(ROUTES.points);
+        if (!cancelled && res.ok && Array.isArray(res.data)) {
+          setHistory(res.data);
+          saveJSON(histKey, res.data);
+        }
       }
     })();
-  }, []);
+    return () => {
+      cancelled = true;
+    };
+  }, [histKey, badgeKey]);
 
   const totalPoints = useMemo(
     () => history.reduce((sum, e) => sum + e.points, 0),
     [history]
   );
 
-  const checkBadges = useCallback(
-    (
-      newHistory: PointEvent[],
-      newTotal: number,
-      currentBadges: Badge[]
-    ): Badge[] => {
-      const totalMiles = newHistory.filter(
-        (e) => e.action === 'hike_mile' || e.action === 'bike_mile'
-      ).length;
-      const treesPlanted = newHistory.filter(
-        (e) => e.action === 'tree_planted'
-      ).length;
-      const plantsId = newHistory.filter(
-        (e) => e.action === 'plant_identified'
-      ).length;
-      const photosUp = newHistory.filter(
-        (e) => e.action === 'photo_uploaded'
-      ).length;
-      const cleanups = newHistory.filter(
-        (e) => e.action === 'cleanup'
-      ).length;
-      const hikes = newHistory.filter(
-        (e) => e.action === 'hike_mile'
-      ).length;
-      const clubJoins = newHistory.filter(
-        (e) => e.action === 'club_joined'
-      ).length;
-      const { levelIndex } = getLevel(newTotal);
+  const award = useCallback<EcoPointsState['award']>(
+    async (action, opts = {}) => {
+      const base = opts.points ?? POINT_VALUES[action];
+      const pts = Math.round(base * (opts.multiplier ?? 1));
+      if (pts === 0) return 0;
 
-      const rules: Record<string, boolean> = {
-        first_hike: hikes >= 1,
-        first_tree: treesPlanted >= 1,
-        five_miles: totalMiles >= 5,
-        twenty_five_miles: totalMiles >= 25,
-        hundred_miles: totalMiles >= 100,
-        ten_trees: treesPlanted >= 10,
-        fifty_trees: treesPlanted >= 50,
-        plant_id: plantsId >= 1,
-        five_hundred_points: newTotal >= 500,
-        thousand_points: newTotal >= 1000,
-        trail_steward: levelIndex >= 4,
-        eco_champion: levelIndex >= 7,
-        cleanup_crew: cleanups >= 1,
-        photographer: photosUp >= 5,
-        club_founder: false,
-        social_trekker: clubJoins >= 1,
-      };
-
-      return currentBadges.map((b) => {
-        if (!b.unlocked && rules[b.id]) {
-          return { ...b, unlocked: true, unlockedAt: Date.now() };
-        }
-        return b;
-      });
-    },
-    []
-  );
-
-  const addPoints = useCallback(
-    async (action: EcoAction, multiplier = 1): Promise<number> => {
-      const pts = POINT_VALUES[action] * multiplier;
       const event: PointEvent = {
-        id: `${Date.now()}-${action}`,
+        id: `${Date.now()}-${action}-${Math.random().toString(36).slice(2, 7)}`,
         action,
         points: pts,
-        label: ACTION_LABELS[action],
+        label: opts.label ?? ACTION_LABELS[action],
         timestamp: Date.now(),
       };
 
-      let earnedPts = pts;
       setHistory((prev) => {
-        const updated = [event, ...prev];
-        const newTotal = updated.reduce((s, e) => s + e.points, 0);
-        const updatedBadges = checkBadges(updated, newTotal, badges);
-        AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(updated)).catch(
-          console.warn
-        );
-        AsyncStorage.setItem(
-          BADGES_KEY,
-          JSON.stringify(updatedBadges)
-        ).catch(console.warn);
-        setBadges(updatedBadges);
+        const updated = [event, ...prev].slice(0, 1000);
+        saveJSON(histKey, updated);
         return updated;
       });
 
-      return earnedPts;
+      if (isBackendConfigured()) {
+        api.post(ROUTES.points, event);
+      }
+
+      return pts;
     },
-    [badges, checkBadges]
+    [histKey]
+  );
+
+  const addPoints = useCallback(
+    (action: EcoAction, multiplier = 1) => award(action, { multiplier }),
+    [award]
+  );
+
+  const refreshBadges = useCallback(
+    (inputs: BadgeInputs) => {
+      setBadges((current) => {
+        const { levelIndex } = getLevel(totalPoints);
+        const rules: Record<string, boolean> = {
+          first_hike: inputs.hikes >= 1,
+          first_ride: inputs.rides >= 1,
+          first_tree: inputs.totalTrees >= 1,
+          five_miles: inputs.totalMiles >= 5,
+          twenty_five_miles: inputs.totalMiles >= 25,
+          hundred_miles: inputs.totalMiles >= 100,
+          ten_trees: inputs.totalTrees >= 10,
+          fifty_trees: inputs.totalTrees >= 50,
+          streak_3: inputs.longestStreak >= 3,
+          streak_7: inputs.longestStreak >= 7,
+          streak_14: inputs.longestStreak >= 14,
+          streak_30: inputs.longestStreak >= 30,
+          streak_60: inputs.longestStreak >= 60,
+          streak_100: inputs.longestStreak >= 100,
+          streak_365: inputs.longestStreak >= 365,
+          perfect_week: inputs.perfectWeeks >= 1,
+          perfect_weeks_4: inputs.perfectWeeks >= 4,
+          month_20: inputs.activeDaysLast30 >= 20,
+          comeback: inputs.hadComeback,
+          hundred_days: inputs.totalActiveDays >= 100,
+          first_challenge: inputs.challengesCompleted >= 1,
+          ten_challenges: inputs.challengesCompleted >= 10,
+          fifty_challenges: inputs.challengesCompleted >= 50,
+          first_trail: inputs.trailsCompleted >= 1,
+          five_trails: inputs.trailsCompleted >= 5,
+          five_hundred_points: totalPoints >= 500,
+          thousand_points: totalPoints >= 1000,
+          trail_steward: levelIndex >= 4,
+          eco_champion: levelIndex >= 7,
+          club_member: inputs.clubsJoined >= 1,
+          club_founder: inputs.clubsFounded >= 1,
+          first_sighting: inputs.speciesLogged >= 1,
+          ten_species: inputs.speciesLogged >= 10,
+          thirty_species: inputs.speciesLogged >= 30,
+          all_species: TOTAL_SPECIES > 0 && inputs.speciesLogged >= TOTAL_SPECIES,
+          botanist: inputs.plantsLogged >= 15,
+          tracker: inputs.animalsLogged >= 15,
+          first_cleanup: inputs.cleanups >= 1,
+          ten_cleanups: inputs.cleanups >= 10,
+          hundred_pieces: inputs.litterCollected >= 100,
+          goal_getter: inputs.clubGoalsMet >= 1,
+          goal_streak: inputs.clubGoalsMet >= 5,
+        };
+
+        let changed = false;
+        const next = current.map((b) => {
+          if (!b.unlocked && rules[b.id]) {
+            changed = true;
+            return { ...b, unlocked: true, unlockedAt: Date.now() };
+          }
+          return b;
+        });
+
+        if (changed) saveJSON(badgeKey, next);
+        return changed ? next : current;
+      });
+    },
+    [badgeKey, totalPoints]
+  );
+
+  const pointsSince = useCallback(
+    (timestamp: number) =>
+      history.reduce((sum, e) => (e.timestamp >= timestamp ? sum + e.points : sum), 0),
+    [history]
   );
 
   const resetPoints = useCallback(async () => {
     setHistory([]);
     setBadges(DEFAULT_BADGES);
-    await Promise.all([
-      AsyncStorage.removeItem(STORAGE_KEY),
-      AsyncStorage.removeItem(BADGES_KEY),
-    ]);
-  }, []);
+    await Promise.all([saveJSON(histKey, []), saveJSON(badgeKey, DEFAULT_BADGES)]);
+  }, [histKey, badgeKey]);
 
   const levelInfo = useMemo(() => getLevel(totalPoints), [totalPoints]);
+  const unlockedBadges = useMemo(() => badges.filter((b) => b.unlocked), [badges]);
 
-  const value: EcoPointsState = useMemo(
+  const value = useMemo<EcoPointsState>(
     () => ({
       totalPoints,
       history,
       badges,
+      unlockedBadges,
+      award,
       addPoints,
+      refreshBadges,
+      pointsSince,
       resetPoints,
       ...levelInfo,
     }),
-    [totalPoints, history, badges, addPoints, resetPoints, levelInfo]
+    [
+      totalPoints,
+      history,
+      badges,
+      unlockedBadges,
+      award,
+      addPoints,
+      refreshBadges,
+      pointsSince,
+      resetPoints,
+      levelInfo,
+    ]
   );
 
   if (!loaded) return null;
 
-  return (
-    <EcoPointsContext.Provider value={value}>
-      {children}
-    </EcoPointsContext.Provider>
-  );
+  return <EcoPointsContext.Provider value={value}>{children}</EcoPointsContext.Provider>;
 }
 
 export function useEcoPoints() {
   const ctx = useContext(EcoPointsContext);
-  if (!ctx)
-    throw new Error(
-      'useEcoPoints must be used inside <EcoPointsProvider />'
-    );
+  if (!ctx) throw new Error('useEcoPoints must be used inside <EcoPointsProvider />');
   return ctx;
 }

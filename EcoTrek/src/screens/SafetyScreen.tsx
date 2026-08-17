@@ -1,391 +1,206 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Linking,
-  Pressable,
-} from 'react-native';
+import React from 'react';
+import { View, Text, StyleSheet, Linking, Pressable } from 'react-native';
+import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
+import Icon, { IconName } from '../components/Icon';
+import ConditionsCard from '../components/ConditionsCard';
+import { Screen, Card, SectionHeader, Divider, Banner, Button } from '../components/ui';
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { useWeather } from '../context/WeatherContext';
+
+type Guide = {
+  icon: IconName;
+  title: string;
+  points: string[];
+};
+
+const GUIDES: Guide[] = [
+  {
+    icon: 'thermometer',
+    title: 'Heat',
+    points: [
+      'Central Texas heat is the most common reason people get hurt on these trails.',
+      'Above a 100°F heat index, move your trek to before 9 AM or after 7 PM.',
+      'Carry one litre of water per hour, and drink before you feel thirsty.',
+      'Cramping, headache or goosebumps in the heat mean stop, get shade, and cool down.',
+    ],
+  },
+  {
+    icon: 'water',
+    title: 'Water and flooding',
+    points: [
+      'Barton, Bull and Shoal creeks rise in minutes during a storm, even one upstream.',
+      'Never walk or ride through moving water. Six inches will take your feet out.',
+      'If a low-water crossing is covered, turn around. It is not worth it.',
+      'Check the conditions report above before heading into any creek canyon.',
+    ],
+  },
+  {
+    icon: 'cloud-lightning',
+    title: 'Storms',
+    points: [
+      'Lightning, not rain, is the danger. If you can hear thunder, you are in range.',
+      'Get off ridgelines and away from lone tall trees.',
+      'Wait 30 minutes after the last thunder before continuing.',
+    ],
+  },
+  {
+    icon: 'navigation',
+    title: 'Before you leave',
+    points: [
+      'Tell someone your route and when you expect to be back.',
+      'Screenshot the trail map — cell service drops in the greenbelt canyons.',
+      'Start with a full battery. GPS tracking uses a lot of it.',
+      'Know where your nearest trailhead exit is.',
+    ],
+  },
+  {
+    icon: 'eye',
+    title: 'Wildlife and plants',
+    points: [
+      'Poison ivy grows right up to the trail edge — leaves of three, leave it be.',
+      'Snakes sun on rocks and trails in warm months. Watch where you place hands and feet.',
+      'Give any animal a wide berth. Do not feed anything.',
+      'Coyotes are common at dawn and dusk and want nothing to do with you.',
+    ],
+  },
+  {
+    icon: 'users',
+    title: 'Sharing the trail',
+    points: [
+      'Bikes yield to walkers, everyone yields to horses.',
+      'Call out before you pass. A bell works better than a shout.',
+      'Uphill traffic has right of way.',
+      'Pack out everything you bring in.',
+    ],
+  },
+];
 
 const EMERGENCY = [
-  { label: 'Emergency Services', sub: '911', url: 'tel:911', icon: '🚨', color: COLORS.danger },
-  { label: 'Austin Park Rangers', sub: '(512) 974-7275', url: 'tel:5129747275', icon: '🌲', color: COLORS.primary },
-  { label: 'Poison Control Center', sub: '1-800-222-1222', url: 'tel:18002221222', icon: '☠️', color: COLORS.warning },
-  { label: 'Trail Conditions', sub: 'austintexas.gov', url: 'https://austintexas.gov/department/parks-and-recreation', icon: '🗺️', color: COLORS.sky },
+  { label: 'Emergency', value: '911', tel: '911' },
+  { label: 'Austin Police non-emergency', value: '(512) 974-5000', tel: '5129745000' },
+  { label: 'Texas Poison Center', value: '(800) 222-1222', tel: '8002221222' },
+  { label: 'Austin Parks and Recreation', value: '(512) 974-6700', tel: '5129746700' },
 ];
-
-const TIPS = [
-  {
-    icon: '🌡️',
-    title: 'Heat & hydration',
-    body: 'Austin summers regularly exceed 100°F. Drink 16–24 oz of water per hour. Avoid trails between 11am–5pm in July and August. Wear light, breathable clothing and apply sunscreen.',
-    severity: 'high' as const,
-  },
-  {
-    icon: '📍',
-    title: 'Share your route',
-    body: 'Send your planned trail and expected return time to a trusted contact before you go. Cell service can be spotty in Barton Creek Greenbelt and Walnut Creek.',
-    severity: 'medium' as const,
-  },
-  {
-    icon: '🐍',
-    title: 'Wildlife awareness',
-    body: 'Watch for copperheads and western diamondback rattlesnakes near rocky outcrops. Scorpions hide under logs and rocks. Feral hogs are active at dawn and dusk — give them space.',
-    severity: 'high' as const,
-  },
-  {
-    icon: '🌊',
-    title: 'Flash flood safety',
-    body: 'Central Texas is in Flash Flood Alley. Water levels at creek crossings can rise in minutes. Turn Around, Don\'t Drown — never cross moving water above ankle depth.',
-    severity: 'high' as const,
-  },
-  {
-    icon: '🚴',
-    title: 'Bike trail etiquette',
-    body: 'Always wear a helmet. Use front and rear lights at dusk. Call out "on your left" when passing. Yield to pedestrians on shared paths and keep speeds reasonable.',
-    severity: 'low' as const,
-  },
-  {
-    icon: '🎒',
-    title: 'Trail essentials',
-    body: 'Carry at minimum: water (32+ oz), snacks, sunscreen, a charged phone, a basic first aid kit, and a fully charged battery pack. Download offline maps before remote hikes.',
-    severity: 'medium' as const,
-  },
-];
-
-const SEVERITY_COLORS = {
-  high: COLORS.danger,
-  medium: COLORS.warning,
-  low: COLORS.primary,
-};
-
-const SEVERITY_BG = {
-  high: COLORS.dangerLight,
-  medium: COLORS.warningLight,
-  low: COLORS.primarySurface,
-};
 
 export default function SafetyScreen() {
-  const [expandedTip, setExpandedTip] = useState<string | null>(null);
+  const navigation = useNavigation<any>();
+  const { report } = useWeather();
 
   return (
-    <View style={styles.container}>
-      <Header title="Safety" subtitle="Stay safe · Trail ready" />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* Promise card */}
-        <View style={styles.promiseCard}>
-          <View style={styles.promiseBg} />
-          <Text style={styles.promiseIcon}>🛡️</Text>
-          <Text style={styles.promiseTitle}>EcoTrek Safety Promise</Text>
-          <Text style={styles.promiseBody}>
-            Every trail deserves safe explorers. We share real, local safety
-            guidance and emergency resources so Austin's green spaces stay
-            welcoming for everyone — families, students, and solo adventurers.
-          </Text>
-        </View>
+    <Screen>
+      <Header title="Safety" subtitle="Know before you go" back />
 
-        {/* Emergency contacts */}
-        <Text style={styles.sectionTitle}>Emergency contacts</Text>
-        <View style={styles.emergencyGrid}>
-          {EMERGENCY.map((r) => (
-            <Pressable
-              key={r.label}
-              style={({ pressed }) => [
-                styles.emergencyCard,
-                { borderTopColor: r.color },
-                pressed && { opacity: 0.85, transform: [{ scale: 0.98 }] },
-              ]}
-              onPress={() => Linking.openURL(r.url)}
-            >
-              <Text style={styles.emergencyIcon}>{r.icon}</Text>
-              <Text style={styles.emergencyLabel}>{r.label}</Text>
-              <Text style={[styles.emergencySub, { color: r.color }]}>
-                {r.sub}
-              </Text>
-              <Text style={[styles.emergencyTap, { color: r.color }]}>
-                Tap to call →
-              </Text>
-            </Pressable>
-          ))}
-        </View>
+      <View style={styles.body}>
+        <ConditionsCard />
 
-        {/* Trail tips */}
-        <Text style={styles.sectionTitle}>Trail safety guide</Text>
-        {TIPS.map((t) => (
-          <Pressable
-            key={t.title}
-            style={[
-              styles.tipCard,
-              expandedTip === t.title && {
-                borderLeftColor: SEVERITY_COLORS[t.severity],
-              },
-            ]}
-            onPress={() =>
-              setExpandedTip(expandedTip === t.title ? null : t.title)
-            }
-          >
-            <View style={styles.tipHeader}>
-              <View
-                style={[
-                  styles.tipIconWrap,
-                  { backgroundColor: SEVERITY_BG[t.severity] },
-                ]}
-              >
-                <Text style={styles.tipIcon}>{t.icon}</Text>
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.tipTitle}>{t.title}</Text>
-                <View
-                  style={[
-                    styles.severityPill,
-                    { backgroundColor: SEVERITY_BG[t.severity] },
-                  ]}
+        {report && report.level === 'danger' ? (
+          <Banner
+            tone="danger"
+            icon="alert-triangle"
+            title="Conditions are dangerous right now"
+            message="Whatever you had planned, it will still be there tomorrow. Sit this one out."
+            onPress={() => navigation.navigate('Conditions')}
+          />
+        ) : null}
+
+        {/* Emergency */}
+        <View>
+          <SectionHeader title="Emergency numbers" />
+          <Card padded={false}>
+            {EMERGENCY.map((e, i) => (
+              <View key={e.tel}>
+                {i > 0 ? <Divider style={{ marginLeft: 58 }} /> : null}
+                <Pressable
+                  onPress={() => Linking.openURL(`tel:${e.tel}`)}
+                  style={({ pressed }) => [styles.callRow, pressed && { opacity: 0.7 }]}
                 >
-                  <Text
-                    style={[
-                      styles.severityText,
-                      { color: SEVERITY_COLORS[t.severity] },
-                    ]}
-                  >
-                    {t.severity.toUpperCase()} PRIORITY
-                  </Text>
-                </View>
+                  <View style={[styles.callIcon, i === 0 && { backgroundColor: COLORS.dangerLight }]}>
+                    <Icon
+                      name={i === 0 ? 'alert-circle' : 'info'}
+                      size={16}
+                      color={i === 0 ? COLORS.danger : COLORS.textMuted}
+                      strokeWidth={1.9}
+                    />
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={styles.callLabel}>{e.label}</Text>
+                    <Text style={styles.callValue}>{e.value}</Text>
+                  </View>
+                  <Icon name="chevron-right" size={16} color={COLORS.textLight} />
+                </Pressable>
               </View>
-              <Text style={styles.tipChevron}>
-                {expandedTip === t.title ? '▲' : '▼'}
-              </Text>
-            </View>
-            {expandedTip === t.title && (
-              <Text style={styles.tipBody}>{t.body}</Text>
-            )}
-          </Pressable>
-        ))}
-
-        {/* Preparedness checklist */}
-        <Text style={styles.sectionTitle}>Before you go checklist</Text>
-        <View style={styles.checklistCard}>
-          {[
-            { item: 'Water (32+ oz per hour)', icon: '💧' },
-            { item: 'Sunscreen SPF 30+', icon: '☀️' },
-            { item: 'Charged phone + backup battery', icon: '🔋' },
-            { item: 'Snacks / energy food', icon: '🍌' },
-            { item: 'First aid kit', icon: '🩹' },
-            { item: 'Trail map downloaded offline', icon: '🗺️' },
-            { item: 'Shared route with contact', icon: '📱' },
-            { item: 'Weather check done', icon: '⛅' },
-          ].map((c) => (
-            <ChecklistItem key={c.item} icon={c.icon} text={c.item} />
-          ))}
+            ))}
+          </Card>
         </View>
 
-        {/* Footer */}
-        <View style={styles.footerCard}>
-          <Text style={styles.footerIcon}>🌳</Text>
-          <Text style={styles.footerText}>
-            Healthier urban canopies mean cooler trails, cleaner air, and safer
-            conditions for every Austin trekker. Your EcoPoints fund the trees
-            that protect us all.
-          </Text>
+        {/* Guides */}
+        <View>
+          <SectionHeader title="Trail safety" />
+          <View style={{ gap: SPACING.sm }}>
+            {GUIDES.map((g) => (
+              <Card key={g.title}>
+                <View style={styles.guideHead}>
+                  <View style={styles.guideIcon}>
+                    <Icon name={g.icon} size={18} color={COLORS.primary} strokeWidth={1.9} />
+                  </View>
+                  <Text style={styles.guideTitle}>{g.title}</Text>
+                </View>
+                {g.points.map((p, i) => (
+                  <View key={i} style={styles.pointRow}>
+                    <View style={styles.bullet} />
+                    <Text style={styles.pointText}>{p}</Text>
+                  </View>
+                ))}
+              </Card>
+            ))}
+          </View>
         </View>
-      </ScrollView>
-    </View>
-  );
-}
 
-function ChecklistItem({ icon, text }: { icon: string; text: string }) {
-  const [checked, setChecked] = useState(false);
-  return (
-    <Pressable
-      style={styles.checklistRow}
-      onPress={() => setChecked((c) => !c)}
-    >
-      <View
-        style={[
-          styles.checkbox,
-          checked && {
-            backgroundColor: COLORS.primary,
-            borderColor: COLORS.primary,
-          },
-        ]}
-      >
-        {checked && <Text style={styles.checkmark}>✓</Text>}
+        <Button
+          label="View full conditions report"
+          variant="secondary"
+          icon="cloud"
+          full
+          onPress={() => navigation.navigate('Conditions')}
+        />
       </View>
-      <Text style={styles.checkIcon}>{icon}</Text>
-      <Text
-        style={[
-          styles.checkText,
-          checked && {
-            textDecorationLine: 'line-through',
-            color: COLORS.textMuted,
-          },
-        ]}
-      >
-        {text}
-      </Text>
-    </Pressable>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: { padding: SPACING.md, paddingBottom: SPACING.xxxl },
+  body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
 
-  // Promise card
-  promiseCard: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-    alignItems: 'center',
-    overflow: 'hidden',
-    ...SHADOWS.lg,
-  },
-  promiseBg: {
-    position: 'absolute',
-    top: -40,
-    right: -40,
-    width: 160,
-    height: 160,
-    borderRadius: 80,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  promiseIcon: { fontSize: 48, marginBottom: SPACING.sm },
-  promiseTitle: {
-    ...TYPOGRAPHY.h2,
-    color: '#fff',
-    marginBottom: SPACING.sm,
-    textAlign: 'center',
-  },
-  promiseBody: {
-    ...TYPOGRAPHY.body,
-    color: 'rgba(255,255,255,0.65)',
-    textAlign: 'center',
-    lineHeight: 23,
-  },
-
-  // Section title
-  sectionTitle: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-    marginTop: SPACING.xs,
-  },
-
-  // Emergency grid
-  emergencyGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  emergencyCard: {
-    width: '47.5%',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    borderTopWidth: 3,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  emergencyIcon: { fontSize: 28, marginBottom: SPACING.xs },
-  emergencyLabel: { ...TYPOGRAPHY.h4, color: COLORS.text, marginBottom: 2 },
-  emergencySub: { ...TYPOGRAPHY.smallMed, marginBottom: 4 },
-  emergencyTap: { ...TYPOGRAPHY.micro, fontWeight: '700', letterSpacing: 0.3 },
-
-  // Tips
-  tipCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.border,
-    ...SHADOWS.sm,
-  },
-  tipHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  tipIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.md,
+  callRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4, padding: SPACING.md - 3 },
+  callIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  tipIcon: { fontSize: 22 },
-  tipTitle: { ...TYPOGRAPHY.h4, color: COLORS.text, marginBottom: 4 },
-  severityPill: {
-    alignSelf: 'flex-start',
-    paddingHorizontal: 8,
-    paddingVertical: 2,
-    borderRadius: RADIUS.pill,
-  },
-  severityText: { ...TYPOGRAPHY.micro, letterSpacing: 0.5 },
-  tipChevron: { color: COLORS.textMuted, fontSize: 12, fontWeight: '700' },
-  tipBody: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.text,
-    marginTop: SPACING.md,
-    lineHeight: 23,
-    paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
+  callLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  callValue: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
 
-  // Checklist
-  checklistCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.sm,
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  checklistRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    padding: SPACING.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-  },
-  checkbox: {
-    width: 22,
-    height: 22,
-    borderRadius: 6,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  checkmark: { color: '#fff', fontSize: 13, fontWeight: '900' },
-  checkIcon: { fontSize: 18 },
-  checkText: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flex: 1 },
-
-  // Footer
-  footerCard: {
+  guideHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2, marginBottom: SPACING.sm + 2 },
+  guideIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: RADIUS.sm + 2,
     backgroundColor: COLORS.primarySurface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
     alignItems: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.primaryGlow,
+    justifyContent: 'center',
   },
-  footerIcon: { fontSize: 40, marginBottom: SPACING.sm },
-  footerText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.primaryDark,
-    textAlign: 'center',
-    lineHeight: 23,
+  guideTitle: { ...TYPOGRAPHY.h3, color: COLORS.text },
+  pointRow: { flexDirection: 'row', gap: SPACING.sm + 2, marginBottom: 7, alignItems: 'flex-start' },
+  bullet: {
+    width: 4,
+    height: 4,
+    borderRadius: 2,
+    backgroundColor: COLORS.textLight,
+    marginTop: 8,
   },
+  pointText: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, flex: 1 },
 });

@@ -4,24 +4,31 @@ import React, {
   useContext,
   useEffect,
   useMemo,
+  useRef,
   useState,
 } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { useAuth } from '../context/AuthContext';
+import { keyFor, loadJSON, saveJSON } from '../services/storage';
 
-type AnalyticsEvent = {
+/**
+ * Lightweight, on-device usage analytics.
+ *
+ * This exists so the team can answer "which screens do people actually use"
+ * without shipping a third-party tracking SDK. Nothing is transmitted
+ * anywhere: the numbers live in this device's storage and are visible to the
+ * user. That is what lets the privacy policy honestly say the app contains no
+ * trackers and no advertising identifiers.
+ *
+ * The event log is namespaced per user like every other store, so two accounts
+ * on one phone do not pool their history. The device id deliberately is NOT
+ * per-user — it identifies the hardware, not the person.
+ */
+
+export type AnalyticsEvent = {
   event: string;
   timestamp: number;
-  data?: Record<string, any>;
-};
-
-type AnalyticsState = {
-  sessionCount: number;
-  firstSeen: number | null;
-  lastSeen: number | null;
-  totalEvents: number;
-  events: AnalyticsEvent[];
-  logEvent: (event: string, data?: Record<string, any>) => Promise<void>;
-  getSummary: () => AnalyticsSummary;
+  data?: Record<string, unknown>;
 };
 
 export type AnalyticsSummary = {
@@ -33,146 +40,158 @@ export type AnalyticsSummary = {
   topEvents: { event: string; count: number }[];
 };
 
+type Stored = {
+  sessionCount: number;
+  firstSeen: number;
+  lastSeen: number;
+  events: AnalyticsEvent[];
+};
+
+type AnalyticsState = {
+  sessionCount: number;
+  firstSeen: number | null;
+  lastSeen: number | null;
+  totalEvents: number;
+  events: AnalyticsEvent[];
+  deviceId: string;
+  logEvent: (event: string, data?: Record<string, unknown>) => void;
+  getSummary: () => AnalyticsSummary;
+  clear: () => Promise<void>;
+};
+
 const AnalyticsContext = createContext<AnalyticsState | null>(null);
-const STORAGE_KEY = '@ecotrek/analytics';
+
+/** Device-wide, so it survives switching accounts. */
 const DEVICE_ID_KEY = '@ecotrek/device_id';
 
-function genDeviceId() {
-  return `DEV-${Date.now().toString(36)}-${Math.random()
-    .toString(36)
-    .slice(2, 6)
-    .toUpperCase()}`;
+/** Keeping the log bounded stops it growing without limit on a long-lived install. */
+const MAX_EVENTS = 500;
+
+function generateDeviceId(): string {
+  return `DEV-${Date.now().toString(36)}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
 }
 
+const EMPTY: Stored = { sessionCount: 0, firstSeen: 0, lastSeen: 0, events: [] };
+
 export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
-  const [sessionCount, setSessionCount] = useState(0);
-  const [firstSeen, setFirstSeen] = useState<number | null>(null);
-  const [lastSeen, setLastSeen] = useState<number | null>(null);
-  const [events, setEvents] = useState<AnalyticsEvent[]>([]);
+  const { user } = useAuth();
+  const storeKey = keyFor(user?.id ?? null, 'analytics');
+
+  const [state, setState] = useState<Stored>(EMPTY);
   const [deviceId, setDeviceId] = useState('');
 
+  // The single source of truth for writes. Holding the latest state in a ref
+  // lets logEvent persist without a read-modify-write against storage, which
+  // is what made rapid consecutive events lose each other.
+  const stateRef = useRef<Stored>(EMPTY);
+  const ready = useRef(false);
+
   useEffect(() => {
+    let cancelled = false;
+    ready.current = false;
+
     (async () => {
       try {
-        // Device ID
-        let did = await AsyncStorage.getItem(DEVICE_ID_KEY);
-        if (!did) {
-          did = genDeviceId();
-          await AsyncStorage.setItem(DEVICE_ID_KEY, did);
+        let id = await AsyncStorage.getItem(DEVICE_ID_KEY);
+        if (!id) {
+          id = generateDeviceId();
+          await AsyncStorage.setItem(DEVICE_ID_KEY, id);
         }
-        setDeviceId(did);
+        if (cancelled) return;
+        setDeviceId(id);
 
-        // Analytics
-        const raw = await AsyncStorage.getItem(STORAGE_KEY);
+        const stored = await loadJSON<Stored>(storeKey, EMPTY);
+        if (cancelled) return;
+
         const now = Date.now();
+        // Guard every field: a partially written or hand-edited record used to
+        // produce NaN session counts that then persisted forever.
+        const next: Stored = {
+          sessionCount: (Number(stored.sessionCount) || 0) + 1,
+          firstSeen: Number(stored.firstSeen) || now,
+          lastSeen: now,
+          events: Array.isArray(stored.events) ? stored.events : [],
+        };
 
-        if (raw) {
-          const data = JSON.parse(raw);
-          setSessionCount(data.sessionCount + 1);
-          setFirstSeen(data.firstSeen);
-          setLastSeen(now);
-          setEvents(data.events ?? []);
-
-          await AsyncStorage.setItem(
-            STORAGE_KEY,
-            JSON.stringify({
-              ...data,
-              sessionCount: data.sessionCount + 1,
-              lastSeen: now,
-            })
-          );
-        } else {
-          // First ever launch
-          const initial = {
-            sessionCount: 1,
-            firstSeen: now,
-            lastSeen: now,
-            events: [],
-          };
-          setSessionCount(1);
-          setFirstSeen(now);
-          setLastSeen(now);
-          await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(initial));
-        }
+        stateRef.current = next;
+        setState(next);
+        ready.current = true;
+        saveJSON(storeKey, next);
       } catch (e) {
-        console.warn('Analytics init error', e);
+        console.warn('[analytics] init failed', e);
+        ready.current = true;
       }
     })();
-  }, []);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [storeKey]);
 
   const logEvent = useCallback(
-    async (event: string, data?: Record<string, any>) => {
-      const evt: AnalyticsEvent = {
-        event,
-        timestamp: Date.now(),
-        data,
+    (event: string, data?: Record<string, unknown>) => {
+      // Dropping events fired before load finishes is deliberate: writing then
+      // would race the loader and clobber the restored history.
+      if (!ready.current) return;
+
+      const next: Stored = {
+        ...stateRef.current,
+        lastSeen: Date.now(),
+        events: [{ event, timestamp: Date.now(), data }, ...stateRef.current.events].slice(
+          0,
+          MAX_EVENTS
+        ),
       };
-      setEvents((prev) => {
-        const updated = [evt, ...prev].slice(0, 500); // keep last 500
-        AsyncStorage.getItem(STORAGE_KEY).then((raw) => {
-          if (raw) {
-            const parsed = JSON.parse(raw);
-            AsyncStorage.setItem(
-              STORAGE_KEY,
-              JSON.stringify({ ...parsed, events: updated })
-            );
-          }
-        });
-        return updated;
-      });
+      stateRef.current = next;
+      setState(next);
+      saveJSON(storeKey, next);
     },
-    []
+    [storeKey]
   );
 
   const getSummary = useCallback((): AnalyticsSummary => {
-    const eventCounts: Record<string, number> = {};
-    events.forEach((e) => {
-      eventCounts[e.event] = (eventCounts[e.event] ?? 0) + 1;
-    });
-    const topEvents = Object.entries(eventCounts)
-      .map(([event, count]) => ({ event, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 10);
+    const counts = new Map<string, number>();
+    for (const e of state.events) counts.set(e.event, (counts.get(e.event) ?? 0) + 1);
 
     return {
-      sessionCount,
-      firstSeen: firstSeen
-        ? new Date(firstSeen).toLocaleDateString()
-        : 'Never',
-      lastSeen: lastSeen
-        ? new Date(lastSeen).toLocaleString()
-        : 'Never',
-      totalEvents: events.length,
+      sessionCount: state.sessionCount,
+      firstSeen: state.firstSeen ? new Date(state.firstSeen).toLocaleDateString() : 'Never',
+      lastSeen: state.lastSeen ? new Date(state.lastSeen).toLocaleString() : 'Never',
+      totalEvents: state.events.length,
       deviceId,
-      topEvents,
+      topEvents: [...counts.entries()]
+        .map(([event, count]) => ({ event, count }))
+        .sort((a, b) => b.count - a.count)
+        .slice(0, 10),
     };
-  }, [sessionCount, firstSeen, lastSeen, events, deviceId]);
+  }, [state, deviceId]);
+
+  const clear = useCallback(async () => {
+    stateRef.current = EMPTY;
+    setState(EMPTY);
+    await saveJSON(storeKey, EMPTY);
+  }, [storeKey]);
 
   const value = useMemo<AnalyticsState>(
     () => ({
-      sessionCount,
-      firstSeen,
-      lastSeen,
-      totalEvents: events.length,
-      events,
+      sessionCount: state.sessionCount,
+      firstSeen: state.firstSeen || null,
+      lastSeen: state.lastSeen || null,
+      totalEvents: state.events.length,
+      events: state.events,
+      deviceId,
       logEvent,
       getSummary,
+      clear,
     }),
-    [sessionCount, firstSeen, lastSeen, events, logEvent, getSummary]
+    [state, deviceId, logEvent, getSummary, clear]
   );
 
-  return (
-    <AnalyticsContext.Provider value={value}>
-      {children}
-    </AnalyticsContext.Provider>
-  );
+  return <AnalyticsContext.Provider value={value}>{children}</AnalyticsContext.Provider>;
 }
 
 export function useAnalytics() {
   const ctx = useContext(AnalyticsContext);
-  if (!ctx)
-    throw new Error(
-      'useAnalytics must be used inside <AnalyticsProvider />'
-    );
+  if (!ctx) throw new Error('useAnalytics must be used inside <AnalyticsProvider />');
   return ctx;
 }

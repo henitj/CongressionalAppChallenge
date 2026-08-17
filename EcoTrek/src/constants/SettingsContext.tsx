@@ -17,7 +17,10 @@ type SettingsState = {
   setUnits: (u: Units) => Promise<void>;
   setTempUnit: (t: TempUnit) => Promise<void>;
   // Conversion helpers
+  /** Two decimals — for live tracking, where the width should not jump. */
   formatDistance: (miles: number) => string;
+  /** Trimmed — "10", "7.9", "2.45". For catalogue and summary figures. */
+  formatDistanceCompact: (miles: number) => string;
   formatDistanceUnit: () => string;
   formatTemp: (fahrenheit: number) => string;
   convertDistance: (miles: number) => number;
@@ -78,6 +81,16 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     [convertDistance]
   );
 
+  const formatDistanceCompact = useCallback(
+    (miles: number) => {
+      const val = convertDistance(miles);
+      // Trailing zeros read as false precision: a 10-mile trail is "10 mi",
+      // not "10.00 mi".
+      return String(Number(val.toFixed(2)));
+    },
+    [convertDistance]
+  );
+
   const formatDistanceUnit = useCallback(() => {
     return units === 'metric' ? 'km' : 'mi';
   }, [units]);
@@ -85,9 +98,10 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   const formatTemp = useCallback(
     (fahrenheit: number) => {
       if (tempUnit === 'C') {
-        return `${(((fahrenheit - 32) * 5) / 9).toFixed(1)}°C`;
+        return `${Math.round(((fahrenheit - 32) * 5) / 9)}°C`;
       }
-      return `${fahrenheit.toFixed(1)}°F`;
+      // Nobody needs a tenth of a degree, and "100.0°F" reads worse than "100°F".
+      return `${Math.round(fahrenheit)}°F`;
     },
     [tempUnit]
   );
@@ -99,6 +113,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setUnits,
       setTempUnit,
       formatDistance,
+      formatDistanceCompact,
       formatDistanceUnit,
       formatTemp,
       convertDistance,
@@ -109,6 +124,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setUnits,
       setTempUnit,
       formatDistance,
+      formatDistanceCompact,
       formatDistanceUnit,
       formatTemp,
       convertDistance,

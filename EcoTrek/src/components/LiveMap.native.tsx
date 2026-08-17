@@ -1,5 +1,6 @@
 import React, { useEffect, useRef } from 'react';
 import { View, StyleSheet } from 'react-native';
+import { Platform } from 'react-native';
 import MapView, { Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Coord } from '../services/location';
 import { COLORS, RADIUS } from '../constants/theme';
@@ -40,7 +41,10 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
           mapRef.current = r;
         }}
         style={StyleSheet.absoluteFillObject}
-        provider={PROVIDER_GOOGLE}
+        // Android has no map without Google. iOS uses Apple Maps, which needs
+        // no API key at all — forcing Google there would demand a second key
+        // for no visible benefit.
+        provider={Platform.OS === 'android' ? PROVIDER_GOOGLE : undefined}
         initialRegion={initialRegion}
         showsUserLocation
         showsMyLocationButton
@@ -62,7 +66,7 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
               latitude: path[0].latitude,
               longitude: path[0].longitude,
             }}
-            pinColor="orange"
+            pinColor={COLORS.accent}
             title="Start"
           />
         )}
@@ -70,8 +74,8 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
           <Circle
             center={{ latitude: current.latitude, longitude: current.longitude }}
             radius={current.accuracy}
-            strokeColor="rgba(31,138,76,0.4)"
-            fillColor="rgba(31,138,76,0.08)"
+            strokeColor="rgba(22,98,74,0.35)"
+            fillColor="rgba(22,98,74,0.08)"
           />
         )}
       </MapView>
@@ -84,7 +88,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: RADIUS.md,
     overflow: 'hidden',
-    backgroundColor: '#E7F1E5',
+    backgroundColor: COLORS.backgroundDark,
     borderWidth: 1,
     borderColor: COLORS.border,
   },

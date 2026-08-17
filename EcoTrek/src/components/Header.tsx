@@ -1,133 +1,125 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Pressable, StyleProp, ViewStyle } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import { COLORS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
-import TreeIcon from './TreeIcon';
-import ProfileMenu from './ProfileMenu';
+import { useNavigation } from '@react-navigation/native';
+import Icon, { IconName } from './Icon';
+import { Avatar } from './ui';
+import { useAuth } from '../context/AuthContext';
+import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
+
+type Action = { icon: IconName; onPress: () => void; badge?: boolean; label?: string };
 
 type Props = {
   title: string;
   subtitle?: string;
-  right?: React.ReactNode;
-  variant?: 'default' | 'transparent' | 'light';
+  /** Shows a back chevron instead of the avatar. */
+  back?: boolean;
+  actions?: Action[];
+  /** Hide the profile avatar (e.g. on the Profile screen itself). */
+  hideAvatar?: boolean;
+  style?: StyleProp<ViewStyle>;
 };
 
 export default function Header({
   title,
   subtitle,
-  right,
-  variant = 'default',
+  back,
+  actions = [],
+  hideAvatar,
+  style,
 }: Props) {
-  const isDark = variant !== 'light';
+  const navigation = useNavigation<any>();
+  const { user } = useAuth();
 
   return (
-    <SafeAreaView
-      edges={['top']}
-      style={[
-        styles.safe,
-        variant === 'light' && styles.safeLight,
-        variant === 'transparent' && styles.safeTransparent,
-      ]}
-    >
+    <SafeAreaView edges={['top']} style={[styles.safe, style]}>
       <View style={styles.bar}>
-        {/* Left: logo + title */}
-        <View style={styles.left}>
-          <View style={styles.logoWrap}>
-            <TreeIcon size={26} color={isDark ? '#fff' : COLORS.primary} />
-          </View>
-          <View style={{ marginLeft: SPACING.sm }}>
-            <Text
-              style={[
-                styles.title,
-                !isDark && { color: COLORS.text },
-              ]}
-              numberOfLines={1}
-            >
-              {title}
-            </Text>
-            {subtitle ? (
-              <Text
-                style={[
-                  styles.subtitle,
-                  !isDark && { color: COLORS.textMuted },
-                ]}
-              >
-                {subtitle}
-              </Text>
-            ) : null}
-          </View>
+        {back ? (
+          <Pressable
+            onPress={() => navigation.goBack()}
+            hitSlop={12}
+            style={styles.iconBtn}
+            accessibilityLabel="Go back"
+          >
+            <Icon name="chevron-left" size={20} color={COLORS.text} strokeWidth={2.1} />
+          </Pressable>
+        ) : null}
+
+        <View style={styles.titleWrap}>
+          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
+          <Text style={styles.title} numberOfLines={1}>
+            {title}
+          </Text>
         </View>
 
-        {/* Right: actions + profile */}
-        <View style={styles.right}>
-          {right}
-          <ProfileMenu />
+        <View style={styles.actions}>
+          {actions.map((a, i) => (
+            <Pressable
+              key={i}
+              onPress={a.onPress}
+              hitSlop={10}
+              style={styles.iconBtn}
+              accessibilityLabel={a.label}
+            >
+              <Icon name={a.icon} size={19} color={COLORS.textSecondary} strokeWidth={1.9} />
+              {a.badge ? <View style={styles.dot} /> : null}
+            </Pressable>
+          ))}
+
+          {!hideAvatar && !back ? (
+            <Pressable
+              onPress={() => navigation.navigate('Profile')}
+              hitSlop={8}
+              accessibilityLabel="Open profile"
+            >
+              <Avatar name={user?.name} uri={user?.picture} size={34} />
+            </Pressable>
+          ) : null}
         </View>
       </View>
-
-      {/* Bottom border line */}
-      <View
-        style={[
-          styles.bottomLine,
-          isDark && { backgroundColor: 'rgba(255,255,255,0.08)' },
-        ]}
-      />
     </SafeAreaView>
   );
 }
 
 const styles = StyleSheet.create({
   safe: {
-    backgroundColor: COLORS.primaryDark,
-    ...SHADOWS.md,
-  },
-  safeLight: {
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-  },
-  safeTransparent: {
-    backgroundColor: 'transparent',
+    backgroundColor: COLORS.background,
   },
   bar: {
     paddingHorizontal: SPACING.md,
-    paddingVertical: 12,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.sm + 2,
     flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'space-between',
+    gap: SPACING.sm,
   },
-  left: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    flex: 1,
+  titleWrap: { flex: 1 },
+  title: { ...TYPOGRAPHY.h1, color: COLORS.text },
+  subtitle: {
+    ...TYPOGRAPHY.overline,
+    color: COLORS.textMuted,
+    marginBottom: 1,
   },
-  logoWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 12,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  iconBtn: {
+    width: 34,
+    height: 34,
+    borderRadius: 17,
     alignItems: 'center',
     justifyContent: 'center',
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  right: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 8,
-  },
-  title: {
-    ...TYPOGRAPHY.h3,
-    color: '#fff',
-    letterSpacing: -0.3,
-  },
-  subtitle: {
-    ...TYPOGRAPHY.micro,
-    color: 'rgba(255,255,255,0.6)',
-    marginTop: 1,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  bottomLine: {
-    height: 1,
-    backgroundColor: COLORS.border,
+  dot: {
+    position: 'absolute',
+    top: 6,
+    right: 7,
+    width: 7,
+    height: 7,
+    borderRadius: 4,
+    backgroundColor: COLORS.accent,
+    borderWidth: 1.5,
+    borderColor: COLORS.surface,
   },
 });
