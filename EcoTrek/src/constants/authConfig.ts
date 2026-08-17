@@ -1,28 +1,81 @@
+import { Platform } from 'react-native';
+
 /**
- * Google OAuth client IDs.
+ * Google OAuth configuration.
  *
- * 1. Go to https://console.cloud.google.com/apis/credentials
- * 2. Create an OAuth 2.0 Client ID for each platform you're targeting:
- *    - Web → use the Expo redirect URI for web (https://yourdomain or http://localhost:8081)
- *    - iOS → bundle ID: com.ecotrek.app  (and add reversed client id below)
- *    - Android → package: com.ecotrek.app + SHA-1 from `eas credentials`
- * 3. Drop the client IDs here.
+ * ── Setup, once ───────────────────────────────────────────────────────────
+ * You should not have to edit this file. Put your client IDs in `.env` at the
+ * project root (copy `.env.example`) and they get picked up automatically:
  *
- * If you leave the placeholders, the sign-in button stays disabled and the
- * "Continue as guest" button still lets you use the app.
+ *     EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID=...apps.googleusercontent.com
+ *     EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID=...apps.googleusercontent.com
+ *     EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID=...apps.googleusercontent.com
+ *
+ * Where to get them: https://console.cloud.google.com/apis/credentials
+ *   • Web client       — Authorized redirect URIs must include
+ *                        https://auth.expo.io/@<your-expo-username>/ecotrek
+ *                        and http://localhost:8081 for local web testing.
+ *   • iOS client       — Bundle ID: com.ecotrek.app
+ *   • Android client   — Package: com.ecotrek.app
+ *                        SHA-1 fingerprint: run `eas credentials` and use the
+ *                        fingerprint of the **release** keystore Play will
+ *                        sign with. The debug keystore fingerprint will NOT
+ *                        work on a Play Store build — this is the single most
+ *                        common reason Google sign-in works in testing and
+ *                        fails in production.
+ *
+ * Client IDs are not secrets — they are designed to be public and shipping
+ * them in the app bundle is expected. Client *secrets* are a different thing
+ * and must never appear here.
  */
-export const GOOGLE_AUTH = {
-  expoClientId: 'YOUR_WEB_CLIENT_ID.apps.googleusercontent.com',
-  webClientId: '140635508834-8p2onen68nm93bgavok2k5inrb1ffl0h.apps.googleusercontent.com',
-  iosClientId: '140635508834-cdba42jq8ifogv0ac0ps0t5p6s840a7k.apps.googleusercontent.com',
-  androidClientId: '',
+
+const env = {
+  web: process.env.EXPO_PUBLIC_GOOGLE_WEB_CLIENT_ID ?? '',
+  ios: process.env.EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID ?? '',
+  android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? '',
 };
 
-export function isGoogleConfigured() {
-  return (
-    GOOGLE_AUTH.webClientId &&
-    GOOGLE_AUTH.iosClientId &&
-    !GOOGLE_AUTH.webClientId.startsWith('YOUR_') &&
-    !GOOGLE_AUTH.iosClientId.startsWith('YOUR_')
-  );
+/** Fallbacks kept so the project still builds before you add a .env file. */
+const fallback = {
+  web: '140635508834-8p2onen68nm93bgavok2k5inrb1ffl0h.apps.googleusercontent.com',
+  ios: '140635508834-cdba42jq8ifogv0ac0ps0t5p6s840a7k.apps.googleusercontent.com',
+  android: '',
+};
+
+export const GOOGLE_AUTH = {
+  /** Expo Go / proxy flows reuse the web client. */
+  expoClientId: env.web || fallback.web,
+  webClientId: env.web || fallback.web,
+  iosClientId: env.ios || fallback.ios,
+  androidClientId: env.android || fallback.android,
+};
+
+function looksReal(id: string): boolean {
+  return id.length > 0 && !id.startsWith('YOUR_') && id.endsWith('.apps.googleusercontent.com');
+}
+
+/**
+ * True when the current platform has a usable client ID. Checked per-platform
+ * so a missing Android ID doesn't silently break the Play Store build while
+ * everything looks fine on iOS.
+ */
+export function isGoogleConfigured(): boolean {
+  if (Platform.OS === 'android') {
+    // Android needs its own client; Expo Go falls back to the web one.
+    return looksReal(GOOGLE_AUTH.androidClientId) || looksReal(GOOGLE_AUTH.expoClientId);
+  }
+  if (Platform.OS === 'ios') {
+    return looksReal(GOOGLE_AUTH.iosClientId) || looksReal(GOOGLE_AUTH.expoClientId);
+  }
+  return looksReal(GOOGLE_AUTH.webClientId);
+}
+
+/** Surfaces exactly what is missing, so setup problems are obvious. */
+export function googleConfigProblems(): string[] {
+  const out: string[] = [];
+  if (!looksReal(GOOGLE_AUTH.webClientId)) out.push('Web client ID is missing.');
+  if (!looksReal(GOOGLE_AUTH.iosClientId)) out.push('iOS client ID is missing.');
+  if (!looksReal(GOOGLE_AUTH.androidClientId))
+    out.push('Android client ID is missing — Google sign-in will fail on the Play Store build.');
+  return out;
 }

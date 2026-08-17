@@ -8,37 +8,42 @@
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": false,
+    "primaryColor": "#16624A",
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#0E3B2E"
+      "backgroundColor": "#0C2E24"
     },
+    "assetBundlePatterns": [
+      "**/*"
+    ],
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ecotrek.app",
+      "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "EcoTrek needs your location to track your hikes and bike rides so we can plant trees for every mile you complete.",
-        "NSLocationAlwaysAndWhenInUseUsageDescription": "EcoTrek needs your location to track your activities in the background.",
-        "CFBundleURLTypes": [
-          {
-            "CFBundleURLSchemes": [
-              "com.googleusercontent.apps.140635508834-cdba42jq8ifogv0ac0ps0t5p6s840a7k"
-            ]
-          }
-        ]
+        "NSLocationWhenInUseUsageDescription": "EcoTrek uses your location while you are recording to measure how far you hike or bike, and to show weather warnings for where you are. It never tracks you in the background.",
+        "ITSAppUsesNonExemptEncryption": false
+      },
+      "config": {
+        "usesNonExemptEncryption": false
       }
     },
     "android": {
       "package": "com.ecotrek.app",
+      "versionCode": 1,
       "edgeToEdgeEnabled": true,
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "POST_NOTIFICATIONS"
+      ],
+      "blockedPermissions": [
         "ACCESS_BACKGROUND_LOCATION"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#0E3B2E"
+        "backgroundColor": "#0C2E24"
       }
     },
     "web": {
@@ -49,10 +54,25 @@
       [
         "expo-location",
         {
-          "locationAlwaysAndWhenInUsePermission": "Allow EcoTrek to use your location to track trails."
+          "locationWhenInUsePermission": "EcoTrek uses your location while you are recording to measure your distance and warn you about dangerous weather nearby.",
+          "isAndroidBackgroundLocationEnabled": false,
+          "isIosBackgroundLocationEnabled": false
+        }
+      ],
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/notification-icon.png",
+          "color": "#16624A",
+          "defaultChannel": "ecotrek-reminders"
         }
       ],
       "expo-web-browser"
-    ]
+    ],
+    "extra": {
+      "eas": {
+        "projectId": ""
+      }
+    }
   }
 }

@@ -1,0 +1,20 @@
+{
+  "name": "ecotrek-api",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "description": "EcoTrek API — the thin layer between the app and Neon Postgres.",
+  "main": "index.js",
+  "scripts": {
+    "start": "node index.js",
+    "dev": "node --watch index.js",
+    "migrate": "node migrate.js"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "dependencies": {
+    "@neondatabase/serverless": "^1.0.0",
+    "google-auth-library": "^9.15.0"
+  }
+}

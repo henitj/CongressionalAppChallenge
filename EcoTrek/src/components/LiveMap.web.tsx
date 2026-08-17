@@ -73,7 +73,7 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
         }).addTo(map);
 
         polylineRef.current = L.polyline([], {
-          color: '#1F8A4C',
+          color: COLORS.primary,
           weight: 5,
           opacity: 0.9,
           lineCap: 'round',
@@ -85,8 +85,8 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
           className: 'ecotrek-you-icon',
           html: `
             <div style="position:relative;width:22px;height:22px;">
-              <div style="position:absolute;inset:0;border-radius:50%;background:#1F8A4C;border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
-              <div style="position:absolute;inset:-8px;border-radius:50%;background:rgba(31,138,76,0.25);animation:ecotrek-pulse 1.6s ease-out infinite;"></div>
+              <div style="position:absolute;inset:0;border-radius:50%;background:${COLORS.primary};border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
+              <div style="position:absolute;inset:-8px;border-radius:50%;background:rgba(22,98,74,0.25);animation:ecotrek-pulse 1.6s ease-out infinite;"></div>
             </div>
             <style>
               @keyframes ecotrek-pulse {
@@ -105,7 +105,7 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
         // Force a resize after mount in case container size finalized later
         setTimeout(() => map.invalidateSize(), 100);
       })
-      .catch((e) => console.warn('Leaflet load error', e));
+      .catch((e) => console.warn('[map] Leaflet failed to load', e));
 
     return () => {
       cancelled = true;
@@ -153,8 +153,8 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
       } else {
         accuracyCircleRef.current = L.circle(ll, {
           radius: current.accuracy,
-          color: '#1F8A4C',
-          fillColor: '#1F8A4C',
+          color: COLORS.primary,
+          fillColor: COLORS.primary,
           fillOpacity: 0.08,
           weight: 1,
           opacity: 0.4,
@@ -179,7 +179,7 @@ const styles = StyleSheet.create({
     width: '100%',
     borderRadius: RADIUS.md,
     overflow: 'hidden',
-    backgroundColor: '#E7F1E5',
+    backgroundColor: COLORS.backgroundDark,
     borderWidth: 1,
     borderColor: COLORS.border,
   },

@@ -1,929 +1,535 @@
-import React, { useRef, useEffect } from 'react';
-import { View, Text, StyleSheet, ScrollView, Pressable, Animated } from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
+
 import Header from '../components/Header';
-import StatCard from '../components/StatCard';
-import TreeIcon from '../components/TreeIcon';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY, TREE_RULES, SHADOWS } from '../constants/theme';
-import { useActivity } from '../context/ActivityContext';
+import Icon, { IconName } from '../components/Icon';
+import StreakStrip from '../components/StreakStrip';
+import ConditionsCard from '../components/ConditionsCard';
+import ChallengeItem from '../components/ChallengeItem';
+import CleanupSheet from '../components/CleanupSheet';
+import { Screen, Card, SectionHeader, Pill, ProgressBar, Button } from '../components/ui';
+
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
+import { useActivity } from '../context/ActivityContext';
+import { useStreak } from '../context/StreakContext';
+import { useChallenges } from '../context/ChallengeContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
+import { useClub } from '../constants/ClubContext';
 import { useAnalytics } from '../constants/AnalyticsContext';
+import { useWeather } from '../context/WeatherContext';
+import { useLogbook } from '../context/LogbookContext';
 
 export default function HomeScreen() {
-  const { totalMiles, totalTrees, history } = useActivity();
-  const { user } = useAuth();
-  const { totalPoints, level, progressPercent, nextLevelPoints } = useEcoPoints();
-  const { formatDistance, formatDistanceUnit } = useSettings();
-  const { logEvent } = useAnalytics();
   const navigation = useNavigation<any>();
-  const firstName = user?.name?.split(' ')[0] ?? 'Trekker';
-  const lastActivity = history[0];
-  const distUnit = formatDistanceUnit();
-
-  // Log screen view
-  useEffect(() => { logEvent('screen_view', { screen: 'Home' }); }, []);
-
-  // Animate in
-  const fadeAnim = useRef(new Animated.Value(0)).current;
-  const slideAnim = useRef(new Animated.Value(30)).current;
+  const { user } = useAuth();
+  const { totalMiles, totalTrees, totalActivities, history } = useActivity();
+  const { currentStreak, longestStreak, activeToday } = useStreak();
+  const { challenges, completedCount, totalCount, timeLeftLabel, completeChallenge } =
+    useChallenges();
+  const { totalPoints, level, progressPercent, nextLevelPoints } = useEcoPoints();
+  const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
+  const { myClub, myRank } = useClub();
+  const { logEvent } = useAnalytics();
+  const { refresh: refreshWeather, loading: weatherLoading } = useWeather();
+  const { speciesLogged, totalSpecies } = useLogbook();
+  const [showCleanup, setShowCleanup] = useState(false);
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fadeAnim, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-      Animated.timing(slideAnim, {
-        toValue: 0,
-        duration: 600,
-        useNativeDriver: true,
-      }),
-    ]).start();
-  }, []);
+    logEvent('screen_view', { screen: 'Home' });
+  }, [logEvent]);
 
-  const timeOfDay = () => {
+  const firstName = user?.name?.split(' ')[0] ?? 'Trekker';
+  const greeting = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';
-    if (h < 17) return 'Good afternoon';
+    if (h < 18) return 'Good afternoon';
     return 'Good evening';
-  };
+  }, []);
+
+  // The recap covers the week that just ended, so it is only interesting from
+  // Sunday evening until the end of Monday.
+  const showRecap = useMemo(() => {
+    const now = new Date();
+    const day = now.getDay();
+    return (day === 0 && now.getHours() >= 17) || day === 1;
+  }, []);
+
+  const nextUp = challenges.find((c) => !c.completed);
+  const recent = history.slice(0, 3);
+  const pointsToNext = Math.max(0, nextLevelPoints - totalPoints);
 
   return (
-    <View style={styles.container}>
+    <Screen
+      refreshControl={
+        <RefreshControl refreshing={weatherLoading} onRefresh={() => refreshWeather(true)} tintColor={COLORS.textMuted} />
+      }
+    >
       <Header
-        title={`${timeOfDay()}, ${firstName}`}
-        subtitle="Explore · Learn · Protect"
+        title={`${greeting}, ${firstName}`}
+        subtitle={new Date().toLocaleDateString(undefined, {
+          weekday: 'long',
+          month: 'short',
+          day: 'numeric',
+        })}
+        actions={[{ icon: 'sliders', onPress: () => navigation.navigate('Settings'), label: 'Settings' }]}
       />
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        <Animated.View
-          style={{ opacity: fadeAnim, transform: [{ translateY: slideAnim }] }}
-        >
-          {/* ── Hero forest card ── */}
-          <View style={styles.hero}>
-            <View style={styles.heroBg} />
-            <View style={styles.heroContent}>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.heroEyebrow}>YOUR FOREST</Text>
-                <Text style={styles.heroValue}>{totalTrees}</Text>
-                <Text style={styles.heroLabel}>
-                  {totalTrees === 1 ? 'tree planted' : 'trees planted'}
-                </Text>
-                <Text style={styles.heroSub}>
-                  via {formatDistance(totalMiles)} {distUnit} of Austin trails
-                </Text>
 
-                {/* Mini progress bar */}
-                <View style={styles.heroProgress}>
-                  <View
-                    style={[
-                      styles.heroProgressBar,
-                      {
-                        width: `${Math.min(
-                          ((totalTrees % 10) / 10) * 100,
-                          100
-                        )}%`,
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.heroProgressLabel}>
-                  {10 - (totalTrees % 10)} trees to next milestone
-                </Text>
-              </View>
+      <View style={styles.body}>
+        {/* ── Conditions first: should you even go out? ─────────────────── */}
+        <ConditionsCard />
 
-              <View style={styles.heroIcon}>
-                <TreeIcon size={72} color="rgba(255,255,255,0.9)" />
-              </View>
+        {showRecap ? (
+          <Pressable style={styles.recapBanner} onPress={() => navigation.navigate('Recap')}>
+            <View style={styles.recapIcon}>
+              <Icon name="calendar" size={17} color={COLORS.accentDark} strokeWidth={2} />
             </View>
-
-            <View style={styles.veritreeBadge}>
-              <Text style={styles.veritreeText}>✅ Verified by Veritree</Text>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.recapTitle}>Your week is in</Text>
+              <Text style={styles.recapSub}>See how last week went</Text>
             </View>
-          </View>
+            <Icon name="chevron-right" size={17} color={COLORS.textLight} />
+          </Pressable>
+        ) : null}
 
-          {/* ── EcoPoints card ── */}
-          <View style={styles.ecoCard}>
-            <View style={styles.ecoCardTop}>
+        {/* ── Quick actions ───────────────────────────────────────────────── */}
+        <View style={styles.quickRow}>
+          <QuickAction
+            icon="play"
+            label="Track"
+            onPress={() => navigation.navigate('Track')}
+          />
+          <QuickAction
+            icon="eye"
+            label="Species"
+            hint={`${speciesLogged}/${totalSpecies}`}
+            onPress={() => navigation.navigate('Species')}
+          />
+          <QuickAction icon="trash" label="Cleanup" onPress={() => setShowCleanup(true)} />
+        </View>
+
+        {/* ── Streak ─────────────────────────────────────────────────────── */}
+        <Card onPress={() => navigation.navigate('Streak')}>
+          <View style={styles.streakHead}>
+            <View style={styles.streakLeft}>
+              <View style={styles.flameWrap}>
+                <Icon
+                  name="flame"
+                  size={19}
+                  color={currentStreak > 0 ? COLORS.accent : COLORS.textLight}
+                  strokeWidth={2}
+                />
+              </View>
               <View>
-                <Text style={styles.ecoLabel}>ECOPOINTS</Text>
-                <Text style={styles.ecoValue}>
-                  {totalPoints.toLocaleString()}
+                <Text style={styles.streakValue}>
+                  {currentStreak}
+                  <Text style={styles.streakUnit}> day{currentStreak === 1 ? '' : 's'}</Text>
+                </Text>
+                <Text style={styles.streakCaption}>
+                  {currentStreak === 0
+                    ? 'Start a streak today'
+                    : activeToday
+                    ? 'Logged today — nice'
+                    : 'Checked in today'}
                 </Text>
               </View>
-              <View style={styles.ecoLevelBadge}>
-                <Text style={styles.ecoLevelText}>{level}</Text>
+            </View>
+            <View style={styles.streakRight}>
+              <Pill
+                label={`Best ${longestStreak}`}
+                tone={currentStreak >= longestStreak && currentStreak > 0 ? 'accent' : 'neutral'}
+                size="sm"
+              />
+              <Icon name="chevron-right" size={16} color={COLORS.textLight} />
+            </View>
+          </View>
+
+          <StreakStrip style={{ marginTop: SPACING.md - 2 }} />
+
+          {!activeToday ? (
+            <Pressable style={styles.streakNudge} onPress={() => navigation.navigate('Track')}>
+              <Icon name="navigation" size={14} color={COLORS.primary} strokeWidth={2} />
+              <Text style={styles.streakNudgeText}>
+                Log any distance today to fill in this square
+              </Text>
+              <Icon name="chevron-right" size={14} color={COLORS.primary} strokeWidth={2.2} />
+            </Pressable>
+          ) : null}
+        </Card>
+
+        {/* ── Weekly challenges ──────────────────────────────────────────── */}
+        <View>
+          <SectionHeader
+            title="This week"
+            action="See all"
+            onAction={() => navigation.navigate('Challenges')}
+          />
+          <Card padded={false} style={{ overflow: 'hidden' }}>
+            <View style={styles.challengeHead}>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.challengeProgress}>
+                  {completedCount} of {totalCount} done
+                </Text>
+                <ProgressBar
+                  percent={(completedCount / totalCount) * 100}
+                  style={{ marginTop: 6 }}
+                />
+              </View>
+              <Pill label={timeLeftLabel} tone="neutral" size="sm" icon="clock" />
+            </View>
+
+            {nextUp ? (
+              <View style={{ padding: SPACING.md - 4, paddingTop: 0 }}>
+                <ChallengeItem challenge={nextUp} onComplete={completeChallenge} />
+              </View>
+            ) : (
+              <View style={styles.allDone}>
+                <Icon name="check-circle" size={20} color={COLORS.primary} strokeWidth={2} />
+                <Text style={styles.allDoneText}>
+                  All five done. New set drops Monday.
+                </Text>
+              </View>
+            )}
+          </Card>
+        </View>
+
+        {/* ── Totals ─────────────────────────────────────────────────────── */}
+        <View>
+          <SectionHeader title="Your totals" action="Details" onAction={() => navigation.navigate('Impact')} />
+          <View style={styles.tileRow}>
+            <MetricTile
+              icon="activity"
+              value={formatDistanceCompact(totalMiles)}
+              unit={formatDistanceUnit()}
+              label="Distance"
+            />
+            <MetricTile icon="tree" value={String(totalTrees)} label="Trees earned" />
+          </View>
+          <View style={[styles.tileRow, { marginTop: SPACING.sm }]}>
+            <MetricTile icon="route" value={String(totalActivities)} label="Activities" />
+            <MetricTile icon="star" value={totalPoints.toLocaleString()} label="EcoPoints" />
+          </View>
+        </View>
+
+        {/* ── Level ──────────────────────────────────────────────────────── */}
+        <Card>
+          <View style={styles.levelRow}>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.levelLabel}>Current level</Text>
+              <Text style={styles.levelName}>{level}</Text>
+            </View>
+            <Text style={styles.levelPoints}>{pointsToNext.toLocaleString()} to next</Text>
+          </View>
+          <ProgressBar percent={progressPercent} style={{ marginTop: SPACING.sm + 2 }} />
+        </Card>
+
+        {/* ── Club ───────────────────────────────────────────────────────── */}
+        {myClub ? (
+          <Card onPress={() => navigation.navigate('Clubs')}>
+            <View style={styles.clubRow}>
+              <View style={styles.clubIcon}>
+                <Icon name="users" size={18} color={COLORS.primary} strokeWidth={1.9} />
+              </View>
+              <View style={{ flex: 1 }}>
+                <Text style={styles.clubName} numberOfLines={1}>
+                  {myClub.name}
+                </Text>
+                <Text style={styles.clubMeta}>
+                  {myClub.totalPoints.toLocaleString()} pts · {myClub.members.length} member
+                  {myClub.members.length === 1 ? '' : 's'}
+                  {myRank ? ` · you're #${myRank}` : ''}
+                </Text>
+              </View>
+              {myRank === 1 ? <Pill label="1st" tone="accent" size="sm" icon="crown" /> : null}
+              <Icon name="chevron-right" size={17} color={COLORS.textLight} />
+            </View>
+          </Card>
+        ) : (
+          <Card tone="sunken">
+            <View style={styles.emptyClub}>
+              <Icon name="users" size={20} color={COLORS.textMuted} strokeWidth={1.8} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.emptyClubTitle}>Not in a club yet</Text>
+                <Text style={styles.emptyClubText}>
+                  Challenge points count toward your club's score.
+                </Text>
               </View>
             </View>
+            <Button
+              label="Find a club"
+              variant="secondary"
+              size="sm"
+              icon="plus"
+              onPress={() => navigation.navigate('Clubs')}
+              style={{ marginTop: SPACING.sm + 2 }}
+            />
+          </Card>
+        )}
 
-            <View style={styles.progressTrack}>
-              <View
-                style={[
-                  styles.progressFill,
-                  { width: `${progressPercent}%` },
-                ]}
-              />
-            </View>
-            <Text style={styles.progressCaption}>
-              {nextLevelPoints - totalPoints > 0
-                ? `${(
-                    nextLevelPoints - totalPoints
-                  ).toLocaleString()} pts to next level`
-                : '🎉 Max level reached!'}
-            </Text>
-          </View>
-
-          {/* ── Stats row ── */}
-          <View style={styles.statsRow}>
-            <StatCard
-              label="Miles"
-              value={formatDistance(totalMiles)}
-              unit={distUnit}
-              icon="🗺️"
-              accent={COLORS.primary}
-            />
-            <View style={{ width: SPACING.sm }} />
-            <StatCard
-              label="Treks"
-              value={history.length}
-              icon="🥾"
-              accent={COLORS.sky}
-            />
-            <View style={{ width: SPACING.sm }} />
-            <StatCard
-              label="Trees"
-              value={totalTrees}
-              icon="🌳"
-              accent={COLORS.accent}
-            />
-          </View>
-
-          {/* ── Quick actions ── */}
-          <Text style={styles.sectionTitle}>Quick actions</Text>
-          <View style={styles.actionsGrid}>
-            <ActionCard
-              icon="🥾"
-              label="Start Hike"
-              color={COLORS.primary}
-              desc="Log your trail"
-              onPress={() => {
-                logEvent('quick_action', { action: 'start_hike' });
-                navigation.navigate('Track');
-              }}
-            />
-            <ActionCard
-              icon="🗺️"
-              label="Find Trails"
-              color={COLORS.sky}
-              desc="Nearby spots"
-              onPress={() => {
-                logEvent('quick_action', { action: 'find_trails' });
-                navigation.navigate('Trails');
-              }}
-            />
-            <ActionCard
-              icon="🌍"
-              label="My Impact"
-              color={COLORS.primaryMid}
-              desc="See your stats"
-              onPress={() => {
-                logEvent('quick_action', { action: 'my_impact' });
-                navigation.navigate('Impact');
-              }}
-            />
-          </View>
-
-          {/* ── Last activity ── */}
-          {lastActivity ? (
-            <>
-              <Text style={styles.sectionTitle}>Last trek</Text>
-              <Pressable
-                style={styles.lastActivityCard}
-                onPress={() => {
-                  logEvent('view_last_trek');
-                  navigation.navigate('Impact');
-                }}
-              >
-                <View style={styles.lastActLeft}>
-                  <View style={styles.lastActIconWrap}>
-                    <Text style={{ fontSize: 28 }}>
-                      {lastActivity.type === 'bike' ? '🚴' : '🥾'}
-                    </Text>
-                  </View>
-                  <View>
-                    <Text style={styles.lastActType}>
-                      {lastActivity.type === 'bike' ? 'Bike Ride' : 'Hike'}
-                    </Text>
-                    <Text style={styles.lastActDate}>
-                      {new Date(lastActivity.startedAt).toLocaleDateString(
-                        'en-US',
-                        {
-                          weekday: 'short',
+        {/* ── Recent activity ────────────────────────────────────────────── */}
+        {recent.length > 0 ? (
+          <View>
+            <SectionHeader title="Recent" action="All" onAction={() => navigation.navigate('Impact')} />
+            <Card padded={false}>
+              {recent.map((a, i) => (
+                <View key={a.id}>
+                  {i > 0 ? <View style={styles.sep} /> : null}
+                  <Pressable
+                    onPress={() => navigation.navigate('ActivityDetail', { activityId: a.id })}
+                    style={({ pressed }) => [styles.activityRow, pressed && { opacity: 0.7 }]}
+                  >
+                    <View style={styles.activityIcon}>
+                      <Icon
+                        name={a.type === 'bike' ? 'bike' : 'boot'}
+                        size={17}
+                        color={a.valid ? COLORS.primary : COLORS.textLight}
+                        strokeWidth={1.9}
+                      />
+                    </View>
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.activityTitle} numberOfLines={1}>
+                        {a.trailName ?? (a.type === 'bike' ? 'Bike ride' : 'Hike')}
+                      </Text>
+                      <Text style={styles.activityMeta}>
+                        {new Date(a.startedAt).toLocaleDateString(undefined, {
                           month: 'short',
                           day: 'numeric',
-                        }
-                      )}
-                    </Text>
-                  </View>
+                        })}
+                        {' · '}
+                        {formatDistance(a.miles)} {formatDistanceUnit()}
+                        {a.trailCompleted ? ' · completed' : ''}
+                      </Text>
+                    </View>
+                    {a.trees > 0 ? (
+                      <View style={styles.treeCount}>
+                        <Icon name="tree" size={13} color={COLORS.primary} strokeWidth={2} />
+                        <Text style={styles.treeCountText}>{a.trees}</Text>
+                      </View>
+                    ) : null}
+                    <Icon name="chevron-right" size={15} color={COLORS.textLight} />
+                  </Pressable>
                 </View>
-                <View style={styles.lastActStats}>
-                  <LastActStat
-                    value={formatDistance(lastActivity.miles)}
-                    label={distUnit}
-                  />
-                  <LastActStat
-                    value={String(lastActivity.trees)}
-                    label="trees"
-                  />
-                  <LastActStat
-                    value={`${Math.round(lastActivity.durationSec / 60)}m`}
-                    label="time"
-                  />
-                </View>
-                {lastActivity.receipt && (
-                  <View style={styles.receiptRow}>
-                    <Text style={styles.receiptText}>
-                      ✅ {lastActivity.receipt.treeSpecies} ·{' '}
-                      {lastActivity.receipt.receiptId}
-                    </Text>
-                  </View>
-                )}
-                <View style={styles.viewMoreRow}>
-                  <Text style={styles.viewMoreText}>
-                    View all activity →
-                  </Text>
-                </View>
-              </Pressable>
-            </>
-          ) : (
-            <>
-              <Text style={styles.sectionTitle}>Get started</Text>
-              <View style={styles.getStartedCard}>
-                <Text style={styles.getStartedEmoji}>🚀</Text>
-                <Text style={styles.getStartedTitle}>
-                  Your first trek awaits
+              ))}
+            </Card>
+          </View>
+        ) : (
+          <Card tone="sunken">
+            <View style={styles.emptyClub}>
+              <Icon name="navigation" size={20} color={COLORS.textMuted} strokeWidth={1.8} />
+              <View style={{ flex: 1 }}>
+                <Text style={styles.emptyClubTitle}>No activities yet</Text>
+                <Text style={styles.emptyClubText}>
+                  Every mile you hike earns a tree. Every three you bike earns one.
                 </Text>
-                <Text style={styles.getStartedBody}>
-                  Head to the Track tab, hit start, and we'll measure your
-                  distance and plant real trees when you finish.
-                </Text>
-                <View style={styles.getStartedSteps}>
-                  <Step num="1" text="Choose hike or bike" />
-                  <Step num="2" text="Hit start and explore" />
-                  <Step num="3" text="Finish to plant trees" />
-                </View>
-                <Pressable
-                  style={styles.getStartedBtn}
-                  onPress={() => navigation.navigate('Track')}
-                >
-                  <Text style={styles.getStartedBtnText}>
-                    Start your first trek →
-                  </Text>
-                </Pressable>
               </View>
-            </>
-          )}
-
-          {/* ── How it works ── */}
-          <Text style={styles.sectionTitle}>How EcoTrek works</Text>
-          <View style={styles.howCard}>
-            <HowRow
-              icon="🥾"
-              title={`Hike ${TREE_RULES.hikeMilesPerTree} ${distUnit}`}
-              desc="Plant 1 native tree"
-              onPress={() => navigation.navigate('Track')}
-            />
-            <View style={styles.howDivider} />
-            <HowRow
-              icon="🚴"
-              title={`Bike ${TREE_RULES.bikeMilesPerTree} ${distUnit}`}
-              desc="Plant 1 native tree"
-              onPress={() => navigation.navigate('Track')}
-            />
-            <View style={styles.howDivider} />
-            <HowRow
-              icon="✅"
-              title="Veritree verified"
-              desc="Every planting tracked"
-              onPress={() => navigation.navigate('Impact')}
-            />
-            <View style={styles.howDivider} />
-            <HowRow
-              icon="✨"
-              title="AI nature guide"
-              desc="Learn on every trail"
-              onPress={() => navigation.navigate('Trails')}
-            />
-            <View style={styles.howDivider} />
-            <HowRow
-              icon="👥"
-              title="Compete in clubs"
-              desc="Leaderboard with friends"
-              onPress={() => navigation.navigate('Clubs')}
-            />
-            <View style={styles.howDivider} />
-            <HowRow
-              icon="⭐"
-              title="Earn EcoPoints"
-              desc="Level up your impact"
-              onPress={() => navigation.navigate('Impact')}
-            />
-          </View>
-
-          {/* ── Partner card ── */}
-          <Pressable
-            style={styles.partnerCard}
-            onPress={() => {
-              logEvent('partner_card_tap');
-              navigation.navigate('Impact');
-            }}
-          >
-            <View style={styles.partnerBadge}>
-              <Text style={styles.partnerBadgeText}>PARTNER</Text>
             </View>
-            <Text style={styles.partnerName}>🌱 Veritree × EcoTrek</Text>
-            <Text style={styles.partnerBody}>
-              Veritree provides satellite-verified, on-the-ground tree
-              planting with local partners. Every EcoTrek mile creates a
-              real, permanent impact on Austin's urban canopy.
-            </Text>
-            <Text style={styles.partnerLink}>View your impact →</Text>
-          </Pressable>
+            <Button
+              label="Start tracking"
+              size="sm"
+              icon="play"
+              onPress={() => navigation.navigate('Track')}
+              style={{ marginTop: SPACING.sm + 2 }}
+            />
+          </Card>
+        )}
+      </View>
 
-          {/* ── Did you know ── */}
-          <View style={styles.factCard}>
-            <Text style={styles.factEyebrow}>DID YOU KNOW?</Text>
-            <Text style={styles.factText}>
-              🌳 A single mature Texas Live Oak absorbs up to{' '}
-              <Text style={styles.factHighlight}>48 lbs of CO₂</Text> per year
-              and supports over{' '}
-              <Text style={styles.factHighlight}>500 species</Text> of wildlife.
-            </Text>
-          </View>
-
-          {/* ── Environmental impact bar ── */}
-          <View style={styles.impactBar}>
-            <ImpactStat
-              icon="🌿"
-              value={`${(totalTrees * 48).toLocaleString()}`}
-              label="lbs CO₂/yr"
-            />
-            <View style={styles.impactDivider} />
-            <ImpactStat
-              icon="💨"
-              value={`${(totalTrees * 260).toLocaleString()}`}
-              label="lbs O₂/yr"
-            />
-            <View style={styles.impactDivider} />
-            <ImpactStat
-              icon="🦋"
-              value={`${(totalTrees * 50).toLocaleString()}`}
-              label="species"
-            />
-          </View>
-        </Animated.View>
-      </ScrollView>
-    </View>
+      <CleanupSheet visible={showCleanup} onClose={() => setShowCleanup(false)} />
+    </Screen>
   );
 }
 
-// ─── Small components ─────────────────────────────────────────────────────────
-
-function ActionCard({
+function QuickAction({
   icon,
   label,
-  color,
-  desc,
+  hint,
   onPress,
 }: {
-  icon: string;
+  icon: IconName;
   label: string;
-  color: string;
-  desc: string;
+  hint?: string;
   onPress: () => void;
 }) {
   return (
     <Pressable
-      style={({ pressed }) => [
-        styles.actionCard,
-        pressed && { opacity: 0.85, transform: [{ scale: 0.97 }] },
-      ]}
       onPress={onPress}
+      style={({ pressed }) => [styles.quickAction, pressed && { opacity: 0.75 }]}
+      accessibilityLabel={label}
     >
-      <View
-        style={[styles.actionIconWrap, { backgroundColor: color + '18' }]}
-      >
-        <Text style={styles.actionIcon}>{icon}</Text>
+      <View style={styles.quickIcon}>
+        <Icon name={icon} size={18} color={COLORS.primary} strokeWidth={1.9} />
       </View>
-      <Text style={styles.actionLabel}>{label}</Text>
-      <Text style={styles.actionDesc}>{desc}</Text>
+      <Text style={styles.quickLabel}>{label}</Text>
+      {hint ? <Text style={styles.quickHint}>{hint}</Text> : null}
     </Pressable>
   );
 }
 
-function LastActStat({ value, label }: { value: string; label: string }) {
-  return (
-    <View style={styles.lastActStatBox}>
-      <Text style={styles.lastActStatVal}>{value}</Text>
-      <Text style={styles.lastActStatLabel}>{label}</Text>
-    </View>
-  );
-}
-
-function Step({ num, text }: { num: string; text: string }) {
-  return (
-    <View style={styles.step}>
-      <View style={styles.stepNum}>
-        <Text style={styles.stepNumText}>{num}</Text>
-      </View>
-      <Text style={styles.stepText}>{text}</Text>
-    </View>
-  );
-}
-
-function HowRow({
-  icon,
-  title,
-  desc,
-  onPress,
-}: {
-  icon: string;
-  title: string;
-  desc: string;
-  onPress: () => void;
-}) {
-  return (
-    <Pressable
-      style={({ pressed }) => [
-        styles.howRow,
-        pressed && { backgroundColor: COLORS.primarySurface },
-      ]}
-      onPress={onPress}
-    >
-      <Text style={styles.howIcon}>{icon}</Text>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.howTitle}>{title}</Text>
-        <Text style={styles.howDesc}>{desc}</Text>
-      </View>
-      <Text style={styles.howArrow}>›</Text>
-    </Pressable>
-  );
-}
-
-function ImpactStat({
+function MetricTile({
   icon,
   value,
+  unit,
   label,
 }: {
-  icon: string;
+  icon: IconName;
   value: string;
+  unit?: string;
   label: string;
 }) {
   return (
-    <View style={styles.impactStatBox}>
-      <Text style={styles.impactStatIcon}>{icon}</Text>
-      <Text style={styles.impactStatVal}>{value}</Text>
-      <Text style={styles.impactStatLabel}>{label}</Text>
+    <View style={styles.metricTile}>
+      <Icon name={icon} size={16} color={COLORS.textMuted} strokeWidth={1.9} />
+      <View style={styles.metricValueRow}>
+        <Text style={styles.metricValue}>{value}</Text>
+        {unit ? <Text style={styles.metricUnit}>{unit}</Text> : null}
+      </View>
+      <Text style={styles.metricLabel}>{label}</Text>
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: {
-    padding: SPACING.md,
-    paddingBottom: SPACING.xxxl,
-  },
+  body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
 
-  // Hero
-  hero: {
-    borderRadius: RADIUS.xl,
-    overflow: 'hidden',
-    backgroundColor: COLORS.primaryDark,
-    marginBottom: SPACING.md,
-    ...SHADOWS.lg,
-  },
-  heroBg: {
-    position: 'absolute',
-    top: -40,
-    right: -40,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  heroContent: {
+  recapBanner: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.lg,
-    paddingBottom: SPACING.md,
-  },
-  heroEyebrow: {
-    ...TYPOGRAPHY.micro,
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 1.5,
-    marginBottom: SPACING.xs,
-  },
-  heroValue: {
-    fontSize: 64,
-    fontWeight: '900',
-    color: '#fff',
-    letterSpacing: -2,
-    lineHeight: 68,
-  },
-  heroLabel: {
-    ...TYPOGRAPHY.h3,
-    color: '#fff',
-    marginTop: 2,
-  },
-  heroSub: {
-    ...TYPOGRAPHY.small,
-    color: 'rgba(255,255,255,0.55)',
-    marginTop: 4,
-  },
-  heroProgress: {
-    height: 4,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 2,
-    marginTop: SPACING.md,
-    overflow: 'hidden',
-    width: '90%',
-  },
-  heroProgressBar: {
-    height: '100%',
-    backgroundColor: COLORS.accent,
-    borderRadius: 2,
-  },
-  heroProgressLabel: {
-    ...TYPOGRAPHY.micro,
-    color: 'rgba(255,255,255,0.4)',
-    marginTop: 4,
-  },
-  heroIcon: {
-    opacity: 0.9,
-  },
-  veritreeBadge: {
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    marginHorizontal: SPACING.lg,
-    marginBottom: SPACING.md,
-    padding: SPACING.sm,
-    borderRadius: RADIUS.sm,
-    alignItems: 'center',
-  },
-  veritreeText: {
-    ...TYPOGRAPHY.caption,
-    color: 'rgba(255,255,255,0.6)',
-    letterSpacing: 0.5,
-  },
-
-  // EcoPoints card
-  ecoCard: {
-    backgroundColor: COLORS.primaryMid,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-    ...SHADOWS.md,
-  },
-  ecoCardTop: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SPACING.sm,
-  },
-  ecoLabel: {
-    ...TYPOGRAPHY.micro,
-    color: 'rgba(255,255,255,0.5)',
-    letterSpacing: 1.5,
-  },
-  ecoValue: {
-    fontSize: 32,
-    fontWeight: '900',
-    color: '#fff',
-    letterSpacing: -1,
-  },
-  ecoLevelBadge: {
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    paddingHorizontal: 12,
-    paddingVertical: 6,
-    borderRadius: RADIUS.pill,
-  },
-  ecoLevelText: {
-    color: '#fff',
-    fontWeight: '700',
-    fontSize: 12,
-  },
-  progressTrack: {
-    height: 6,
-    backgroundColor: 'rgba(255,255,255,0.15)',
-    borderRadius: 3,
-    overflow: 'hidden',
-  },
-  progressFill: {
-    height: '100%',
-    backgroundColor: COLORS.accent,
-    borderRadius: 3,
-  },
-  progressCaption: {
-    ...TYPOGRAPHY.micro,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 6,
-  },
-
-  // Stats
-  statsRow: {
-    flexDirection: 'row',
-    marginBottom: SPACING.md,
-  },
-
-  // Section title
-  sectionTitle: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-    marginTop: SPACING.xs,
-  },
-
-  // Quick actions — 3 column grid
-  actionsGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  actionCard: {
-    width: '31%',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.sm,
-    alignItems: 'center',
-    ...SHADOWS.sm,
+    gap: SPACING.sm + 4,
+    backgroundColor: COLORS.accentLight,
     borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    borderColor: COLORS.warningBorder,
+    borderRadius: RADIUS.md,
+    padding: SPACING.md - 3,
   },
-  actionIconWrap: {
-    width: 44,
-    height: 44,
-    borderRadius: 12,
+  recapIcon: {
+    width: 34,
+    height: 34,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.xs,
   },
-  actionIcon: { fontSize: 22 },
-  actionLabel: {
-    ...TYPOGRAPHY.smallMed,
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 2,
-  },
-  actionDesc: {
-    ...TYPOGRAPHY.micro,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-  },
+  recapTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  recapSub: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, marginTop: 1 },
 
-  // Last activity
-  lastActivityCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  lastActLeft: {
-    flexDirection: 'row',
+  quickRow: { flexDirection: 'row', gap: SPACING.sm },
+  quickAction: {
+    flex: 1,
     alignItems: 'center',
-    gap: SPACING.md,
-    marginBottom: SPACING.md,
-  },
-  lastActIconWrap: {
-    width: 56,
-    height: 56,
+    gap: 5,
+    paddingVertical: SPACING.md - 2,
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.border,
     borderRadius: RADIUS.md,
+  },
+  quickIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: 19,
     backgroundColor: COLORS.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lastActType: { ...TYPOGRAPHY.h3, color: COLORS.text },
-  lastActDate: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-  lastActStats: {
+  quickLabel: { ...TYPOGRAPHY.smallMed, color: COLORS.text },
+  quickHint: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+
+  streakHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
+  streakRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
+  streakLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2 },
+  flameWrap: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.sm + 2,
+    backgroundColor: COLORS.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  streakValue: { ...TYPOGRAPHY.h2, color: COLORS.text },
+  streakUnit: { ...TYPOGRAPHY.h4, color: COLORS.textMuted, fontWeight: '500' },
+  streakCaption: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  streakNudge: {
     flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm,
-  },
-  lastActStatBox: { alignItems: 'center' },
-  lastActStatVal: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.primary,
-    fontSize: 20,
-  },
-  lastActStatLabel: { ...TYPOGRAPHY.caption, color: COLORS.textMuted },
-  receiptRow: {
-    marginTop: SPACING.sm,
-    paddingTop: SPACING.sm,
+    alignItems: 'center',
+    gap: 7,
+    marginTop: SPACING.md - 2,
+    paddingTop: SPACING.sm + 2,
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
   },
-  receiptText: {
-    ...TYPOGRAPHY.small,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-  viewMoreRow: {
-    marginTop: SPACING.sm,
-    alignItems: 'flex-end',
-  },
-  viewMoreText: {
-    ...TYPOGRAPHY.smallMed,
-    color: COLORS.primary,
-  },
+  streakNudgeText: { ...TYPOGRAPHY.small, color: COLORS.primary, flex: 1, fontWeight: '500' },
 
-  // Get started
-  getStartedCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  getStartedEmoji: { fontSize: 48, marginBottom: SPACING.sm },
-  getStartedTitle: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.text,
-    marginBottom: SPACING.xs,
-    textAlign: 'center',
-  },
-  getStartedBody: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    lineHeight: 22,
-    marginBottom: SPACING.md,
-  },
-  getStartedSteps: { width: '100%', gap: SPACING.sm, marginBottom: SPACING.md },
-  step: {
+  challengeHead: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.md,
+    padding: SPACING.md,
   },
-  stepNum: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+  challengeProgress: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  allDone: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    paddingBottom: SPACING.md,
+  },
+  allDoneText: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, flex: 1 },
+
+  tileRow: { flexDirection: 'row', gap: SPACING.sm },
+  metricTile: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    padding: SPACING.md - 2,
+    gap: 5,
+  },
+  metricValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
+  metricValue: { fontSize: 24, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
+  metricUnit: { ...TYPOGRAPHY.smallMed, color: COLORS.textMuted },
+  metricLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
+
+  levelRow: { flexDirection: 'row', alignItems: 'flex-end' },
+  levelLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  levelName: { ...TYPOGRAPHY.h3, color: COLORS.text, marginTop: 1 },
+  levelPoints: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+
+  clubRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+  clubIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.sm + 2,
     backgroundColor: COLORS.primarySurface,
-    borderWidth: 2,
-    borderColor: COLORS.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  stepNumText: {
-    color: COLORS.primary,
-    fontWeight: '900',
-    fontSize: 13,
-  },
-  stepText: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  getStartedBtn: {
-    backgroundColor: COLORS.primary,
-    borderRadius: RADIUS.pill,
-    paddingVertical: SPACING.md,
-    paddingHorizontal: SPACING.xl,
-    ...SHADOWS.md,
-  },
-  getStartedBtnText: {
-    color: '#fff',
-    fontWeight: '800',
-    fontSize: 15,
-  },
+  clubName: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  clubMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
 
-  // How it works
-  howCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  howRow: {
+  emptyClub: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+  emptyClubTitle: { ...TYPOGRAPHY.h4, color: COLORS.textSecondary },
+  emptyClubText: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+
+  sep: { height: 1, backgroundColor: COLORS.borderLight, marginLeft: 62 },
+  activityRow: {
     flexDirection: 'row',
     alignItems: 'center',
-    padding: SPACING.md,
-    gap: SPACING.md,
+    gap: SPACING.sm + 4,
+    padding: SPACING.md - 2,
   },
-  howIcon: { fontSize: 24, width: 36, textAlign: 'center' },
-  howTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  howDesc: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
-  howArrow: { color: COLORS.textLight, fontSize: 22 },
-  howDivider: {
-    height: 1,
-    backgroundColor: COLORS.borderLight,
-    marginHorizontal: SPACING.md,
-  },
-
-  // Partner card
-  partnerCard: {
-    backgroundColor: COLORS.primarySurface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-    borderWidth: 1,
-    borderColor: COLORS.primaryGlow,
-  },
-  partnerBadge: {
-    alignSelf: 'flex-start',
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: RADIUS.pill,
-    marginBottom: SPACING.sm,
-  },
-  partnerBadgeText: {
-    ...TYPOGRAPHY.micro,
-    color: '#fff',
-    letterSpacing: 1,
-  },
-  partnerName: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.primaryDark,
-    marginBottom: SPACING.xs,
-  },
-  partnerBody: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
-    lineHeight: 23,
-    marginBottom: SPACING.sm,
-  },
-  partnerLink: {
-    ...TYPOGRAPHY.smallMed,
-    color: COLORS.primary,
-  },
-
-  // Fact card
-  factCard: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-  },
-  factEyebrow: {
-    ...TYPOGRAPHY.micro,
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 1.5,
-    marginBottom: SPACING.xs,
-  },
-  factText: {
-    ...TYPOGRAPHY.body,
-    color: 'rgba(255,255,255,0.8)',
-    lineHeight: 24,
-  },
-  factHighlight: {
-    color: COLORS.accent,
-    fontWeight: '700',
-  },
-
-  // Impact bar
-  impactBar: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    justifyContent: 'space-around',
+  activityIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: RADIUS.sm + 2,
+    backgroundColor: COLORS.surfaceSunken,
     alignItems: 'center',
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    justifyContent: 'center',
   },
-  impactDivider: {
-    width: 1,
-    height: 40,
-    backgroundColor: COLORS.borderLight,
-  },
-  impactStatBox: { alignItems: 'center', gap: 3 },
-  impactStatIcon: { fontSize: 20 },
-  impactStatVal: {
-    ...TYPOGRAPHY.h4,
-    color: COLORS.primary,
-    fontSize: 16,
-  },
-  impactStatLabel: {
-    ...TYPOGRAPHY.micro,
-    color: COLORS.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.3,
-  },
+  activityTitle: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  activityMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  treeCount: { flexDirection: 'row', alignItems: 'center', gap: 3 },
+  treeCountText: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
 });

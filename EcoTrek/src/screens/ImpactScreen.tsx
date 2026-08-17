@@ -1,1031 +1,455 @@
-import React, { useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  Pressable,
-} from 'react-native';
+import React, { useEffect, useMemo, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/Header';
-import TreeIcon from '../components/TreeIcon';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY, SHADOWS } from '../constants/theme';
+import Icon, { IconName } from '../components/Icon';
+import { Screen, Card, Segmented, EmptyState, Pill, Divider, Banner } from '../components/ui';
+import { COLORS, RADIUS, SPACING, TREE_RULES, TYPOGRAPHY } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
+import { useSettings } from '../constants/SettingsContext';
+import { TREES_DISCLAIMER } from '../services/trees';
+import { computeRecords } from '../services/records';
+import { useLogbook } from '../context/LogbookContext';
 
-const CO2_PER_TREE_LBS = 48;
-const OXYGEN_PER_TREE_LBS = 260;
-
-type Tab = 'impact' | 'points' | 'badges' | 'history';
-
-const TABS: { key: Tab; icon: string; label: string }[] = [
-  { key: 'impact', icon: '🌍', label: 'Impact' },
-  { key: 'points', icon: '⭐', label: 'Points' },
-  { key: 'badges', icon: '🏅', label: 'Badges' },
-  { key: 'history', icon: '📋', label: 'History' },
-];
+type Tab = 'activities' | 'forest' | 'records' | 'points';
 
 export default function ImpactScreen() {
-  const { history, totalMiles, totalTrees } = useActivity();
-  const {
-    totalPoints,
-    level,
-    progressPercent,
-    nextLevelPoints,
-    badges,
-    history: pointHistory,
-  } = useEcoPoints();
+  const navigation = useNavigation<any>();
+  const route = useRoute<any>();
+  const { history, totalMiles, totalTrees, totalActivities, uniqueTrailsCompleted, deleteActivity } =
+    useActivity();
+  const { history: pointHistory, totalPoints } = useEcoPoints();
+  const { speciesLogged, totalSpecies, cleanupCount, litterCollected } = useLogbook();
+  const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
+  const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'activities');
 
-  const [tab, setTab] = useState<Tab>('impact');
+  // Navigating here again with a different tab (from Profile, say) has to
+  // switch the view. Initial state alone would ignore the second visit.
+  const requestedTab: Tab | undefined = route.params?.tab;
+  useEffect(() => {
+    if (requestedTab) setTab(requestedTab);
+  }, [requestedTab]);
 
-  const co2 = (totalTrees * CO2_PER_TREE_LBS).toLocaleString();
-  const o2 = (totalTrees * OXYGEN_PER_TREE_LBS).toLocaleString();
-  const unlockedBadges = badges.filter((b) => b.unlocked).length;
+  const records = useMemo(
+    () => computeRecords(history, formatDistanceCompact, formatDistanceUnit()),
+    [history, formatDistanceCompact, formatDistanceUnit]
+  );
+
+  const grants = useMemo(
+    () => history.filter((a) => a.grant && a.trees > 0),
+    [history]
+  );
+
+  const confirmDelete = (id: string) => {
+    Alert.alert('Delete this activity?', 'It will be removed from your history and totals.', [
+      { text: 'Cancel', style: 'cancel' },
+      { text: 'Delete', style: 'destructive', onPress: () => deleteActivity(id) },
+    ]);
+  };
 
   return (
-    <View style={styles.container}>
-      <Header title="My Impact" subtitle="Verified environmental footprint" />
+    <Screen>
+      <Header title="Impact" subtitle="Everything you have logged" back />
 
-      {/* Tab bar */}
-      <View style={styles.tabBar}>
-        {TABS.map((t) => (
-          <Pressable
-            key={t.key}
-            onPress={() => setTab(t.key)}
-            style={[styles.tab, tab === t.key && styles.tabActive]}
-          >
-            <Text style={styles.tabIcon}>{t.icon}</Text>
-            <Text
-              style={[
-                styles.tabLabel,
-                tab === t.key && styles.tabLabelActive,
-              ]}
-            >
-              {t.label}
-            </Text>
-          </Pressable>
-        ))}
-      </View>
+      <View style={styles.body}>
+        {/* Summary */}
+        <Card>
+          <View style={styles.summaryGrid}>
+            <Summary value={formatDistanceCompact(totalMiles)} unit={formatDistanceUnit()} label="Distance" />
+            <Summary value={String(totalTrees)} label="Trees" />
+            <Summary value={String(totalActivities)} label="Activities" />
+            <Summary value={String(uniqueTrailsCompleted)} label="Trails" />
+          </View>
+        </Card>
 
-      <ScrollView
-        contentContainerStyle={styles.content}
-        showsVerticalScrollIndicator={false}
-      >
-        {/* ══ IMPACT TAB ══ */}
-        {tab === 'impact' && (
-          <>
-            {/* Banner */}
-            <View style={styles.banner}>
-              <View style={styles.bannerBg} />
-              <View style={styles.bannerContent}>
-                <TreeIcon size={52} color="rgba(255,255,255,0.85)" />
-                <View style={{ flex: 1 }}>
-                  <Text style={styles.bannerNum}>{totalTrees}</Text>
-                  <Text style={styles.bannerLabel}>
-                    trees planted in Austin
-                  </Text>
-                  <Text style={styles.bannerSub}>
-                    across {totalMiles.toFixed(2)} miles of trails
-                  </Text>
-                </View>
-              </View>
-              <View style={styles.veritreeBadge}>
-                <Text style={styles.veritreeText}>
-                  ✅ Verified by Veritree
-                </Text>
-              </View>
-            </View>
+        <Segmented
+          options={[
+            { value: 'activities', label: 'Activities' },
+            { value: 'forest', label: 'Forest' },
+            { value: 'records', label: 'Records' },
+            { value: 'points', label: 'Points' },
+          ]}
+          value={tab}
+          onChange={(v) => setTab(v as Tab)}
+        />
 
-            {/* Impact metrics */}
-            <View style={styles.metricsRow}>
-              <MetricCard
-                icon="🌿"
-                title="CO₂ / year"
-                value={co2}
-                unit="lbs"
-                color={COLORS.primary}
-              />
-              <View style={{ width: SPACING.sm }} />
-              <MetricCard
-                icon="💨"
-                title="O₂ / year"
-                value={o2}
-                unit="lbs"
-                color={COLORS.sky}
-              />
-            </View>
-
-            {/* Equivalencies */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>What your trees mean</Text>
-              <EquivRow
-                icon="🚗"
-                text={`Equal to removing ${(totalTrees * 0.4).toFixed(
-                  1
-                )} cars from the road for a year`}
-              />
-              <EquivRow
-                icon="🏠"
-                text={`Provides clean air for ${(totalTrees * 2).toFixed(
-                  0
-                )} homes annually`}
-              />
-              <EquivRow
-                icon="🦋"
-                text={`Habitat for ${(totalTrees * 50).toLocaleString()} species of wildlife`}
-              />
-              <EquivRow
-                icon="🌡️"
-                text={`Reduces urban heat by up to ${(
-                  totalTrees * 0.5
-                ).toFixed(1)}°F in surrounding areas`}
-              />
-            </View>
-
-            {/* Activity history */}
-            <Text style={styles.sectionTitle}>Activity history</Text>
-            {history.length === 0 ? (
-              <EmptyCard
-                icon="🌱"
-                title="No treks yet"
-                body="Track your first hike or bike ride to start growing Austin's canopy."
-              />
-            ) : (
-              history.map((a) => (
-                <View key={a.id} style={styles.actCard}>
-                  <View style={styles.actLeft}>
-                    <View style={styles.actTypeIcon}>
-                      <Text style={{ fontSize: 24 }}>
-                        {a.type === 'bike' ? '🚴' : '🥾'}
-                      </Text>
+        {/* ── Activities ──────────────────────────────────────────────────── */}
+        {tab === 'activities' ? (
+          history.length === 0 ? (
+            <EmptyState
+              icon="route"
+              title="No activities yet"
+              message="Head to the Track tab and log your first hike or ride."
+            />
+          ) : (
+            <View style={{ gap: SPACING.sm }}>
+              {history.map((a) => (
+                <Card key={a.id} onPress={() => navigation.navigate('ActivityDetail', { activityId: a.id })}>
+                  <View style={styles.activityHead}>
+                    <View style={[styles.activityIcon, !a.valid && styles.activityIconInvalid]}>
+                      <Icon
+                        name={a.type === 'bike' ? 'bike' : 'boot'}
+                        size={18}
+                        color={a.valid ? COLORS.primary : COLORS.textLight}
+                        strokeWidth={1.9}
+                      />
                     </View>
-                    <View>
-                      <Text style={styles.actType}>
-                        {a.type === 'bike' ? 'Bike Ride' : 'Hike'}
+                    <View style={{ flex: 1 }}>
+                      <Text style={styles.activityTitle} numberOfLines={1}>
+                        {a.trailName ?? (a.type === 'bike' ? 'Bike ride' : 'Hike')}
                       </Text>
-                      <Text style={styles.actDate}>
-                        {new Date(a.startedAt).toLocaleDateString('en-US', {
+                      <Text style={styles.activityDate}>
+                        {new Date(a.startedAt).toLocaleDateString(undefined, {
                           weekday: 'short',
                           month: 'short',
                           day: 'numeric',
                         })}
-                      </Text>
-                    </View>
-                  </View>
-                  <View style={styles.actRight}>
-                    <View style={styles.treePill}>
-                      <Text style={styles.treePillText}>
-                        {a.trees} 🌳
-                      </Text>
-                    </View>
-                    <Text style={styles.actMiles}>
-                      {a.miles.toFixed(2)} mi
-                    </Text>
-                  </View>
-                  {a.receipt && (
-                    <View style={styles.receiptBadge}>
-                      <Text style={styles.receiptText}>
-                        ✅ Veritree · {a.receipt.treeSpecies} ·{' '}
-                        {a.receipt.receiptId}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              ))
-            )}
-          </>
-        )}
-
-        {/* ══ POINTS TAB ══ */}
-        {tab === 'points' && (
-          <>
-            {/* Level hero */}
-            <View style={styles.levelHero}>
-              <View style={styles.levelHeroBg} />
-              <Text style={styles.levelHeroLabel}>CURRENT LEVEL</Text>
-              <Text style={styles.levelHeroName}>{level}</Text>
-              <Text style={styles.levelHeroPoints}>
-                {totalPoints.toLocaleString()}{' '}
-                <Text style={styles.levelHeroPtLabel}>EcoPoints</Text>
-              </Text>
-              <View style={styles.levelProgressTrack}>
-                <View
-                  style={[
-                    styles.levelProgressFill,
-                    { width: `${progressPercent}%` },
-                  ]}
-                />
-              </View>
-              <Text style={styles.levelProgressCaption}>
-                {nextLevelPoints - totalPoints > 0
-                  ? `${(
-                      nextLevelPoints - totalPoints
-                    ).toLocaleString()} points to next level`
-                  : '🎉 Maximum level reached!'}
-              </Text>
-            </View>
-
-            {/* Earn table */}
-            <View style={styles.card}>
-              <Text style={styles.cardTitle}>How to earn EcoPoints</Text>
-              {[
-                { icon: '🥾', action: 'Hike 1 mile', pts: 10 },
-                { icon: '🚴', action: 'Bike 1 mile', pts: 8 },
-                { icon: '🌳', action: 'Tree planted', pts: 15 },
-                { icon: '🌿', action: 'Plant identified', pts: 5 },
-                { icon: '📸', action: 'Photo uploaded', pts: 3 },
-                { icon: '✅', action: 'Trail completed', pts: 20 },
-                { icon: '🧹', action: 'Cleanup crew', pts: 25 },
-                { icon: '🏆', action: 'Challenge done', pts: 50 },
-              ].map((item, i) => (
-                <View
-                  key={item.action}
-                  style={[
-                    styles.earnRow,
-                    i === 7 && { borderBottomWidth: 0 },
-                  ]}
-                >
-                  <Text style={styles.earnIcon}>{item.icon}</Text>
-                  <Text style={styles.earnAction}>{item.action}</Text>
-                  <View style={styles.ptsBadge}>
-                    <Text style={styles.ptsText}>+{item.pts}</Text>
-                  </View>
-                </View>
-              ))}
-            </View>
-
-            {/* Recent events */}
-            <Text style={styles.sectionTitle}>Recent earnings</Text>
-            {pointHistory.length === 0 ? (
-              <EmptyCard
-                icon="⭐"
-                title="No points yet"
-                body="Start trekking to earn your first EcoPoints!"
-              />
-            ) : (
-              pointHistory.slice(0, 20).map((e) => (
-                <View key={e.id} style={styles.eventCard}>
-                  <View>
-                    <Text style={styles.eventLabel}>{e.label}</Text>
-                    <Text style={styles.eventTime}>
-                      {new Date(e.timestamp).toLocaleString('en-US', {
-                        month: 'short',
-                        day: 'numeric',
-                        hour: '2-digit',
-                        minute: '2-digit',
-                      })}
-                    </Text>
-                  </View>
-                  <View style={styles.eventPtsBadge}>
-                    <Text style={styles.eventPtsText}>+{e.points}</Text>
-                  </View>
-                </View>
-              ))
-            )}
-          </>
-        )}
-
-        {/* ══ BADGES TAB ══ */}
-        {tab === 'badges' && (
-          <>
-            <View style={styles.badgeSummaryCard}>
-              <View style={styles.badgeSummaryLeft}>
-                <Text style={styles.badgeSummaryNum}>
-                  {unlockedBadges}
-                  <Text style={styles.badgeSummaryTotal}>
-                    /{badges.length}
-                  </Text>
-                </Text>
-                <Text style={styles.badgeSummaryLabel}>
-                  badges unlocked
-                </Text>
-              </View>
-              <View style={styles.badgeSummaryRight}>
-                <View style={styles.badgeProgressTrack}>
-                  <View
-                    style={[
-                      styles.badgeProgressFill,
-                      {
-                        width: `${(unlockedBadges / badges.length) * 100}%`,
-                      },
-                    ]}
-                  />
-                </View>
-                <Text style={styles.badgeSummaryPct}>
-                  {Math.round((unlockedBadges / badges.length) * 100)}%
-                  complete
-                </Text>
-              </View>
-            </View>
-
-            <View style={styles.badgeGrid}>
-              {badges.map((b) => (
-                <View
-                  key={b.id}
-                  style={[
-                    styles.badgeCard,
-                    b.unlocked && styles.badgeCardUnlocked,
-                  ]}
-                >
-                  <Text
-                    style={[
-                      styles.badgeIcon,
-                      !b.unlocked && styles.badgeIconLocked,
-                    ]}
-                  >
-                    {b.unlocked ? b.icon : '🔒'}
-                  </Text>
-                  <Text
-                    style={[
-                      styles.badgeName,
-                      !b.unlocked && { color: COLORS.textLight },
-                    ]}
-                  >
-                    {b.name}
-                  </Text>
-                  <Text style={styles.badgeDesc}>{b.description}</Text>
-                  {b.unlockedAt && (
-                    <View style={styles.badgeUnlockedTag}>
-                      <Text style={styles.badgeUnlockedText}>
-                        {new Date(b.unlockedAt).toLocaleDateString()}
-                      </Text>
-                    </View>
-                  )}
-                </View>
-              ))}
-            </View>
-          </>
-        )}
-
-        {/* ══ HISTORY TAB ══ */}
-        {tab === 'history' && (
-          <>
-            {/* Summary strip */}
-            <View style={styles.historySummary}>
-              <HistSummaryItem
-                value={history.length.toString()}
-                label="Treks"
-              />
-              <View style={styles.histDivider} />
-              <HistSummaryItem
-                value={totalMiles.toFixed(1)}
-                label="Miles"
-              />
-              <View style={styles.histDivider} />
-              <HistSummaryItem
-                value={totalTrees.toString()}
-                label="Trees"
-              />
-              <View style={styles.histDivider} />
-              <HistSummaryItem
-                value={totalPoints.toLocaleString()}
-                label="Points"
-              />
-            </View>
-
-            {history.length === 0 ? (
-              <EmptyCard
-                icon="📋"
-                title="No activities yet"
-                body="Your trek history will appear here once you start tracking."
-              />
-            ) : (
-              history.map((a) => (
-                <View key={a.id} style={styles.histCard}>
-                  <View style={styles.histCardHeader}>
-                    <View style={styles.histTypeIcon}>
-                      <Text style={{ fontSize: 22 }}>
-                        {a.type === 'bike' ? '🚴' : '🥾'}
-                      </Text>
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.histTypeName}>
-                        {a.type === 'bike' ? 'Bike Ride' : 'Hike'}
-                      </Text>
-                      <Text style={styles.histDate}>
-                        {new Date(a.startedAt).toLocaleDateString('en-US', {
-                          weekday: 'long',
-                          month: 'long',
-                          day: 'numeric',
-                          year: 'numeric',
+                        {' · '}
+                        {new Date(a.startedAt).toLocaleTimeString(undefined, {
+                          hour: 'numeric',
+                          minute: '2-digit',
                         })}
                       </Text>
                     </View>
-                    <View style={styles.histTreePill}>
-                      <Text style={styles.histTreeText}>
-                        {a.trees} 🌳
-                      </Text>
-                    </View>
+                    <Pressable onPress={() => confirmDelete(a.id)} hitSlop={10}>
+                      <Icon name="trash" size={16} color={COLORS.textLight} strokeWidth={1.8} />
+                    </Pressable>
                   </View>
 
-                  <View style={styles.histStatsRow}>
-                    <HistStat
-                      icon="📏"
-                      value={`${a.miles.toFixed(2)} mi`}
+                  <View style={styles.activityStats}>
+                    <MiniStat
+                      value={`${formatDistance(a.miles)} ${formatDistanceUnit()}`}
                       label="Distance"
                     />
-                    <HistStat
-                      icon="⏱"
-                      value={`${Math.round(a.durationSec / 60)} min`}
-                      label="Duration"
-                    />
-                    <HistStat
-                      icon="⚡"
-                      value={`${Math.round(
-                        (a.miles / (a.durationSec / 3600)) * 10
-                      ) / 10} mph`}
-                      label="Avg Speed"
-                    />
+                    <MiniStat value={formatDuration(a.durationSec)} label="Time" />
+                    <MiniStat value={`${a.avgMph}`} label="mph" />
+                    <MiniStat value={String(a.trees)} label="Trees" />
                   </View>
 
-                  {a.receipt && (
-                    <View style={styles.histReceipt}>
-                      <Text style={styles.histReceiptText}>
-                        ✅ {a.receipt.treeSpecies} planted ·{' '}
-                        {a.receipt.receiptId}
-                      </Text>
+                  {(a.trailCompleted || !a.valid || a.grant) ? (
+                    <View style={styles.activityTags}>
+                      {a.trailCompleted ? (
+                        <Pill label="Trail completed" tone="primary" size="sm" icon="flag" />
+                      ) : null}
+                      {!a.valid ? (
+                        <Pill label="Not counted" tone="warning" size="sm" icon="alert-circle" />
+                      ) : null}
+                      {a.grant ? <Pill label={a.grant.species} tone="neutral" size="sm" icon="leaf" /> : null}
+                      {a.points > 0 ? <Pill label={`+${a.points} pts`} tone="accent" size="sm" /> : null}
                     </View>
-                  )}
+                  ) : null}
+                </Card>
+              ))}
+            </View>
+          )
+        ) : null}
+
+        {/* ── Forest ──────────────────────────────────────────────────────── */}
+        {tab === 'forest' ? (
+          <>
+            <Card>
+              <View style={styles.forestHead}>
+                <View style={styles.forestIcon}>
+                  <Icon name="tree" size={22} color={COLORS.primary} strokeWidth={1.9} />
                 </View>
-              ))
+                <View style={{ flex: 1 }}>
+                  <Text style={styles.forestCount}>{totalTrees}</Text>
+                  <Text style={styles.forestLabel}>trees in your forest</Text>
+                </View>
+              </View>
+              <Divider style={{ marginVertical: SPACING.md - 2 }} />
+              <Text style={styles.forestRule}>
+                1 tree per {TREE_RULES.hikeMilesPerTree} mile hiked · 1 per {TREE_RULES.bikeMilesPerTree}{' '}
+                miles biked
+              </Text>
+            </Card>
+
+            <Banner tone="neutral" icon="info" title="What these trees are" message={TREES_DISCLAIMER} />
+
+            {grants.length === 0 ? (
+              <EmptyState
+                icon="leaf"
+                title="No trees yet"
+                message={`Hike ${TREE_RULES.hikeMilesPerTree} mile or bike ${TREE_RULES.bikeMilesPerTree} to earn your first.`}
+              />
+            ) : (
+              <Card padded={false}>
+                {grants.map((a, i) => (
+                  <View key={a.id}>
+                    {i > 0 ? <Divider style={{ marginLeft: 58 }} /> : null}
+                    <View style={styles.grantRow}>
+                      <View style={styles.grantIcon}>
+                        <Icon name="leaf" size={16} color={COLORS.primary} strokeWidth={1.9} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.grantSpecies}>{a.grant!.species}</Text>
+                        <Text style={styles.grantMeta}>
+                          {new Date(a.startedAt).toLocaleDateString()} ·{' '}
+                          {formatDistance(a.miles)} {formatDistanceUnit()}
+                        </Text>
+                      </View>
+                      <Text style={styles.grantCount}>×{a.trees}</Text>
+                    </View>
+                  </View>
+                ))}
+              </Card>
             )}
           </>
-        )}
-      </ScrollView>
-    </View>
-  );
-}
+        ) : null}
 
-// ─── Small components ──────────────────────────────────────────────────────────
+        {/* ── Records ─────────────────────────────────────────────────────── */}
+        {tab === 'records' ? (
+          records.length === 0 ? (
+            <EmptyState
+              icon="award"
+              title="No records yet"
+              message="Log an activity and your first personal bests appear here."
+            />
+          ) : (
+            <>
+              <Card padded={false}>
+                {records.map((r, i) => (
+                  <View key={r.id}>
+                    {i > 0 ? <Divider style={{ marginLeft: 58 }} /> : null}
+                    <Pressable
+                      onPress={() =>
+                        r.activityId
+                          ? navigation.navigate('ActivityDetail', { activityId: r.activityId })
+                          : undefined
+                      }
+                      disabled={!r.activityId}
+                      style={({ pressed }) => [styles.recordRow, pressed && { opacity: 0.7 }]}
+                    >
+                      <View style={styles.recordIcon}>
+                        <Icon name="award" size={16} color={COLORS.accentDark} strokeWidth={2} />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.recordLabel}>{r.label}</Text>
+                        <Text style={styles.recordDetail} numberOfLines={1}>
+                          {r.detail}
+                        </Text>
+                      </View>
+                      <Text style={styles.recordValue}>
+                        {r.value}
+                        {r.unit ? <Text style={styles.recordUnit}> {r.unit}</Text> : null}
+                      </Text>
+                      {r.activityId ? (
+                        <Icon name="chevron-right" size={15} color={COLORS.textLight} />
+                      ) : null}
+                    </Pressable>
+                  </View>
+                ))}
+              </Card>
 
-function MetricCard({
-  icon,
-  title,
-  value,
-  unit,
-  color,
-}: {
-  icon: string;
-  title: string;
-  value: string;
-  unit: string;
-  color: string;
-}) {
-  return (
-    <View style={[styles.metricCard, { borderTopColor: color }]}>
-      <Text style={styles.metricIcon}>{icon}</Text>
-      <Text style={styles.metricTitle}>{title}</Text>
-      <Text style={[styles.metricValue, { color }]}>{value}</Text>
-      <Text style={styles.metricUnit}>{unit}</Text>
-    </View>
-  );
-}
+              <Card>
+                <Text style={styles.sectionLabel}>Field log</Text>
+                <View style={styles.fieldStats}>
+                  <FieldStat value={`${speciesLogged}/${totalSpecies}`} label="Species" />
+                  <FieldStat value={String(cleanupCount)} label="Cleanups" />
+                  <FieldStat value={String(litterCollected)} label="Litter picked up" />
+                </View>
+              </Card>
+            </>
+          )
+        ) : null}
 
-function EquivRow({ icon, text }: { icon: string; text: string }) {
-  return (
-    <View style={styles.equivRow}>
-      <View style={styles.equivIconWrap}>
-        <Text style={styles.equivIcon}>{icon}</Text>
+        {/* ── Points ──────────────────────────────────────────────────────── */}
+        {tab === 'points' ? (
+          <>
+            <Card>
+              <Text style={styles.pointsTotal}>{totalPoints.toLocaleString()}</Text>
+              <Text style={styles.pointsLabel}>EcoPoints earned</Text>
+            </Card>
+
+            {pointHistory.length === 0 ? (
+              <EmptyState icon="star" title="No points yet" message="Points arrive as you log activities and finish challenges." />
+            ) : (
+              <Card padded={false}>
+                {pointHistory.slice(0, 60).map((e, i) => (
+                  <View key={e.id}>
+                    {i > 0 ? <Divider style={{ marginLeft: 58 }} /> : null}
+                    <View style={styles.pointRow}>
+                      <View style={styles.pointIcon}>
+                        <Icon
+                          name={iconForAction(e.action)}
+                          size={15}
+                          color={e.points >= 0 ? COLORS.primary : COLORS.danger}
+                          strokeWidth={1.9}
+                        />
+                      </View>
+                      <View style={{ flex: 1 }}>
+                        <Text style={styles.pointLabel} numberOfLines={1}>
+                          {e.label}
+                        </Text>
+                        <Text style={styles.pointDate}>
+                          {new Date(e.timestamp).toLocaleDateString(undefined, {
+                            month: 'short',
+                            day: 'numeric',
+                          })}
+                        </Text>
+                      </View>
+                      <Text style={[styles.pointValue, e.points < 0 && { color: COLORS.danger }]}>
+                        {e.points >= 0 ? '+' : ''}
+                        {e.points}
+                      </Text>
+                    </View>
+                  </View>
+                ))}
+              </Card>
+            )}
+          </>
+        ) : null}
       </View>
-      <Text style={styles.equivText}>{text}</Text>
-    </View>
+    </Screen>
   );
 }
 
-function EmptyCard({
-  icon,
-  title,
-  body,
-}: {
-  icon: string;
-  title: string;
-  body: string;
-}) {
+function iconForAction(action: string): IconName {
+  if (action.includes('hike')) return 'boot';
+  if (action.includes('bike')) return 'bike';
+  if (action.includes('tree')) return 'tree';
+  if (action.includes('challenge')) return 'target';
+  if (action.includes('trail')) return 'flag';
+  if (action.includes('streak')) return 'flame';
+  if (action.includes('login')) return 'calendar';
+  if (action.includes('club')) return 'users';
+  return 'star';
+}
+
+function Summary({ value, unit, label }: { value: string; unit?: string; label: string }) {
   return (
-    <View style={styles.emptyCard}>
-      <Text style={styles.emptyIcon}>{icon}</Text>
-      <Text style={styles.emptyTitle}>{title}</Text>
-      <Text style={styles.emptyBody}>{body}</Text>
+    <View style={styles.summaryItem}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
+        <Text style={styles.summaryValue}>{value}</Text>
+        {unit ? <Text style={styles.summaryUnit}>{unit}</Text> : null}
+      </View>
+      <Text style={styles.summaryLabel}>{label}</Text>
     </View>
   );
 }
 
-function HistStat({
-  icon,
-  value,
-  label,
-}: {
-  icon: string;
-  value: string;
-  label: string;
-}) {
+function FieldStat({ value, label }: { value: string; label: string }) {
   return (
-    <View style={styles.histStatBox}>
-      <Text style={styles.histStatIcon}>{icon}</Text>
-      <Text style={styles.histStatVal}>{value}</Text>
-      <Text style={styles.histStatLabel}>{label}</Text>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.fieldValue}>{value}</Text>
+      <Text style={styles.fieldLabel}>{label}</Text>
     </View>
   );
 }
 
-function HistSummaryItem({
-  value,
-  label,
-}: {
-  value: string;
-  label: string;
-}) {
+function MiniStat({ value, label }: { value: string; label: string }) {
   return (
-    <View style={styles.histSummaryItem}>
-      <Text style={styles.histSummaryVal}>{value}</Text>
-      <Text style={styles.histSummaryLabel}>{label}</Text>
+    <View style={{ flex: 1 }}>
+      <Text style={styles.miniValue}>{value}</Text>
+      <Text style={styles.miniLabel}>{label}</Text>
     </View>
   );
 }
 
-// ─── Styles ───────────────────────────────────────────────────────────────────
+function formatDuration(sec: number) {
+  const h = Math.floor(sec / 3600);
+  const m = Math.floor((sec % 3600) / 60);
+  if (h > 0) return `${h}h ${m}m`;
+  return `${m}m`;
+}
+
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  content: { padding: SPACING.md, paddingBottom: SPACING.xxxl },
+  body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
 
-  // Tabs
-  tabBar: {
-    flexDirection: 'row',
-    backgroundColor: COLORS.surface,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.border,
-    ...SHADOWS.sm,
-  },
-  tab: {
-    flex: 1,
-    paddingVertical: 10,
-    alignItems: 'center',
-    gap: 2,
-  },
-  tabActive: {
-    borderBottomWidth: 2.5,
-    borderBottomColor: COLORS.primary,
-  },
-  tabIcon: { fontSize: 16 },
-  tabLabel: {
-    ...TYPOGRAPHY.micro,
-    color: COLORS.textMuted,
-    letterSpacing: 0.3,
-  },
-  tabLabelActive: { color: COLORS.primary, fontWeight: '800' },
+  summaryGrid: { flexDirection: 'row' },
+  summaryItem: { flex: 1 },
+  summaryValue: { fontSize: 22, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
+  summaryUnit: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+  summaryLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase', marginTop: 2 },
 
-  // Banner
-  banner: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: RADIUS.xl,
-    overflow: 'hidden',
-    marginBottom: SPACING.md,
-    ...SHADOWS.lg,
-  },
-  bannerBg: {
-    position: 'absolute',
-    top: -30,
-    right: -30,
-    width: 150,
-    height: 150,
-    borderRadius: 75,
-    backgroundColor: 'rgba(255,255,255,0.04)',
-  },
-  bannerContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md,
-    padding: SPACING.lg,
-    paddingBottom: SPACING.sm,
-  },
-  bannerNum: {
-    fontSize: 52,
-    fontWeight: '900',
-    color: '#fff',
-    letterSpacing: -2,
-  },
-  bannerLabel: { ...TYPOGRAPHY.h3, color: '#fff' },
-  bannerSub: { ...TYPOGRAPHY.small, color: 'rgba(255,255,255,0.5)', marginTop: 2 },
-  veritreeBadge: {
-    backgroundColor: 'rgba(255,255,255,0.07)',
-    margin: SPACING.md,
-    marginTop: 0,
-    padding: SPACING.sm,
-    borderRadius: RADIUS.sm,
-    alignItems: 'center',
-  },
-  veritreeText: {
-    ...TYPOGRAPHY.caption,
-    color: 'rgba(255,255,255,0.55)',
-  },
-
-  // Metrics
-  metricsRow: { flexDirection: 'row', marginBottom: SPACING.md },
-  metricCard: {
-    flex: 1,
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    borderTopWidth: 3,
-    alignItems: 'center',
-    ...SHADOWS.sm,
-  },
-  metricIcon: { fontSize: 28, marginBottom: 4 },
-  metricTitle: {
-    ...TYPOGRAPHY.caption,
-    color: COLORS.textMuted,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-    marginBottom: 4,
-  },
-  metricValue: { fontSize: 24, fontWeight: '900', letterSpacing: -0.5 },
-  metricUnit: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
-
-  // Card
-  card: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.md,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  cardTitle: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.text,
-    marginBottom: SPACING.md,
-  },
-
-  // Equiv
-  equivRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
-  },
-  equivIconWrap: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.sm,
+  activityHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+  activityIcon: {
+    width: 38,
+    height: 38,
+    borderRadius: RADIUS.sm + 2,
     backgroundColor: COLORS.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  equivIcon: { fontSize: 18 },
-  equivText: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.text,
-    flex: 1,
-    lineHeight: 21,
-  },
-
-  // Activity cards
-  sectionTitle: {
-    ...TYPOGRAPHY.h3,
-    color: COLORS.text,
-    marginBottom: SPACING.sm,
-    marginTop: SPACING.xs,
-  },
-  actCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  actLeft: {
+  activityIconInvalid: { backgroundColor: COLORS.surfaceSunken },
+  activityTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  activityDate: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  activityStats: {
     flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.sm,
+    marginTop: SPACING.md - 2,
+    paddingTop: SPACING.sm + 2,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
   },
-  actTypeIcon: {
-    width: 48,
-    height: 48,
+  miniValue: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  miniLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
+  activityTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: SPACING.sm + 2 },
+
+  forestHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md - 2 },
+  forestIcon: {
+    width: 50,
+    height: 50,
     borderRadius: RADIUS.md,
     backgroundColor: COLORS.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  actType: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  actDate: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-  actRight: { position: 'absolute', top: SPACING.md, right: SPACING.md, alignItems: 'flex-end', gap: 4 },
-  treePill: {
-    backgroundColor: COLORS.primarySurface,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-  },
-  treePillText: {
-    color: COLORS.primaryDark,
-    fontWeight: '800',
-    fontSize: 13,
-  },
-  actMiles: { ...TYPOGRAPHY.small, color: COLORS.textMuted, fontWeight: '600' },
-  receiptBadge: {
-    backgroundColor: COLORS.primarySurface,
+  forestCount: { fontSize: 32, fontWeight: '700', color: COLORS.text, letterSpacing: -0.4 },
+  forestLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  forestRule: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
+
+  grantRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4, padding: SPACING.md - 3 },
+  grantIcon: {
+    width: 32,
+    height: 32,
     borderRadius: RADIUS.sm,
-    padding: SPACING.sm,
-    marginTop: SPACING.xs,
-  },
-  receiptText: {
-    ...TYPOGRAPHY.small,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
-
-  // Level hero
-  levelHero: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-    alignItems: 'center',
-    overflow: 'hidden',
-    ...SHADOWS.lg,
-  },
-  levelHeroBg: {
-    position: 'absolute',
-    top: -50,
-    right: -50,
-    width: 200,
-    height: 200,
-    borderRadius: 100,
-    backgroundColor: 'rgba(255,255,255,0.03)',
-  },
-  levelHeroLabel: {
-    ...TYPOGRAPHY.micro,
-    color: 'rgba(255,255,255,0.4)',
-    letterSpacing: 2,
-    marginBottom: SPACING.xs,
-  },
-  levelHeroName: {
-    fontSize: 28,
-    fontWeight: '900',
-    color: '#fff',
-    marginBottom: SPACING.xs,
-    textAlign: 'center',
-  },
-  levelHeroPoints: {
-    fontSize: 52,
-    fontWeight: '900',
-    color: COLORS.accent,
-    letterSpacing: -1,
-    marginBottom: SPACING.md,
-  },
-  levelHeroPtLabel: {
-    fontSize: 20,
-    color: 'rgba(255,255,255,0.5)',
-    fontWeight: '500',
-  },
-  levelProgressTrack: {
-    width: '100%',
-    height: 8,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  levelProgressFill: {
-    height: '100%',
-    backgroundColor: COLORS.accent,
-    borderRadius: 4,
-  },
-  levelProgressCaption: {
-    ...TYPOGRAPHY.small,
-    color: 'rgba(255,255,255,0.4)',
-    textAlign: 'center',
-  },
-
-  // Earn rows
-  earnRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 11,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-    gap: SPACING.sm,
-  },
-  earnIcon: { fontSize: 20, width: 28 },
-  earnAction: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flex: 1 },
-  ptsBadge: {
-    backgroundColor: COLORS.primarySurface,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 4,
-    borderWidth: 1,
-    borderColor: COLORS.primaryGlow,
-  },
-  ptsText: { color: COLORS.primary, fontWeight: '800', fontSize: 13 },
-
-  // Event cards
-  eventCard: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    borderRadius: RADIUS.md,
-    marginBottom: SPACING.xs,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  eventLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  eventTime: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-  eventPtsBadge: {
-    backgroundColor: COLORS.primarySurface,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 14,
-    paddingVertical: 6,
-  },
-  eventPtsText: { color: COLORS.primary, fontWeight: '900', fontSize: 16 },
-
-  // Badges
-  badgeSummaryCard: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.lg,
-    marginBottom: SPACING.md,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.lg,
-    ...SHADOWS.lg,
-  },
-  badgeSummaryLeft: {},
-  badgeSummaryNum: {
-    fontSize: 52,
-    fontWeight: '900',
-    color: '#fff',
-    letterSpacing: -1,
-  },
-  badgeSummaryTotal: { fontSize: 28, color: 'rgba(255,255,255,0.4)' },
-  badgeSummaryLabel: { ...TYPOGRAPHY.body, color: 'rgba(255,255,255,0.55)' },
-  badgeSummaryRight: { flex: 1 },
-  badgeProgressTrack: {
-    height: 8,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    borderRadius: 4,
-    overflow: 'hidden',
-    marginBottom: 8,
-  },
-  badgeProgressFill: {
-    height: '100%',
-    backgroundColor: COLORS.accent,
-    borderRadius: 4,
-  },
-  badgeSummaryPct: { ...TYPOGRAPHY.small, color: 'rgba(255,255,255,0.4)' },
-  badgeGrid: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    gap: SPACING.sm,
-  },
-  badgeCard: {
-    width: '47.5%',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    alignItems: 'center',
-    borderWidth: 1.5,
-    borderColor: COLORS.borderLight,
-    ...SHADOWS.sm,
-  },
-  badgeCardUnlocked: {
-    borderColor: COLORS.primaryLight,
-    backgroundColor: COLORS.primarySurface,
-  },
-  badgeIcon: { fontSize: 40, marginBottom: 8 },
-  badgeIconLocked: { opacity: 0.4 },
-  badgeName: {
-    ...TYPOGRAPHY.h4,
-    color: COLORS.text,
-    textAlign: 'center',
-    marginBottom: 4,
-  },
-  badgeDesc: {
-    ...TYPOGRAPHY.small,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    lineHeight: 17,
-  },
-  badgeUnlockedTag: {
-    marginTop: 8,
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: 10,
-    paddingVertical: 3,
-    borderRadius: RADIUS.pill,
-  },
-  badgeUnlockedText: {
-    ...TYPOGRAPHY.micro,
-    color: '#fff',
-    letterSpacing: 0.5,
-  },
-
-  // History
-  historySummary: {
-    backgroundColor: COLORS.primaryDark,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    alignItems: 'center',
-    marginBottom: SPACING.md,
-    ...SHADOWS.md,
-  },
-  histSummaryItem: { alignItems: 'center' },
-  histSummaryVal: {
-    fontSize: 24,
-    fontWeight: '900',
-    color: '#fff',
-    letterSpacing: -0.5,
-  },
-  histSummaryLabel: {
-    ...TYPOGRAPHY.micro,
-    color: 'rgba(255,255,255,0.45)',
-    marginTop: 2,
-    textTransform: 'uppercase',
-    letterSpacing: 0.8,
-  },
-  histDivider: {
-    width: 1,
-    height: 36,
-    backgroundColor: 'rgba(255,255,255,0.1)',
-  },
-  histCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    marginBottom: SPACING.sm,
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  histCardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginBottom: SPACING.md,
-  },
-  histTypeIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  histTypeName: { ...TYPOGRAPHY.h3, color: COLORS.text },
-  histDate: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-  histTreePill: {
-    backgroundColor: COLORS.primarySurface,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: 12,
-    paddingVertical: 5,
-    marginLeft: 'auto',
-  },
-  histTreeText: { color: COLORS.primaryDark, fontWeight: '800', fontSize: 14 },
-  histStatsRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: COLORS.background,
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm,
-  },
-  histStatBox: { alignItems: 'center', gap: 2 },
-  histStatIcon: { fontSize: 16 },
-  histStatVal: { ...TYPOGRAPHY.h4, color: COLORS.primary },
-  histStatLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
-  histReceipt: {
-    marginTop: SPACING.sm,
-    backgroundColor: COLORS.primarySurface,
-    borderRadius: RADIUS.sm,
-    padding: SPACING.sm,
-  },
-  histReceiptText: {
-    ...TYPOGRAPHY.small,
-    color: COLORS.primary,
-    fontWeight: '600',
-  },
+  grantSpecies: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  grantMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  grantCount: { ...TYPOGRAPHY.h4, color: COLORS.primary },
 
-  // Empty
-  emptyCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.xl,
+  pointsTotal: { fontSize: 36, fontWeight: '700', color: COLORS.text, letterSpacing: -0.45 },
+  pointsLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+
+  recordRow: {
+    flexDirection: 'row',
     alignItems: 'center',
-    ...SHADOWS.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    marginBottom: SPACING.md,
+    gap: SPACING.sm + 4,
+    paddingVertical: 13,
+    paddingHorizontal: SPACING.md - 2,
   },
-  emptyIcon: { fontSize: 48, marginBottom: SPACING.sm },
-  emptyTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, marginBottom: SPACING.xs },
-  emptyBody: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    lineHeight: 22,
+  recordIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.accentLight,
+    alignItems: 'center',
+    justifyContent: 'center',
   },
+  recordLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  recordDetail: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  recordValue: { ...TYPOGRAPHY.h4, color: COLORS.accentDark },
+  recordUnit: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+
+  sectionLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  fieldStats: { flexDirection: 'row', marginTop: SPACING.sm + 2 },
+  fieldValue: { ...TYPOGRAPHY.h2, color: COLORS.text },
+  fieldLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
+
+  pointRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4, padding: SPACING.sm + 4 },
+  pointIcon: {
+    width: 30,
+    height: 30,
+    borderRadius: RADIUS.sm,
+    backgroundColor: COLORS.surfaceSunken,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  pointLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
+  pointDate: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginTop: 1 },
+  pointValue: { ...TYPOGRAPHY.h4, color: COLORS.primary },
 });
