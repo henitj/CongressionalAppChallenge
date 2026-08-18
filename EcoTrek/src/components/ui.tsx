@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useContext, useEffect, useRef } from 'react';
 import {
   View,
   Text,
@@ -14,6 +14,7 @@ import {
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { NavigationContext } from '@react-navigation/native';
 import Icon, { IconName } from './Icon';
 import { useResponsive } from '../hooks/useResponsive';
 import { AVATAR_COLORS, COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
@@ -36,6 +37,18 @@ export function Screen({
   refreshControl?: React.ReactElement<any>;
 }) {
   const { contentWidth, isTablet } = useResponsive();
+  const scrollRef = useRef<ScrollView>(null);
+  const navigation = useContext(NavigationContext);
+
+  // Coming back to a page should start at the top, not wherever you left off.
+  useEffect(() => {
+    scrollRef.current?.scrollTo({ y: 0, animated: false });
+    if (!navigation) return;
+    const unsub = navigation.addListener('focus', () => {
+      scrollRef.current?.scrollTo({ y: 0, animated: false });
+    });
+    return unsub;
+  }, [navigation]);
 
   // On a tablet the page content is capped and centred. Without this, cards
   // stretch to 1000px and the layout falls apart.
@@ -54,12 +67,12 @@ export function Screen({
   return (
     <View style={[ui.screen, style]}>
       <ScrollView
+        ref={scrollRef}
         contentContainerStyle={[ui.scrollContent, contentStyle]}
         showsVerticalScrollIndicator={false}
         refreshControl={refreshControl}
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
-        automaticallyAdjustKeyboardInsets
       >
         <View style={column}>{children}</View>
       </ScrollView>

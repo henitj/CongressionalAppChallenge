@@ -250,7 +250,9 @@ export default function AssistantScreen() {
                       {m.trails.map((t) => (
                         <Card
                           key={t.id}
-                          onPress={() => navigation.navigate('Trails', { focusTrailId: t.id })}
+                          onPress={() =>
+                            navigation.navigate('Tabs', { screen: 'Trails', params: { focusTrailId: t.id } })
+                          }
                           style={styles.trailCard}
                         >
                           <View style={styles.trailIcon}>

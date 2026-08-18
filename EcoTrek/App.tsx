@@ -1,3 +1,5 @@
+import './src/services/locationTask';
+
 import React, { useCallback, useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet } from 'react-native';
 import { StatusBar } from 'expo-status-bar';

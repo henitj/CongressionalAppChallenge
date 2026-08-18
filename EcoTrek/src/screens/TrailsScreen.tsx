@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, RefreshControl, Linking, TextInput } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -12,6 +12,7 @@ import { useApp } from '../context/AppContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useActivity } from '../context/ActivityContext';
 import { useResponsive } from '../hooks/useResponsive';
+import { useResetOnLeave } from '../hooks/useResetOnLeave';
 
 type SortKey = 'nearest' | 'shortest' | 'longest' | 'easiest' | 'rating';
 
@@ -49,6 +50,16 @@ export default function TrailsScreen() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Trail | null>(null);
   const [showSort, setShowSort] = useState(false);
+
+  useResetOnLeave(
+    useCallback(() => {
+      setFilter('all');
+      setSort('nearest');
+      setQuery('');
+      setSelected(null);
+      setShowSort(false);
+    }, [])
+  );
 
   // The assistant can deep-link straight to a trail.
   useEffect(() => {

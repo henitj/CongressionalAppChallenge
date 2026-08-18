@@ -28,7 +28,7 @@ export default function HistoryScreen() {
             title="No activities yet"
             message="Complete your first hike or ride to see it here."
             action="Start tracking"
-            onAction={() => navigation.navigate('Track')}
+            onAction={() => navigation.navigate('Tabs', { screen: 'Track' })}
           />
         ) : (
           <View style={{ gap: SPACING.md }}>
@@ -44,7 +44,7 @@ export default function HistoryScreen() {
 
             {history.length > 5 ? (
               <Pressable
-                onPress={() => navigation.navigate('Impact', { tab: 'history' })}
+                onPress={() => navigation.navigate('Impact', { tab: 'activities' })}
                 style={styles.viewAll}
               >
                 <Text style={styles.viewAllText}>View all {history.length} activities</Text>

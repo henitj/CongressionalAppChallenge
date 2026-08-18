@@ -5,9 +5,9 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import LiveMap from '../components/LiveMap';
 import Icon, { IconName } from '../components/Icon';
-import { Button, Card } from '../components/ui';
+import { Button } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TREE_RULES, TYPOGRAPHY } from '../constants/theme';
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import {
   Coord,
   getCurrentPosition,

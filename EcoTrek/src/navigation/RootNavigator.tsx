@@ -58,6 +58,7 @@ function Tabs() {
         const tab = TABS.find((t) => t.name === route.name);
         return {
           headerShown: false,
+          unmountOnBlur: true,
           tabBarShowLabel: false,
           tabBarStyle: styles.tabBar,
           tabBarItemStyle: { paddingTop: 6 },

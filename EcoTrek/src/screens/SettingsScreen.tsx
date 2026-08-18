@@ -232,7 +232,8 @@ export default function SettingsScreen() {
             </Pressable>
           </Card>
           <Text style={styles.note}>
-            We only use GPS while you are recording a walk or ride. When you stop, we stop.
+            We only use GPS while a walk or ride is recording — including if you lock your phone.
+            When you tap Finish, we stop.
           </Text>
         </View>
 

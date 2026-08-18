@@ -10,6 +10,7 @@ import { COLORS, SPACING, TREE_RULES, TYPOGRAPHY } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
 import { useApp } from '../context/AppContext';
 import { useWeather } from '../context/WeatherContext';
+import { useResetOnLeave } from '../hooks/useResetOnLeave';
 
 type Mode = 'hike' | 'bike';
 
@@ -21,6 +22,13 @@ export default function TrackScreen() {
 
   const [mode, setMode] = useState<Mode>('hike');
   const [starting, setStarting] = useState(false);
+
+  useResetOnLeave(
+    useCallback(() => {
+      setMode('hike');
+      setStarting(false);
+    }, [])
+  );
 
   const handleStart = useCallback(async () => {
     // Ask for permission if we do not have it yet — but never wait on a
@@ -94,7 +102,7 @@ export default function TrackScreen() {
 
           <View style={styles.infoDetails}>
             <InfoRow icon="play" text="Tap Start, put your phone away, and go." />
-            <InfoRow icon="battery" text="Keep the app open for the best results." />
+            <InfoRow icon="battery" text="You can lock your phone. We keep measuring until you tap Finish." />
             <InfoRow
               icon="shield"
               text="We check that you are walking or biking, so scores stay fair."

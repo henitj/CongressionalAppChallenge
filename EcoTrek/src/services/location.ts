@@ -1,6 +1,7 @@
-import { Platform, AppState, AppStateStatus } from 'react-native';
+import { Platform } from 'react-native';
 
 import { Coord, haversineMiles } from './geo';
+import { addLocationListener, emitLocation, LOCATION_TASK } from './locationTask';
 
 export type { Coord };
 export { haversineMiles };
@@ -9,11 +10,10 @@ export type Subscription = { remove: () => void };
 
 export type StartOptions = {
   onError?: (err: Error) => void;
-  /** When true, continue tracking when the app goes to the background */
+  /** Keep measuring if the user locks the phone or switches apps. */
   allowBackground?: boolean;
 };
 
-/** Returned when tracking cannot start, so callers always get a safe handle. */
 const NO_OP_SUBSCRIPTION: Subscription = { remove: () => {} };
 
 /**
@@ -62,8 +62,6 @@ export async function getCurrentPosition(): Promise<Coord | null> {
       speed: pos.coords.speed ?? undefined,
     });
 
-    // A recent last-known fix is enough to drop a pin. Waiting for a fresh
-    // GPS lock is what made "Start ride" feel broken.
     const last = await Location.getLastKnownPositionAsync();
     if (last && Date.now() - last.timestamp < 180_000) {
       return toCoord(last);
@@ -83,14 +81,12 @@ export async function getCurrentPosition(): Promise<Coord | null> {
 /**
  * Streams the device's real position.
  *
- * Key fix: on native, uses a foreground-service-style approach where we
- * continue tracking even when the app is backgrounded. This is achieved by:
- * 1. NOT removing the location subscription on AppState change
- * 2. Buffering coordinates when backgrounded and flushing when foregrounded
+ * While a walk or ride is recording we keep measuring even if the phone is
+ * locked or another app is in front:
+ *   • Android — a foreground service with a persistent notification
+ *   • iOS — the location background mode, started from the tracking screen
  *
- * On Android this works with the foreground permission because the app
- * remains "recently used". On iOS, it requires the "when in use" mode
- * which allows location updates for recently active apps.
+ * When the activity ends we stop the task. We never track otherwise.
  */
 export async function startTracking(
   onCoord: (c: Coord) => void,
@@ -125,62 +121,107 @@ export async function startTracking(
       return NO_OP_SUBSCRIPTION;
     }
 
-    // Buffer for coords received while backgrounded
-    const buffer: Coord[] = [];
-    let isBackgrounded = false;
+    if (opts.allowBackground) {
+      try {
+        await Location.requestBackgroundPermissionsAsync();
+      } catch {
+        /* Expo Go and some devices have no background permission — we still track in the foreground. */
+      }
+    }
 
+    const unlisten = addLocationListener(onCoord);
+    let usedBackgroundTask = false;
+    let watch: { remove: () => void } | null = null;
+
+    if (opts.allowBackground) {
+      try {
+        const already = await Location.hasStartedLocationUpdatesAsync(LOCATION_TASK);
+        if (already) await Location.stopLocationUpdatesAsync(LOCATION_TASK);
+
+        await Location.startLocationUpdatesAsync(LOCATION_TASK, {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 1000,
+          distanceInterval: 2,
+          pausesUpdatesAutomatically: false,
+          activityType: Location.ActivityType?.Fitness,
+          showsBackgroundLocationIndicator: true,
+          foregroundService: {
+            notificationTitle: 'EcoTrek is recording',
+            notificationBody: 'Measuring your walk or ride. Tap to return.',
+            notificationColor: '#1A7A5A',
+          },
+        });
+        usedBackgroundTask = true;
+      } catch (e) {
+        console.warn('[location] background task unavailable, using live watch', e);
+      }
+    }
+
+    // Live watch for a snappy on-screen update. The background task covers
+    // the locked-phone case; both feed the same listener, so we drop
+    // near-duplicate points by timestamp.
+    let lastTs = 0;
     const deliver = (coord: Coord) => {
-      if (isBackgrounded) {
-        buffer.push(coord);
-      } else {
-        // Flush any buffered coords first
-        while (buffer.length > 0) {
-          onCoord(buffer.shift()!);
-        }
-        onCoord(coord);
-      }
+      if (coord.timestamp && Math.abs(coord.timestamp - lastTs) < 400) return;
+      lastTs = coord.timestamp || Date.now();
+      onCoord(coord);
     };
 
-    // Listen for app state changes — but DON'T stop tracking!
-    // Instead, buffer coords when backgrounded and flush when foregrounded.
-    const appStateListener = (state: AppStateStatus) => {
-      if (state === 'background' || state === 'inactive') {
-        isBackgrounded = true;
-      } else if (state === 'active') {
-        isBackgrounded = false;
-        // Flush buffered coordinates
-        while (buffer.length > 0) {
-          onCoord(buffer.shift()!);
-        }
+    // Rebind: task + watch both go through deliver when we have both.
+    unlisten();
+    const unlistenAll = addLocationListener(deliver);
+
+    if (!usedBackgroundTask) {
+      watch = await Location.watchPositionAsync(
+        {
+          accuracy: Location.Accuracy.BestForNavigation,
+          timeInterval: 1000,
+          distanceInterval: 2,
+          mayShowUserSettingsDialog: false,
+        },
+        (loc) =>
+          emitLocation({
+            latitude: loc.coords.latitude,
+            longitude: loc.coords.longitude,
+            timestamp: loc.timestamp,
+            accuracy: loc.coords.accuracy ?? undefined,
+            speed: loc.coords.speed ?? undefined,
+            altitude: loc.coords.altitude ?? undefined,
+          })
+      );
+    } else {
+      // Still watch in the foreground so the map updates every second while
+      // the app is open. Background updates keep coming from the task.
+      try {
+        watch = await Location.watchPositionAsync(
+          {
+            accuracy: Location.Accuracy.BestForNavigation,
+            timeInterval: 1000,
+            distanceInterval: 2,
+            mayShowUserSettingsDialog: false,
+          },
+          (loc) =>
+            emitLocation({
+              latitude: loc.coords.latitude,
+              longitude: loc.coords.longitude,
+              timestamp: loc.timestamp,
+              accuracy: loc.coords.accuracy ?? undefined,
+              speed: loc.coords.speed ?? undefined,
+              altitude: loc.coords.altitude ?? undefined,
+            })
+        );
+      } catch {
+        /* task alone is enough */
       }
-    };
-
-    const sub = await Location.watchPositionAsync(
-      {
-        accuracy: Location.Accuracy.BestForNavigation,
-        timeInterval: 1000,
-        distanceInterval: 2,
-        // This is the key: mayShowUserSettingsDialog allows background updates
-        // when the user has granted foreground permission
-        mayShowUserSettingsDialog: false,
-      },
-      (loc) =>
-        deliver({
-          latitude: loc.coords.latitude,
-          longitude: loc.coords.longitude,
-          timestamp: loc.timestamp,
-          accuracy: loc.coords.accuracy ?? undefined,
-          speed: loc.coords.speed ?? undefined,
-          altitude: loc.coords.altitude ?? undefined,
-        } as Coord & { altitude?: number })
-    );
-
-    const appSub = AppState.addEventListener('change', appStateListener);
+    }
 
     return {
       remove: () => {
-        sub.remove();
-        appSub.remove();
+        unlistenAll();
+        watch?.remove();
+        if (usedBackgroundTask) {
+          Location.stopLocationUpdatesAsync(LOCATION_TASK).catch(() => {});
+        }
       },
     };
   } catch (e: any) {

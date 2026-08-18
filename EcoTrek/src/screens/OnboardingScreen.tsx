@@ -38,7 +38,7 @@ const PAGES: Page[] = [
     points: [
       { icon: 'map-pin', text: 'It can tell which Austin trail you are on.' },
       { icon: 'flag', text: 'Finish most of a trail and we mark it complete.' },
-      { icon: 'battery', text: 'We only use GPS while you are recording. When you stop, we stop.' },
+      { icon: 'battery', text: 'We only measure while you are recording — even if you lock your phone. When you finish, we stop.' },
     ],
   },
   {
