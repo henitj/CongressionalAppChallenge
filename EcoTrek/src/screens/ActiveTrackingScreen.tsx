@@ -1,5 +1,5 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, AppState, AppStateStatus } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, AppState, AppStateStatus, Linking } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
@@ -22,6 +22,7 @@ import { useApp } from '../context/AppContext';
 import { detectCurrentTrail } from '../services/trailDetection';
 import { Trail } from '../constants/austinTrails';
 import { useProfile, estimateCalories } from '../context/ProfileContext';
+import { useWeather } from '../context/WeatherContext';
 
 type Mode = 'hike' | 'bike';
 
@@ -31,7 +32,7 @@ export default function ActiveTrackingScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const mode: Mode = route.params?.mode ?? 'hike';
-  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { formatDistance, formatDistanceUnit, formatTemp } = useSettings();
   const { trails } = useApp();
   const { profile } = useProfile();
   const { addActivity } = useActivity();
@@ -50,6 +51,7 @@ export default function ActiveTrackingScreen() {
   const [isBackgrounded, setIsBackgrounded] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [showRest, setShowRest] = useState(false);
 
   const subRef = useRef<Subscription | null>(null);
   const lastRef = useRef<Coord | undefined>(undefined);
@@ -65,6 +67,29 @@ export default function ActiveTrackingScreen() {
   const speedLimit = SPEED_LIMITS[mode];
   const avgMph = elapsed > 0 ? miles / (elapsed / 3600) : 0;
   const calories = estimateCalories(mode, elapsed, avgMph, profile);
+  const { report } = useWeather();
+
+  useEffect(() => {
+    if (!paused && elapsed >= 25 * 60 && !showRest) setShowRest(true);
+  }, [elapsed, paused, showRest]);
+
+  const textContact = () => {
+    const phone = (profile.emergencyPhone ?? '').replace(/[^\d+]/g, '');
+    if (!phone) {
+      Alert.alert(
+        'No contact saved',
+        'Add a name and phone number in Settings so we can text them for you.'
+      );
+      return;
+    }
+    const where = nearbyTrail?.name ?? 'a walk';
+    const body = encodeURIComponent(
+      `Hi${profile.emergencyName ? ` ${profile.emergencyName}` : ''}, I am on ${where} with EcoTrek. I wanted you to know where I am.`
+    );
+    Linking.openURL(`sms:${phone}?body=${body}`).catch(() =>
+      Alert.alert('Could not open Messages', 'Try sending a text yourself.')
+    );
+  };
 
   // Timer
   useEffect(() => {
@@ -280,6 +305,34 @@ export default function ActiveTrackingScreen() {
             </View>
           ) : null}
         </View>
+
+        <View style={styles.helpRow}>
+          <Pressable
+            onPress={() => Linking.openURL('tel:911')}
+            style={styles.helpBtn}
+            accessibilityLabel="Call 911"
+          >
+            <Icon name="alert-triangle" size={16} color={COLORS.danger} strokeWidth={2} />
+            <Text style={styles.helpDanger}>Call 911</Text>
+          </Pressable>
+          <Pressable onPress={textContact} style={styles.helpBtn} accessibilityLabel="Text my contact">
+            <Icon name="users" size={16} color={COLORS.primary} strokeWidth={2} />
+            <Text style={styles.helpSafe}>Text my contact</Text>
+          </Pressable>
+        </View>
+
+        {showRest ? (
+          <View style={styles.restBanner}>
+            <Icon name="clock" size={18} color={COLORS.accentDark} strokeWidth={2} />
+            <Text style={styles.restText}>
+              You have been out for {Math.floor(elapsed / 60)} minutes
+              {report ? ` · it is ${formatTemp(report.tempF)}` : ''}. Want a sit-down?
+            </Text>
+            <Pressable onPress={() => setShowRest(false)} hitSlop={10} accessibilityLabel="Dismiss rest reminder">
+              <Icon name="x" size={16} color={COLORS.textMuted} />
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* Stats panel */}
         <View style={styles.statsPanel}>
@@ -555,6 +608,31 @@ const styles = StyleSheet.create({
   alertSubtext: { ...TYPOGRAPHY.small, color: COLORS.textMuted, textAlign: 'center' },
   alertButtons: { flexDirection: 'row', gap: SPACING.sm, width: '100%' },
 
+  helpRow: { flexDirection: 'row', gap: SPACING.sm, paddingHorizontal: SPACING.md, marginTop: SPACING.sm },
+  helpBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    paddingVertical: 12,
+    minHeight: 48,
+  },
+  helpDanger: { ...TYPOGRAPHY.smallMed, color: COLORS.danger },
+  helpSafe: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
+  restBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
+    backgroundColor: COLORS.warningLight,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm + 4,
+  },
+  restText: { ...TYPOGRAPHY.small, color: COLORS.text, flex: 1 },
   finishRow: { paddingBottom: SPACING.md },
 
   resultContainer: {

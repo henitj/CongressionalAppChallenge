@@ -462,13 +462,15 @@ function TrailCard({
           size="sm"
           icon="activity"
         />
-        <Pill label={trail.difficulty} tone={difficultyTone as any} size="sm" />
-        {trail.rating ? <Pill label={String(trail.rating)} tone="neutral" size="sm" icon="star" /> : null}
-        {completed ? (
-          <Pill label="Completed" tone="primary" size="sm" icon="flag" />
-        ) : visited ? (
-          <Pill label="Visited" tone="neutral" size="sm" />
-        ) : null}
+        <Pill
+          label={trail.difficulty === 'Easy' ? 'Easy' : trail.difficulty === 'Moderate' ? 'Medium' : 'Hard'}
+          tone={difficultyTone as any}
+          size="sm"
+        />
+        {trail.petFriendly ? <Pill label="Dogs" tone="primary" size="sm" /> : null}
+        {trail.waterStations ? <Pill label="Water" tone="neutral" size="sm" icon="droplet" /> : null}
+        {trail.restroomsAvailable ? <Pill label="Bathrooms" tone="neutral" size="sm" /> : null}
+        {completed ? <Pill label="Done" tone="primary" size="sm" icon="flag" /> : visited ? <Pill label="Visited" tone="neutral" size="sm" /> : null}
       </View>
     </Card>
   );

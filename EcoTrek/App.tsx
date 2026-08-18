@@ -1,7 +1,7 @@
 import './src/services/locationTask';
 
 import React, { useCallback, useEffect } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
@@ -15,6 +15,7 @@ import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { AppProvider } from './src/context/AppContext';
 import { EcoPointsProvider, useEcoPoints } from './src/constants/EcoPointsContext';
 import { SettingsProvider } from './src/constants/SettingsContext';
+import { ThemeProvider } from './src/context/ThemeContext';
 import { ClubProvider, useClub } from './src/constants/ClubContext';
 import { StreakProvider, useStreak } from './src/context/StreakContext';
 import { ActivityProvider, useActivity } from './src/context/ActivityContext';
@@ -130,7 +131,6 @@ function Gate() {
 
   return (
     <EcoPointsProvider>
-      <SettingsProvider>
         <ProfileProvider>
           <ClubLayer>
             <StreakProvider>
@@ -153,20 +153,27 @@ function Gate() {
             </StreakProvider>
           </ClubLayer>
         </ProfileProvider>
-      </SettingsProvider>
     </EcoPointsProvider>
   );
 }
 
+if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
+(Text as any).defaultProps.allowFontScaling = true;
+(Text as any).defaultProps.maxFontSizeMultiplier = 1.8;
+
 export default function App() {
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <AppProvider>
-          <StatusBar style="dark" />
-          <Gate />
-        </AppProvider>
-      </AuthProvider>
+      <SettingsProvider>
+        <ThemeProvider>
+          <AuthProvider>
+            <AppProvider>
+              <StatusBar style="dark" />
+              <Gate />
+            </AppProvider>
+          </AuthProvider>
+        </ThemeProvider>
+      </SettingsProvider>
     </SafeAreaProvider>
   );
 }

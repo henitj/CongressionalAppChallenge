@@ -11,6 +11,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { GOOGLE_AUTH, isGoogleConfigured } from '../constants/authConfig';
 import { setAuthTokenProvider } from '../services/api';
+import { copyUserData } from '../services/storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -44,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const guestToMigrate = React.useRef<string | null>(null);
 
   const googleConfigured = isGoogleConfigured();
 
@@ -87,6 +89,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (accessToken) {
         fetchGoogleProfile(accessToken)
           .then(async (profile) => {
+            const fromGuest = guestToMigrate.current;
+            guestToMigrate.current = null;
+            if (fromGuest) {
+              await copyUserData(fromGuest, profile.id);
+            }
             const u: User = {
               id: profile.id,
               name: profile.name ?? profile.email,
@@ -110,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = useCallback(async () => {
     setError(null);
+    if (user?.provider === 'guest') guestToMigrate.current = user.id;
     if (!googleConfigured) {
       setError(
         'Google OAuth is not configured. Add your client IDs to src/constants/authConfig.ts.'

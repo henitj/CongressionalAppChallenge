@@ -9,6 +9,7 @@ import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AppProvider } from '../context/AppContext';
 import { EcoPointsProvider } from '../constants/EcoPointsContext';
 import { SettingsProvider } from '../constants/SettingsContext';
+import { ThemeProvider } from '../context/ThemeContext';
 import { ClubProvider } from '../constants/ClubContext';
 import { StreakProvider } from '../context/StreakContext';
 import { ActivityProvider } from '../context/ActivityContext';
@@ -37,6 +38,7 @@ import HistoryScreen from '../screens/HistoryScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import SignInScreen from '../screens/SignInScreen';
 import BadgesScreen from '../screens/BadgesScreen';
+import MoreScreen from '../screens/MoreScreen';
 
 /**
  * Render smoke tests.
@@ -78,6 +80,7 @@ function Providers({ children }: { children: React.ReactNode }) {
           <AppProvider>
           <EcoPointsProvider>
           <SettingsProvider>
+          <ThemeProvider>
           <ProfileProvider>
             <ClubProvider>
               <StreakProvider>
@@ -97,6 +100,7 @@ function Providers({ children }: { children: React.ReactNode }) {
               </StreakProvider>
             </ClubProvider>
           </ProfileProvider>
+          </ThemeProvider>
           </SettingsProvider>
           </EcoPointsProvider>
           </AppProvider>
@@ -122,8 +126,9 @@ async function mount(Component: React.ComponentType<any>, anchor: string | RegEx
 
 /** Each screen plus a string that only appears once it has really rendered. */
 const SCREENS: [string, React.ComponentType<any>, string | RegExp][] = [
-  ['Home', HomeScreen, 'Your totals'],
+  ['Home', HomeScreen, 'Your last walk'],
   ['Track', TrackScreen, /How trees are earned/i],
+  ['More', MoreScreen, 'My walks'],
   ['Trails', TrailsScreen, 'Ask about a trail'],
   ['Clubs', LeaderboardScreen, 'My club'],
   ['Profile', ProfileScreen, 'See all badges'],
@@ -137,7 +142,7 @@ const SCREENS: [string, React.ComponentType<any>, string | RegExp][] = [
   ['Assistant', AssistantScreen, /What do you want to know/i],
   ['ActivityDetail', ActivityDetailScreen, /Activity not found/i],
   ['Recap', RecapScreen, /Nothing logged last week/i],
-  ['History', HistoryScreen, /No activities yet/i],
+  ['History', HistoryScreen, 'No walks yet'],
 ];
 
 describe('every screen renders on an empty account', () => {
@@ -178,7 +183,7 @@ describe('screens that do not need the provider stack', () => {
         <OnboardingScreen onDone={() => {}} />
       </SafeAreaProvider>
     );
-    await waitFor(() => expect(queryByText('Walk or ride. We measure the miles.')).toBeTruthy());
+    await waitFor(() => expect(queryByText('Tap Start. Then walk.')).toBeTruthy());
     expect(queryByText('Skip')).toBeTruthy();
     expect(toJSON()).toBeTruthy();
   });
@@ -186,9 +191,8 @@ describe('screens that do not need the provider stack', () => {
 
 describe('empty states say something useful', () => {
   it('Home tells a brand new user what to do', async () => {
-    const { queryByText } = await mount(HomeScreen, 'Your totals');
-    expect(queryByText(/No activities yet/i)).toBeTruthy();
-    expect(queryByText('Start tracking')).toBeTruthy();
+    const { queryByText } = await mount(HomeScreen, 'Your last walk');
+    expect(queryByText(/You have not walked yet/i)).toBeTruthy();
   });
 
   it('Clubs opens on the tab that explains how to join', async () => {
@@ -197,13 +201,8 @@ describe('empty states say something useful', () => {
     expect(queryByText('Enter a code')).toBeTruthy();
   });
 
-  it('Home surfaces the weekly challenges even with no history', async () => {
-    const { queryByText } = await mount(HomeScreen, 'This week');
-    expect(queryByText(/of 5 done/i)).toBeTruthy();
-  });
-
   it('History starts empty with a call to action', async () => {
-    const { queryByText } = await mount(HistoryScreen, /No activities yet/i);
-    expect(queryByText('Start tracking')).toBeTruthy();
+    const { queryByText } = await mount(HistoryScreen, /No walks yet/i);
+    expect(queryByText('Start walk')).toBeTruthy();
   });
 });

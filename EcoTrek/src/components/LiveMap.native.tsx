@@ -56,8 +56,8 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
               latitude: p.latitude,
               longitude: p.longitude,
             }))}
-            strokeColor={COLORS.primary}
-            strokeWidth={5}
+            strokeColor="#003D28"
+            strokeWidth={8}
           />
         )}
         {path.length > 0 && (
@@ -70,12 +70,21 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
             title="Start"
           />
         )}
+        {current ? (
+          <Marker
+            coordinate={{ latitude: current.latitude, longitude: current.longitude }}
+            title="You are here"
+            pinColor="#FFD000"
+            tracksViewChanges={false}
+          />
+        ) : null}
         {current && current.accuracy !== undefined && (
           <Circle
             center={{ latitude: current.latitude, longitude: current.longitude }}
-            radius={current.accuracy}
-            strokeColor="rgba(22,98,74,0.35)"
-            fillColor="rgba(22,98,74,0.08)"
+            radius={Math.max(current.accuracy, 12)}
+            strokeColor="#003D28"
+            fillColor="rgba(255,208,0,0.22)"
+            strokeWidth={2}
           />
         )}
       </MapView>

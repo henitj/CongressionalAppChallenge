@@ -17,6 +17,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContext } from '@react-navigation/native';
 import Icon, { IconName } from './Icon';
 import { useResponsive } from '../hooks/useResponsive';
+import { useTheme } from '../context/ThemeContext';
 import { AVATAR_COLORS, COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -37,6 +38,7 @@ export function Screen({
   refreshControl?: React.ReactElement<any>;
 }) {
   const { contentWidth, isTablet } = useResponsive();
+  const { colors } = useTheme();
   const scrollRef = useRef<ScrollView>(null);
   const navigation = useContext(NavigationContext);
 

@@ -9,6 +9,7 @@ import { Screen, Card, SectionHeader, Segmented, Divider, Banner, Button } from 
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useSettings } from '../constants/SettingsContext';
 import { useAuth } from '../context/AuthContext';
+import { useProfile } from '../context/ProfileContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useActivity } from '../context/ActivityContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -20,8 +21,24 @@ import { PRIVACY_POLICY_URL, SUPPORT_EMAIL, APP_VERSION } from '../constants/app
 
 export default function SettingsScreen() {
   const navigation = useNavigation<any>();
-  const { units, tempUnit, setUnits, setTempUnit } = useSettings();
-  const { user, signOut } = useAuth();
+  const {
+    units,
+    tempUnit,
+    setUnits,
+    setTempUnit,
+    appearance,
+    setAppearance,
+    textSize,
+    setTextSize,
+    simpleMode,
+    setSimpleMode,
+    reduceMotion,
+    setReduceMotion,
+  } = useSettings();
+  const { profile, setProfile } = useProfile();
+  const [emName, setEmName] = useState(profile.emergencyName ?? '');
+  const [emPhone, setEmPhone] = useState(profile.emergencyPhone ?? '');
+  const { user, signOut, signInWithGoogle } = useAuth();
   const { resetPoints } = useEcoPoints();
   const { clearHistory } = useActivity();
   const { permission, requestLocation } = useApp();
@@ -112,13 +129,21 @@ export default function SettingsScreen() {
               </View>
             </View>
             {user?.provider === 'guest' ? (
-              <Banner
-                tone="neutral"
-                icon="info"
-                title="Guest data stays on this phone"
-                message="Sign in with Google to keep your progress if you change devices."
-                style={{ marginTop: SPACING.md - 2 }}
-              />
+              <>
+                <Banner
+                  tone="neutral"
+                  icon="info"
+                  title="Save your walks"
+                  message="Sign in with Google and we will keep the walks you already logged on this phone."
+                  style={{ marginTop: SPACING.md - 2 }}
+                />
+                <Button
+                  label="Save with Google"
+                  full
+                  style={{ marginTop: SPACING.sm }}
+                  onPress={() => signInWithGoogle()}
+                />
+              </>
             ) : null}
           </Card>
         </View>
@@ -397,4 +422,16 @@ const styles = StyleSheet.create({
   rowAction: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
 
   note: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: SPACING.sm },
+  pad: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.md - 2 },
+  input: {
+    backgroundColor: COLORS.surfaceSunken,
+    borderRadius: RADIUS.md,
+    borderWidth: 1,
+    borderColor: COLORS.border,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 14,
+    minHeight: 52,
+    ...TYPOGRAPHY.body,
+    color: COLORS.text,
+  },
 });

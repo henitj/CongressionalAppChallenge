@@ -51,10 +51,8 @@ export default function SignInScreen() {
   const rise = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fade, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(rise, { toValue: 0, duration: 500, useNativeDriver: true }),
-    ]).start();
+    fade.setValue(1);
+    rise.setValue(0);
   }, [fade, rise]);
 
   const handleGoogle = async () => {
@@ -187,8 +185,8 @@ export default function SignInScreen() {
             />
           </View>
           <Text style={styles.guestNote}>
-            Guest data is not backed up. If you reinstall the app or change phones, it is gone.
-            Signing in with Google keeps it.
+            You can start now and save your walks later with Google. Your walks on this phone will
+            come with you.
           </Text>
           <Button label="Start as guest" full loading={busy} onPress={handleGuest} />
         </View>

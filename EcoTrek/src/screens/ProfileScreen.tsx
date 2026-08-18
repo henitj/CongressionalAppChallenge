@@ -17,7 +17,7 @@ import { useSettings } from '../constants/SettingsContext';
 import { useClub, sortedMembers } from '../constants/ClubContext';
 import { useProfile } from '../context/ProfileContext';
 import { fullNameOf } from '../services/displayName';
-import { shareText } from '../services/share';
+import ShareCard from '../components/ShareCard';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
@@ -34,6 +34,7 @@ export default function ProfileScreen() {
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [showWeightEditor, setShowWeightEditor] = useState(false);
   const [newWeight, setNewWeight] = useState('');
+  const [showShare, setShowShare] = useState(false);
   const displayName = fullNameOf(profile, user?.name);
 
   const memberSince = useMemo(() => {
@@ -41,22 +42,7 @@ export default function ProfileScreen() {
     return ts ? new Date(ts) : null;
   }, [myClub, user?.id]);
 
-  const shareImpact = async () => {
-    const lines = [
-      "I'm using EcoTrek to walk and bike more.",
-      '',
-      'My progress:',
-      `• ${formatDistance(totalMiles)} ${formatDistanceUnit()} covered`,
-      `• ${totalTrees} tree${totalTrees === 1 ? '' : 's'} earned`,
-      `• ${totalPoints.toLocaleString()} EcoPoints · ${level}`,
-      currentStreak > 0 ? `• ${currentStreak}-week streak` : null,
-      uniqueTrailsCompleted > 0 ? `• ${uniqueTrailsCompleted} trails completed` : null,
-      '',
-      'Want to join me?',
-    ].filter(Boolean) as string[];
-
-    await shareText(lines.join('\n'), `${displayName}'s EcoTrek progress`);
-  };
+  const shareImpact = () => setShowShare(true);
 
   const handleUpdateWeight = async () => {
     const w = parseInt(newWeight);
@@ -132,6 +118,17 @@ export default function ProfileScreen() {
             onPress={shareImpact}
           />
         </Card>
+
+        <ShareCard
+          visible={showShare}
+          onClose={() => setShowShare(false)}
+          name={displayName}
+          miles={formatDistance(totalMiles)}
+          unit={formatDistanceUnit()}
+          trees={totalTrees}
+          streak={currentStreak}
+          level={level}
+        />
 
         {/* Weight tracking */}
         {profile.weightHistory.length > 0 ? (

@@ -6,6 +6,7 @@ import Icon, { IconName } from './Icon';
 import { Avatar } from './ui';
 import { useAuth } from '../context/AuthContext';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 type Action = { icon: IconName; onPress: () => void; badge?: boolean; label?: string };
 
@@ -30,9 +31,10 @@ export default function Header({
 }: Props) {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const { colors, fontScale } = useTheme();
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safe, style]}>
+    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor: colors.background }, style]}>
       <View style={styles.bar}>
         {back ? (
           <Pressable
@@ -41,17 +43,17 @@ export default function Header({
             style={styles.iconBtn}
             accessibilityLabel="Go back"
           >
-            <Icon name="chevron-left" size={20} color={COLORS.text} strokeWidth={2.1} />
+            <Icon name="chevron-left" size={20} color={colors.text} strokeWidth={2.1} />
           </Pressable>
         ) : null}
 
         <View style={styles.titleWrap}>
           {subtitle ? (
-            <Text style={styles.subtitle} numberOfLines={2}>
+            <Text style={[styles.subtitle, { color: colors.textMuted, fontSize: Math.round(13 * fontScale) }]} numberOfLines={2}>
               {subtitle}
             </Text>
           ) : null}
-          <Text style={styles.title} numberOfLines={2}>
+          <Text style={[styles.title, { color: colors.text, fontSize: Math.round(30 * fontScale) }]} numberOfLines={2}>
             {title}
           </Text>
         </View>

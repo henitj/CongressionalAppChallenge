@@ -9,25 +9,40 @@ import { Screen, Card, Pill, Divider, EmptyState } from '../components/ui';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useActivity, Activity } from '../context/ActivityContext';
 import { useSettings } from '../constants/SettingsContext';
+import { weekStart } from '../services/dates';
 
 export default function HistoryScreen() {
   const navigation = useNavigation<any>();
   const { history } = useActivity();
-  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { formatDistanceCompact, formatDistance, formatDistanceUnit } = useSettings();
 
-  const recent = history.slice(0, 5);
+  const recent = history;
+  const weekBegin = weekStart().getTime();
+  const thisWeek = history.filter((a) => a.valid && a.startedAt >= weekBegin);
+  const weekMiles = thisWeek.reduce((n, a) => n + a.miles, 0);
 
   return (
     <Screen>
-      <Header title="Activity History" subtitle="Last 5 activities" back />
+      <Header title="My walks" subtitle="This week and every walk you have saved" back />
 
       <View style={styles.body}>
+        <Card>
+          <Text style={styles.weekLabel}>This week</Text>
+          <Text style={styles.weekValue}>
+            {formatDistanceCompact(weekMiles)} {formatDistanceUnit()}
+            <Text style={styles.weekMeta}>
+              {'  '}
+              {thisWeek.length} walk{thisWeek.length === 1 ? '' : 's'}
+            </Text>
+          </Text>
+        </Card>
+
         {recent.length === 0 ? (
           <EmptyState
             icon="activity"
-            title="No activities yet"
-            message="Complete your first hike or ride to see it here."
-            action="Start tracking"
+            title="No walks yet"
+            message="Finish your first walk or ride to see it here."
+            action="Start walk"
             onAction={() => navigation.navigate('Tabs', { screen: 'Track' })}
           />
         ) : (
@@ -42,15 +57,10 @@ export default function HistoryScreen() {
               />
             ))}
 
-            {history.length > 5 ? (
-              <Pressable
-                onPress={() => navigation.navigate('Impact', { tab: 'activities' })}
-                style={styles.viewAll}
-              >
-                <Text style={styles.viewAllText}>View all {history.length} activities</Text>
-                <Icon name="arrow-right" size={16} color={COLORS.primary} strokeWidth={2} />
-              </Pressable>
-            ) : null}
+            <Pressable onPress={() => navigation.navigate('Recap')} style={styles.viewAll}>
+              <Text style={styles.viewAllText}>Compare with last week</Text>
+              <Icon name="arrow-right" size={16} color={COLORS.primary} strokeWidth={2} />
+            </Pressable>
           </View>
         )}
       </View>
@@ -106,9 +116,9 @@ function ActivityHistoryCard({
           </Text>
         </View>
         {activity.valid ? (
-          <Pill label="Valid" tone="success" size="sm" icon="check" />
+          <Pill label="Counted" tone="success" size="sm" icon="check" />
         ) : (
-          <Pill label="Flagged" tone="danger" size="sm" icon="alert-circle" />
+          <Pill label="Not counted" tone="danger" size="sm" icon="alert-circle" />
         )}
       </View>
 
@@ -258,4 +268,7 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
   },
   viewAllText: { ...TYPOGRAPHY.bodyMed, color: COLORS.primary },
+  weekLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  weekValue: { ...TYPOGRAPHY.h1, color: COLORS.text, marginTop: 4 },
+  weekMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, fontWeight: '500' },
 });

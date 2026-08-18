@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import HomeScreen from '../screens/HomeScreen';
 import TrackScreen from '../screens/TrackScreen';
+import MoreScreen from '../screens/MoreScreen';
 import ActiveTrackingScreen from '../screens/ActiveTrackingScreen';
 import TrailsScreen from '../screens/TrailsScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
@@ -23,28 +24,34 @@ import BadgesScreen from '../screens/BadgesScreen';
 
 import Icon, { IconName } from '../components/Icon';
 import { COLORS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 const TABS: { name: string; icon: IconName; label: string }[] = [
   { name: 'Home', icon: 'home', label: 'Home' },
-  { name: 'Track', icon: 'navigation', label: 'Track' },
-  { name: 'Trails', icon: 'map', label: 'Trails' },
-  { name: 'Clubs', icon: 'users', label: 'Clubs' },
-  { name: 'Profile', icon: 'user', label: 'Profile' },
+  { name: 'Track', icon: 'play', label: 'Start' },
+  { name: 'More', icon: 'sliders', label: 'More' },
 ];
 
 function TabItem({ icon, label, focused }: { icon: IconName; label: string; focused: boolean }) {
+  const { colors, fontScale } = useTheme();
   return (
     <View style={styles.tabItem}>
       <Icon
         name={icon}
-        size={22}
-        color={focused ? COLORS.primary : COLORS.textMuted}
+        size={24}
+        color={focused ? colors.primary : colors.textMuted}
         strokeWidth={focused ? 2.2 : 1.8}
       />
-      <Text style={[styles.tabLabel, focused && styles.tabLabelActive]} numberOfLines={1}>
+      <Text
+        style={[
+          styles.tabLabel,
+          { color: focused ? colors.primary : colors.textMuted, fontSize: Math.round(12 * fontScale) },
+        ]}
+        numberOfLines={1}
+      >
         {label}
       </Text>
     </View>
@@ -52,6 +59,7 @@ function TabItem({ icon, label, focused }: { icon: IconName; label: string; focu
 }
 
 function Tabs() {
+  const { colors } = useTheme();
   return (
     <Tab.Navigator
       screenOptions={({ route }) => {
@@ -60,39 +68,34 @@ function Tabs() {
           headerShown: false,
           unmountOnBlur: true,
           tabBarShowLabel: false,
-          tabBarStyle: styles.tabBar,
+          tabBarStyle: [styles.tabBar, { backgroundColor: colors.surface, borderTopColor: colors.border }],
           tabBarItemStyle: { paddingTop: 6 },
           tabBarIcon: ({ focused }) => (
-            <TabItem
-              icon={tab?.icon ?? 'circle'}
-              label={tab?.label ?? route.name}
-              focused={focused}
-            />
+            <TabItem icon={tab?.icon ?? 'circle'} label={tab?.label ?? route.name} focused={focused} />
           ),
         };
       }}
     >
       <Tab.Screen name="Home" component={HomeScreen} />
       <Tab.Screen name="Track" component={TrackScreen} />
-      <Tab.Screen name="Trails" component={TrailsScreen} />
-      <Tab.Screen name="Clubs" component={LeaderboardScreen} />
-      <Tab.Screen name="Profile" component={ProfileScreen} />
+      <Tab.Screen name="More" component={MoreScreen} />
     </Tab.Navigator>
   );
 }
 
 export default function RootNavigator() {
+  const { reduceMotion } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default' }}>
       <Stack.Screen name="Tabs" component={Tabs} />
       <Stack.Screen
         name="ActiveTracking"
         component={ActiveTrackingScreen}
-        options={{
-          gestureEnabled: false,
-          animation: 'slide_from_bottom',
-        }}
+        options={{ gestureEnabled: false, animation: reduceMotion ? 'none' : 'slide_from_bottom' }}
       />
+      <Stack.Screen name="Trails" component={TrailsScreen} />
+      <Stack.Screen name="Clubs" component={LeaderboardScreen} />
+      <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="Impact" component={ImpactScreen} />
       <Stack.Screen name="Challenges" component={ChallengesScreen} />
       <Stack.Screen name="Conditions" component={ConditionsScreen} />
@@ -113,7 +116,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    height: Platform.OS === 'ios' ? 92 : 76,
+    height: Platform.OS === 'ios' ? 94 : 78,
     paddingBottom: Platform.OS === 'ios' ? 28 : 12,
     paddingTop: 6,
     elevation: 0,
@@ -123,16 +126,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    width: 64,
+    width: 72,
   },
   tabLabel: {
     fontSize: 12,
-    fontWeight: '600',
-    color: COLORS.textMuted,
+    fontWeight: '700',
     letterSpacing: 0.1,
-  },
-  tabLabelActive: {
-    color: COLORS.primary,
-    fontWeight: '600',
   },
 });
