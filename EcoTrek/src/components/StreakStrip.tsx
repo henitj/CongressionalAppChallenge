@@ -1,100 +1,55 @@
 import React from 'react';
-import { View, Text, StyleSheet, StyleProp, ViewStyle } from 'react-native';
-import Icon from './Icon';
-import { COLORS, RADIUS, TYPOGRAPHY } from '../constants/theme';
+import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { useStreak } from '../context/StreakContext';
-
-const DAY_LETTERS = ['S', 'M', 'T', 'W', 'T', 'F', 'S'];
+import { COLORS, RADIUS } from '../constants/theme';
 
 /**
- * Compact streak calendar.
- *
- * Three states per day, deliberately distinguishable without colour alone:
- *   • filled + check  → you got out and logged an activity
- *   • outlined dot    → you opened the app (streak kept alive)
- *   • empty           → missed
+ * Visual week-by-week streak strip. Shows the last N weeks as colored squares.
+ * Green = active, amber = frozen, gray = missed, lighter green = current week.
  */
 export default function StreakStrip({
-  days = 7,
+  weeks = 8,
+  compact = false,
   style,
-  compact,
 }: {
-  days?: number;
-  style?: StyleProp<ViewStyle>;
+  weeks?: number;
   compact?: boolean;
+  style?: StyleProp<ViewStyle>;
 }) {
-  const { calendar } = useStreak();
-  const items = calendar(days);
+  const { weekHistory } = useStreak();
+  const display = weekHistory(weeks);
 
   return (
-    <View style={[styles.row, style]}>
-      {items.map((d) => {
-        const letter = DAY_LETTERS[d.date.getDay()];
-        return (
-          <View key={d.day} style={styles.col}>
-            <Text style={[styles.letter, d.isToday && styles.letterToday]}>{letter}</Text>
-            <View
-              style={[
-                styles.cell,
-                compact && styles.cellCompact,
-                d.opened && styles.cellOpened,
-                d.active && styles.cellActive,
-                d.isToday && styles.cellToday,
-              ]}
-            >
-              {d.active ? (
-                <Icon name="check" size={compact ? 11 : 13} color="#fff" strokeWidth={2.8} />
-              ) : d.opened ? (
-                <View style={styles.innerDot} />
-              ) : null}
-            </View>
-            {!compact ? (
-              <Text style={[styles.num, d.isToday && styles.numToday]}>{d.date.getDate()}</Text>
-            ) : null}
-          </View>
-        );
-      })}
+    <View style={[styles.row, compact && styles.compact, style]}>
+      {display.map((w) => (
+        <View
+          key={w.weekKey}
+          style={[
+            styles.cell,
+            compact && styles.cellCompact,
+            w.active && styles.cellActive,
+            w.frozen && styles.cellFrozen,
+            w.isCurrent && !w.active && styles.cellCurrent,
+          ]}
+        />
+      ))}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  row: { flexDirection: 'row', justifyContent: 'space-between', gap: 4 },
-  col: { alignItems: 'center', gap: 5, flex: 1 },
-  letter: {
-    ...TYPOGRAPHY.micro,
-    color: COLORS.textLight,
-  },
-  letterToday: { color: COLORS.primary },
+  row: { flexDirection: 'row', gap: 4 },
+  compact: { gap: 3 },
   cell: {
-    width: 32,
-    height: 32,
-    borderRadius: RADIUS.sm + 2,
-    borderWidth: 1.5,
-    borderColor: COLORS.border,
+    flex: 1,
+    height: 28,
+    borderRadius: RADIUS.xs + 2,
     backgroundColor: COLORS.surfaceSunken,
-    alignItems: 'center',
-    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.border,
   },
-  cellCompact: { width: 26, height: 26, borderRadius: RADIUS.sm },
-  cellOpened: {
-    backgroundColor: COLORS.primarySurface,
-    borderColor: COLORS.primaryGlow,
-  },
-  cellActive: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  cellToday: {
-    borderColor: COLORS.primary,
-    borderWidth: 2,
-  },
-  innerDot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: COLORS.primaryLight,
-  },
-  num: { ...TYPOGRAPHY.micro, color: COLORS.textLight },
-  numToday: { color: COLORS.text, fontWeight: '700' },
+  cellCompact: { height: 20 },
+  cellActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
+  cellFrozen: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
+  cellCurrent: { backgroundColor: COLORS.primarySurface, borderColor: COLORS.primaryGlow },
 });

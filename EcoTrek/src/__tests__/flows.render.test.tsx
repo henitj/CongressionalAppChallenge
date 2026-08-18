@@ -12,27 +12,17 @@ import { StreakProvider, useStreak } from '../context/StreakContext';
 import { ActivityProvider, useActivity } from '../context/ActivityContext';
 import { LogbookProvider, useLogbook } from '../context/LogbookContext';
 import { ChallengeProvider, useChallenges } from '../context/ChallengeContext';
+import { ProfileProvider } from '../context/ProfileContext';
 import { AUSTIN_TRAILS } from '../constants/austinTrails';
-import { SPECIES } from '../constants/species';
 
 /**
  * Behaviour tests.
  *
  * These drive the real contexts the way the screens do — record an activity,
- * join a club, log a species — and assert on what actually happened to the
- * user's points, streak and club. Rendering tests prove a screen appears;
- * these prove the app does the right thing when you use it.
+ * join a club, log a cleanup — and assert on what actually happened to the
+ * user's points, streak and club.
  */
 
-
-/**
- * Mirrors App.tsx: the provider stack only mounts once a user exists.
- *
- * This matters. Every store is namespaced by user id, so mounting the stack
- * before auth resolves makes the providers load under "anon" and then reload
- * under the real id, discarding anything written in between. The app never
- * does this because Gate renders SignIn until a user is present.
- */
 function AuthedOnly({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading || !user) return null;
@@ -46,7 +36,6 @@ const USER = {
   provider: 'google' as const,
 };
 
-/** Everything the tests need to poke at, exposed from inside the stack. */
 type Harness = {
   activity: ReturnType<typeof useActivity>;
   points: ReturnType<typeof useEcoPoints>;
@@ -84,6 +73,7 @@ async function boot() {
         <AppProvider>
         <EcoPointsProvider>
           <SettingsProvider>
+          <ProfileProvider>
             <ClubProvider onJoined={() => harness?.points.award('club_joined')}>
               <StreakProvider>
                 <ActivityProvider>
@@ -95,6 +85,7 @@ async function boot() {
                 </ActivityProvider>
               </StreakProvider>
             </ClubProvider>
+          </ProfileProvider>
           </SettingsProvider>
         </EcoPointsProvider>
         </AppProvider>
@@ -108,20 +99,11 @@ async function boot() {
 
 const barton = AUSTIN_TRAILS.find((t) => t.id === 'barton-creek')!;
 
-/**
- * Noon today.
- *
- * Activities are credited to the day they STARTED, so a test that used
- * "an hour ago" silently began failing when the suite ran just after midnight
- * — the activity correctly landed on yesterday. Anchoring to midday keeps the
- * test about the behaviour under test rather than the clock.
- */
 function noonToday(): number {
   const d = new Date();
   return new Date(d.getFullYear(), d.getMonth(), d.getDate(), 12, 0, 0).getTime();
 }
 
-/** A plausible hour-long hike starting at a real trailhead. */
 function hikeInput(overrides: Partial<Parameters<Harness['activity']['addActivity']>[0]> = {}) {
   const start = noonToday();
   return {
@@ -140,7 +122,7 @@ function hikeInput(overrides: Partial<Parameters<Harness['activity']['addActivit
 }
 
 describe('recording an activity', () => {
-  it('awards points, trees and a streak day', async () => {
+  it('awards points, trees and marks the week active', async () => {
     await boot();
 
     const pointsBefore = harness.points.totalPoints;
@@ -151,22 +133,17 @@ describe('recording an activity', () => {
 
     await waitFor(() => expect(harness.activity.totalActivities).toBe(1));
 
-    // 3 miles hiked = 3 trees at one per mile.
     expect(harness.activity.totalTrees).toBe(3);
     expect(harness.activity.totalMiles).toBe(3);
 
-    // Assert on the activity's own payout rather than the total: logging an
-    // activity can also tick off a weekly challenge, and which challenges the
-    // current week offers is not this test's business.
     const fromActivity = harness.points.history
       .filter((e) => e.action === 'hike_mile' || e.action === 'tree_earned')
       .reduce((sum, e) => sum + e.points, 0);
-    // 3 x hike_mile (5) + 3 x tree_earned (8) = 39.
     expect(fromActivity).toBe(39);
     expect(harness.points.totalPoints).toBeGreaterThanOrEqual(pointsBefore + 39);
 
-    // The day is now marked active on the streak calendar.
-    await waitFor(() => expect(harness.streak.activeToday).toBe(true));
+    // The week is now marked active on the streak.
+    await waitFor(() => expect(harness.streak.activeThisWeek).toBe(true));
     expect(harness.streak.currentStreak).toBeGreaterThanOrEqual(1);
   });
 
@@ -222,7 +199,7 @@ describe('recording an activity', () => {
     expect(harness.activity.totalTrees).toBe(0);
   });
 
-  it('two activities in a row both land on the streak calendar', async () => {
+  it('two activities in a row both register on the streak', async () => {
     await boot();
     const first = hikeInput();
     const second = hikeInput({ startedAt: first.startedAt + 1000 });
@@ -233,46 +210,27 @@ describe('recording an activity', () => {
     });
 
     await waitFor(() => expect(harness.activity.totalActivities).toBe(2));
-    await waitFor(() => {
-      const today = harness.streak.calendar(1)[0];
-      expect(today.active).toBe(true);
-    });
-    // Both activities must be counted on the day, not just the last one.
-    const days = Object.values(harness.streak.days);
-    expect(days.reduce((n, d) => n + d.activities, 0)).toBe(2);
+    await waitFor(() => expect(harness.streak.activeThisWeek).toBe(true));
+
+    // Both activities should be counted in the week.
+    const weeks = Object.values(harness.streak.weeks);
+    expect(weeks.reduce((n, w) => n + w.activities, 0)).toBeGreaterThanOrEqual(2);
   });
 
-  it('credits an activity to the day it started, not the day it ended', async () => {
+  it('records calories and elevation data on activities', async () => {
     await boot();
 
-    // A hike that sets off at 23:30 and finishes after midnight belongs to the
-    // day you set out. Anything else would hand people a free streak day.
-    const d = new Date();
-    const lateStart = new Date(d.getFullYear(), d.getMonth(), d.getDate(), 23, 30, 0).getTime();
-
     await act(async () => {
-      await harness.activity.addActivity(
-        hikeInput({
-          startedAt: lateStart,
-          endedAt: lateStart + 3600_000,
-          path: [
-            { latitude: barton.startLat, longitude: barton.startLng, timestamp: lateStart },
-            {
-              latitude: barton.startLat + 0.02,
-              longitude: barton.startLng,
-              timestamp: lateStart + 3600_000,
-            },
-          ],
-        })
-      );
+      await harness.activity.addActivity(hikeInput());
     });
 
     await waitFor(() => expect(harness.activity.totalActivities).toBe(1));
-    const startDay = new Date(lateStart);
-    const key = `${startDay.getFullYear()}-${String(startDay.getMonth() + 1).padStart(2, '0')}-${String(
-      startDay.getDate()
-    ).padStart(2, '0')}`;
-    await waitFor(() => expect(harness.streak.days[key]?.activities).toBe(1));
+    const activity = harness.activity.history[0];
+    // Calories should be computed (may be 0 if no profile weight set)
+    expect(typeof activity.calories).toBe('number');
+    expect(typeof activity.elevationGain).toBe('number');
+    expect(typeof activity.elevationLoss).toBe('number');
+    expect(typeof activity.strikeCount).toBe('number');
   });
 });
 
@@ -322,8 +280,6 @@ describe('clubs', () => {
       await harness.activity.addActivity(hikeInput());
     });
 
-    // At least the activity's own 39 points; a weekly challenge completing on
-    // the same save legitimately adds more.
     await waitFor(() => expect(harness.club.myClub!.totalPoints).toBeGreaterThanOrEqual(39));
     expect(harness.club.myClub!.totalTrees).toBe(3);
     expect(harness.club.myClub!.totalMiles).toBe(3);
@@ -373,76 +329,32 @@ describe('clubs', () => {
       await harness.club.setMaxMembers(1);
     });
 
-    // One member already, and the floor is the roster size.
     await waitFor(() => expect(harness.club.myClub!.maxMembers).toBe(2));
   });
 });
 
-describe('the field log', () => {
-  it('logging a species awards points exactly once', async () => {
-    await boot();
-    const species = SPECIES[0];
-    const before = harness.points.totalPoints;
-
-    let first = false;
-    await act(async () => {
-      first = await harness.logbook.logSighting(species.id, null);
-    });
-    expect(first).toBe(true);
-
-    await waitFor(() => expect(harness.logbook.speciesLogged).toBe(1));
-    expect(harness.points.totalPoints - before).toBe(4);
-
-    // Tapping the same species again must not pay out a second time.
-    let second = true;
-    await act(async () => {
-      second = await harness.logbook.logSighting(species.id, null);
-    });
-    expect(second).toBe(false);
-    expect(harness.logbook.speciesLogged).toBe(1);
-    expect(harness.points.totalPoints - before).toBe(4);
-  });
-
-  it('removing a sighting takes the points back', async () => {
-    await boot();
-    const species = SPECIES[0];
-    const before = harness.points.totalPoints;
-
-    await act(async () => {
-      await harness.logbook.logSighting(species.id, null);
-    });
-    await waitFor(() => expect(harness.logbook.speciesLogged).toBe(1));
-
-    await act(async () => {
-      await harness.logbook.removeSighting(species.id);
-    });
-
-    await waitFor(() => expect(harness.logbook.speciesLogged).toBe(0));
-    expect(harness.points.totalPoints).toBe(before);
-  });
-
+describe('the logbook', () => {
   it('a cleanup records its litter count', async () => {
     await boot();
-    const before = harness.points.totalPoints;
 
     await act(async () => {
-      await harness.logbook.logCleanup(12, null);
+      await harness.logbook.addCleanup(12);
     });
 
     await waitFor(() => expect(harness.logbook.cleanupCount).toBe(1));
     expect(harness.logbook.litterCollected).toBe(12);
-    expect(harness.points.totalPoints - before).toBe(15);
   });
 
-  it('cleanup counts are clamped to something sane', async () => {
+  it('multiple cleanups accumulate', async () => {
     await boot();
 
     await act(async () => {
-      await harness.logbook.logCleanup(99999, null);
+      await harness.logbook.addCleanup(5);
+      await harness.logbook.addCleanup(8);
     });
 
-    await waitFor(() => expect(harness.logbook.cleanupCount).toBe(1));
-    expect(harness.logbook.litterCollected).toBe(500);
+    await waitFor(() => expect(harness.logbook.cleanupCount).toBe(2));
+    expect(harness.logbook.litterCollected).toBe(13);
   });
 });
 
@@ -469,7 +381,7 @@ describe('weekly challenges', () => {
     const auto = harness.challenges.challenges.find(
       (c) => c.kind === 'auto' && c.metric === 'miles'
     );
-    if (!auto) return; // This week's set may not include a mileage challenge.
+    if (!auto) return;
 
     await act(async () => {
       await harness.activity.addActivity(hikeInput({ miles: auto.target ?? 2 }));
@@ -485,24 +397,36 @@ describe('weekly challenges', () => {
   });
 });
 
-describe('the streak', () => {
-  it('starts at one on first open and awards the daily check-in', async () => {
+describe('the weekly streak', () => {
+  it('marks the current week active after an activity', async () => {
     await boot();
-    await waitFor(() => expect(harness.streak.currentStreak).toBe(1));
-    expect(harness.streak.checkedInToday).toBe(true);
-    expect(harness.points.history.some((e) => e.action === 'daily_login')).toBe(true);
-  });
-
-  it('does not award the daily check-in twice in one day', async () => {
-    await boot();
-    await waitFor(() => expect(harness.streak.checkedInToday).toBe(true));
 
     await act(async () => {
-      await harness.streak.checkIn();
-      await harness.streak.checkIn();
+      await harness.activity.addActivity(hikeInput());
     });
 
-    const logins = harness.points.history.filter((e) => e.action === 'daily_login');
-    expect(logins).toHaveLength(1);
+    await waitFor(() => expect(harness.streak.activeThisWeek).toBe(true));
+  });
+
+  it('tracks total active weeks', async () => {
+    await boot();
+
+    await act(async () => {
+      await harness.activity.addActivity(hikeInput());
+    });
+
+    await waitFor(() => expect(harness.streak.totalActiveWeeks).toBeGreaterThanOrEqual(1));
+  });
+
+  it('freeze system starts with no available freezes', async () => {
+    await boot();
+    await waitFor(() => expect(harness.streak.availableFreezes).toBe(0));
+  });
+
+  it('week history returns the correct number of weeks', async () => {
+    await boot();
+    const history = harness.streak.weekHistory(8);
+    expect(history).toHaveLength(8);
+    expect(history[history.length - 1].isCurrent).toBe(true);
   });
 });

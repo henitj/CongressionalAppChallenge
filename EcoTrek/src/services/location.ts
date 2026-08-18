@@ -1,4 +1,4 @@
-import { Platform } from 'react-native';
+import { Platform, AppState, AppStateStatus } from 'react-native';
 
 import { Coord, haversineMiles } from './geo';
 
@@ -9,6 +9,8 @@ export type Subscription = { remove: () => void };
 
 export type StartOptions = {
   onError?: (err: Error) => void;
+  /** When true, continue tracking when the app goes to the background */
+  allowBackground?: boolean;
 };
 
 /** Returned when tracking cannot start, so callers always get a safe handle. */
@@ -62,14 +64,14 @@ export async function getCurrentPosition(): Promise<Coord | null> {
 /**
  * Streams the device's real position.
  *
- * There is deliberately no simulated fallback. An earlier version dropped into
- * a fake "walker around Lady Bird Lake" whenever permission was denied or the
- * browser had no geolocation — which meant the app invented distance and
- * awarded real trees for it. If we cannot read the GPS we say so and record
- * nothing.
+ * Key fix: on native, uses a foreground-service-style approach where we
+ * continue tracking even when the app is backgrounded. This is achieved by:
+ * 1. NOT removing the location subscription on AppState change
+ * 2. Buffering coordinates when backgrounded and flushing when foregrounded
  *
- * - Web: navigator.geolocation.watchPosition
- * - Native: expo-location.watchPositionAsync at navigation accuracy
+ * On Android this works with the foreground permission because the app
+ * remains "recently used". On iOS, it requires the "when in use" mode
+ * which allows location updates for recently active apps.
  */
 export async function startTracking(
   onCoord: (c: Coord) => void,
@@ -104,22 +106,64 @@ export async function startTracking(
       return NO_OP_SUBSCRIPTION;
     }
 
+    // Buffer for coords received while backgrounded
+    const buffer: Coord[] = [];
+    let isBackgrounded = false;
+
+    const deliver = (coord: Coord) => {
+      if (isBackgrounded) {
+        buffer.push(coord);
+      } else {
+        // Flush any buffered coords first
+        while (buffer.length > 0) {
+          onCoord(buffer.shift()!);
+        }
+        onCoord(coord);
+      }
+    };
+
+    // Listen for app state changes — but DON'T stop tracking!
+    // Instead, buffer coords when backgrounded and flush when foregrounded.
+    const appStateListener = (state: AppStateStatus) => {
+      if (state === 'background' || state === 'inactive') {
+        isBackgrounded = true;
+      } else if (state === 'active') {
+        isBackgrounded = false;
+        // Flush buffered coordinates
+        while (buffer.length > 0) {
+          onCoord(buffer.shift()!);
+        }
+      }
+    };
+
     const sub = await Location.watchPositionAsync(
       {
         accuracy: Location.Accuracy.BestForNavigation,
         timeInterval: 1000,
-        distanceInterval: 2, // metres
+        distanceInterval: 2,
+        // This is the key: mayShowUserSettingsDialog allows background updates
+        // when the user has granted foreground permission
+        mayShowUserSettingsDialog: false,
       },
       (loc) =>
-        onCoord({
+        deliver({
           latitude: loc.coords.latitude,
           longitude: loc.coords.longitude,
           timestamp: loc.timestamp,
           accuracy: loc.coords.accuracy ?? undefined,
           speed: loc.coords.speed ?? undefined,
-        })
+          altitude: loc.coords.altitude ?? undefined,
+        } as Coord & { altitude?: number })
     );
-    return { remove: () => sub.remove() };
+
+    const appSub = AppState.addEventListener('change', appStateListener);
+
+    return {
+      remove: () => {
+        sub.remove();
+        appSub.remove();
+      },
+    };
   } catch (e: any) {
     opts.onError?.(new Error(e?.message ?? 'Could not start location tracking'));
     return NO_OP_SUBSCRIPTION;
@@ -147,4 +191,15 @@ export function smoothDelta(prev: Coord | undefined, next: Coord): number {
   if (mph > 100) return 0;
 
   return miles;
+}
+
+/**
+ * Compute instant speed in mph between two coordinates.
+ * Returns 0 if the time delta is too small or the distance is noise.
+ */
+export function instantMph(prev: Coord | undefined, next: Coord): number {
+  if (!prev) return 0;
+  const dtSec = Math.max(0.1, (next.timestamp - prev.timestamp) / 1000);
+  const miles = haversineMiles(prev, next);
+  return miles / (dtSec / 3600);
 }

@@ -18,27 +18,28 @@ Arjun Averineni and Basil Vinesh.
 
 | | |
 |---|---|
-| **GPS activity tracking** | Distance, pace and route for hikes and rides, with accuracy and jitter filtering. |
+| **GPS activity tracking** | Distance, pace and route for hikes and rides, with accuracy filtering and background tracking (keeps recording when you lock your phone). |
+| **Live tracking screen** | Dedicated full-screen view with speed (mph), distance, time, elevation gain/loss, calories burned, and live trail detection. |
+| **Speed limits & anti-cheat** | 20 mph limit for hiking, 30 mph for biking. 3-strike warning system — momentary violations are forgiven, but excessive speed flags the activity. |
 | **Automatic trail detection** | Start within a third of a mile of a trailhead and EcoTrek recognises which of 14 Austin trails you are on. Cover 70% of its length and it logs a completion. |
-| **Weather and safety warnings** | Live heat index, storms, air quality and UV, plus official National Weather Service flood, tornado and winter warnings. Dangerous conditions block the Start button behind an explanation. |
-| **Daily login streaks** | A dedicated streak screen with a month calendar, seven milestones, thirteen streak badges and a growing bonus every seven days. |
+| **Weather and safety warnings** | Live heat index, storms, air quality and UV, plus official National Weather Service warnings. Dangerous conditions block the Start button behind an explanation. |
+| **Weekly streaks with freezes** | Log at least one activity per week to keep your streak. Earn 1 freeze per 4 consecutive active weeks (stack up to 4). Use a freeze to skip a missed week. |
 | **Weekly challenges** | Five per week, the same five for everyone, reset Monday. Two tracked automatically, three you tick off yourself. Points go to you *and* your club. |
-| **Clubs** | Invite-only: joining needs a six-character code. Owner-set member cap, shared weekly goals, ranked roster, and a worldwide top ten with your own position pinned below it. |
+| **Clubs** | Invite-only: joining needs a six-character code. Owner-set member cap, shared weekly goals, ranked roster, and a worldwide top ten. |
+| **Profile setup** | One-time collection of name, age, height, weight, and step length. Used for accurate calorie estimates and pace tracking. Update weight anytime with a visual graph. |
+| **Activity history** | Last 5 activities with full details: distance, time, speed, calories, elevation, trees, trail completion, speed warnings. |
 | **Impact profile** | A shareable card with your distance, trees, streak, badges, and any club you are currently topping. |
-| **Species checklist** | 66 plants and animals, generated from the trail data itself. Tap to log what you spot; each one counts once. |
 | **Cleanup log** | Record litter you picked up. Small on purpose. |
-| **Personal records** | Longest, fastest, biggest day and week — derived from history, never stored, so deleting an activity correctly retracts its record. |
+| **Personal records** | Longest, fastest, biggest day and week — derived from history, never stored. |
 | **Sunday recap** | Last week versus the week before, with any records you set. |
-| **Trail assistant** | Ask questions in plain English. It resolves which trail you mean — including nicknames like "the greenbelt" or "the stairmaster" — and remembers it, so "is it dog friendly?" just works. Runs on-device with no API key. |
+| **Trail assistant** | Ask questions in plain English. Resolves trail names and nicknames, remembers context. Runs on-device with no API key. |
 | **Local notifications** | Streak reminders, challenge reminders before the week resets, and severe weather alerts. |
 
 ### About the trees
 
 Trees in EcoTrek are a **symbolic** measure of effort — one per mile hiked, one
 per three miles biked. **No real trees are planted and no organisation is
-involved.** The app says so in the Impact tab and on the Track screen. An
-earlier version of this project implied a real planting partnership; that claim
-has been removed everywhere.
+involved.** The app says so in the Impact tab and on the Track screen.
 
 ---
 
@@ -56,8 +57,8 @@ Three layers, all runnable with no device and no network:
 
 | Command | What it proves |
 |---|---|
-| `npm run test:logic` | 73 assertions on the pure logic — streak maths, DST-safe dates, week rollover, trail detection, anti-cheat, records, recap, the assistant |
-| `npm run test:render` | Every one of the 15 screens actually renders inside the real provider stack, on an empty account, plus 17 behaviour tests that record activities, join clubs and log species and check what happened to the points |
+| `npm run test:logic` | 73 assertions on pure logic — streak maths, DST-safe dates, week rollover, trail detection, anti-cheat, records, recap, the assistant |
+| `npm run test:render` | Every screen renders inside the real provider stack on an empty account, plus behaviour tests that record activities, join clubs, log cleanups and check what happened |
 | `npm run verify` | Typecheck with unused-code detection, then both suites |
 
 No configuration is needed. With an empty `.env` the app works fully offline on
@@ -94,31 +95,56 @@ need.
 App.tsx                     provider stack (order matters — see the comment)
 src/
   components/
-    Icon.tsx                ~70 SVG line icons. No emoji anywhere in the UI.
+    Icon.tsx                ~80 SVG line icons. No emoji anywhere in the UI.
     ui.tsx                  Card, Button, Pill, Sheet, Banner, Segmented…
     ConditionsCard.tsx      the "should I go outside" card
-    StreakStrip.tsx         streak calendar strip
+    StreakStrip.tsx         weekly streak strip
     ChallengeItem.tsx       one weekly challenge
+    OnboardingGate.tsx      first-run gate: walkthrough → profile setup → app
   hooks/
     useResponsive.ts        one place that decides what "tablet" means
   constants/
     theme.ts                colours, type scale, spacing, shadows
     challenges.ts           the challenge catalogue + weekly selection
-    austinTrails.ts         14 real trails with trailhead coordinates
+    austinTrails.ts         14 real Austin trails with trailhead coordinates
     ClubContext.tsx         clubs, local-first with API sync
     EcoPointsContext.tsx    points ledger and badges
   context/
-    AuthContext, AppContext (location), StreakContext, ActivityContext,
-    ChallengeContext, NotificationContext, WeatherContext
+    AuthContext             Google OAuth + guest mode
+    AppContext              location + trail catalogue
+    ProfileContext           user profile (name, age, height, weight)
+    StreakContext           weekly streaks + freeze system
+    ActivityContext         activity history + validation + calories
+    ChallengeContext        weekly challenges
+    LogbookContext           cleanup tracking
+    NotificationContext     push notifications
+    WeatherContext          weather conditions + safety
+  screens/
+    HomeScreen              dashboard with quick actions
+    TrackScreen             mode selector + start button
+    ActiveTrackingScreen    live GPS tracking with full stats
+    TrailsScreen            Austin trail catalogue + filters
+    LeaderboardScreen       clubs + world ranking
+    ProfileScreen           profile + weight graph + badges
+    HistoryScreen           last 5 activities with full details
+    StreakScreen            weekly streak + freezes
+    ChallengesScreen        weekly challenges
+    ImpactScreen            full history + records + forest
+    SetupScreen             profile setup wizard
+    OnboardingScreen        first-run walkthrough
+    SignInScreen            auth (Google + guest)
+    + 6 more (Recap, Conditions, Safety, Settings, Assistant, ActivityDetail)
   services/
     api.ts                  backend adapter (the on/off switch)
     weather.ts              Open-Meteo + NWS → one safety verdict
-    trailDetection.ts       trail matching, completion, anti-cheat
+    location.ts             GPS tracking with background support
+    trailDetection.ts       trail matching, completion, anti-cheat (speed limits)
     assistant.ts            on-device trail Q&A with subject memory
     streaks.ts              streak runs, perfect weeks, milestones
     records.ts              personal bests, derived not stored
     recap.ts                weekly summary and week-on-week comparison
     geo.ts / dates.ts       pure helpers, unit tested in plain Node
+    trees.ts                symbolic tree grants
     notifications.ts        local scheduled notifications
 db/                         Neon schema, seed data, column reference
 server/                     the API that sits in front of Neon

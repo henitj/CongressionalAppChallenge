@@ -17,6 +17,7 @@ import { ChallengeProvider } from '../context/ChallengeContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import { WeatherProvider } from '../context/WeatherContext';
 import { AnalyticsProvider } from '../constants/AnalyticsContext';
+import { ProfileProvider } from '../context/ProfileContext';
 
 import HomeScreen from '../screens/HomeScreen';
 import TrackScreen from '../screens/TrackScreen';
@@ -30,9 +31,9 @@ import SafetyScreen from '../screens/SafetyScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import StreakScreen from '../screens/StreakScreen';
 import AssistantScreen from '../screens/AssistantScreen';
-import SpeciesScreen from '../screens/SpeciesScreen';
 import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 import RecapScreen from '../screens/RecapScreen';
+import HistoryScreen from '../screens/HistoryScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import SignInScreen from '../screens/SignInScreen';
 
@@ -42,13 +43,8 @@ import SignInScreen from '../screens/SignInScreen';
  * Type checking proves the code compiles. This proves it runs: every screen is
  * mounted inside the real provider stack, on a completely empty account, which
  * is exactly the state a brand new user and a Play Store reviewer will see.
- *
- * The stack is real on purpose. Mocking the contexts would only test the
- * mocks — most of the bugs worth catching live in how providers interact.
  */
 
-// AuthContext reads a persisted session before rendering children, so a signed
-// in user is seeded rather than mocked.
 const TEST_USER = {
   id: 'test-user',
   name: 'Test Trekker',
@@ -62,15 +58,6 @@ beforeEach(async () => {
   jest.clearAllMocks();
 });
 
-
-/**
- * Mirrors App.tsx: the provider stack only mounts once a user exists.
- *
- * This matters. Every store is namespaced by user id, so mounting the stack
- * before auth resolves makes the providers load under "anon" and then reload
- * under the real id, discarding anything written in between. The app never
- * does this because Gate renders SignIn until a user is present.
- */
 function AuthedOnly({ children }: { children: React.ReactNode }) {
   const { user, loading } = useAuth();
   if (loading || !user) return null;
@@ -90,6 +77,7 @@ function Providers({ children }: { children: React.ReactNode }) {
           <AppProvider>
           <EcoPointsProvider>
           <SettingsProvider>
+          <ProfileProvider>
             <ClubProvider>
               <StreakProvider>
                 <ActivityProvider>
@@ -107,6 +95,7 @@ function Providers({ children }: { children: React.ReactNode }) {
                 </ActivityProvider>
               </StreakProvider>
             </ClubProvider>
+          </ProfileProvider>
           </SettingsProvider>
           </EcoPointsProvider>
           </AppProvider>
@@ -116,14 +105,6 @@ function Providers({ children }: { children: React.ReactNode }) {
   );
 }
 
-/**
- * Mounts a screen and waits until a known piece of its content is on screen.
- *
- * Waiting on an anchor string matters: several providers return null until
- * their stores load, and the outermost SafeAreaProvider renders regardless, so
- * merely asserting "the tree is not null" passes even when the screen itself
- * rendered nothing at all.
- */
 const Stack = createNativeStackNavigator();
 
 async function mount(Component: React.ComponentType<any>, anchor: string | RegExp) {
@@ -150,11 +131,11 @@ const SCREENS: [string, React.ComponentType<any>, string | RegExp][] = [
   ['Conditions', ConditionsScreen, /Conditions unavailable|Trail safety report/i],
   ['Safety', SafetyScreen, 'Emergency numbers'],
   ['Settings', SettingsScreen, 'Units'],
-  ['Streak', StreakScreen, 'Milestones'],
+  ['Streak', StreakScreen, 'Weekly Streak'],
   ['Assistant', AssistantScreen, /What do you want to know/i],
-  ['Species', SpeciesScreen, /species logged/i],
   ['ActivityDetail', ActivityDetailScreen, /Activity not found/i],
   ['Recap', RecapScreen, /Nothing logged last week/i],
+  ['History', HistoryScreen, /No activities yet/i],
 ];
 
 describe('every screen renders on an empty account', () => {
@@ -168,7 +149,6 @@ describe('every screen renders on an empty account', () => {
 
 describe('screens that do not need the provider stack', () => {
   it('SignIn renders, including the guest route', async () => {
-    // SignIn sits above the rest of the stack but still needs Auth.
     const { queryByText } = render(
       <SafeAreaProvider
         initialMetrics={{
@@ -210,8 +190,6 @@ describe('empty states say something useful', () => {
   });
 
   it('Clubs opens on the tab that explains how to join', async () => {
-    // Someone with no club must land somewhere actionable, not on an empty
-    // leaderboard with no explanation of how to get onto it.
     const { queryByText } = await mount(LeaderboardScreen, 'My club');
     expect(queryByText(/You are not in a club/i)).toBeTruthy();
     expect(queryByText('Enter a code')).toBeTruthy();
@@ -222,8 +200,8 @@ describe('empty states say something useful', () => {
     expect(queryByText(/of 5 done/i)).toBeTruthy();
   });
 
-  it('Species starts with the whole catalogue still to find', async () => {
-    const { queryByText } = await mount(SpeciesScreen, /species logged/i);
-    expect(queryByText(/still to find/i)).toBeTruthy();
+  it('History starts empty with a call to action', async () => {
+    const { queryByText } = await mount(HistoryScreen, /No activities yet/i);
+    expect(queryByText('Start tracking')).toBeTruthy();
   });
 });

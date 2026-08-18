@@ -1,87 +1,85 @@
 /**
  * EcoTrek design system.
  *
- * Design intent: this should read like a serious outdoor/fitness product, not a
- * kids' app. That means a restrained palette, one accent colour, tight type,
- * soft shadows, and NO emoji anywhere in the UI (use <Icon /> instead).
+ * Design intent: a warm, inviting outdoor/fitness product that feels premium
+ * and accessible to all ages. Larger touch targets, clearer hierarchy,
+ * higher contrast, and a nature-inspired palette that avoids feeling childish.
  */
 
 export const COLORS = {
   // ── Brand ────────────────────────────────────────────────────────────────
-  primary: '#16624A',
-  primaryDark: '#0C2E24',
-  primaryMid: '#124F3C',
-  primaryLight: '#2E8B69',
-  primaryGlow: '#8FCFB6',
-  primarySurface: '#EDF5F1',
+  primary: '#1A7A5A',
+  primaryDark: '#0D3D2D',
+  primaryMid: '#156B4E',
+  primaryLight: '#34A078',
+  primaryGlow: '#7DD4AD',
+  primarySurface: '#EBF7F0',
 
-  accent: '#C8842A',
-  accentLight: '#F7EBD8',
-  accentDark: '#9C6620',
+  accent: '#E8943A',
+  accentLight: '#FFF3E0',
+  accentDark: '#C47A28',
 
   // ── Neutrals ─────────────────────────────────────────────────────────────
-  background: '#F7F8F7',
-  backgroundDark: '#EFF2F0',
+  background: '#F8FAF9',
+  backgroundDark: '#EEF3F0',
   surface: '#FFFFFF',
   surfaceElevated: '#FFFFFF',
-  surfaceSunken: '#F2F4F3',
-  surfaceOverlay: 'rgba(255,255,255,0.96)',
+  surfaceSunken: '#F0F4F2',
+  surfaceOverlay: 'rgba(255,255,255,0.97)',
 
-  text: '#14201B',
-  textSecondary: '#4A574F',
-  textMuted: '#7C8A82',
-  textLight: '#A4AEA8',
+  text: '#1A2B24',
+  textSecondary: '#3D5248',
+  textMuted: '#6B7F75',
+  textLight: '#99AAA0',
   textInverse: '#FFFFFF',
 
-  border: '#E2E7E4',
-  borderLight: '#EDF0EE',
-  borderStrong: '#D2D9D5',
+  border: '#DDE5E1',
+  borderLight: '#EBF0ED',
+  borderStrong: '#C8D4CE',
 
   // ── Status ───────────────────────────────────────────────────────────────
-  danger: '#C0392B',
-  dangerLight: '#FBEAE8',
-  warning: '#B4761A',
-  warningLight: '#FBF1E1',
-  success: '#16624A',
-  successLight: '#EDF5F1',
-  info: '#1F5F8B',
-  infoLight: '#E8F0F6',
+  danger: '#D64545',
+  dangerLight: '#FDEAEA',
+  warning: '#D4882A',
+  warningLight: '#FFF3E0',
+  success: '#1A7A5A',
+  successLight: '#EBF7F0',
+  info: '#2B6CB0',
+  infoLight: '#EBF2FA',
 
-  // Borders that pair with the *Light status backgrounds above. These were
-  // duplicated across four files before they lived here.
-  successBorder: '#CBE2D7',
-  infoBorder: '#CBDDEA',
-  warningBorder: '#EBD9B8',
-  dangerBorder: '#EFCBC6',
+  // Borders that pair with the *Light status backgrounds above.
+  successBorder: '#C3E6D4',
+  infoBorder: '#C4D9ED',
+  warningBorder: '#F0D8B0',
+  dangerBorder: '#F0BFBF',
 
-  // Leaderboard podium. Gold reuses the brand accent.
-  medalSilver: '#9AA5A0',
+  // Leaderboard podium.
+  medalSilver: '#8E9C96',
   medalBronze: '#B98A5E',
 
-  shadow: '#0C2E24',
-  overlay: 'rgba(12,46,36,0.45)',
+  shadow: '#0D3D2D',
+  overlay: 'rgba(13,61,45,0.5)',
 
-  // legacy aliases kept so older screens keep compiling
+  // legacy aliases
   bark: '#5B4636',
   barkLight: '#8A7561',
   sand: '#F1EADC',
-  sky: '#1F5F8B',
+  sky: '#2B6CB0',
   skyLight: '#D6E6F2',
 
-  gradientPrimary: ['#16624A', '#0C2E24'] as [string, string],
-  gradientAccent: ['#C8842A', '#9C6620'] as [string, string],
-  gradientSky: ['#1F5F8B', '#123D5A'] as [string, string],
+  gradientPrimary: ['#1A7A5A', '#0D3D2D'] as [string, string],
+  gradientAccent: ['#E8943A', '#C47A28'] as [string, string],
+  gradientSky: ['#2B6CB0', '#1A4A7A'] as [string, string],
 };
 
 /**
- * Avatar backgrounds. Chosen to stay legible under white initials and to sit
- * beside the brand green without clashing.
+ * Avatar backgrounds.
  */
 export const AVATAR_COLORS = [
-  '#16624A',
-  '#1F5F8B',
+  '#1A7A5A',
+  '#2B6CB0',
   '#8A5A2B',
-  '#5A4B8A',
+  '#6B4B8A',
   '#2E7D6B',
   '#8A4B4B',
 ];
@@ -108,58 +106,56 @@ export const RADIUS = {
 };
 
 export const TYPOGRAPHY = {
-  display: { fontSize: 34, fontWeight: '700' as const, letterSpacing: -0.3 },
-  h1: { fontSize: 26, fontWeight: '700' as const, letterSpacing: -0.2 },
-  h2: { fontSize: 20, fontWeight: '700' as const, letterSpacing: -0.15 },
-  h3: { fontSize: 17, fontWeight: '600' as const, letterSpacing: -0.2 },
-  h4: { fontSize: 15, fontWeight: '600' as const, letterSpacing: -0.1 },
-  body: { fontSize: 15, fontWeight: '400' as const, lineHeight: 22 },
-  bodyMed: { fontSize: 15, fontWeight: '500' as const, lineHeight: 22 },
-  small: { fontSize: 13, fontWeight: '400' as const, lineHeight: 19 },
-  smallMed: { fontSize: 13, fontWeight: '600' as const },
-  caption: { fontSize: 12, fontWeight: '500' as const, letterSpacing: 0 },
-  // Uppercase eyebrow label
+  display: { fontSize: 36, fontWeight: '700' as const, letterSpacing: -0.3 },
+  h1: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.2 },
+  h2: { fontSize: 22, fontWeight: '700' as const, letterSpacing: -0.15 },
+  h3: { fontSize: 18, fontWeight: '600' as const, letterSpacing: -0.2 },
+  h4: { fontSize: 16, fontWeight: '600' as const, letterSpacing: -0.1 },
+  body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 24 },
+  bodyMed: { fontSize: 16, fontWeight: '500' as const, lineHeight: 24 },
+  small: { fontSize: 14, fontWeight: '400' as const, lineHeight: 20 },
+  smallMed: { fontSize: 14, fontWeight: '600' as const },
+  caption: { fontSize: 13, fontWeight: '500' as const, letterSpacing: 0 },
   overline: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: '600' as const,
     letterSpacing: 0.9,
     textTransform: 'uppercase' as const,
   },
-  micro: { fontSize: 10, fontWeight: '600' as const, letterSpacing: 0.6 },
-  // Tabular-ish numeral style for stats
-  metric: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.3 },
-  metricLg: { fontSize: 44, fontWeight: '700' as const, letterSpacing: -0.5 },
+  micro: { fontSize: 11, fontWeight: '600' as const, letterSpacing: 0.6 },
+  metric: { fontSize: 30, fontWeight: '700' as const, letterSpacing: -0.3 },
+  metricLg: { fontSize: 48, fontWeight: '700' as const, letterSpacing: -0.5 },
 };
 
 export const SHADOWS = {
   none: {},
   sm: {
-    shadowColor: '#0C2E24',
-    shadowOpacity: 0.04,
-    shadowRadius: 4,
-    shadowOffset: { width: 0, height: 1 },
-    elevation: 1,
+    shadowColor: '#0D3D2D',
+    shadowOpacity: 0.05,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 2,
   },
   md: {
-    shadowColor: '#0C2E24',
-    shadowOpacity: 0.06,
-    shadowRadius: 10,
-    shadowOffset: { width: 0, height: 3 },
-    elevation: 3,
+    shadowColor: '#0D3D2D',
+    shadowOpacity: 0.08,
+    shadowRadius: 12,
+    shadowOffset: { width: 0, height: 4 },
+    elevation: 4,
   },
   lg: {
-    shadowColor: '#0C2E24',
-    shadowOpacity: 0.09,
-    shadowRadius: 18,
-    shadowOffset: { width: 0, height: 6 },
-    elevation: 6,
+    shadowColor: '#0D3D2D',
+    shadowOpacity: 0.12,
+    shadowRadius: 20,
+    shadowOffset: { width: 0, height: 8 },
+    elevation: 8,
   },
   xl: {
-    shadowColor: '#0C2E24',
-    shadowOpacity: 0.14,
-    shadowRadius: 28,
-    shadowOffset: { width: 0, height: 10 },
-    elevation: 10,
+    shadowColor: '#0D3D2D',
+    shadowOpacity: 0.16,
+    shadowRadius: 32,
+    shadowOffset: { width: 0, height: 12 },
+    elevation: 12,
   },
 };
 
@@ -168,7 +164,6 @@ export const TREE_RULES = {
   hikeMilesPerTree: 1,
 };
 
-/** Levels — no emoji, ranked titles only. */
 export const LEVELS = [
   { name: 'New Trekker', min: 0 },
   { name: 'Seedling', min: 100 },

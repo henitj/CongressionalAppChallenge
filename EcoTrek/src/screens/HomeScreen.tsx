@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -7,7 +7,6 @@ import Icon, { IconName } from '../components/Icon';
 import StreakStrip from '../components/StreakStrip';
 import ConditionsCard from '../components/ConditionsCard';
 import ChallengeItem from '../components/ChallengeItem';
-import CleanupSheet from '../components/CleanupSheet';
 import { Screen, Card, SectionHeader, Pill, ProgressBar, Button } from '../components/ui';
 
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
@@ -18,28 +17,19 @@ import { useChallenges } from '../context/ChallengeContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useClub } from '../constants/ClubContext';
-import { useAnalytics } from '../constants/AnalyticsContext';
 import { useWeather } from '../context/WeatherContext';
-import { useLogbook } from '../context/LogbookContext';
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { totalMiles, totalTrees, totalActivities, history } = useActivity();
-  const { currentStreak, longestStreak, activeToday } = useStreak();
+  const { currentStreak, longestStreak, activeThisWeek } = useStreak();
   const { challenges, completedCount, totalCount, timeLeftLabel, completeChallenge } =
     useChallenges();
   const { totalPoints, level, progressPercent, nextLevelPoints } = useEcoPoints();
   const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
   const { myClub, myRank } = useClub();
-  const { logEvent } = useAnalytics();
   const { refresh: refreshWeather, loading: weatherLoading } = useWeather();
-  const { speciesLogged, totalSpecies } = useLogbook();
-  const [showCleanup, setShowCleanup] = useState(false);
-
-  useEffect(() => {
-    logEvent('screen_view', { screen: 'Home' });
-  }, [logEvent]);
 
   const firstName = user?.name?.split(' ')[0] ?? 'Trekker';
   const greeting = useMemo(() => {
@@ -47,14 +37,6 @@ export default function HomeScreen() {
     if (h < 12) return 'Good morning';
     if (h < 18) return 'Good afternoon';
     return 'Good evening';
-  }, []);
-
-  // The recap covers the week that just ended, so it is only interesting from
-  // Sunday evening until the end of Monday.
-  const showRecap = useMemo(() => {
-    const now = new Date();
-    const day = now.getDay();
-    return (day === 0 && now.getHours() >= 17) || day === 1;
   }, []);
 
   const nextUp = challenges.find((c) => !c.completed);
@@ -78,46 +60,38 @@ export default function HomeScreen() {
       />
 
       <View style={styles.body}>
-        {/* ── Conditions first: should you even go out? ─────────────────── */}
+        {/* Conditions first */}
         <ConditionsCard />
 
-        {showRecap ? (
-          <Pressable style={styles.recapBanner} onPress={() => navigation.navigate('Recap')}>
-            <View style={styles.recapIcon}>
-              <Icon name="calendar" size={17} color={COLORS.accentDark} strokeWidth={2} />
-            </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.recapTitle}>Your week is in</Text>
-              <Text style={styles.recapSub}>See how last week went</Text>
-            </View>
-            <Icon name="chevron-right" size={17} color={COLORS.textLight} />
-          </Pressable>
-        ) : null}
-
-        {/* ── Quick actions ───────────────────────────────────────────────── */}
+        {/* Quick actions — big, easy to tap */}
         <View style={styles.quickRow}>
           <QuickAction
             icon="play"
-            label="Track"
+            label="Start Activity"
             onPress={() => navigation.navigate('Track')}
+            large
           />
           <QuickAction
-            icon="eye"
-            label="Species"
-            hint={`${speciesLogged}/${totalSpecies}`}
-            onPress={() => navigation.navigate('Species')}
+            icon="map"
+            label="Find Trail"
+            onPress={() => navigation.navigate('Trails')}
           />
-          <QuickAction icon="trash" label="Cleanup" onPress={() => setShowCleanup(true)} />
+          <QuickAction
+            icon="clock"
+            label="History"
+            hint={`${history.length}`}
+            onPress={() => navigation.navigate('History')}
+          />
         </View>
 
-        {/* ── Streak ─────────────────────────────────────────────────────── */}
+        {/* Weekly streak */}
         <Card onPress={() => navigation.navigate('Streak')}>
           <View style={styles.streakHead}>
             <View style={styles.streakLeft}>
               <View style={styles.flameWrap}>
                 <Icon
                   name="flame"
-                  size={19}
+                  size={20}
                   color={currentStreak > 0 ? COLORS.accent : COLORS.textLight}
                   strokeWidth={2}
                 />
@@ -125,14 +99,14 @@ export default function HomeScreen() {
               <View>
                 <Text style={styles.streakValue}>
                   {currentStreak}
-                  <Text style={styles.streakUnit}> day{currentStreak === 1 ? '' : 's'}</Text>
+                  <Text style={styles.streakUnit}> week{currentStreak === 1 ? '' : 's'}</Text>
                 </Text>
                 <Text style={styles.streakCaption}>
                   {currentStreak === 0
-                    ? 'Start a streak today'
-                    : activeToday
-                    ? 'Logged today — nice'
-                    : 'Checked in today'}
+                    ? 'Start a weekly streak today'
+                    : activeThisWeek
+                    ? 'Active this week — keep it up!'
+                    : 'Log an activity this week to continue'}
                 </Text>
               </View>
             </View>
@@ -148,18 +122,18 @@ export default function HomeScreen() {
 
           <StreakStrip style={{ marginTop: SPACING.md - 2 }} />
 
-          {!activeToday ? (
+          {!activeThisWeek ? (
             <Pressable style={styles.streakNudge} onPress={() => navigation.navigate('Track')}>
               <Icon name="navigation" size={14} color={COLORS.primary} strokeWidth={2} />
               <Text style={styles.streakNudgeText}>
-                Log any distance today to fill in this square
+                Log any activity this week to keep your streak alive
               </Text>
               <Icon name="chevron-right" size={14} color={COLORS.primary} strokeWidth={2.2} />
             </Pressable>
           ) : null}
         </Card>
 
-        {/* ── Weekly challenges ──────────────────────────────────────────── */}
+        {/* This week's challenges */}
         <View>
           <SectionHeader
             title="This week"
@@ -188,14 +162,14 @@ export default function HomeScreen() {
               <View style={styles.allDone}>
                 <Icon name="check-circle" size={20} color={COLORS.primary} strokeWidth={2} />
                 <Text style={styles.allDoneText}>
-                  All five done. New set drops Monday.
+                  All done! New challenges drop Monday.
                 </Text>
               </View>
             )}
           </Card>
         </View>
 
-        {/* ── Totals ─────────────────────────────────────────────────────── */}
+        {/* Your totals */}
         <View>
           <SectionHeader title="Your totals" action="Details" onAction={() => navigation.navigate('Impact')} />
           <View style={styles.tileRow}>
@@ -213,7 +187,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        {/* ── Level ──────────────────────────────────────────────────────── */}
+        {/* Level */}
         <Card>
           <View style={styles.levelRow}>
             <View style={{ flex: 1 }}>
@@ -225,7 +199,7 @@ export default function HomeScreen() {
           <ProgressBar percent={progressPercent} style={{ marginTop: SPACING.sm + 2 }} />
         </Card>
 
-        {/* ── Club ───────────────────────────────────────────────────────── */}
+        {/* Club */}
         {myClub ? (
           <Card onPress={() => navigation.navigate('Clubs')}>
             <View style={styles.clubRow}>
@@ -253,12 +227,12 @@ export default function HomeScreen() {
               <View style={{ flex: 1 }}>
                 <Text style={styles.emptyClubTitle}>Not in a club yet</Text>
                 <Text style={styles.emptyClubText}>
-                  Challenge points count toward your club's score.
+                  Join with a code from a friend to compete together.
                 </Text>
               </View>
             </View>
             <Button
-              label="Find a club"
+              label="Join a club"
               variant="secondary"
               size="sm"
               icon="plus"
@@ -268,10 +242,10 @@ export default function HomeScreen() {
           </Card>
         )}
 
-        {/* ── Recent activity ────────────────────────────────────────────── */}
+        {/* Recent activity */}
         {recent.length > 0 ? (
           <View>
-            <SectionHeader title="Recent" action="All" onAction={() => navigation.navigate('Impact')} />
+            <SectionHeader title="Recent" action="All" onAction={() => navigation.navigate('History')} />
             <Card padded={false}>
               {recent.map((a, i) => (
                 <View key={a.id}>
@@ -335,8 +309,6 @@ export default function HomeScreen() {
           </Card>
         )}
       </View>
-
-      <CleanupSheet visible={showCleanup} onClose={() => setShowCleanup(false)} />
     </Screen>
   );
 }
@@ -346,22 +318,28 @@ function QuickAction({
   label,
   hint,
   onPress,
+  large,
 }: {
   icon: IconName;
   label: string;
   hint?: string;
   onPress: () => void;
+  large?: boolean;
 }) {
   return (
     <Pressable
       onPress={onPress}
-      style={({ pressed }) => [styles.quickAction, pressed && { opacity: 0.75 }]}
+      style={({ pressed }) => [
+        styles.quickAction,
+        pressed && { opacity: 0.75 },
+        large && styles.quickActionLarge,
+      ]}
       accessibilityLabel={label}
     >
-      <View style={styles.quickIcon}>
-        <Icon name={icon} size={18} color={COLORS.primary} strokeWidth={1.9} />
+      <View style={[styles.quickIcon, large && styles.quickIconLarge]}>
+        <Icon name={icon} size={large ? 20 : 18} color={large ? '#fff' : COLORS.primary} strokeWidth={1.9} />
       </View>
-      <Text style={styles.quickLabel}>{label}</Text>
+      <Text style={[styles.quickLabel, large && styles.quickLabelLarge]}>{label}</Text>
       {hint ? <Text style={styles.quickHint}>{hint}</Text> : null}
     </Pressable>
   );
@@ -393,56 +371,42 @@ function MetricTile({
 const styles = StyleSheet.create({
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
 
-  recapBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm + 4,
-    backgroundColor: COLORS.accentLight,
-    borderWidth: 1,
-    borderColor: COLORS.warningBorder,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md - 3,
-  },
-  recapIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.surface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  recapTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  recapSub: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, marginTop: 1 },
-
   quickRow: { flexDirection: 'row', gap: SPACING.sm },
   quickAction: {
     flex: 1,
     alignItems: 'center',
     gap: 5,
-    paddingVertical: SPACING.md - 2,
+    paddingVertical: SPACING.md,
     backgroundColor: COLORS.surface,
     borderWidth: 1,
     borderColor: COLORS.border,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.lg,
+  },
+  quickActionLarge: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+    paddingVertical: SPACING.md + 4,
   },
   quickIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: 19,
+    width: 40,
+    height: 40,
+    borderRadius: 20,
     backgroundColor: COLORS.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
+  quickIconLarge: { backgroundColor: 'rgba(255,255,255,0.2)' },
   quickLabel: { ...TYPOGRAPHY.smallMed, color: COLORS.text },
+  quickLabelLarge: { color: '#fff' },
   quickHint: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
 
   streakHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   streakRight: { flexDirection: 'row', alignItems: 'center', gap: 4 },
   streakLeft: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2 },
   flameWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.sm + 2,
+    width: 42,
+    height: 42,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
@@ -481,14 +445,14 @@ const styles = StyleSheet.create({
   metricTile: {
     flex: 1,
     backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
     borderColor: COLORS.border,
-    padding: SPACING.md - 2,
+    padding: SPACING.md,
     gap: 5,
   },
   metricValueRow: { flexDirection: 'row', alignItems: 'baseline', gap: 3 },
-  metricValue: { fontSize: 24, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
+  metricValue: { fontSize: 26, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
   metricUnit: { ...TYPOGRAPHY.smallMed, color: COLORS.textMuted },
   metricLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
 
@@ -499,9 +463,9 @@ const styles = StyleSheet.create({
 
   clubRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
   clubIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.sm + 2,
+    width: 42,
+    height: 42,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -518,12 +482,12 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm + 4,
-    padding: SPACING.md - 2,
+    padding: SPACING.md,
   },
   activityIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.sm + 2,
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.md,
     backgroundColor: COLORS.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',

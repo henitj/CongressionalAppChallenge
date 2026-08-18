@@ -12,6 +12,7 @@ export type Coord = {
   timestamp: number;
   accuracy?: number; // metres
   speed?: number; // m/s
+  altitude?: number; // metres above sea level
 };
 
 /** Great-circle distance in miles. */

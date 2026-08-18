@@ -20,7 +20,7 @@ export default function ImpactScreen() {
   const { history, totalMiles, totalTrees, totalActivities, uniqueTrailsCompleted, deleteActivity } =
     useActivity();
   const { history: pointHistory, totalPoints } = useEcoPoints();
-  const { speciesLogged, totalSpecies, cleanupCount, litterCollected } = useLogbook();
+  const { cleanupCount, litterCollected } = useLogbook();
   const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
   const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'activities');
 
@@ -135,7 +135,7 @@ export default function ImpactScreen() {
                       {!a.valid ? (
                         <Pill label="Not counted" tone="warning" size="sm" icon="alert-circle" />
                       ) : null}
-                      {a.grant ? <Pill label={a.grant.species} tone="neutral" size="sm" icon="leaf" /> : null}
+                      null
                       {a.points > 0 ? <Pill label={`+${a.points} pts`} tone="accent" size="sm" /> : null}
                     </View>
                   ) : null}
@@ -245,7 +245,7 @@ export default function ImpactScreen() {
               <Card>
                 <Text style={styles.sectionLabel}>Field log</Text>
                 <View style={styles.fieldStats}>
-                  <FieldStat value={`${speciesLogged}/${totalSpecies}`} label="Species" />
+                  null
                   <FieldStat value={String(cleanupCount)} label="Cleanups" />
                   <FieldStat value={String(litterCollected)} label="Litter picked up" />
                 </View>

@@ -16,35 +16,28 @@ import { SettingsProvider } from './src/constants/SettingsContext';
 import { ClubProvider, useClub } from './src/constants/ClubContext';
 import { StreakProvider, useStreak } from './src/context/StreakContext';
 import { ActivityProvider, useActivity } from './src/context/ActivityContext';
-import { LogbookProvider, useLogbook } from './src/context/LogbookContext';
 import { ChallengeProvider, useChallenges } from './src/context/ChallengeContext';
 import { NotificationProvider, useNotifications } from './src/context/NotificationContext';
 import { WeatherProvider } from './src/context/WeatherContext';
 import { AnalyticsProvider } from './src/constants/AnalyticsContext';
+import { ProfileProvider } from './src/context/ProfileContext';
 import { useClubGoalRewards } from './src/hooks/useClubGoalRewards';
 
 /**
- * Provider order matters — each layer may only use hooks from layers ABOVE it.
- *
- *   Auth        → who is signed in (namespaces every other store)
+ * Provider order:
+ *   Auth        → who is signed in
+ *   Profile     → user physical data (height, weight, etc.)
  *   App         → location + trail catalogue
  *   EcoPoints   → points ledger and badges
  *   Settings    → units
  *   Club        → clubs (needs Auth)
- *   Streak      → daily check-ins (awards points, so needs EcoPoints)
- *   Activity    → hikes and rides (records streak days + club contributions)
- *   Logbook     → species sightings and cleanups (awards points, pays club)
- *   Challenge   → weekly challenges (reads Activity + Streak, pays Club)
- *   Notification→ reminders (reads Streak + Challenge)
- *   Weather     → conditions (fires safety alerts if notifications are on)
+ *   Streak      → weekly streaks (awards points)
+ *   Activity    → hikes and rides (records streak + club contributions, needs Profile)
+ *   Challenge   → weekly challenges
+ *   Notification→ reminders
+ *   Weather     → conditions
  */
 
-/**
- * Recomputes badge unlocks and pays the club goal bonus.
- *
- * Sits at the bottom of the stack because it is the only place with a view of
- * every store at once. Renders nothing.
- */
 function ProgressSync() {
   const { refreshBadges } = useEcoPoints();
   const { totalMiles, totalTrees, totalActivities, hikes, rides, uniqueTrailsCompleted } =
@@ -52,14 +45,10 @@ function ProgressSync() {
   const {
     currentStreak,
     longestStreak,
-    totalActiveDays,
-    activeDaysLast30,
-    perfectWeeks,
-    hadComeback,
+    totalActiveWeeks,
   } = useStreak();
   const { lifetimeCompleted } = useChallenges();
   const { myClub, myMember } = useClub();
-  const { speciesLogged, plantsLogged, animalsLogged, cleanupCount, litterCollected } = useLogbook();
   const { clubGoalsMet } = useClubGoalRewards();
 
   useEffect(() => {
@@ -71,19 +60,19 @@ function ProgressSync() {
       rides,
       currentStreak,
       longestStreak,
-      totalActiveDays,
-      activeDaysLast30,
-      perfectWeeks,
-      hadComeback,
+      totalActiveDays: totalActiveWeeks,
+      activeDaysLast30: 0,
+      perfectWeeks: 0,
+      hadComeback: false,
       trailsCompleted: uniqueTrailsCompleted,
       challengesCompleted: lifetimeCompleted,
       clubsJoined: myClub ? 1 : 0,
       clubsFounded: myMember?.role === 'owner' ? 1 : 0,
-      speciesLogged,
-      plantsLogged,
-      animalsLogged,
-      cleanups: cleanupCount,
-      litterCollected,
+      speciesLogged: 0,
+      plantsLogged: 0,
+      animalsLogged: 0,
+      cleanups: 0,
+      litterCollected: 0,
       clubGoalsMet,
     });
   }, [
@@ -95,26 +84,17 @@ function ProgressSync() {
     rides,
     currentStreak,
     longestStreak,
-    totalActiveDays,
-    activeDaysLast30,
-    perfectWeeks,
-    hadComeback,
+    totalActiveWeeks,
     uniqueTrailsCompleted,
     lifetimeCompleted,
     myClub,
     myMember?.role,
-    speciesLogged,
-    plantsLogged,
-    animalsLogged,
-    cleanupCount,
-    litterCollected,
     clubGoalsMet,
   ]);
 
   return null;
 }
 
-/** Weather needs to know whether it may fire safety notifications. */
 function WeatherLayer({ children }: { children: React.ReactNode }) {
   const { enabled, safetyAlerts, permissionGranted } = useNotifications();
   return (
@@ -124,11 +104,6 @@ function WeatherLayer({ children }: { children: React.ReactNode }) {
   );
 }
 
-/**
- * Clubs sit above EcoPoints, so joining cannot award its own points. This
- * layer closes that loop — without it, `club_joined` was a scoring rule that
- * never fired.
- */
 function ClubLayer({ children }: { children: React.ReactNode }) {
   const { award } = useEcoPoints();
   const handleJoined = useCallback(() => {
@@ -151,15 +126,13 @@ function Gate() {
 
   if (!user) return <SignInScreen />;
 
-  // Everything below requires a signed-in user, so each store can be
-  // namespaced by user id and never leak between accounts.
   return (
     <EcoPointsProvider>
       <SettingsProvider>
-        <ClubLayer>
-          <StreakProvider>
-            <ActivityProvider>
-              <LogbookProvider>
+        <ProfileProvider>
+          <ClubLayer>
+            <StreakProvider>
+              <ActivityProvider>
                 <ChallengeProvider>
                   <NotificationProvider>
                     <WeatherLayer>
@@ -174,10 +147,10 @@ function Gate() {
                     </WeatherLayer>
                   </NotificationProvider>
                 </ChallengeProvider>
-              </LogbookProvider>
-            </ActivityProvider>
-          </StreakProvider>
-        </ClubLayer>
+              </ActivityProvider>
+            </StreakProvider>
+          </ClubLayer>
+        </ProfileProvider>
       </SettingsProvider>
     </EcoPointsProvider>
   );

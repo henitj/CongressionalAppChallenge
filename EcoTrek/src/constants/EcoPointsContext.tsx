@@ -8,7 +8,6 @@ import React, {
 } from 'react';
 import { IconName } from '../components/Icon';
 import { LEVELS } from './theme';
-import { TOTAL_SPECIES } from './species';
 import { useAuth } from '../context/AuthContext';
 import { keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
@@ -307,12 +306,12 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
           eco_champion: levelIndex >= 7,
           club_member: inputs.clubsJoined >= 1,
           club_founder: inputs.clubsFounded >= 1,
-          first_sighting: inputs.speciesLogged >= 1,
-          ten_species: inputs.speciesLogged >= 10,
-          thirty_species: inputs.speciesLogged >= 30,
-          all_species: TOTAL_SPECIES > 0 && inputs.speciesLogged >= TOTAL_SPECIES,
-          botanist: inputs.plantsLogged >= 15,
-          tracker: inputs.animalsLogged >= 15,
+          first_sighting: false, // species tracking removed
+          ten_species: false,
+          thirty_species: false,
+          all_species: false,
+          botanist: false,
+          tracker: false,
           first_cleanup: inputs.cleanups >= 1,
           ten_cleanups: inputs.cleanups >= 10,
           hundred_pieces: inputs.litterCollected >= 100,
