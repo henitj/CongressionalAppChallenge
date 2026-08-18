@@ -1,192 +1,92 @@
 # EcoTrek
 
-**Hike. Bike. Build the habit.**
+**Tap Start. Walk. We count the miles.**
 
-EcoTrek is a React Native (Expo SDK 54) app for Austin, Texas. It tracks the
-distance you cover under your own power, warns you when it is genuinely unsafe
-to be outside, and gives you five small weekly challenges that add points to
-your club's score.
+A React Native app (Expo SDK 54) for Austin walkers, hikers, and cyclists. One codebase for iOS, Android, and web.
 
-One codebase runs on iOS, Android and the web.
-
-Built for the Congressional App Challenge by Henit Jain, Matan Heber,
-Arjun Averineni and Basil Vinesh.
+Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Averineni and Basil Vinesh.
 
 ---
 
-## What it does
+## What it does now
 
 | | |
 |---|---|
-| **GPS activity tracking** | Distance, pace and route for hikes and rides, with accuracy filtering and background tracking (keeps recording when you lock your phone). |
-| **Live tracking screen** | Dedicated full-screen view with speed (mph), distance, time, elevation gain/loss, calories burned, and live trail detection. |
-| **Speed limits & anti-cheat** | 20 mph limit for hiking, 30 mph for biking. 3-strike warning system — momentary violations are forgiven, but excessive speed flags the activity. |
-| **Automatic trail detection** | Start within a third of a mile of a trailhead and EcoTrek recognises which of 14 Austin trails you are on. Cover 70% of its length and it logs a completion. |
-| **Weather and safety warnings** | Live heat index, storms, air quality and UV, plus official National Weather Service warnings. Dangerous conditions block the Start button behind an explanation. |
-| **Weekly streaks with freezes** | Log at least one activity per week to keep your streak. Earn 1 freeze per 4 consecutive active weeks (stack up to 4). Use a freeze to skip a missed week. |
-| **Weekly challenges** | Five per week, the same five for everyone, reset Monday. Two tracked automatically, three you tick off yourself. Points go to you *and* your club. |
-| **Clubs** | Invite-only: joining needs a six-character code. Owner-set member cap, shared weekly goals, ranked roster, and a worldwide top ten. |
-| **Profile setup** | One-time collection of name, age, height, weight, and step length. Used for accurate calorie estimates and pace tracking. Update weight anytime with a visual graph. |
-| **Activity history** | Last 5 activities with full details: distance, time, speed, calories, elevation, trees, trail completion, speed warnings. |
-| **Impact profile** | A shareable card with your distance, trees, streak, badges, and any club you are currently topping. |
-| **Cleanup log** | Record litter you picked up. Small on purpose. |
-| **Personal records** | Longest, fastest, biggest day and week — derived from history, never stored. |
-| **Sunday recap** | Last week versus the week before, with any records you set. |
-| **Trail assistant** | Ask questions in plain English. Resolves trail names and nicknames, remembers context. Runs on-device with no API key. |
-| **Local notifications** | Streak reminders, challenge reminders before the week resets, and severe weather alerts. |
-
-### About the trees
-
-Trees in EcoTrek are a **symbolic** measure of effort — one per mile hiked, one
-per three miles biked. **No real trees are planted and no organisation is
-involved.** The app says so in the Impact tab and on the Track screen.
+| **Start from Home** | Walk or Bike, then one large Start button. The Start tab is the same action with a bit more explanation. |
+| **Three tabs** | Home · Start · More. Trails, clubs, profile, settings, and My walks live under More. |
+| **My walks** | This week’s miles plus every saved walk. Recap and records are one tap away. |
+| **Background recording** | Keeps measuring if you lock the phone. Android shows “EcoTrek is recording.” Stops on Finish. |
+| **Weather** | Temperature and the next few hours on Home. No extra report page. |
+| **Safety** | Call 911 and Text my contact on the live screen. Sit-down reminder after 25 minutes. |
+| **Simple mode** | Bigger text. Clubs and weekly goals stay out of the way. |
+| **Text size / look** | Normal, Large, Extra large. Light, Dark, High contrast. Less motion. |
+| **Guest → Google** | Walks already on the phone are copied when you save with Google. |
+| **Skippable setup** | The first-run name and height questions can be skipped. |
+| **Share card** | A simple picture-style card you send to family. |
+| **Trails** | 14 Austin trails, offline. Cards show distance, easy/medium/hard, dogs, water, bathrooms. |
+| **Trees** | Symbolic only. 1 per mile walked, 1 per 3 miles biked. |
 
 ---
 
-## Running it
+## Run
 
 ```bash
-cd EcoTrek
 npm install
-npm start            # then press w for web, or scan the QR code
+npm start            # then w for web, or scan the QR code
+npm test
+npm run typecheck
 ```
 
-### Tests
+Copy `.env.example` to `.env` only if you need Google sign-in or `EXPO_PUBLIC_API_URL`. Empty env = full offline app.
 
-Three layers, all runnable with no device and no network:
+---
+
+## Tests
 
 | Command | What it proves |
 |---|---|
-| `npm run test:logic` | 73 assertions on pure logic — streak maths, DST-safe dates, week rollover, trail detection, anti-cheat, records, recap, the assistant |
-| `npm run test:render` | Every screen renders inside the real provider stack on an empty account, plus behaviour tests that record activities, join clubs, log cleanups and check what happened |
-| `npm run verify` | Typecheck with unused-code detection, then both suites |
+| `npm run test:logic` | Pure logic — dates, streaks, trails, anti-cheat, recap |
+| `npm run test:render` | Every screen mounts on an empty account |
+| `npm run verify` | Typecheck with unused-code checks, then both suites |
 
-No configuration is needed. With an empty `.env` the app works fully offline on
-the device — that includes clubs, streaks, challenges and leaderboards.
+---
 
-```bash
-npm test             # 73 logic tests + 40 render and behaviour tests
-npm run verify       # typecheck (incl. unused code) then the full suite
-npm run typecheck    # tsc --noEmit
+## Important files
+
+```
+App.tsx                         providers + font scaling
+src/navigation/RootNavigator.tsx  Home / Start / More + stack
+src/screens/HomeScreen.tsx      greeting, weather, Start walk, last walk
+src/screens/MoreScreen.tsx      trails, walks, clubs, profile, settings
+src/screens/HistoryScreen.tsx   My walks (this week + list)
+src/screens/ActiveTrackingScreen.tsx  live GPS, 911, rest reminder
+src/constants/SettingsContext.tsx    units, simple mode, text size, theme
+src/context/ThemeContext.tsx    light / dark / high contrast + font scale
+src/services/location.ts        foreground watch + background task
+src/services/locationTask.ts    TaskManager definition
+src/services/storage.ts         per-user keys + guest → Google copy
+src/hooks/useStartActivity.ts   shared Start logic for Home and Start tab
+src/components/ShareCard.tsx    shareable progress card
 ```
 
 ---
 
-## Configuration
+## Accessibility notes
 
-Everything is optional. Copy `.env.example` to `.env` and fill in only what you
-need.
-
-| Variable | Turns on |
-|---|---|
-| `EXPO_PUBLIC_GOOGLE_*_CLIENT_ID` | Google sign-in (guest mode works without it) |
-| `EXPO_PUBLIC_API_URL` | Cloud sync via your Neon-backed API |
-| `EXPO_PUBLIC_PRIVACY_URL` | Privacy policy link in Settings and sign-in |
-| `EXPO_PUBLIC_SUPPORT_EMAIL` | Support link in Settings |
-
-> Anything prefixed `EXPO_PUBLIC_` is bundled into the app and readable by
-> anyone who downloads it. Never put a database URL or an API secret there.
+- `allowFontScaling` is on, with a 1.8× cap so layouts do not break.
+- Settings text size multiplies type on Home and headers.
+- Simple mode adds a little more scale and hides clubs/goals in More.
+- Reduce motion skips stack animations and the sign-in fade.
+- Emergency contact is stored on the profile and used from a live walk.
 
 ---
 
-## Architecture
+## Backend (optional)
 
-```
-App.tsx                     provider stack (order matters — see the comment)
-src/
-  components/
-    Icon.tsx                ~80 SVG line icons. No emoji anywhere in the UI.
-    ui.tsx                  Card, Button, Pill, Sheet, Banner, Segmented…
-    ConditionsCard.tsx      the "should I go outside" card
-    StreakStrip.tsx         weekly streak strip
-    ChallengeItem.tsx       one weekly challenge
-    OnboardingGate.tsx      first-run gate: walkthrough → profile setup → app
-  hooks/
-    useResponsive.ts        one place that decides what "tablet" means
-  constants/
-    theme.ts                colours, type scale, spacing, shadows
-    challenges.ts           the challenge catalogue + weekly selection
-    austinTrails.ts         14 real Austin trails with trailhead coordinates
-    ClubContext.tsx         clubs, local-first with API sync
-    EcoPointsContext.tsx    points ledger and badges
-  context/
-    AuthContext             Google OAuth + guest mode
-    AppContext              location + trail catalogue
-    ProfileContext           user profile (name, age, height, weight)
-    StreakContext           weekly streaks + freeze system
-    ActivityContext         activity history + validation + calories
-    ChallengeContext        weekly challenges
-    LogbookContext           cleanup tracking
-    NotificationContext     push notifications
-    WeatherContext          weather conditions + safety
-  screens/
-    HomeScreen              dashboard with quick actions
-    TrackScreen             mode selector + start button
-    ActiveTrackingScreen    live GPS tracking with full stats
-    TrailsScreen            Austin trail catalogue + filters
-    LeaderboardScreen       clubs + world ranking
-    ProfileScreen           profile + weight graph + badges
-    HistoryScreen           last 5 activities with full details
-    StreakScreen            weekly streak + freezes
-    ChallengesScreen        weekly challenges
-    ImpactScreen            full history + records + forest
-    SetupScreen             profile setup wizard
-    OnboardingScreen        first-run walkthrough
-    SignInScreen            auth (Google + guest)
-    + 6 more (Recap, Conditions, Safety, Settings, Assistant, ActivityDetail)
-  services/
-    api.ts                  backend adapter (the on/off switch)
-    weather.ts              Open-Meteo + NWS → one safety verdict
-    location.ts             GPS tracking with background support
-    trailDetection.ts       trail matching, completion, anti-cheat (speed limits)
-    assistant.ts            on-device trail Q&A with subject memory
-    streaks.ts              streak runs, perfect weeks, milestones
-    records.ts              personal bests, derived not stored
-    recap.ts                weekly summary and week-on-week comparison
-    geo.ts / dates.ts       pure helpers, unit tested in plain Node
-    trees.ts                symbolic tree grants
-    notifications.ts        local scheduled notifications
-db/                         Neon schema, seed data, column reference
-server/                     the API that sits in front of Neon
-docs/                       privacy policy, launch checklist, OAuth setup
-```
-
-### Two modes, one codebase
-
-Every context reads and writes through `src/services/api.ts`. With
-`EXPO_PUBLIC_API_URL` unset it falls back to `AsyncStorage`; with it set it
-talks to your server. No screen knows the difference, and if the server is
-unreachable the app quietly uses local data instead of crashing.
-
-### Data sources
-
-Both are free and need **no API key**, so nothing here expires or needs
-renewing:
-
-- [Open-Meteo](https://open-meteo.com) — conditions, forecast, UV, air quality
-- [weather.gov](https://www.weather.gov/documentation/services-web-api) —
-  official NWS watches, warnings and advisories
-
----
-
-## Backend
-
-See [`server/README.md`](./server/README.md) to run it, and
-[`db/README.md`](./db/README.md) for the full column reference.
-
-```bash
-cd server && npm install
-cp .env.example .env      # paste your Neon URL + Google client IDs
-npm run migrate           # creates every table and seeds badges and trails
-npm start
-```
+See `server/README.md` and `db/README.md`. The app does not need a server.
 
 ---
 
 ## Shipping
 
-[`docs/LAUNCH_CHECKLIST.md`](./docs/LAUNCH_CHECKLIST.md) is the full list of
-what is done and what still needs a human. The short version: publish the
-privacy policy, create your own Google Cloud project with a release-keystore
-SHA-1, and submit to internal testing early — the first Play review can take a
-week.
+`docs/LAUNCH_CHECKLIST.md` — privacy policy, Google Cloud SHA-1, and store review.

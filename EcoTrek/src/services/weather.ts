@@ -548,27 +548,27 @@ function buildVerdict(level: SafetyLevel, advisories: Advisory[], condition: str
   switch (level) {
     case 'danger':
       return {
-        headline: 'Not safe to head out',
+        headline: 'Stay inside today',
         summary: top
           ? `${top.title}. ${top.detail}`
-          : 'Conditions are dangerous right now. Wait for this to pass.',
+          : 'Weather is unsafe right now. Wait until it passes.',
       };
     case 'warning':
       return {
-        headline: 'Think twice before going',
+        headline: 'Be careful today',
         summary: top
           ? `${top.title}. ${top.detail}`
-          : 'Conditions are rough. Shorten your plan and stay alert.',
+          : 'Weather is rough. Keep it short and stay alert.',
       };
     case 'caution':
       return {
-        headline: 'Go, but be prepared',
-        summary: top ? `${top.title}. ${top.detail}` : 'Minor hazards today — pack accordingly.',
+        headline: 'A good day, with a few notes',
+        summary: top ? `${top.title}. ${top.detail}` : 'A few small things to watch for.',
       };
     default:
       return {
-        headline: 'Good conditions',
-        summary: `${condition}, ${Math.round(temp)}°F. Nothing standing between you and the trail.`,
+        headline: 'Nice day to go outside',
+        summary: `${condition}, ${Math.round(temp)}°F.`,
       };
   }
 }

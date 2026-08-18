@@ -13,67 +13,25 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
 import { Button } from '../components/ui';
-import { COLORS, RADIUS, SPACING, TREE_RULES, TYPOGRAPHY } from '../constants/theme';
+import { COLORS, RADIUS, SPACING } from '../constants/theme';
 
-/**
- * First-run walkthrough.
- *
- * Four screens, because four is what it takes to explain the two things that
- * are not obvious — that trees are symbolic, and that the app refuses to send
- * you out in dangerous weather. Everything else can be discovered.
- *
- * Skippable from the first screen. Nobody should be trapped in an intro.
- */
-
-type Page = {
-  icon: IconName;
-  title: string;
-  body: string;
-  points: { icon: IconName; text: string }[];
-};
+type Page = { icon: IconName; title: string; body: string };
 
 const PAGES: Page[] = [
   {
-    icon: 'navigation',
-    title: 'Track what you move',
-    body: 'Start a hike or a ride and EcoTrek measures it with GPS. It recognises which Austin trail you are on by itself.',
-    points: [
-      { icon: 'map-pin', text: '14 trails with automatic detection' },
-      { icon: 'flag', text: 'Cover 70% of one to log a completion' },
-      { icon: 'battery', text: 'Location is read only while you record, never in the background' },
-    ],
+    icon: 'boot',
+    title: 'Tap Start. Then walk.',
+    body: 'Put your phone in your pocket. We count the miles for you — even if you lock the screen.',
   },
   {
     icon: 'tree',
-    title: 'Miles become trees',
-    body: `One tree per ${TREE_RULES.hikeMilesPerTree} mile hiked, one per ${TREE_RULES.bikeMilesPerTree} miles biked.`,
-    points: [
-      {
-        icon: 'info',
-        text: 'Trees are a symbolic measure of your effort. No real tree is planted and no organisation is involved.',
-      },
-      { icon: 'star', text: 'They sit alongside EcoPoints, badges and levels' },
-    ],
+    title: 'Miles become trees.',
+    body: 'Walk a mile, earn a tree. It is just a fun way to see your progress. No real tree is planted.',
   },
   {
-    icon: 'shield',
-    title: 'It tells you when not to go',
-    body: 'Austin heat and flash floods are the real hazard, so conditions come before encouragement.',
-    points: [
-      { icon: 'thermometer', text: 'Live heat index, storms, air quality and UV' },
-      { icon: 'alert-triangle', text: 'Official National Weather Service warnings' },
-      { icon: 'clock', text: 'In dangerous conditions the Start button asks you to reconsider' },
-    ],
-  },
-  {
-    icon: 'users',
-    title: 'Bring people with you',
-    body: 'Clubs are invite-only. Everything you earn adds to your club as well as to you.',
-    points: [
-      { icon: 'lock', text: 'Join with a six-character code from a member' },
-      { icon: 'target', text: 'Five small challenges every week, reset on Monday' },
-      { icon: 'flame', text: 'A streak for showing up, and a world top ten to climb' },
-    ],
+    icon: 'sun',
+    title: 'We check the weather.',
+    body: 'See today’s temperature before you go. If it is too hot or stormy, we will say so in plain words.',
   },
 ];
 
@@ -81,7 +39,6 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
-
   const last = page === PAGES.length - 1;
 
   const goTo = (index: number) => {
@@ -100,10 +57,10 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
           <View style={styles.mark}>
-            <Icon name="tree" size={18} color={COLORS.primaryGlow} strokeWidth={2} />
+            <Icon name="tree" size={22} color={COLORS.primaryGlow} strokeWidth={2} />
           </View>
           {!last ? (
-            <Pressable onPress={onDone} hitSlop={12}>
+            <Pressable onPress={onDone} hitSlop={16} accessibilityLabel="Skip introduction">
               <Text style={styles.skip}>Skip</Text>
             </Pressable>
           ) : null}
@@ -119,23 +76,11 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
         >
           {PAGES.map((p) => (
             <View key={p.title} style={[styles.page, { width }]}>
-              <View style={styles.iconWrap}>
-                <Icon name={p.icon} size={34} color={COLORS.primaryGlow} strokeWidth={1.7} />
+              <View style={styles.picture}>
+                <Icon name={p.icon} size={72} color={COLORS.primaryGlow} strokeWidth={1.5} />
               </View>
-
               <Text style={styles.title}>{p.title}</Text>
               <Text style={styles.body}>{p.body}</Text>
-
-              <View style={styles.points}>
-                {p.points.map((pt) => (
-                  <View key={pt.text} style={styles.point}>
-                    <View style={styles.pointIcon}>
-                      <Icon name={pt.icon} size={15} color={COLORS.primaryGlow} strokeWidth={1.9} />
-                    </View>
-                    <Text style={styles.pointText}>{pt.text}</Text>
-                  </View>
-                ))}
-              </View>
             </View>
           ))}
         </ScrollView>
@@ -143,17 +88,11 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
         <View style={styles.footer}>
           <View style={styles.dots}>
             {PAGES.map((p, i) => (
-              <Pressable
-                key={p.title}
-                onPress={() => goTo(i)}
-                hitSlop={8}
-                accessibilityLabel={`Go to step ${i + 1}`}
-              >
+              <Pressable key={p.title} onPress={() => goTo(i)} hitSlop={12} accessibilityLabel={`Go to step ${i + 1}`}>
                 <View style={[styles.dot, i === page && styles.dotActive]} />
               </Pressable>
             ))}
           </View>
-
           <Button
             label={last ? 'Get started' : 'Next'}
             iconRight={last ? undefined : 'arrow-right'}
@@ -170,7 +109,6 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
 
 const styles = StyleSheet.create({
   root: { flex: 1, backgroundColor: COLORS.primaryDark },
-
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -179,57 +117,47 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
   },
   mark: {
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
     borderRadius: RADIUS.md,
     backgroundColor: 'rgba(255,255,255,0.09)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  skip: { ...TYPOGRAPHY.bodyMed, color: 'rgba(255,255,255,0.55)' },
-
-  page: { paddingHorizontal: SPACING.lg, justifyContent: 'center', flex: 1 },
-  iconWrap: {
-    width: 72,
-    height: 72,
-    borderRadius: RADIUS.xl,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
+  skip: { fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+  page: {
+    paddingHorizontal: SPACING.xl,
     justifyContent: 'center',
-    marginBottom: SPACING.lg,
-  },
-  title: { fontSize: 32, fontWeight: '700', color: '#fff', letterSpacing: -0.5 },
-  body: {
-    ...TYPOGRAPHY.body,
-    color: 'rgba(255,255,255,0.68)',
-    marginTop: SPACING.sm + 2,
-    maxWidth: 380,
-  },
-  points: { marginTop: SPACING.xl, gap: SPACING.md },
-  point: { flexDirection: 'row', gap: SPACING.sm + 4, alignItems: 'flex-start' },
-  pointIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: RADIUS.sm,
-    backgroundColor: 'rgba(255,255,255,0.07)',
     alignItems: 'center',
-    justifyContent: 'center',
-  },
-  pointText: {
-    ...TYPOGRAPHY.small,
-    color: 'rgba(255,255,255,0.7)',
     flex: 1,
-    lineHeight: 20,
-    paddingTop: 5,
   },
-
+  picture: {
+    width: 180,
+    height: 180,
+    borderRadius: 90,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginBottom: SPACING.xl,
+  },
+  title: {
+    fontSize: 32,
+    fontWeight: '700',
+    color: '#fff',
+    textAlign: 'center',
+    letterSpacing: -0.4,
+    lineHeight: 38,
+  },
+  body: {
+    fontSize: 20,
+    lineHeight: 30,
+    color: 'rgba(255,255,255,0.8)',
+    textAlign: 'center',
+    marginTop: SPACING.md,
+    maxWidth: 340,
+  },
   footer: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md, gap: SPACING.md },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 7, paddingVertical: SPACING.sm },
-  dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
-    backgroundColor: 'rgba(255,255,255,0.22)',
-  },
-  dotActive: { backgroundColor: COLORS.primaryGlow, width: 20 },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: SPACING.sm },
+  dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.22)' },
+  dotActive: { backgroundColor: COLORS.primaryGlow, width: 24 },
 });

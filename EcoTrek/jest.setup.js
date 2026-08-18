@@ -23,12 +23,24 @@ jest.mock('react-native-maps', () => {
 jest.mock('expo-location', () => ({
   getForegroundPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
   requestForegroundPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
+  getBackgroundPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
+  requestBackgroundPermissionsAsync: jest.fn(async () => ({ status: 'denied' })),
+  getLastKnownPositionAsync: jest.fn(async () => null),
   getCurrentPositionAsync: jest.fn(async () => ({
     coords: { latitude: 30.2672, longitude: -97.7431, accuracy: 5 },
     timestamp: Date.now(),
   })),
   watchPositionAsync: jest.fn(async () => ({ remove: jest.fn() })),
+  startLocationUpdatesAsync: jest.fn(async () => {}),
+  stopLocationUpdatesAsync: jest.fn(async () => {}),
+  hasStartedLocationUpdatesAsync: jest.fn(async () => false),
   Accuracy: { Balanced: 3, BestForNavigation: 6 },
+  ActivityType: { Fitness: 1 },
+}));
+
+jest.mock('expo-task-manager', () => ({
+  defineTask: jest.fn(),
+  isTaskDefined: jest.fn(() => false),
 }));
 
 jest.mock('expo-web-browser', () => ({ maybeCompleteAuthSession: jest.fn() }));

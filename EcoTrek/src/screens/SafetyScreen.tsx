@@ -5,8 +5,9 @@ import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import ConditionsCard from '../components/ConditionsCard';
 import { Screen, Card, SectionHeader, Divider, Banner, Button } from '../components/ui';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { ColorPalette, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useWeather } from '../context/WeatherContext';
+import { useTheme } from '../context/ThemeContext';
 
 type Guide = {
   icon: IconName;
@@ -86,6 +87,8 @@ const EMERGENCY = [
 export default function SafetyScreen() {
   const navigation = useNavigation<any>();
   const { report } = useWeather();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => makeStyles(colors), [colors]);
 
   return (
     <Screen>
@@ -115,11 +118,11 @@ export default function SafetyScreen() {
                   onPress={() => Linking.openURL(`tel:${e.tel}`)}
                   style={({ pressed }) => [styles.callRow, pressed && { opacity: 0.7 }]}
                 >
-                  <View style={[styles.callIcon, i === 0 && { backgroundColor: COLORS.dangerLight }]}>
+                  <View style={[styles.callIcon, i === 0 && { backgroundColor: colors.dangerLight }]}>
                     <Icon
                       name={i === 0 ? 'alert-circle' : 'info'}
                       size={16}
-                      color={i === 0 ? COLORS.danger : COLORS.textMuted}
+                      color={i === 0 ? colors.danger : colors.textMuted}
                       strokeWidth={1.9}
                     />
                   </View>
@@ -127,7 +130,7 @@ export default function SafetyScreen() {
                     <Text style={styles.callLabel}>{e.label}</Text>
                     <Text style={styles.callValue}>{e.value}</Text>
                   </View>
-                  <Icon name="chevron-right" size={16} color={COLORS.textLight} />
+                  <Icon name="chevron-right" size={16} color={colors.textLight} />
                 </Pressable>
               </View>
             ))}
@@ -142,7 +145,7 @@ export default function SafetyScreen() {
               <Card key={g.title}>
                 <View style={styles.guideHead}>
                   <View style={styles.guideIcon}>
-                    <Icon name={g.icon} size={18} color={COLORS.primary} strokeWidth={1.9} />
+                    <Icon name={g.icon} size={18} color={colors.primary} strokeWidth={1.9} />
                   </View>
                   <Text style={styles.guideTitle}>{g.title}</Text>
                 </View>
@@ -169,38 +172,40 @@ export default function SafetyScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
+function makeStyles(c: ColorPalette) {
+  return StyleSheet.create({
+    body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
 
-  callRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4, padding: SPACING.md - 3 },
-  callIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.surfaceSunken,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  callLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  callValue: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+    callRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4, padding: SPACING.md - 3, minHeight: 56 },
+    callIcon: {
+      width: 32,
+      height: 32,
+      borderRadius: RADIUS.sm,
+      backgroundColor: c.surfaceSunken,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    callLabel: { ...TYPOGRAPHY.bodyMed, color: c.text },
+    callValue: { ...TYPOGRAPHY.small, color: c.textMuted, marginTop: 1 },
 
-  guideHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2, marginBottom: SPACING.sm + 2 },
-  guideIcon: {
-    width: 34,
-    height: 34,
-    borderRadius: RADIUS.sm + 2,
-    backgroundColor: COLORS.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  guideTitle: { ...TYPOGRAPHY.h3, color: COLORS.text },
-  pointRow: { flexDirection: 'row', gap: SPACING.sm + 2, marginBottom: 7, alignItems: 'flex-start' },
-  bullet: {
-    width: 4,
-    height: 4,
-    borderRadius: 2,
-    backgroundColor: COLORS.textLight,
-    marginTop: 8,
-  },
-  pointText: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, flex: 1 },
-});
+    guideHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2, marginBottom: SPACING.sm + 2 },
+    guideIcon: {
+      width: 34,
+      height: 34,
+      borderRadius: RADIUS.sm + 2,
+      backgroundColor: c.primarySurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    guideTitle: { ...TYPOGRAPHY.h3, color: c.text },
+    pointRow: { flexDirection: 'row', gap: SPACING.sm + 2, marginBottom: 7, alignItems: 'flex-start' },
+    bullet: {
+      width: 4,
+      height: 4,
+      borderRadius: 2,
+      backgroundColor: c.textLight,
+      marginTop: 8,
+    },
+    pointText: { ...TYPOGRAPHY.small, color: c.textSecondary, flex: 1 },
+  });
+}

@@ -42,6 +42,33 @@ export async function removeKey(key: string): Promise<void> {
   }
 }
 
+/**
+ * Copies one account's local data onto another when the destination is empty.
+ * Used so a guest can sign in with Google without losing walks.
+ */
+export async function copyUserData(fromId: string, toId: string): Promise<number> {
+  if (!fromId || !toId || fromId === toId) return 0;
+  try {
+    const all = await AsyncStorage.getAllKeys();
+    const prefix = `${PREFIX}/${fromId}/`;
+    const mine = all.filter((k) => k.startsWith(prefix));
+    let copied = 0;
+    for (const key of mine) {
+      const dest = `${PREFIX}/${toId}/${key.slice(prefix.length)}`;
+      const existing = await AsyncStorage.getItem(dest);
+      if (existing) continue;
+      const val = await AsyncStorage.getItem(key);
+      if (val == null) continue;
+      await AsyncStorage.setItem(dest, val);
+      copied += 1;
+    }
+    return copied;
+  } catch (e) {
+    console.warn('[storage] copy failed', e);
+    return 0;
+  }
+}
+
 /** Wipes every EcoTrek key for one user (used by "delete my data"). */
 export async function clearUserData(userId: string | null | undefined) {
   try {

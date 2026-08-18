@@ -135,7 +135,6 @@ export default function ImpactScreen() {
                       {!a.valid ? (
                         <Pill label="Not counted" tone="warning" size="sm" icon="alert-circle" />
                       ) : null}
-                      null
                       {a.points > 0 ? <Pill label={`+${a.points} pts`} tone="accent" size="sm" /> : null}
                     </View>
                   ) : null}
@@ -245,7 +244,6 @@ export default function ImpactScreen() {
               <Card>
                 <Text style={styles.sectionLabel}>Field log</Text>
                 <View style={styles.fieldStats}>
-                  null
                   <FieldStat value={String(cleanupCount)} label="Cleanups" />
                   <FieldStat value={String(litterCollected)} label="Litter picked up" />
                 </View>

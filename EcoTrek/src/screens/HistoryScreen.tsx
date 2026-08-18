@@ -4,35 +4,52 @@ import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
 import Icon from '../components/Icon';
-import { Screen, Card, Pill, Divider, EmptyState } from '../components/ui';
+import { Screen, Card, Pill, EmptyState } from '../components/ui';
 
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useActivity, Activity } from '../context/ActivityContext';
 import { useSettings } from '../constants/SettingsContext';
+import { weekStart } from '../services/dates';
+import { useTheme } from '../context/ThemeContext';
 
 export default function HistoryScreen() {
   const navigation = useNavigation<any>();
   const { history } = useActivity();
-  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { formatDistanceCompact, formatDistance, formatDistanceUnit } = useSettings();
+  const { colors } = useTheme();
 
-  const recent = history.slice(0, 5);
+  const recent = history;
+  const weekBegin = weekStart().getTime();
+  const thisWeek = history.filter((a) => a.valid && a.startedAt >= weekBegin);
+  const weekMiles = thisWeek.reduce((n, a) => n + a.miles, 0);
 
   return (
     <Screen>
-      <Header title="Activity History" subtitle="Last 5 activities" back />
+      <Header title="My walks" subtitle="This week and every walk you have saved" back />
 
       <View style={styles.body}>
+        <Card>
+          <Text style={styles.weekLabel}>This week</Text>
+          <Text style={styles.weekValue}>
+            {formatDistanceCompact(weekMiles)} {formatDistanceUnit()}
+            <Text style={styles.weekMeta}>
+              {'  '}
+              {thisWeek.length} walk{thisWeek.length === 1 ? '' : 's'}
+            </Text>
+          </Text>
+        </Card>
+
         {recent.length === 0 ? (
           <EmptyState
             icon="activity"
-            title="No activities yet"
-            message="Complete your first hike or ride to see it here."
-            action="Start tracking"
-            onAction={() => navigation.navigate('Track')}
+            title="No walks yet"
+            message="Finish your first walk or ride to see it here."
+            action="Start walk"
+            onAction={() => navigation.navigate('Tabs', { screen: 'Track' })}
           />
         ) : (
           <View style={{ gap: SPACING.md }}>
-            {recent.map((activity, index) => (
+            {recent.map((activity) => (
               <ActivityHistoryCard
                 key={activity.id}
                 activity={activity}
@@ -42,15 +59,10 @@ export default function HistoryScreen() {
               />
             ))}
 
-            {history.length > 5 ? (
-              <Pressable
-                onPress={() => navigation.navigate('Impact', { tab: 'history' })}
-                style={styles.viewAll}
-              >
-                <Text style={styles.viewAllText}>View all {history.length} activities</Text>
-                <Icon name="arrow-right" size={16} color={COLORS.primary} strokeWidth={2} />
-              </Pressable>
-            ) : null}
+            <Pressable onPress={() => navigation.navigate('Recap')} style={styles.viewAll}>
+              <Text style={styles.viewAllText}>Compare with last week</Text>
+              <Icon name="arrow-right" size={16} color={colors.primary} strokeWidth={2} />
+            </Pressable>
           </View>
         )}
       </View>
@@ -81,9 +93,7 @@ function ActivityHistoryCard({
   });
 
   const durationMin = Math.floor(activity.durationSec / 60);
-  const avgPace = activity.durationSec > 0 && activity.miles > 0
-    ? (activity.durationSec / 60 / activity.miles).toFixed(1)
-    : '—';
+  const { colors } = useTheme();
 
   return (
     <Card onPress={onPress}>
@@ -99,16 +109,16 @@ function ActivityHistoryCard({
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>
-            {activity.trailName ?? (activity.type === 'bike' ? 'Bike Ride' : 'Hike')}
+            {activity.trailName ?? (activity.type === 'bike' ? 'Bike ride' : 'Walk')}
           </Text>
           <Text style={styles.cardDate}>
             {dateStr} at {timeStr}
           </Text>
         </View>
         {activity.valid ? (
-          <Pill label="Valid" tone="success" size="sm" icon="check" />
+          <Pill label="Counted" tone="success" size="sm" icon="check" />
         ) : (
-          <Pill label="Flagged" tone="danger" size="sm" icon="alert-circle" />
+          <Pill label="Not counted" tone="danger" size="sm" icon="alert-circle" />
         )}
       </View>
 
@@ -116,7 +126,7 @@ function ActivityHistoryCard({
       <View style={styles.statsRow}>
         <StatBlock value={`${formatDistance(activity.miles)} ${unit}`} label="Distance" />
         <StatBlock value={`${durationMin} min`} label="Duration" />
-        <StatBlock value={`${activity.avgMph} mph`} label="Avg Speed" />
+        <StatBlock value={`${activity.avgMph} mph`} label="Speed" />
       </View>
 
       {/* Secondary stats */}
@@ -130,7 +140,7 @@ function ActivityHistoryCard({
       {/* Trail completion badge */}
       {activity.trailCompleted ? (
         <View style={styles.completionBadge}>
-          <Icon name="flag" size={14} color={COLORS.primary} strokeWidth={2} />
+          <Icon name="flag" size={14} color={colors.primary} strokeWidth={2} />
           <Text style={styles.completionText}>Trail completed!</Text>
         </View>
       ) : null}
@@ -138,7 +148,7 @@ function ActivityHistoryCard({
       {/* Strike warnings */}
       {activity.strikeCount > 0 && activity.valid ? (
         <View style={styles.strikeWarning}>
-          <Icon name="alert-triangle" size={14} color={COLORS.warning} strokeWidth={2} />
+          <Icon name="alert-triangle" size={14} color={colors.warning} strokeWidth={2} />
           <Text style={styles.strikeText}>
             {activity.strikeCount} speed warning{activity.strikeCount === 1 ? '' : 's'} recorded
           </Text>
@@ -148,7 +158,7 @@ function ActivityHistoryCard({
       {/* Rejection reason */}
       {!activity.valid && activity.flagReason ? (
         <View style={styles.rejectionBox}>
-          <Icon name="alert-circle" size={14} color={COLORS.danger} strokeWidth={2} />
+          <Icon name="alert-circle" size={14} color={colors.danger} strokeWidth={2} />
           <Text style={styles.rejectionText}>
             Not counted: {activity.flagReason.replace(/_/g, ' ')}
           </Text>
@@ -258,4 +268,7 @@ const styles = StyleSheet.create({
     padding: SPACING.md,
   },
   viewAllText: { ...TYPOGRAPHY.bodyMed, color: COLORS.primary },
+  weekLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  weekValue: { ...TYPOGRAPHY.h1, color: COLORS.text, marginTop: 4 },
+  weekMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, fontWeight: '500' },
 });

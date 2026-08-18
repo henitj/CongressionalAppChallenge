@@ -1,13 +1,13 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, AppState, AppStateStatus } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, AppState, AppStateStatus, Linking } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import LiveMap from '../components/LiveMap';
 import Icon, { IconName } from '../components/Icon';
-import { Button, Card } from '../components/ui';
+import { Button } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TREE_RULES, TYPOGRAPHY } from '../constants/theme';
+import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import {
   Coord,
   getCurrentPosition,
@@ -22,6 +22,7 @@ import { useApp } from '../context/AppContext';
 import { detectCurrentTrail } from '../services/trailDetection';
 import { Trail } from '../constants/austinTrails';
 import { useProfile, estimateCalories } from '../context/ProfileContext';
+import { useWeather } from '../context/WeatherContext';
 
 type Mode = 'hike' | 'bike';
 
@@ -31,7 +32,7 @@ export default function ActiveTrackingScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const mode: Mode = route.params?.mode ?? 'hike';
-  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { formatDistance, formatDistanceUnit, formatTemp } = useSettings();
   const { trails } = useApp();
   const { profile } = useProfile();
   const { addActivity } = useActivity();
@@ -50,11 +51,14 @@ export default function ActiveTrackingScreen() {
   const [isBackgrounded, setIsBackgrounded] = useState(false);
   const [result, setResult] = useState<any>(null);
   const [saving, setSaving] = useState(false);
+  const [showRest, setShowRest] = useState(false);
 
   const subRef = useRef<Subscription | null>(null);
   const lastRef = useRef<Coord | undefined>(undefined);
   const pausedRef = useRef(false);
   pausedRef.current = paused;
+  const pausedTotalRef = useRef(0);
+  const pausedAtRef = useRef<number | null>(null);
 
   const nearbyTrail: Trail | null = useMemo(
     () => detectCurrentTrail(current, trails.length ? trails : undefined),
@@ -65,11 +69,51 @@ export default function ActiveTrackingScreen() {
   const speedLimit = SPEED_LIMITS[mode];
   const avgMph = elapsed > 0 ? miles / (elapsed / 3600) : 0;
   const calories = estimateCalories(mode, elapsed, avgMph, profile);
+  const { report } = useWeather();
 
-  // Timer
+  useEffect(() => {
+    if (!paused && elapsed >= 25 * 60 && !showRest) setShowRest(true);
+  }, [elapsed, paused, showRest]);
+
+  const textContact = () => {
+    const phone = (profile.emergencyPhone ?? '').replace(/[^\d+]/g, '');
+    if (!phone) {
+      Alert.alert(
+        'No contact saved',
+        'Add a name and phone number in Settings so we can text them for you.'
+      );
+      return;
+    }
+    const where = nearbyTrail?.name ?? 'a walk';
+    const body = encodeURIComponent(
+      `Hi${profile.emergencyName ? ` ${profile.emergencyName}` : ''}, I am on ${where} with EcoTrek. I wanted you to know where I am.`
+    );
+    Linking.openURL(`sms:${phone}?body=${body}`).catch(() =>
+      Alert.alert('Could not open Messages', 'Try sending a text yourself.')
+    );
+  };
+
+  const togglePause = () => {
+    setPaused((p) => {
+      if (!p) {
+        pausedAtRef.current = Date.now();
+        return true;
+      }
+      if (pausedAtRef.current) {
+        pausedTotalRef.current += Date.now() - pausedAtRef.current;
+        pausedAtRef.current = null;
+      }
+      return false;
+    });
+  };
+
+  // Timer — pause must not keep adding seconds.
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    const tick = () =>
+      setElapsed(Math.floor((Date.now() - startedAt - pausedTotalRef.current) / 1000));
+    tick();
+    const t = setInterval(tick, 1000);
     return () => clearInterval(t);
   }, [paused, startedAt]);
 
@@ -198,21 +242,21 @@ export default function ActiveTrackingScreen() {
               strokeWidth={1.5}
             />
             <Text style={styles.resultTitle}>
-              {result.rejected ? 'Activity Flagged' : 'Activity Complete!'}
+              {result.rejected ? 'This one did not count' : mode === 'bike' ? 'Nice ride!' : 'Nice walk!'}
             </Text>
             
             {result.rejected ? (
               <Text style={styles.resultSubtitle}>
                 {result.rejectionReason === 'too_short'
-                  ? 'Activity was under a minute'
+                  ? 'That was under a minute, so we did not save the miles.'
                   : result.rejectionReason === 'speed_too_high'
-                  ? 'Average speed exceeded the limit'
+                  ? 'The speed was too high for a walk or ride, so it was not counted.'
                   : result.rejectionReason === 'too_many_strikes'
-                  ? 'Too many speed violations'
-                  : 'Activity did not meet validation requirements'}
+                  ? 'There were too many speed warnings, so it was not counted.'
+                  : 'It did not look like a walk or ride, so it was not counted.'}
               </Text>
             ) : (
-              <Text style={styles.resultSubtitle}>Great work out there!</Text>
+              <Text style={styles.resultSubtitle}>Great work out there.</Text>
             )}
 
             <View style={styles.resultStats}>
@@ -261,7 +305,12 @@ export default function ActiveTrackingScreen() {
               {paused ? 'Paused' : isBackgrounded ? 'Recording in background' : 'Recording'}
             </Text>
           </View>
-          <Pressable onPress={() => setPaused((p) => !p)} style={styles.pauseBtn} hitSlop={8}>
+          <Pressable
+            onPress={togglePause}
+            style={styles.pauseBtn}
+            hitSlop={8}
+            accessibilityLabel={paused ? 'Resume' : 'Pause'}
+          >
             <Icon name={paused ? 'play' : 'pause'} size={18} color="#fff" strokeWidth={2} />
           </Pressable>
         </View>
@@ -280,6 +329,34 @@ export default function ActiveTrackingScreen() {
             </View>
           ) : null}
         </View>
+
+        <View style={styles.helpRow}>
+          <Pressable
+            onPress={() => Linking.openURL('tel:911')}
+            style={styles.helpBtn}
+            accessibilityLabel="Call 911"
+          >
+            <Icon name="alert-triangle" size={16} color={COLORS.danger} strokeWidth={2} />
+            <Text style={styles.helpDanger}>Call 911</Text>
+          </Pressable>
+          <Pressable onPress={textContact} style={styles.helpBtn} accessibilityLabel="Text my contact">
+            <Icon name="users" size={16} color={COLORS.primary} strokeWidth={2} />
+            <Text style={styles.helpSafe}>Text my contact</Text>
+          </Pressable>
+        </View>
+
+        {showRest ? (
+          <View style={styles.restBanner}>
+            <Icon name="clock" size={18} color={COLORS.accentDark} strokeWidth={2} />
+            <Text style={styles.restText}>
+              You have been out for {Math.floor(elapsed / 60)} minutes
+              {report ? ` · it is ${formatTemp(report.tempF)}` : ''}. Want a sit-down?
+            </Text>
+            <Pressable onPress={() => setShowRest(false)} hitSlop={10} accessibilityLabel="Dismiss rest reminder">
+              <Icon name="x" size={16} color={COLORS.textMuted} />
+            </Pressable>
+          </View>
+        ) : null}
 
         {/* Stats panel */}
         <View style={styles.statsPanel}>
@@ -366,7 +443,7 @@ export default function ActiveTrackingScreen() {
           {/* Finish button */}
           <View style={styles.finishRow}>
             <Button
-              label="Finish activity"
+              label={mode === 'bike' ? 'Finish ride' : 'Finish walk'}
               icon="stop"
               size="lg"
               full
@@ -436,9 +513,9 @@ const styles = StyleSheet.create({
   },
   topLabel: { ...TYPOGRAPHY.bodyMed, color: '#fff' },
   pauseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -555,6 +632,31 @@ const styles = StyleSheet.create({
   alertSubtext: { ...TYPOGRAPHY.small, color: COLORS.textMuted, textAlign: 'center' },
   alertButtons: { flexDirection: 'row', gap: SPACING.sm, width: '100%' },
 
+  helpRow: { flexDirection: 'row', gap: SPACING.sm, paddingHorizontal: SPACING.md, marginTop: SPACING.sm },
+  helpBtn: {
+    flex: 1,
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 8,
+    backgroundColor: COLORS.surface,
+    borderRadius: RADIUS.md,
+    paddingVertical: 14,
+    minHeight: 52,
+  },
+  helpDanger: { ...TYPOGRAPHY.smallMed, color: COLORS.danger },
+  helpSafe: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
+  restBanner: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    marginHorizontal: SPACING.md,
+    marginTop: SPACING.sm,
+    backgroundColor: COLORS.warningLight,
+    borderRadius: RADIUS.md,
+    padding: SPACING.sm + 4,
+  },
+  restText: { ...TYPOGRAPHY.small, color: COLORS.text, flex: 1 },
   finishRow: { paddingBottom: SPACING.md },
 
   resultContainer: {

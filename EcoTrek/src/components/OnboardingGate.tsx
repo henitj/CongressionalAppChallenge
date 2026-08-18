@@ -7,8 +7,6 @@ import { COLORS } from '../constants/theme';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import SetupScreen from '../screens/SetupScreen';
 
-type GateStep = 'loading' | 'onboarding' | 'setup' | 'done';
-
 /**
  * Shows the first-run walkthrough once per account, then the profile setup,
  * then gets out of the way.
@@ -41,7 +39,7 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
   };
 
   const finishSetup = () => {
-    // hasProfile will update via context
+    // hasProfile flips once Setup writes a first name (or Skip does).
   };
 
   if (!checked || profileLoading) {

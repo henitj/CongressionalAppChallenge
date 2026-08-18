@@ -73,8 +73,8 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
         }).addTo(map);
 
         polylineRef.current = L.polyline([], {
-          color: COLORS.primary,
-          weight: 5,
+          color: '#003D28',
+          weight: 8,
           opacity: 0.9,
           lineCap: 'round',
           lineJoin: 'round',
@@ -84,19 +84,12 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
         const youIcon = L.divIcon({
           className: 'ecotrek-you-icon',
           html: `
-            <div style="position:relative;width:22px;height:22px;">
-              <div style="position:absolute;inset:0;border-radius:50%;background:${COLORS.primary};border:3px solid #fff;box-shadow:0 2px 6px rgba(0,0,0,0.3);"></div>
-              <div style="position:absolute;inset:-8px;border-radius:50%;background:rgba(22,98,74,0.25);animation:ecotrek-pulse 1.6s ease-out infinite;"></div>
+            <div style="position:relative;width:36px;height:36px;">
+              <div style="position:absolute;inset:0;border-radius:50%;background:#FFD000;border:4px solid #111;box-shadow:0 2px 8px rgba(0,0,0,0.45);"></div>
             </div>
-            <style>
-              @keyframes ecotrek-pulse {
-                0%{transform:scale(0.6);opacity:0.8;}
-                100%{transform:scale(1.6);opacity:0;}
-              }
-            </style>
           `,
-          iconSize: [22, 22],
-          iconAnchor: [11, 11],
+          iconSize: [36, 36],
+          iconAnchor: [18, 18],
         });
         markerRef.current = L.marker(initial, { icon: youIcon }).addTo(map);
 

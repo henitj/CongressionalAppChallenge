@@ -182,7 +182,6 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
 
   const [state, setState] = useState<Stored>(EMPTY);
   const [loaded, setLoaded] = useState(false);
-  const busy = useRef(false);
 
   const stateRef = useRef<Stored>(EMPTY);
   stateRef.current = state;
