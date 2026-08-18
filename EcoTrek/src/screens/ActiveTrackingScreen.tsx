@@ -16,7 +16,7 @@ import {
   startTracking,
   Subscription,
 } from '../services/location';
-import { computeTrees } from '../context/ActivityContext';
+import { computeTrees, useActivity } from '../context/ActivityContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useApp } from '../context/AppContext';
 import { detectCurrentTrail } from '../services/trailDetection';
@@ -34,6 +34,7 @@ export default function ActiveTrackingScreen() {
   const { formatDistance, formatDistanceUnit } = useSettings();
   const { trails } = useApp();
   const { profile } = useProfile();
+  const { addActivity } = useActivity();
 
   const [path, setPath] = useState<Coord[]>([]);
   const [current, setCurrent] = useState<Coord | undefined>();
@@ -47,6 +48,8 @@ export default function ActiveTrackingScreen() {
   const [speedWarnings, setSpeedWarnings] = useState(0);
   const [showSpeedAlert, setShowSpeedAlert] = useState(false);
   const [isBackgrounded, setIsBackgrounded] = useState(false);
+  const [result, setResult] = useState<any>(null);
+  const [saving, setSaving] = useState(false);
 
   const subRef = useRef<Subscription | null>(null);
   const lastRef = useRef<Coord | undefined>(undefined);
@@ -133,24 +136,40 @@ export default function ActiveTrackingScreen() {
     };
   }, [speedLimit]);
 
-  const handleFinish = useCallback(() => {
+  const handleFinish = useCallback(async () => {
     subRef.current?.remove();
     subRef.current = null;
-    navigation.replace('Recap', {
-      mode,
-      miles,
-      elapsed,
-      startedAt,
-      endedAt: Date.now(),
-      trees,
-      calories,
-      elevationGain: Math.round(elevationGain),
-      elevationLoss: Math.round(elevationLoss),
-      path,
-      trailName: nearbyTrail?.name ?? null,
-      speedWarnings,
-    });
-  }, [navigation, mode, miles, elapsed, startedAt, trees, calories, elevationGain, elevationLoss, path, nearbyTrail, speedWarnings]);
+    setSaving(true);
+
+    try {
+      const res = await addActivity({
+        type: mode,
+        startedAt,
+        endedAt: Date.now(),
+        miles,
+        durationSec: elapsed,
+        path,
+      });
+
+      setResult({
+        miles,
+        trees: res.treesAwarded,
+        points: res.pointsAwarded,
+        calories,
+        elevationGain: Math.round(elevationGain),
+        elevationLoss: Math.round(elevationLoss),
+        trailName: res.trailName,
+        trailCompleted: res.trailCompleted,
+        rejected: res.rejected,
+        rejectionReason: res.rejectionReason,
+        durationSec: elapsed,
+      });
+    } catch (e: any) {
+      Alert.alert('Could not save', e?.message ?? 'Something went wrong saving that activity.');
+    } finally {
+      setSaving(false);
+    }
+  }, [addActivity, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss]);
 
   const handleDiscard = () => {
     Alert.alert('Discard this activity?', 'Your progress will not be saved.', [
@@ -165,6 +184,68 @@ export default function ActiveTrackingScreen() {
       },
     ]);
   };
+
+  // Show results screen after activity is saved
+  if (result) {
+    return (
+      <View style={styles.root}>
+        <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
+          <View style={styles.resultContainer}>
+            <Icon
+              name={result.rejected ? 'alert-circle' : 'check-circle'}
+              size={64}
+              color={result.rejected ? COLORS.warning : COLORS.primary}
+              strokeWidth={1.5}
+            />
+            <Text style={styles.resultTitle}>
+              {result.rejected ? 'Activity Flagged' : 'Activity Complete!'}
+            </Text>
+            
+            {result.rejected ? (
+              <Text style={styles.resultSubtitle}>
+                {result.rejectionReason === 'too_short'
+                  ? 'Activity was under a minute'
+                  : result.rejectionReason === 'speed_too_high'
+                  ? 'Average speed exceeded the limit'
+                  : result.rejectionReason === 'too_many_strikes'
+                  ? 'Too many speed violations'
+                  : 'Activity did not meet validation requirements'}
+              </Text>
+            ) : (
+              <Text style={styles.resultSubtitle}>Great work out there!</Text>
+            )}
+
+            <View style={styles.resultStats}>
+              <ResultStat label="Distance" value={`${formatDistance(result.miles)} ${formatDistanceUnit()}`} />
+              <ResultStat label="Time" value={formatTime(result.durationSec)} />
+              <ResultStat label="Trees" value={String(result.trees)} icon="tree" />
+              <ResultStat label="Points" value={`+${result.points}`} icon="star" />
+              <ResultStat label="Calories" value={String(result.calories)} icon="zap" />
+              <ResultStat label="Elevation" value={`${result.elevationGain} ft`} icon="trending-up" />
+            </View>
+
+            {result.trailCompleted && (
+              <View style={styles.trailCompleteBadge}>
+                <Icon name="flag" size={18} color={COLORS.primary} strokeWidth={2} />
+                <Text style={styles.trailCompleteText}>
+                  Completed {result.trailName}!
+                </Text>
+              </View>
+            )}
+
+            <View style={styles.resultButtons}>
+              <Button
+                label="Done"
+                size="lg"
+                full
+                onPress={() => navigation.goBack()}
+              />
+            </View>
+          </View>
+        </SafeAreaView>
+      </View>
+    );
+  }
 
   return (
     <View style={styles.root}>
@@ -289,6 +370,8 @@ export default function ActiveTrackingScreen() {
               icon="stop"
               size="lg"
               full
+              loading={saving}
+              disabled={saving}
               onPress={handleFinish}
             />
           </View>
@@ -314,6 +397,16 @@ function formatTime(sec: number) {
   const s = sec % 60;
   if (h > 0) return `${h}:${String(m).padStart(2, '0')}:${String(s).padStart(2, '0')}`;
   return `${m}:${String(s).padStart(2, '0')}`;
+}
+
+function ResultStat({ label, value, icon }: { label: string; value: string; icon?: IconName }) {
+  return (
+    <View style={resultStyles.stat}>
+      {icon && <Icon name={icon} size={20} color={COLORS.primary} strokeWidth={2} />}
+      <Text style={resultStyles.statValue}>{value}</Text>
+      <Text style={resultStyles.statLabel}>{label}</Text>
+    </View>
+  );
 }
 
 const styles = StyleSheet.create({
@@ -463,4 +556,62 @@ const styles = StyleSheet.create({
   alertButtons: { flexDirection: 'row', gap: SPACING.sm, width: '100%' },
 
   finishRow: { paddingBottom: SPACING.md },
+
+  resultContainer: {
+    flex: 1,
+    backgroundColor: COLORS.surface,
+    alignItems: 'center',
+    justifyContent: 'center',
+    paddingHorizontal: SPACING.lg,
+    gap: SPACING.lg,
+  },
+  resultTitle: {
+    ...TYPOGRAPHY.h1,
+    color: COLORS.text,
+  },
+  resultSubtitle: {
+    ...TYPOGRAPHY.body,
+    color: COLORS.textMuted,
+    textAlign: 'center',
+  },
+  resultStats: {
+    width: '100%',
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-around',
+    gap: SPACING.md,
+  },
+  trailCompleteBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: COLORS.primarySurface,
+    paddingVertical: SPACING.sm,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.pill,
+  },
+  trailCompleteText: {
+    ...TYPOGRAPHY.bodyMed,
+    color: COLORS.primary,
+  },
+  resultButtons: {
+    width: '100%',
+    marginTop: SPACING.md,
+  },
+});
+
+const resultStyles = StyleSheet.create({
+  stat: {
+    alignItems: 'center',
+    gap: SPACING.xs,
+    minWidth: 100,
+  },
+  statValue: {
+    ...TYPOGRAPHY.h2,
+    color: COLORS.text,
+  },
+  statLabel: {
+    ...TYPOGRAPHY.small,
+    color: COLORS.textMuted,
+  },
 });
