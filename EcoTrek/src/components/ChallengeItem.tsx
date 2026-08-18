@@ -142,8 +142,8 @@ const styles = StyleSheet.create({
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginTop: 3 },
   undo: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textDecorationLine: 'underline' },
   action: {
-    width: 34,
-    height: 34,
+    width: 48,
+    height: 48,
     alignItems: 'center',
     justifyContent: 'center',
     alignSelf: 'center',

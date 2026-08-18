@@ -19,6 +19,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Safety on the trail** — Call 911 and Text my contact on the live tracking screen. A sit-down reminder after 25 minutes.
 - **Simple mode, large text, dark and high-contrast looks** — in Settings.
 - **Guest or Google.** Start as a guest, then save with Google later. Walks already on the phone come with you.
+- **Setup is optional.** You can skip the name and height questions and start walking.
 - **Trees and points** are a fun way to see effort. No real trees are planted.
 
 ---

@@ -3,6 +3,7 @@ import './src/services/locationTask';
 import React, { useCallback, useEffect } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
+import { useTheme } from './src/context/ThemeContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 
@@ -157,6 +158,11 @@ function Gate() {
   );
 }
 
+function ThemedStatusBar() {
+  const { appearance } = useTheme();
+  return <StatusBar style={appearance === 'dark' ? 'light' : 'dark'} />;
+}
+
 if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
 (Text as any).defaultProps.allowFontScaling = true;
 (Text as any).defaultProps.maxFontSizeMultiplier = 1.8;
@@ -168,7 +174,7 @@ export default function App() {
         <ThemeProvider>
           <AuthProvider>
             <AppProvider>
-              <StatusBar style="dark" />
+              <ThemedStatusBar />
               <Gate />
             </AppProvider>
           </AuthProvider>

@@ -5,7 +5,6 @@ import {
   Appearance,
   ColorPalette,
   PALETTES,
-  TextSize,
   fontScaleFor,
 } from '../constants/theme';
 import { useSettings } from '../constants/SettingsContext';

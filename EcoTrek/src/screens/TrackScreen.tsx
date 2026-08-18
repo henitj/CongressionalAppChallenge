@@ -10,12 +10,14 @@ import { useApp } from '../context/AppContext';
 import { useWeather } from '../context/WeatherContext';
 import { useResetOnLeave } from '../hooks/useResetOnLeave';
 import { useStartActivity } from '../hooks/useStartActivity';
+import { useTheme } from '../context/ThemeContext';
 
 export default function TrackScreen() {
   const { totalActivities } = useActivity();
   const { permission } = useApp();
   const { report } = useWeather();
   const { mode, setMode, start, starting } = useStartActivity('hike');
+  const { colors } = useTheme();
 
   useResetOnLeave(
     useCallback(() => {
@@ -49,7 +51,7 @@ export default function TrackScreen() {
         <Card>
           <View style={styles.infoHeader}>
             <View style={styles.infoIcon}>
-              <Icon name={mode === 'hike' ? 'boot' : 'bike'} size={26} color={COLORS.primary} strokeWidth={1.8} />
+              <Icon name={mode === 'hike' ? 'boot' : 'bike'} size={26} color={colors.primary} strokeWidth={1.8} />
             </View>
             <View style={{ flex: 1 }}>
               <Text style={styles.infoTitle}>{mode === 'hike' ? 'Walking' : 'Biking'}</Text>

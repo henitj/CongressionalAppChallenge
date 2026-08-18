@@ -60,14 +60,14 @@ export function Screen({
 
   if (!scroll) {
     return (
-      <View style={[ui.screen, style]}>
+      <View style={[ui.screen, { backgroundColor: colors.background }, style]}>
         <View style={[{ flex: 1 }, column]}>{children}</View>
       </View>
     );
   }
 
   return (
-    <View style={[ui.screen, style]}>
+    <View style={[ui.screen, { backgroundColor: colors.background }, style]}>
       <ScrollView
         ref={scrollRef}
         contentContainerStyle={[ui.scrollContent, contentStyle]}
@@ -99,14 +99,15 @@ export function Card({
   onPress?: () => void;
   tone?: 'default' | 'sunken' | 'dark' | 'accent';
 }) {
+  const { colors } = useTheme();
   const toneStyle =
     tone === 'sunken'
-      ? ui.cardSunken
+      ? [ui.cardSunken, { backgroundColor: colors.surfaceSunken, borderColor: colors.borderLight }]
       : tone === 'dark'
-      ? ui.cardDark
+      ? [ui.cardDark, { backgroundColor: colors.primaryDark }]
       : tone === 'accent'
-      ? ui.cardAccent
-      : null;
+      ? [ui.cardAccent, { backgroundColor: colors.accentLight, borderColor: colors.warningBorder }]
+      : { backgroundColor: colors.surface, borderColor: colors.border };
 
   const content = (
     <View style={[ui.card, toneStyle, padded && ui.cardPad, style]}>{children}</View>
@@ -134,13 +135,14 @@ export function SectionHeader({
   onAction?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { colors } = useTheme();
   return (
     <View style={[ui.sectionHeader, style]}>
-      <Text style={ui.sectionTitle}>{title}</Text>
+      <Text style={[ui.sectionTitle, { color: colors.text }]}>{title}</Text>
       {action ? (
         <Pressable onPress={onAction} hitSlop={8} style={ui.sectionAction}>
-          <Text style={ui.sectionActionText}>{action}</Text>
-          <Icon name="chevron-right" size={14} color={COLORS.primary} strokeWidth={2.2} />
+          <Text style={[ui.sectionActionText, { color: colors.primary }]}>{action}</Text>
+          <Icon name="chevron-right" size={14} color={colors.primary} strokeWidth={2.2} />
         </Pressable>
       ) : null}
     </View>
@@ -176,24 +178,25 @@ export function Button({
   style?: StyleProp<ViewStyle>;
   tone?: string;
 }) {
+  const { colors } = useTheme();
   const isDisabled = disabled || loading;
 
   const bg =
     variant === 'primary'
-      ? tone ?? COLORS.primary
+      ? tone ?? colors.primary
       : variant === 'dark'
-      ? COLORS.primaryDark
+      ? colors.primaryDark
       : variant === 'danger'
-      ? COLORS.danger
+      ? colors.danger
       : variant === 'secondary'
-      ? COLORS.surface
+      ? colors.surface
       : 'transparent';
 
   const fg =
     variant === 'secondary'
-      ? COLORS.text
+      ? colors.text
       : variant === 'ghost'
-      ? tone ?? COLORS.primary
+      ? tone ?? colors.primary
       : '#fff';
 
   const pad =
@@ -260,14 +263,15 @@ export function Pill({
   size?: 'sm' | 'md';
   style?: StyleProp<ViewStyle>;
 }) {
+  const { colors } = useTheme();
   const map: Record<string, { bg: string; fg: string }> = {
-    neutral: { bg: COLORS.surfaceSunken, fg: COLORS.textSecondary },
-    primary: { bg: COLORS.primarySurface, fg: COLORS.primary },
-    accent: { bg: COLORS.accentLight, fg: COLORS.accentDark },
-    danger: { bg: COLORS.dangerLight, fg: COLORS.danger },
-    warning: { bg: COLORS.warningLight, fg: COLORS.warning },
-    info: { bg: COLORS.infoLight, fg: COLORS.info },
-    success: { bg: COLORS.successLight, fg: COLORS.success },
+    neutral: { bg: colors.surfaceSunken, fg: colors.textSecondary },
+    primary: { bg: colors.primarySurface, fg: colors.primary },
+    accent: { bg: colors.accentLight, fg: colors.accentDark },
+    danger: { bg: colors.dangerLight, fg: colors.danger },
+    warning: { bg: colors.warningLight, fg: colors.warning },
+    info: { bg: colors.infoLight, fg: colors.info },
+    success: { bg: colors.successLight, fg: colors.success },
     dark: { bg: 'rgba(255,255,255,0.14)', fg: '#fff' },
   };
   const c = map[tone];
@@ -294,8 +298,8 @@ export function Pill({
 
 export function ProgressBar({
   percent,
-  color = COLORS.primary,
-  track = COLORS.surfaceSunken,
+  color,
+  track,
   height = 7,
   style,
 }: {
@@ -305,10 +309,13 @@ export function ProgressBar({
   height?: number;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { colors } = useTheme();
   const p = Math.max(0, Math.min(100, percent));
+  const fill = color ?? colors.primary;
+  const rail = track ?? colors.surfaceSunken;
   return (
-    <View style={[{ height, backgroundColor: track, borderRadius: height / 2, overflow: 'hidden' }, style]}>
-      <View style={{ width: `${p}%`, height: '100%', backgroundColor: color, borderRadius: height / 2 }} />
+    <View style={[{ height, backgroundColor: rail, borderRadius: height / 2, overflow: 'hidden' }, style]}>
+      <View style={{ width: `${p}%`, height: '100%', backgroundColor: fill, borderRadius: height / 2 }} />
     </View>
   );
 }
@@ -328,25 +335,30 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { colors } = useTheme();
   return (
-    <View style={[ui.segmented, style]}>
+    <View style={[ui.segmented, { backgroundColor: colors.surfaceSunken }, style]}>
       {options.map((o) => {
         const active = o.value === value;
         return (
           <Pressable
             key={o.value}
             onPress={() => onChange(o.value)}
-            style={[ui.segment, active && ui.segmentActive]}
+            style={[ui.segment, active && [ui.segmentActive, { backgroundColor: colors.surface }]]}
+            accessibilityRole="button"
+            accessibilityState={{ selected: active }}
           >
             {o.icon ? (
               <Icon
                 name={o.icon}
                 size={14}
-                color={active ? COLORS.primary : COLORS.textMuted}
+                color={active ? colors.primary : colors.textMuted}
                 strokeWidth={2}
               />
             ) : null}
-            <Text style={[ui.segmentText, active && ui.segmentTextActive]}>{o.label}</Text>
+            <Text style={[ui.segmentText, { color: active ? colors.text : colors.textMuted }]}>
+              {o.label}
+            </Text>
           </Pressable>
         );
       })}
@@ -371,13 +383,14 @@ export function EmptyState({
   action?: string;
   onAction?: () => void;
 }) {
+  const { colors } = useTheme();
   return (
     <View style={ui.empty}>
-      <View style={ui.emptyIcon}>
-        <Icon name={icon} size={24} color={COLORS.textLight} strokeWidth={1.7} />
+      <View style={[ui.emptyIcon, { backgroundColor: colors.surfaceSunken }]}>
+        <Icon name={icon} size={24} color={colors.textLight} strokeWidth={1.7} />
       </View>
-      <Text style={ui.emptyTitle}>{title}</Text>
-      {message ? <Text style={ui.emptyMessage}>{message}</Text> : null}
+      <Text style={[ui.emptyTitle, { color: colors.textSecondary }]}>{title}</Text>
+      {message ? <Text style={[ui.emptyMessage, { color: colors.textMuted }]}>{message}</Text> : null}
       {action ? (
         <Button label={action} onPress={onAction} variant="secondary" size="sm" style={{ marginTop: SPACING.md }} />
       ) : null}
@@ -476,24 +489,25 @@ export function Sheet({
   subtitle?: string;
   children: React.ReactNode;
 }) {
+  const { colors, reduceMotion } = useTheme();
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={reduceMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       {/* Sheets contain text inputs (club codes, names), so they have to lift
           clear of the keyboard rather than sitting behind it. */}
       <KeyboardAvoidingView
-        style={ui.sheetBackdrop}
+        style={[ui.sheetBackdrop, { backgroundColor: colors.overlay }]}
         behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <Pressable style={{ flex: 1 }} onPress={onClose} />
-        <SafeAreaView edges={['bottom']} style={ui.sheet}>
-          <View style={ui.sheetGrabber} />
+        <SafeAreaView edges={['bottom']} style={[ui.sheet, { backgroundColor: colors.surface }]}>
+          <View style={[ui.sheetGrabber, { backgroundColor: colors.borderStrong }]} />
           <View style={ui.sheetHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={ui.sheetTitle}>{title}</Text>
-              {subtitle ? <Text style={ui.sheetSubtitle}>{subtitle}</Text> : null}
+              <Text style={[ui.sheetTitle, { color: colors.text }]}>{title}</Text>
+              {subtitle ? <Text style={[ui.sheetSubtitle, { color: colors.textMuted }]}>{subtitle}</Text> : null}
             </View>
-            <Pressable onPress={onClose} hitSlop={10} style={ui.sheetClose}>
-              <Icon name="x" size={18} color={COLORS.textSecondary} strokeWidth={2.1} />
+            <Pressable onPress={onClose} hitSlop={10} style={[ui.sheetClose, { backgroundColor: colors.surfaceSunken }]} accessibilityLabel="Close">
+              <Icon name="x" size={18} color={colors.textSecondary} strokeWidth={2.1} />
             </Pressable>
           </View>
           <ScrollView
@@ -531,12 +545,13 @@ export function Banner({
   right?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { colors } = useTheme();
   const map = {
-    info: { bg: COLORS.infoLight, fg: COLORS.info, border: COLORS.infoBorder },
-    warning: { bg: COLORS.warningLight, fg: COLORS.warning, border: COLORS.warningBorder },
-    danger: { bg: COLORS.dangerLight, fg: COLORS.danger, border: COLORS.dangerBorder },
-    success: { bg: COLORS.successLight, fg: COLORS.success, border: COLORS.successBorder },
-    neutral: { bg: COLORS.surfaceSunken, fg: COLORS.textSecondary, border: COLORS.border },
+    info: { bg: colors.infoLight, fg: colors.info, border: colors.infoBorder },
+    warning: { bg: colors.warningLight, fg: colors.warning, border: colors.warningBorder },
+    danger: { bg: colors.dangerLight, fg: colors.danger, border: colors.dangerBorder },
+    success: { bg: colors.successLight, fg: colors.success, border: colors.successBorder },
+    neutral: { bg: colors.surfaceSunken, fg: colors.textSecondary, border: colors.border },
   }[tone];
 
   const inner = (
@@ -548,7 +563,7 @@ export function Banner({
       ) : null}
       <View style={{ flex: 1 }}>
         <Text style={[ui.bannerTitle, { color: map.fg }]}>{title}</Text>
-        {message ? <Text style={ui.bannerMessage}>{message}</Text> : null}
+        {message ? <Text style={[ui.bannerMessage, { color: colors.textSecondary }]}>{message}</Text> : null}
       </View>
       {right}
       {onPress ? <Icon name="chevron-right" size={16} color={map.fg} /> : null}
@@ -568,7 +583,8 @@ export function Banner({
    ════════════════════════════════════════════════════════════════════════ */
 
 export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
-  return <View style={[ui.divider, style]} />;
+  const { colors } = useTheme();
+  return <View style={[ui.divider, { backgroundColor: colors.borderLight }, style]} />;
 }
 
 /* ════════════════════════════════════════════════════════════════════════
@@ -669,7 +685,8 @@ const ui = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 5,
-    paddingVertical: 8.5,
+    paddingVertical: 12,
+    minHeight: 48,
     borderRadius: RADIUS.sm + 1,
   },
   segmentActive: { backgroundColor: COLORS.surface, ...SHADOWS.sm },

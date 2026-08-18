@@ -132,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e: any) {
       setError(e?.message ?? 'Could not start Google sign-in');
     }
-  }, [promptAsync, googleConfigured]);
+  }, [promptAsync, googleConfigured, user]);
 
   const signInAsGuest = useCallback(async (name = 'Guest Trekker') => {
     const u: User = {

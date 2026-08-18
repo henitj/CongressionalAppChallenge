@@ -20,7 +20,7 @@ type Step = 'welcome' | 'name' | 'body' | 'activity';
 
 export default function SetupScreen({ onDone }: { onDone: () => void }) {
   const { setProfile } = useProfile();
-  const { updateUser } = useAuth();
+  const { user, updateUser } = useAuth();
   const [step, setStep] = useState<Step>('welcome');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -55,6 +55,20 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
     onDone();
   };
 
+  const skipSetup = async () => {
+    const first = firstName.trim() || (user?.name ?? '').trim().split(/\s+/)[0] || 'Friend';
+    const totalInches = (parseInt(heightFt, 10) || 0) * 12 + (parseInt(heightIn, 10) || 0);
+    await setProfile({
+      firstName: first,
+      lastName: lastName.trim(),
+      age: parseInt(age, 10) || 0,
+      heightInches: totalInches,
+      weightPounds: parseInt(weight, 10) || 0,
+      stepLengthInches: parseInt(stepLength, 10) || 0,
+    });
+    onDone();
+  };
+
   const canProceedName = firstName.trim().length > 0;
   const canProceedBody = (parseInt(heightFt, 10) || 0) > 0 && (parseInt(weight, 10) || 0) > 0;
 
@@ -68,14 +82,17 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
           behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
           keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
-          <View style={styles.progress}>
-            <ProgressDot active={step === 'welcome'} done={step !== 'welcome'} />
-            <ProgressLine />
-            <ProgressDot active={step === 'name'} done={['body', 'activity'].includes(step)} />
-            <ProgressLine />
-            <ProgressDot active={step === 'body'} done={step === 'activity'} />
-            <ProgressLine />
-            <ProgressDot active={step === 'activity'} done={false} />
+          <View style={styles.topBar}>
+            <View style={styles.progress}>
+              <ProgressDot active={step === 'welcome'} done={step !== 'welcome'} />
+              <ProgressLine />
+              <ProgressDot active={step === 'name'} done={['body', 'activity'].includes(step)} />
+              <ProgressLine />
+              <ProgressDot active={step === 'body'} done={step === 'activity'} />
+              <ProgressLine />
+              <ProgressDot active={step === 'activity'} done={false} />
+            </View>
+            <Button label="Skip" variant="ghost" onPress={skipSetup} />
           </View>
 
           <ScrollView
@@ -353,12 +370,20 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+    gap: SPACING.sm,
+  },
   progress: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.md,
+    flex: 1,
     gap: 0,
   },
   progressDot: {

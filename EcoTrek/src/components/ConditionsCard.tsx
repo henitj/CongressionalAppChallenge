@@ -1,17 +1,20 @@
 import React from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import Icon, { IconName } from './Icon';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { ColorPalette, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useWeather } from '../context/WeatherContext';
 import { LEVEL_META, SafetyLevel } from '../services/weather';
 import { useSettings } from '../constants/SettingsContext';
+import { useTheme } from '../context/ThemeContext';
 
-const TONE: Record<SafetyLevel, { bg: string; fg: string; border: string }> = {
-  good: { bg: COLORS.successLight, fg: COLORS.success, border: COLORS.successBorder },
-  caution: { bg: COLORS.infoLight, fg: COLORS.info, border: COLORS.infoBorder },
-  warning: { bg: COLORS.warningLight, fg: COLORS.warning, border: COLORS.warningBorder },
-  danger: { bg: COLORS.dangerLight, fg: COLORS.danger, border: COLORS.dangerBorder },
-};
+function toneFor(c: ColorPalette): Record<SafetyLevel, { bg: string; fg: string; border: string }> {
+  return {
+    good: { bg: c.successLight, fg: c.success, border: c.successBorder },
+    caution: { bg: c.infoLight, fg: c.info, border: c.infoBorder },
+    warning: { bg: c.warningLight, fg: c.warning, border: c.warningBorder },
+    danger: { bg: c.dangerLight, fg: c.danger, border: c.dangerBorder },
+  };
+}
 
 /**
  * Home-screen weather: current temperature plus the next few hours.
@@ -21,11 +24,13 @@ const TONE: Record<SafetyLevel, { bg: string; fg: string; border: string }> = {
 export default function ConditionsCard({ compact }: { compact?: boolean }) {
   const { report, loading, error, refresh } = useWeather();
   const { formatTemp } = useSettings();
+  const { colors } = useTheme();
+  const styles = React.useMemo(() => makeWeatherStyles(colors), [colors]);
 
   if (loading && !report) {
     return (
       <View style={[styles.card, styles.loadingCard]}>
-        <ActivityIndicator size="small" color={COLORS.textMuted} />
+        <ActivityIndicator size="small" color={colors.textMuted} />
         <Text style={styles.loadingText}>Checking the weather…</Text>
       </View>
     );
@@ -38,13 +43,13 @@ export default function ConditionsCard({ compact }: { compact?: boolean }) {
         style={[styles.card, styles.loadingCard]}
         accessibilityLabel="Retry weather"
       >
-        <Icon name="refresh" size={18} color={COLORS.textMuted} />
+        <Icon name="refresh" size={18} color={colors.textMuted} />
         <Text style={styles.loadingText}>{error ?? 'Weather unavailable'} — tap to try again</Text>
       </Pressable>
     );
   }
 
-  const tone = TONE[report.level];
+  const tone = toneFor(colors)[report.level];
   const meta = LEVEL_META[report.level];
   const hours = report.hourly.slice(0, 6);
 
@@ -76,13 +81,13 @@ export default function ConditionsCard({ compact }: { compact?: boolean }) {
         </View>
       </View>
 
-      {!compact && hours.length > 0 ? (
+      {hours.length > 0 ? (
         <ScrollView
           horizontal
           showsHorizontalScrollIndicator={false}
           contentContainerStyle={styles.hourly}
         >
-          {hours.map((h) => (
+          {(compact ? hours.slice(0, 5) : hours).map((h) => (
             <View key={h.time} style={styles.hourCol}>
               <Text style={styles.hourLabel}>{formatHour(h.hour)}</Text>
               <Text style={styles.hourTemp}>{Math.round(h.temp)}°</Text>
@@ -106,45 +111,47 @@ function formatHour(h: number) {
   return h > 12 ? `${h - 12} PM` : `${h} AM`;
 }
 
-const styles = StyleSheet.create({
-  card: {
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surface,
-    padding: SPACING.md,
-    gap: SPACING.md,
-  },
-  loadingCard: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    paddingVertical: SPACING.md + 4,
-  },
-  loadingText: { ...TYPOGRAPHY.small, color: COLORS.textMuted, flex: 1 },
-  topRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
-  iconWrap: {
-    width: 48,
-    height: 48,
-    borderRadius: RADIUS.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  status: { ...TYPOGRAPHY.overline },
-  headline: { ...TYPOGRAPHY.h3, color: COLORS.text, marginTop: 2 },
-  tempWrap: { alignItems: 'flex-end' },
-  temp: { fontSize: 32, fontWeight: '700', color: COLORS.text, letterSpacing: -0.5 },
-  feels: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-  hourly: { gap: SPACING.md, paddingTop: 2 },
-  hourCol: {
-    alignItems: 'center',
-    minWidth: 56,
-    paddingVertical: 8,
-    paddingHorizontal: 8,
-    backgroundColor: 'rgba(255,255,255,0.55)',
-    borderRadius: RADIUS.md,
-  },
-  hourLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
-  hourTemp: { ...TYPOGRAPHY.h3, color: COLORS.text, marginTop: 2 },
-  note: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
-});
+function makeWeatherStyles(c: ColorPalette) {
+  return StyleSheet.create({
+    card: {
+      borderRadius: RADIUS.lg,
+      borderWidth: 1,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+      padding: SPACING.md,
+      gap: SPACING.md,
+    },
+    loadingCard: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.sm,
+      paddingVertical: SPACING.md + 4,
+    },
+    loadingText: { ...TYPOGRAPHY.small, color: c.textMuted, flex: 1 },
+    topRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+    iconWrap: {
+      width: 48,
+      height: 48,
+      borderRadius: RADIUS.md,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    status: { ...TYPOGRAPHY.overline },
+    headline: { ...TYPOGRAPHY.h3, color: c.text, marginTop: 2 },
+    tempWrap: { alignItems: 'flex-end' },
+    temp: { fontSize: 32, fontWeight: '700', color: c.text, letterSpacing: -0.5 },
+    feels: { ...TYPOGRAPHY.small, color: c.textMuted, marginTop: 2 },
+    hourly: { gap: SPACING.md, paddingTop: 2 },
+    hourCol: {
+      alignItems: 'center',
+      minWidth: 56,
+      paddingVertical: 8,
+      paddingHorizontal: 8,
+      backgroundColor: 'rgba(255,255,255,0.55)',
+      borderRadius: RADIUS.md,
+    },
+    hourLabel: { ...TYPOGRAPHY.small, color: c.textMuted },
+    hourTemp: { ...TYPOGRAPHY.h3, color: c.text, marginTop: 2 },
+    note: { ...TYPOGRAPHY.small, color: c.textSecondary },
+  });
+}

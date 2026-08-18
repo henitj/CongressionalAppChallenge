@@ -21,6 +21,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 | **Simple mode** | Bigger text. Clubs and weekly goals stay out of the way. |
 | **Text size / look** | Normal, Large, Extra large. Light, Dark, High contrast. Less motion. |
 | **Guest → Google** | Walks already on the phone are copied when you save with Google. |
+| **Skippable setup** | The first-run name and height questions can be skipped. |
 | **Share card** | A simple picture-style card you send to family. |
 | **Trails** | 14 Austin trails, offline. Cards show distance, easy/medium/hard, dogs, water, bathrooms. |
 | **Trees** | Symbolic only. 1 per mile walked, 1 per 3 miles biked. |

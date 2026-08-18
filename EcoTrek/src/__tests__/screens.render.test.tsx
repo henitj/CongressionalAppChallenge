@@ -37,6 +37,7 @@ import RecapScreen from '../screens/RecapScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import SignInScreen from '../screens/SignInScreen';
+import SetupScreen from '../screens/SetupScreen';
 import BadgesScreen from '../screens/BadgesScreen';
 import MoreScreen from '../screens/MoreScreen';
 
@@ -170,6 +171,29 @@ describe('screens that do not need the provider stack', () => {
     );
     await waitFor(() => expect(queryByText('Continue as guest')).toBeTruthy());
     expect(queryByText('EcoTrek')).toBeTruthy();
+  });
+
+  it('Setup can be skipped', async () => {
+    const { queryByText } = render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 47, left: 0, right: 0, bottom: 34 },
+        }}
+      >
+        <AuthProvider>
+          <SettingsProvider>
+            <ThemeProvider>
+              <ProfileProvider>
+                <SetupScreen onDone={() => {}} />
+              </ProfileProvider>
+            </ThemeProvider>
+          </SettingsProvider>
+        </AuthProvider>
+      </SafeAreaProvider>
+    );
+    await waitFor(() => expect(queryByText('Skip')).toBeTruthy());
+    expect(queryByText(/A few things about you/i)).toBeTruthy();
   });
 
   it('Onboarding renders and can be skipped', async () => {

@@ -364,12 +364,12 @@ export default function TrailsScreen() {
 
             <View style={{ gap: SPACING.sm }}>
               <Button
-                label="Track an activity here"
+                label="Start a walk here"
                 icon="play"
                 full
                 onPress={() => {
                   setSelected(null);
-                  navigation.navigate('Track');
+                  navigation.navigate('Tabs', { screen: 'Track' });
                 }}
               />
               <View style={{ flexDirection: 'row', gap: SPACING.sm }}>

@@ -4,17 +4,19 @@ import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
 import Icon from '../components/Icon';
-import { Screen, Card, Pill, Divider, EmptyState } from '../components/ui';
+import { Screen, Card, Pill, EmptyState } from '../components/ui';
 
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useActivity, Activity } from '../context/ActivityContext';
 import { useSettings } from '../constants/SettingsContext';
 import { weekStart } from '../services/dates';
+import { useTheme } from '../context/ThemeContext';
 
 export default function HistoryScreen() {
   const navigation = useNavigation<any>();
   const { history } = useActivity();
   const { formatDistanceCompact, formatDistance, formatDistanceUnit } = useSettings();
+  const { colors } = useTheme();
 
   const recent = history;
   const weekBegin = weekStart().getTime();
@@ -47,7 +49,7 @@ export default function HistoryScreen() {
           />
         ) : (
           <View style={{ gap: SPACING.md }}>
-            {recent.map((activity, index) => (
+            {recent.map((activity) => (
               <ActivityHistoryCard
                 key={activity.id}
                 activity={activity}
@@ -59,7 +61,7 @@ export default function HistoryScreen() {
 
             <Pressable onPress={() => navigation.navigate('Recap')} style={styles.viewAll}>
               <Text style={styles.viewAllText}>Compare with last week</Text>
-              <Icon name="arrow-right" size={16} color={COLORS.primary} strokeWidth={2} />
+              <Icon name="arrow-right" size={16} color={colors.primary} strokeWidth={2} />
             </Pressable>
           </View>
         )}
@@ -91,9 +93,7 @@ function ActivityHistoryCard({
   });
 
   const durationMin = Math.floor(activity.durationSec / 60);
-  const avgPace = activity.durationSec > 0 && activity.miles > 0
-    ? (activity.durationSec / 60 / activity.miles).toFixed(1)
-    : '—';
+  const { colors } = useTheme();
 
   return (
     <Card onPress={onPress}>
@@ -109,7 +109,7 @@ function ActivityHistoryCard({
         </View>
         <View style={{ flex: 1 }}>
           <Text style={styles.cardTitle}>
-            {activity.trailName ?? (activity.type === 'bike' ? 'Bike Ride' : 'Hike')}
+            {activity.trailName ?? (activity.type === 'bike' ? 'Bike ride' : 'Walk')}
           </Text>
           <Text style={styles.cardDate}>
             {dateStr} at {timeStr}
@@ -126,7 +126,7 @@ function ActivityHistoryCard({
       <View style={styles.statsRow}>
         <StatBlock value={`${formatDistance(activity.miles)} ${unit}`} label="Distance" />
         <StatBlock value={`${durationMin} min`} label="Duration" />
-        <StatBlock value={`${activity.avgMph} mph`} label="Avg Speed" />
+        <StatBlock value={`${activity.avgMph} mph`} label="Speed" />
       </View>
 
       {/* Secondary stats */}
@@ -140,7 +140,7 @@ function ActivityHistoryCard({
       {/* Trail completion badge */}
       {activity.trailCompleted ? (
         <View style={styles.completionBadge}>
-          <Icon name="flag" size={14} color={COLORS.primary} strokeWidth={2} />
+          <Icon name="flag" size={14} color={colors.primary} strokeWidth={2} />
           <Text style={styles.completionText}>Trail completed!</Text>
         </View>
       ) : null}
@@ -148,7 +148,7 @@ function ActivityHistoryCard({
       {/* Strike warnings */}
       {activity.strikeCount > 0 && activity.valid ? (
         <View style={styles.strikeWarning}>
-          <Icon name="alert-triangle" size={14} color={COLORS.warning} strokeWidth={2} />
+          <Icon name="alert-triangle" size={14} color={colors.warning} strokeWidth={2} />
           <Text style={styles.strikeText}>
             {activity.strikeCount} speed warning{activity.strikeCount === 1 ? '' : 's'} recorded
           </Text>
@@ -158,7 +158,7 @@ function ActivityHistoryCard({
       {/* Rejection reason */}
       {!activity.valid && activity.flagReason ? (
         <View style={styles.rejectionBox}>
-          <Icon name="alert-circle" size={14} color={COLORS.danger} strokeWidth={2} />
+          <Icon name="alert-circle" size={14} color={colors.danger} strokeWidth={2} />
           <Text style={styles.rejectionText}>
             Not counted: {activity.flagReason.replace(/_/g, ' ')}
           </Text>

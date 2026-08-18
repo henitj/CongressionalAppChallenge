@@ -64,10 +64,10 @@ export default function Header({
               key={i}
               onPress={a.onPress}
               hitSlop={10}
-              style={styles.iconBtn}
+              style={[styles.iconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               accessibilityLabel={a.label}
             >
-              <Icon name={a.icon} size={19} color={COLORS.textSecondary} strokeWidth={1.9} />
+              <Icon name={a.icon} size={19} color={colors.textSecondary} strokeWidth={1.9} />
               {a.badge ? <View style={styles.dot} /> : null}
             </Pressable>
           ))}
@@ -78,7 +78,7 @@ export default function Header({
               hitSlop={8}
               accessibilityLabel="Open profile"
             >
-              <Avatar name={user?.name} uri={user?.picture} size={34} />
+              <Avatar name={user?.name} uri={user?.picture} size={44} />
             </Pressable>
           ) : null}
         </View>
@@ -108,9 +108,9 @@ const styles = StyleSheet.create({
   },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.surface,

@@ -57,6 +57,8 @@ export default function ActiveTrackingScreen() {
   const lastRef = useRef<Coord | undefined>(undefined);
   const pausedRef = useRef(false);
   pausedRef.current = paused;
+  const pausedTotalRef = useRef(0);
+  const pausedAtRef = useRef<number | null>(null);
 
   const nearbyTrail: Trail | null = useMemo(
     () => detectCurrentTrail(current, trails.length ? trails : undefined),
@@ -91,10 +93,27 @@ export default function ActiveTrackingScreen() {
     );
   };
 
-  // Timer
+  const togglePause = () => {
+    setPaused((p) => {
+      if (!p) {
+        pausedAtRef.current = Date.now();
+        return true;
+      }
+      if (pausedAtRef.current) {
+        pausedTotalRef.current += Date.now() - pausedAtRef.current;
+        pausedAtRef.current = null;
+      }
+      return false;
+    });
+  };
+
+  // Timer — pause must not keep adding seconds.
   useEffect(() => {
     if (paused) return;
-    const t = setInterval(() => setElapsed(Math.floor((Date.now() - startedAt) / 1000)), 1000);
+    const tick = () =>
+      setElapsed(Math.floor((Date.now() - startedAt - pausedTotalRef.current) / 1000));
+    tick();
+    const t = setInterval(tick, 1000);
     return () => clearInterval(t);
   }, [paused, startedAt]);
 
@@ -223,21 +242,21 @@ export default function ActiveTrackingScreen() {
               strokeWidth={1.5}
             />
             <Text style={styles.resultTitle}>
-              {result.rejected ? 'Activity Flagged' : 'Activity Complete!'}
+              {result.rejected ? 'This one did not count' : mode === 'bike' ? 'Nice ride!' : 'Nice walk!'}
             </Text>
             
             {result.rejected ? (
               <Text style={styles.resultSubtitle}>
                 {result.rejectionReason === 'too_short'
-                  ? 'Activity was under a minute'
+                  ? 'That was under a minute, so we did not save the miles.'
                   : result.rejectionReason === 'speed_too_high'
-                  ? 'Average speed exceeded the limit'
+                  ? 'The speed was too high for a walk or ride, so it was not counted.'
                   : result.rejectionReason === 'too_many_strikes'
-                  ? 'Too many speed violations'
-                  : 'Activity did not meet validation requirements'}
+                  ? 'There were too many speed warnings, so it was not counted.'
+                  : 'It did not look like a walk or ride, so it was not counted.'}
               </Text>
             ) : (
-              <Text style={styles.resultSubtitle}>Great work out there!</Text>
+              <Text style={styles.resultSubtitle}>Great work out there.</Text>
             )}
 
             <View style={styles.resultStats}>
@@ -286,7 +305,12 @@ export default function ActiveTrackingScreen() {
               {paused ? 'Paused' : isBackgrounded ? 'Recording in background' : 'Recording'}
             </Text>
           </View>
-          <Pressable onPress={() => setPaused((p) => !p)} style={styles.pauseBtn} hitSlop={8}>
+          <Pressable
+            onPress={togglePause}
+            style={styles.pauseBtn}
+            hitSlop={8}
+            accessibilityLabel={paused ? 'Resume' : 'Pause'}
+          >
             <Icon name={paused ? 'play' : 'pause'} size={18} color="#fff" strokeWidth={2} />
           </Pressable>
         </View>
@@ -419,7 +443,7 @@ export default function ActiveTrackingScreen() {
           {/* Finish button */}
           <View style={styles.finishRow}>
             <Button
-              label="Finish activity"
+              label={mode === 'bike' ? 'Finish ride' : 'Finish walk'}
               icon="stop"
               size="lg"
               full
@@ -489,9 +513,9 @@ const styles = StyleSheet.create({
   },
   topLabel: { ...TYPOGRAPHY.bodyMed, color: '#fff' },
   pauseBtn: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
@@ -617,8 +641,8 @@ const styles = StyleSheet.create({
     gap: 8,
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
-    paddingVertical: 12,
-    minHeight: 48,
+    paddingVertical: 14,
+    minHeight: 52,
   },
   helpDanger: { ...TYPOGRAPHY.smallMed, color: COLORS.danger },
   helpSafe: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },

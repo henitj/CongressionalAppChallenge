@@ -130,7 +130,7 @@ export default function ActivityDetailScreen() {
   return (
     <Screen>
       <Header
-        title={activity.type === 'bike' ? 'Bike ride' : 'Hike'}
+        title={activity.type === 'bike' ? 'Bike ride' : 'Walk'}
         subtitle={started.toLocaleDateString(undefined, {
           weekday: 'long',
           month: 'long',

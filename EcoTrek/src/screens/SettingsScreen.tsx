@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
@@ -7,6 +7,7 @@ import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, SectionHeader, Segmented, Divider, Banner, Button } from '../components/ui';
 
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
@@ -45,6 +46,7 @@ export default function SettingsScreen() {
   const notif = useNotifications();
 
   const [busy, setBusy] = useState(false);
+  const { colors } = useTheme();
 
   // Setup problems are shown during development only. A real user cannot act
   // on "the Android client ID is missing", but the team needs to see it before
@@ -119,7 +121,7 @@ export default function SettingsScreen() {
           <Card>
             <View style={styles.accountRow}>
               <View style={styles.accountIcon}>
-                <Icon name="user" size={18} color={COLORS.primary} strokeWidth={1.9} />
+                <Icon name="user" size={18} color={colors.primary} strokeWidth={1.9} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.accountName}>{user?.name ?? 'Trekker'}</Text>
@@ -145,6 +147,91 @@ export default function SettingsScreen() {
                 />
               </>
             ) : null}
+          </Card>
+        </View>
+
+        {/* Easy to use */}
+        <View>
+          <SectionHeader title="Easy to use" />
+          <Card padded={false}>
+            <ToggleRow
+              icon="user"
+              title="Simple mode"
+              subtitle="Bigger type. Clubs and weekly goals stay hidden."
+              value={simpleMode}
+              onChange={setSimpleMode}
+            />
+            <Divider style={{ marginLeft: 58 }} />
+            <ToggleRow
+              icon="activity"
+              title="Less motion"
+              subtitle="Skip fades and slides"
+              value={reduceMotion}
+              onChange={setReduceMotion}
+            />
+          </Card>
+          <Card style={{ marginTop: SPACING.sm, gap: SPACING.md - 2 }}>
+            <View>
+              <Text style={styles.settingLabel}>Text size</Text>
+              <Segmented
+                options={[
+                  { value: 'default', label: 'Normal' },
+                  { value: 'large', label: 'Large' },
+                  { value: 'xlarge', label: 'Extra large' },
+                ]}
+                value={textSize}
+                onChange={(v) => setTextSize(v as any)}
+                style={{ marginTop: 6 }}
+              />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>Look</Text>
+              <Segmented
+                options={[
+                  { value: 'light', label: 'Light' },
+                  { value: 'dark', label: 'Dark' },
+                  { value: 'highContrast', label: 'Contrast' },
+                ]}
+                value={appearance}
+                onChange={(v) => setAppearance(v as any)}
+                style={{ marginTop: 6 }}
+              />
+            </View>
+          </Card>
+        </View>
+
+        {/* Emergency contact */}
+        <View>
+          <SectionHeader title="Emergency contact" />
+          <Card style={{ gap: SPACING.md - 2 }}>
+            <Text style={styles.note}>
+              Saved on this phone. During a walk you can send them a text with one tap.
+            </Text>
+            <View style={{ gap: 6 }}>
+              <Text style={styles.settingLabel}>Name</Text>
+              <TextInput
+                value={emName}
+                onChangeText={setEmName}
+                onEndEditing={() => setProfile({ emergencyName: emName.trim(), emergencyPhone: emPhone.trim() })}
+                placeholder="Alex"
+                placeholderTextColor={COLORS.textLight}
+                style={styles.input}
+                accessibilityLabel="Emergency contact name"
+              />
+            </View>
+            <View style={{ gap: 6 }}>
+              <Text style={styles.settingLabel}>Phone</Text>
+              <TextInput
+                value={emPhone}
+                onChangeText={setEmPhone}
+                onEndEditing={() => setProfile({ emergencyName: emName.trim(), emergencyPhone: emPhone.trim() })}
+                placeholder="5125551234"
+                placeholderTextColor={COLORS.textLight}
+                keyboardType="phone-pad"
+                style={styles.input}
+                accessibilityLabel="Emergency contact phone"
+              />
+            </View>
           </Card>
         </View>
 
@@ -243,7 +330,7 @@ export default function SettingsScreen() {
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
             >
               <View style={styles.rowIcon}>
-                <Icon name="map-pin" size={16} color={COLORS.primary} strokeWidth={1.9} />
+                <Icon name="map-pin" size={16} color={colors.primary} strokeWidth={1.9} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>Location</Text>
@@ -278,7 +365,7 @@ export default function SettingsScreen() {
             <Divider style={{ marginLeft: 58 }} />
             <View style={styles.row}>
               <View style={styles.rowIcon}>
-                <Icon name="info" size={16} color={COLORS.textMuted} strokeWidth={1.9} />
+                <Icon name="info" size={16} color={colors.textMuted} strokeWidth={1.9} />
               </View>
               <Text style={[styles.rowTitle, { flex: 1 }]}>Version</Text>
               <Text style={styles.rowValue}>
@@ -320,11 +407,11 @@ export default function SettingsScreen() {
               onPress={confirmDeleteAccount}
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
             >
-              <View style={[styles.rowIcon, { backgroundColor: COLORS.dangerLight }]}>
-                <Icon name="trash" size={16} color={COLORS.danger} strokeWidth={1.9} />
+              <View style={[styles.rowIcon, { backgroundColor: colors.dangerLight }]}>
+                <Icon name="trash" size={16} color={colors.danger} strokeWidth={1.9} />
               </View>
               <View style={{ flex: 1 }}>
-                <Text style={[styles.rowTitle, { color: COLORS.danger }]}>Delete account</Text>
+                <Text style={[styles.rowTitle, { color: colors.danger }]}>Delete account</Text>
                 <Text style={styles.rowSub}>Erases everything and signs you out</Text>
               </View>
             </Pressable>

@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import Icon from '../components/Icon';
 import ConditionsCard from '../components/ConditionsCard';
 import { Screen, Card, Button, Segmented } from '../components/ui';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { ColorPalette, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useActivity } from '../context/ActivityContext';
 import { useProfile } from '../context/ProfileContext';
@@ -21,7 +21,8 @@ export default function HomeScreen() {
   const { profile } = useProfile();
   const { history } = useActivity();
   const { formatDistance, formatDistanceUnit } = useSettings();
-  const { fontScale } = useTheme();
+  const { colors, fontScale } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { mode, setMode, start, starting } = useStartActivity('hike');
 
   const firstName = firstNameOf(profile.firstName, user?.name);
@@ -63,7 +64,7 @@ export default function HomeScreen() {
           disabled={starting}
           accessibilityRole="button"
           accessibilityLabel={mode === 'bike' ? 'Start ride' : 'Start walk'}
-          style={({ pressed }) => [styles.startBtn, pressed && { opacity: 0.88 }]}
+          style={({ pressed }) => [styles.startBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.88 }]}
         >
           <Icon name="play" size={28} color="#fff" strokeWidth={2.2} />
           <Text style={[styles.startLabel, { fontSize: Math.round(22 * fontScale) }]}>
@@ -80,7 +81,7 @@ export default function HomeScreen() {
                   <Icon
                     name={last.type === 'bike' ? 'bike' : 'boot'}
                     size={20}
-                    color={COLORS.primary}
+                    color={colors.primary}
                     strokeWidth={1.9}
                   />
                 </View>
@@ -100,7 +101,7 @@ export default function HomeScreen() {
                     {Math.max(1, Math.round(last.durationSec / 60))} min
                   </Text>
                 </View>
-                <Icon name="chevron-right" size={18} color={COLORS.textLight} />
+                <Icon name="chevron-right" size={18} color={colors.textLight} />
               </View>
             </Card>
           ) : (
@@ -121,10 +122,11 @@ export default function HomeScreen() {
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ColorPalette) {
+  return StyleSheet.create({
   body: { paddingHorizontal: SPACING.md, gap: SPACING.lg },
   startBtn: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     borderRadius: RADIUS.xl,
     minHeight: 88,
     paddingVertical: 22,
@@ -134,18 +136,19 @@ const styles = StyleSheet.create({
     gap: 12,
   },
   startLabel: { color: '#fff', fontWeight: '700', letterSpacing: -0.2 },
-  section: { ...TYPOGRAPHY.h3, color: COLORS.text, marginBottom: SPACING.sm },
+  section: { ...TYPOGRAPHY.h3, color: c.text, marginBottom: SPACING.sm },
   lastRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
   lastIcon: {
     width: 48,
     height: 48,
     borderRadius: 24,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  lastTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  lastMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 3 },
-  emptyTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  emptyText: { ...TYPOGRAPHY.body, color: COLORS.textMuted, marginTop: 4 },
-});
+  lastTitle: { ...TYPOGRAPHY.h4, color: c.text },
+  lastMeta: { ...TYPOGRAPHY.small, color: c.textMuted, marginTop: 3 },
+  emptyTitle: { ...TYPOGRAPHY.h4, color: c.text },
+  emptyText: { ...TYPOGRAPHY.body, color: c.textMuted, marginTop: 4 },
+  });
+}
