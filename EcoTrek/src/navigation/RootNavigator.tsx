@@ -19,6 +19,7 @@ import AssistantScreen from '../screens/AssistantScreen';
 import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 import RecapScreen from '../screens/RecapScreen';
 import HistoryScreen from '../screens/HistoryScreen';
+import BadgesScreen from '../screens/BadgesScreen';
 
 import Icon, { IconName } from '../components/Icon';
 import { COLORS } from '../constants/theme';
@@ -101,6 +102,7 @@ export default function RootNavigator() {
       <Stack.Screen name="Safety" component={SafetyScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
+      <Stack.Screen name="Badges" component={BadgesScreen} />
     </Stack.Navigator>
   );
 }
@@ -110,9 +112,9 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    height: Platform.OS === 'ios' ? 88 : 70,
-    paddingBottom: Platform.OS === 'ios' ? 28 : 10,
-    paddingTop: 4,
+    height: Platform.OS === 'ios' ? 92 : 76,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 12,
+    paddingTop: 6,
     elevation: 0,
     shadowOpacity: 0,
   },
@@ -123,8 +125,8 @@ const styles = StyleSheet.create({
     width: 64,
   },
   tabLabel: {
-    fontSize: 11,
-    fontWeight: '500',
+    fontSize: 12,
+    fontWeight: '600',
     color: COLORS.textMuted,
     letterSpacing: 0.1,
   },

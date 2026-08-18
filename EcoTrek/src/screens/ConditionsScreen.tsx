@@ -58,7 +58,7 @@ export default function ConditionsScreen() {
         <RefreshControl refreshing={loading} onRefresh={() => refresh(true)} tintColor={COLORS.textMuted} />
       }
     >
-      <Header title="Conditions" subtitle="Trail safety report" back />
+      <Header title="Weather" subtitle="Today and the next few hours" back />
 
       <View style={styles.body}>
         {/* Verdict */}
@@ -81,12 +81,6 @@ export default function ConditionsScreen() {
             <GridStat label="Feels like" value={formatTemp(report.feelsLikeF)} />
             <GridStat label="High" value={formatTemp(report.highF)} />
             <GridStat label="Low" value={formatTemp(report.lowF)} />
-            <GridStat label="Humidity" value={`${report.humidity}%`} />
-            <GridStat label="Wind" value={`${Math.round(report.windMph)} mph`} />
-            <GridStat label="Gusts" value={`${Math.round(report.windGustMph)} mph`} />
-            <GridStat label="UV index" value={String(Math.round(report.uvIndex))} />
-            {report.aqi != null ? <GridStat label="Air quality" value={String(report.aqi)} /> : null}
-            <GridStat label="Rain chance" value={`${report.precipChance}%`} />
           </View>
         </Card>
 

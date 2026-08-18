@@ -232,8 +232,7 @@ export default function SettingsScreen() {
             </Pressable>
           </Card>
           <Text style={styles.note}>
-            EcoTrek only reads your location while the app is open and you are recording. It never
-            tracks you in the background.
+            We only use GPS while you are recording a walk or ride. When you stop, we stop.
           </Text>
         </View>
 

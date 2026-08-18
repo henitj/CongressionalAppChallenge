@@ -46,8 +46,12 @@ export default function Header({
         ) : null}
 
         <View style={styles.titleWrap}>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-          <Text style={styles.title} numberOfLines={1}>
+          {subtitle ? (
+            <Text style={styles.subtitle} numberOfLines={2}>
+              {subtitle}
+            </Text>
+          ) : null}
+          <Text style={styles.title} numberOfLines={2}>
             {title}
           </Text>
         </View>

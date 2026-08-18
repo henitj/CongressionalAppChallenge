@@ -46,16 +46,35 @@ export async function getCurrentPosition(): Promise<Coord | null> {
     const { status } = await Location.getForegroundPermissionsAsync();
     if (status !== 'granted') return null;
 
-    const pos = await Location.getCurrentPositionAsync({
-      accuracy: Location.Accuracy.Balanced,
-    });
-    return {
+    const toCoord = (pos: {
+      coords: {
+        latitude: number;
+        longitude: number;
+        accuracy: number | null;
+        speed: number | null;
+      };
+      timestamp: number;
+    }): Coord => ({
       latitude: pos.coords.latitude,
       longitude: pos.coords.longitude,
       timestamp: pos.timestamp,
       accuracy: pos.coords.accuracy ?? undefined,
       speed: pos.coords.speed ?? undefined,
-    };
+    });
+
+    // A recent last-known fix is enough to drop a pin. Waiting for a fresh
+    // GPS lock is what made "Start ride" feel broken.
+    const last = await Location.getLastKnownPositionAsync();
+    if (last && Date.now() - last.timestamp < 180_000) {
+      return toCoord(last);
+    }
+
+    const pos = await Promise.race([
+      Location.getCurrentPositionAsync({ accuracy: Location.Accuracy.Balanced }),
+      new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+    ]);
+    if (pos) return toCoord(pos);
+    return last ? toCoord(last) : null;
   } catch {
     return null;
   }

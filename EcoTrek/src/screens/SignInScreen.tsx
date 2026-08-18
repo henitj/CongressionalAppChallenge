@@ -21,23 +21,23 @@ import { APP_NAME, PRIVACY_POLICY_URL } from '../constants/appInfo';
 const FEATURES: { icon: IconName; title: string; text: string }[] = [
   {
     icon: 'navigation',
-    title: 'Track every mile',
-    text: 'GPS distance for hikes and rides, with automatic trail detection.',
+    title: 'See how far you go',
+    text: 'Start a walk or ride. We measure the miles for you.',
   },
   {
-    icon: 'shield',
-    title: 'Know before you go',
-    text: 'Live heat, storm and flood warnings straight from the National Weather Service.',
+    icon: 'sun',
+    title: 'Check the weather first',
+    text: 'Today’s temperature and the next few hours, right on the home screen.',
   },
   {
     icon: 'target',
-    title: 'Five small challenges a week',
-    text: 'Simple habits, not marathons. Points count toward your club.',
+    title: 'Five small goals a week',
+    text: 'Nothing huge. Just enough to keep you moving.',
   },
   {
     icon: 'users',
-    title: 'Compete as a team',
-    text: 'Pool your miles with your school, team or friends.',
+    title: 'Cheer each other on',
+    text: 'Join a club with a short code from a friend.',
   },
 ];
 

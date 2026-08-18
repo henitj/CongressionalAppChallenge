@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Share, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
@@ -16,7 +16,8 @@ import { useEcoPoints, Badge } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useClub, sortedMembers } from '../constants/ClubContext';
 import { useProfile } from '../context/ProfileContext';
-import { useResponsive } from '../hooks/useResponsive';
+import { fullNameOf } from '../services/displayName';
+import { shareText } from '../services/share';
 
 export default function ProfileScreen() {
   const navigation = useNavigation<any>();
@@ -29,13 +30,11 @@ export default function ProfileScreen() {
   const { formatDistanceCompact: formatDistance, formatDistanceUnit } = useSettings();
   const { myClub, myRank, clubsLeading } = useClub();
   const { profile, updateWeight } = useProfile();
-  const { badgeColumns } = useResponsive();
 
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [showWeightEditor, setShowWeightEditor] = useState(false);
   const [newWeight, setNewWeight] = useState('');
-
-  const badgeWidth = `${(100 - (badgeColumns - 1) * 2.6) / badgeColumns}%` as const;
+  const displayName = fullNameOf(profile, user?.name);
 
   const memberSince = useMemo(() => {
     const ts = myClub?.members.find((m) => m.id === user?.id)?.joinedAt;
@@ -44,23 +43,19 @@ export default function ProfileScreen() {
 
   const shareImpact = async () => {
     const lines = [
-      `${user?.name ?? 'I'} on EcoTrek`,
+      "I'm using EcoTrek to walk and bike more.",
       '',
-      `${formatDistance(totalMiles)} ${formatDistanceUnit()} covered under my own power`,
-      `${totalTrees} trees earned`,
-      `${totalPoints.toLocaleString()} EcoPoints · ${level}`,
-      currentStreak > 0 ? `${currentStreak}-week streak` : null,
-      uniqueTrailsCompleted > 0 ? `${uniqueTrailsCompleted} trails completed` : null,
-      totalCalories > 0 ? `${totalCalories.toLocaleString()} calories burned` : null,
+      'My progress:',
+      `• ${formatDistance(totalMiles)} ${formatDistanceUnit()} covered`,
+      `• ${totalTrees} tree${totalTrees === 1 ? '' : 's'} earned`,
+      `• ${totalPoints.toLocaleString()} EcoPoints · ${level}`,
+      currentStreak > 0 ? `• ${currentStreak}-week streak` : null,
+      uniqueTrailsCompleted > 0 ? `• ${uniqueTrailsCompleted} trails completed` : null,
       '',
-      'Tracking hikes and rides with EcoTrek.',
-    ].filter(Boolean);
+      'Want to join me?',
+    ].filter(Boolean) as string[];
 
-    try {
-      await Share.share({ message: lines.join('\n') });
-    } catch {
-      /* user cancelled */
-    }
+    await shareText(lines.join('\n'), `${displayName}'s EcoTrek progress`);
   };
 
   const handleUpdateWeight = async () => {
@@ -91,10 +86,10 @@ export default function ProfileScreen() {
         {/* Impact card */}
         <Card tone="dark" style={styles.impactCard}>
           <View style={styles.impactHeader}>
-            <Avatar name={user?.name} uri={user?.picture} size={62} ring="rgba(255,255,255,0.18)" />
+            <Avatar name={displayName} uri={user?.picture} size={62} ring="rgba(255,255,255,0.18)" />
             <View style={{ flex: 1 }}>
-              <Text style={styles.impactName} numberOfLines={1}>
-                {user?.name ?? 'Trekker'}
+              <Text style={styles.impactName} numberOfLines={2}>
+                {displayName}
               </Text>
               <View style={styles.levelRow}>
                 <Icon name="award" size={13} color={COLORS.primaryGlow} strokeWidth={2} />
@@ -128,10 +123,14 @@ export default function ProfileScreen() {
             <ImpactStat value={String(uniqueTrailsCompleted)} label="Trails" />
           </View>
 
-          <Pressable onPress={shareImpact} style={styles.shareBar}>
-            <Icon name="share" size={15} color="#fff" strokeWidth={2} />
-            <Text style={styles.shareBarText}>Share my impact</Text>
-          </Pressable>
+          <Button
+            label="Share my progress"
+            icon="share"
+            variant="secondary"
+            size="lg"
+            full
+            onPress={shareImpact}
+          />
         </Card>
 
         {/* Weight tracking */}
@@ -255,31 +254,37 @@ export default function ProfileScreen() {
           </Card>
         </View>
 
-        {/* Badges */}
+        {/* Badges — 3-up preview, full list lives on its own page */}
         <View>
-          <SectionHeader title="Accomplishments" />
+          <SectionHeader
+            title="Badges"
+            action="See all"
+            onAction={() => navigation.navigate('Badges')}
+          />
           <Card>
             <View style={styles.badgeSummary}>
               <Text style={styles.badgeCount}>
                 {unlockedBadges.length}
                 <Text style={styles.badgeCountTotal}> / {badges.length}</Text>
               </Text>
-              <Text style={styles.badgeCountLabel}>badges unlocked</Text>
+              <Text style={styles.badgeCountLabel}>earned</Text>
             </View>
             <ProgressBar
-              percent={(unlockedBadges.length / badges.length) * 100}
+              percent={badges.length ? (unlockedBadges.length / badges.length) * 100 : 0}
               style={{ marginTop: SPACING.sm, marginBottom: SPACING.md }}
+              height={10}
             />
-            <View style={styles.badgeGrid}>
-              {badges.map((b) => (
+            <View style={styles.badgePreviewRow}>
+              {(unlockedBadges.length ? unlockedBadges : badges).slice(0, 3).map((b) => (
                 <Pressable
                   key={b.id}
                   onPress={() => setSelectedBadge(b)}
-                  style={[styles.badge, { width: badgeWidth }, b.unlocked && styles.badgeUnlocked]}
+                  style={[styles.badgePreview, b.unlocked && styles.badgeUnlocked]}
+                  accessibilityLabel={b.name}
                 >
                   <Icon
                     name={b.icon}
-                    size={20}
+                    size={26}
                     color={b.unlocked ? COLORS.primary : COLORS.textLight}
                     strokeWidth={1.9}
                   />
@@ -292,6 +297,14 @@ export default function ProfileScreen() {
                 </Pressable>
               ))}
             </View>
+            <Button
+              label="See all badges"
+              variant="secondary"
+              full
+              iconRight="chevron-right"
+              onPress={() => navigation.navigate('Badges')}
+              style={{ marginTop: SPACING.md }}
+            />
           </Card>
         </View>
 
@@ -322,6 +335,8 @@ export default function ProfileScreen() {
           <LinkRow icon="calendar" label="Weekly streak" onPress={() => navigation.navigate('Streak')} />
           <Divider style={{ marginLeft: 58 }} />
           <LinkRow icon="target" label="Weekly challenges" onPress={() => navigation.navigate('Challenges')} />
+          <Divider style={{ marginLeft: 58 }} />
+          <LinkRow icon="award" label="Badges" onPress={() => navigation.navigate('Badges')} />
           <Divider style={{ marginLeft: 58 }} />
           <LinkRow icon="shield" label="Trail safety" onPress={() => navigation.navigate('Safety')} />
           <Divider style={{ marginLeft: 58 }} />
@@ -579,25 +594,26 @@ const styles = StyleSheet.create({
   badgeCount: { ...TYPOGRAPHY.h1, color: COLORS.text },
   badgeCountTotal: { ...TYPOGRAPHY.h3, color: COLORS.textLight, fontWeight: '500' },
   badgeCountLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
-  badgeGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
-  badge: {
+  badgePreviewRow: { flexDirection: 'row', gap: SPACING.sm },
+  badgePreview: {
+    flex: 1,
     aspectRatio: 1,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: COLORS.borderLight,
+    borderColor: COLORS.border,
     backgroundColor: COLORS.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 6,
-    padding: 6,
+    gap: 8,
+    padding: 8,
   },
   badgeUnlocked: { backgroundColor: COLORS.primarySurface, borderColor: COLORS.primaryGlow },
   badgeName: {
-    fontSize: 10,
-    fontWeight: '600',
-    color: COLORS.textLight,
+    fontSize: 13,
+    fontWeight: '700',
+    color: COLORS.textMuted,
     textAlign: 'center',
-    lineHeight: 13,
+    lineHeight: 17,
   },
   badgeNameUnlocked: { color: COLORS.primary },
   badgeLarge: {

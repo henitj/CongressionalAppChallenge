@@ -1,6 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, ScrollView } from 'react-native';
 import Icon, { IconName } from './Icon';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useWeather } from '../context/WeatherContext';
@@ -15,14 +14,11 @@ const TONE: Record<SafetyLevel, { bg: string; fg: string; border: string }> = {
 };
 
 /**
- * The "should I go outside right now" card.
- *
- * This is the first thing on the Home screen for a reason: in Austin the
- * answer is genuinely no for a good chunk of the year, and an app that sends
- * you out into a 108°F afternoon or a flash flood warning is a bad app.
+ * Home-screen weather: current temperature plus the next few hours.
+ * No extra page, no 10-stat grid — just what you need to decide if you
+ * should go outside.
  */
 export default function ConditionsCard({ compact }: { compact?: boolean }) {
-  const navigation = useNavigation<any>();
   const { report, loading, error, refresh } = useWeather();
   const { formatTemp } = useSettings();
 
@@ -30,43 +26,48 @@ export default function ConditionsCard({ compact }: { compact?: boolean }) {
     return (
       <View style={[styles.card, styles.loadingCard]}>
         <ActivityIndicator size="small" color={COLORS.textMuted} />
-        <Text style={styles.loadingText}>Checking conditions…</Text>
+        <Text style={styles.loadingText}>Checking the weather…</Text>
       </View>
     );
   }
 
   if (error || !report) {
     return (
-      <Pressable onPress={() => refresh(true)} style={[styles.card, styles.loadingCard]}>
-        <Icon name="refresh" size={16} color={COLORS.textMuted} />
-        <Text style={styles.loadingText}>{error ?? 'Conditions unavailable'} — tap to retry</Text>
+      <Pressable
+        onPress={() => refresh(true)}
+        style={[styles.card, styles.loadingCard]}
+        accessibilityLabel="Retry weather"
+      >
+        <Icon name="refresh" size={18} color={COLORS.textMuted} />
+        <Text style={styles.loadingText}>{error ?? 'Weather unavailable'} — tap to try again</Text>
       </Pressable>
     );
   }
 
   const tone = TONE[report.level];
   const meta = LEVEL_META[report.level];
+  const hours = report.hourly.slice(0, 6);
 
   return (
     <Pressable
-      onPress={() => navigation.navigate('Conditions')}
+      onPress={() => refresh(true)}
       style={({ pressed }) => [
         styles.card,
         { backgroundColor: tone.bg, borderColor: tone.border },
-        pressed && { opacity: 0.85 },
+        pressed && { opacity: 0.9 },
       ]}
+      accessibilityLabel={`Weather ${formatTemp(report.tempF)}, ${meta.label}`}
     >
       <View style={styles.topRow}>
         <View style={[styles.iconWrap, { backgroundColor: tone.fg }]}>
-          <Icon name={report.icon as IconName} size={20} color="#fff" strokeWidth={2} />
+          <Icon name={report.icon as IconName} size={22} color="#fff" strokeWidth={2} />
         </View>
 
         <View style={{ flex: 1 }}>
-          <View style={styles.statusRow}>
-            <View style={[styles.statusDot, { backgroundColor: tone.fg }]} />
-            <Text style={[styles.status, { color: tone.fg }]}>{meta.short}</Text>
-          </View>
-          <Text style={styles.headline}>{report.headline}</Text>
+          <Text style={[styles.status, { color: tone.fg }]}>{meta.label}</Text>
+          <Text style={styles.headline} numberOfLines={2}>
+            {report.headline}
+          </Text>
         </View>
 
         <View style={styles.tempWrap}>
@@ -75,53 +76,34 @@ export default function ConditionsCard({ compact }: { compact?: boolean }) {
         </View>
       </View>
 
-      {!compact ? (
-        <>
-          <Text style={styles.summary} numberOfLines={3}>
-            {report.summary}
-          </Text>
-
-          <View style={styles.statsRow}>
-            <Stat icon="droplet" value={`${report.precipChance}%`} label="Rain" />
-            <Stat icon="wind" value={`${Math.round(report.windMph)}`} label="mph" />
-            <Stat icon="sun" value={`${Math.round(report.uvIndex)}`} label="UV" />
-            {report.aqi != null ? <Stat icon="cloud-fog" value={`${report.aqi}`} label="AQI" /> : null}
-          </View>
-
-          {report.bestWindow && report.level !== 'good' ? (
-            <View style={styles.bestWindow}>
-              <Icon name="clock" size={13} color={COLORS.textSecondary} strokeWidth={2} />
-              <Text style={styles.bestWindowText}>
-                Better window: <Text style={styles.bestWindowBold}>{report.bestWindow}</Text>
-              </Text>
+      {!compact && hours.length > 0 ? (
+        <ScrollView
+          horizontal
+          showsHorizontalScrollIndicator={false}
+          contentContainerStyle={styles.hourly}
+        >
+          {hours.map((h) => (
+            <View key={h.time} style={styles.hourCol}>
+              <Text style={styles.hourLabel}>{formatHour(h.hour)}</Text>
+              <Text style={styles.hourTemp}>{Math.round(h.temp)}°</Text>
             </View>
-          ) : null}
+          ))}
+        </ScrollView>
+      ) : null}
 
-          <View style={styles.footer}>
-            <Text style={styles.footerText}>
-              {report.advisories.length > 0
-                ? `${report.advisories.length} advisor${report.advisories.length === 1 ? 'y' : 'ies'}`
-                : 'No active advisories'}
-            </Text>
-            <View style={styles.footerLink}>
-              <Text style={[styles.footerLinkText, { color: tone.fg }]}>Full report</Text>
-              <Icon name="chevron-right" size={13} color={tone.fg} strokeWidth={2.3} />
-            </View>
-          </View>
-        </>
+      {report.level === 'danger' || report.level === 'warning' ? (
+        <Text style={styles.note} numberOfLines={2}>
+          {report.summary}
+        </Text>
       ) : null}
     </Pressable>
   );
 }
 
-function Stat({ icon, value, label }: { icon: IconName; value: string; label: string }) {
-  return (
-    <View style={styles.stat}>
-      <Icon name={icon} size={13} color={COLORS.textMuted} strokeWidth={1.9} />
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
-    </View>
-  );
+function formatHour(h: number) {
+  if (h === 0) return '12 AM';
+  if (h === 12) return '12 PM';
+  return h > 12 ? `${h - 12} PM` : `${h} AM`;
 }
 
 const styles = StyleSheet.create({
@@ -131,53 +113,38 @@ const styles = StyleSheet.create({
     borderColor: COLORS.border,
     backgroundColor: COLORS.surface,
     padding: SPACING.md,
-    gap: SPACING.sm + 2,
+    gap: SPACING.md,
   },
   loadingCard: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    paddingVertical: SPACING.md + 2,
+    paddingVertical: SPACING.md + 4,
   },
-  loadingText: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  loadingText: { ...TYPOGRAPHY.small, color: COLORS.textMuted, flex: 1 },
   topRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
   iconWrap: {
-    width: 42,
-    height: 42,
+    width: 48,
+    height: 48,
     borderRadius: RADIUS.md,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  statusRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  statusDot: { width: 6, height: 6, borderRadius: 3 },
-  status: { ...TYPOGRAPHY.micro, letterSpacing: 1 },
-  headline: { ...TYPOGRAPHY.h3, color: COLORS.text, marginTop: 1 },
+  status: { ...TYPOGRAPHY.overline },
+  headline: { ...TYPOGRAPHY.h3, color: COLORS.text, marginTop: 2 },
   tempWrap: { alignItems: 'flex-end' },
-  temp: { ...TYPOGRAPHY.h2, color: COLORS.text },
-  feels: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
-  summary: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
-  statsRow: {
-    flexDirection: 'row',
-    gap: SPACING.lg,
-    paddingTop: SPACING.sm + 2,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.06)',
-  },
-  stat: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  statValue: { ...TYPOGRAPHY.smallMed, color: COLORS.text },
-  statLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
-  bestWindow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  bestWindowText: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
-  bestWindowBold: { fontWeight: '700', color: COLORS.text },
-  footer: {
-    flexDirection: 'row',
+  temp: { fontSize: 32, fontWeight: '700', color: COLORS.text, letterSpacing: -0.5 },
+  feels: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
+  hourly: { gap: SPACING.md, paddingTop: 2 },
+  hourCol: {
     alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingTop: SPACING.sm,
-    borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.06)',
+    minWidth: 56,
+    paddingVertical: 8,
+    paddingHorizontal: 8,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    borderRadius: RADIUS.md,
   },
-  footerText: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
-  footerLink: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  footerLinkText: { ...TYPOGRAPHY.micro, fontWeight: '700' },
+  hourLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  hourTemp: { ...TYPOGRAPHY.h3, color: COLORS.text, marginTop: 2 },
+  note: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
 });

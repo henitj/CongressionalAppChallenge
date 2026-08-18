@@ -33,6 +33,7 @@ type AuthState = {
   googleConfigured: boolean;
   signInWithGoogle: () => Promise<void>;
   signInAsGuest: (name?: string) => Promise<void>;
+  updateUser: (updates: Partial<Pick<User, 'name' | 'picture'>>) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -136,6 +137,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(u));
   }, []);
 
+  const updateUser = useCallback(async (updates: Partial<Pick<User, 'name' | 'picture'>>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
+  }, []);
+
   const signOut = useCallback(async () => {
     setUser(null);
     setError(null);
@@ -162,9 +172,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       googleConfigured,
       signInWithGoogle,
       signInAsGuest,
+      updateUser,
       signOut,
     }),
-    [user, loading, error, googleConfigured, signInWithGoogle, signInAsGuest, signOut]
+    [user, loading, error, googleConfigured, signInWithGoogle, signInAsGuest, updateUser, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

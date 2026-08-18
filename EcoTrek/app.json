@@ -33,6 +33,7 @@
       "package": "com.ecotrek.app",
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",

@@ -240,8 +240,8 @@ export const CHALLENGE_CATALOG: ChallengeTemplate[] = [
   },
   {
     id: 'community-share-impact',
-    title: 'Share your impact card',
-    description: 'Send your stats to one person. Recruiting counts as impact.',
+    title: 'Share your progress',
+    description: 'Send your miles and trees to one person this week.',
     icon: 'share',
     points: 20,
     kind: 'manual',

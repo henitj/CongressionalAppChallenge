@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, RefreshControl } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -18,10 +18,13 @@ import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useClub } from '../constants/ClubContext';
 import { useWeather } from '../context/WeatherContext';
+import { useProfile } from '../context/ProfileContext';
+import { firstNameOf } from '../services/displayName';
 
 export default function HomeScreen() {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const { profile } = useProfile();
   const { totalMiles, totalTrees, totalActivities, history } = useActivity();
   const { currentStreak, longestStreak, activeThisWeek } = useStreak();
   const { challenges, completedCount, totalCount, timeLeftLabel, completeChallenge } =
@@ -31,7 +34,7 @@ export default function HomeScreen() {
   const { myClub, myRank } = useClub();
   const { refresh: refreshWeather, loading: weatherLoading } = useWeather();
 
-  const firstName = user?.name?.split(' ')[0] ?? 'Trekker';
+  const firstName = firstNameOf(profile.firstName, user?.name);
   const greeting = useMemo(() => {
     const h = new Date().getHours();
     if (h < 12) return 'Good morning';
@@ -50,12 +53,12 @@ export default function HomeScreen() {
       }
     >
       <Header
-        title={`${greeting}, ${firstName}`}
-        subtitle={new Date().toLocaleDateString(undefined, {
+        title={firstName}
+        subtitle={`${greeting} · ${new Date().toLocaleDateString(undefined, {
           weekday: 'long',
           month: 'short',
           day: 'numeric',
-        })}
+        })}`}
         actions={[{ icon: 'sliders', onPress: () => navigation.navigate('Settings'), label: 'Settings' }]}
       />
 

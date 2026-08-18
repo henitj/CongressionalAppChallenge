@@ -36,6 +36,7 @@ import RecapScreen from '../screens/RecapScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import SignInScreen from '../screens/SignInScreen';
+import BadgesScreen from '../screens/BadgesScreen';
 
 /**
  * Render smoke tests.
@@ -125,10 +126,11 @@ const SCREENS: [string, React.ComponentType<any>, string | RegExp][] = [
   ['Track', TrackScreen, /How trees are earned/i],
   ['Trails', TrailsScreen, 'Ask about a trail'],
   ['Clubs', LeaderboardScreen, 'My club'],
-  ['Profile', ProfileScreen, 'Accomplishments'],
+  ['Profile', ProfileScreen, 'See all badges'],
   ['Impact', ImpactScreen, /Everything you have logged/i],
   ['Challenges', ChallengesScreen, /Completed this week/i],
-  ['Conditions', ConditionsScreen, /Conditions unavailable|Trail safety report/i],
+  ['Conditions', ConditionsScreen, /Conditions unavailable|Today and the next few hours/i],
+  ['Badges', BadgesScreen, /of .* badges earned/i],
   ['Safety', SafetyScreen, 'Emergency numbers'],
   ['Settings', SettingsScreen, 'Units'],
   ['Streak', StreakScreen, 'Weekly Streak'],
@@ -176,7 +178,7 @@ describe('screens that do not need the provider stack', () => {
         <OnboardingScreen onDone={() => {}} />
       </SafeAreaProvider>
     );
-    await waitFor(() => expect(queryByText('Track what you move')).toBeTruthy());
+    await waitFor(() => expect(queryByText('Walk or ride. We measure the miles.')).toBeTruthy());
     expect(queryByText('Skip')).toBeTruthy();
     expect(toJSON()).toBeTruthy();
   });

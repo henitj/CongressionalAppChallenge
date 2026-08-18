@@ -57,6 +57,9 @@ export function Screen({
         contentContainerStyle={[ui.scrollContent, contentStyle]}
         showsVerticalScrollIndicator={false}
         refreshControl={refreshControl}
+        keyboardShouldPersistTaps="handled"
+        keyboardDismissMode="on-drag"
+        automaticallyAdjustKeyboardInsets
       >
         <View style={column}>{children}</View>
       </ScrollView>
@@ -180,10 +183,10 @@ export function Button({
 
   const pad =
     size === 'sm'
-      ? { paddingVertical: 9, paddingHorizontal: 14 }
+      ? { paddingVertical: 12, paddingHorizontal: 16, minHeight: 44 }
       : size === 'lg'
-      ? { paddingVertical: 16, paddingHorizontal: 22 }
-      : { paddingVertical: 13, paddingHorizontal: 18 };
+      ? { paddingVertical: 18, paddingHorizontal: 24, minHeight: 58 }
+      : { paddingVertical: 15, paddingHorizontal: 20, minHeight: 52 };
 
   return (
     <Pressable
@@ -210,8 +213,8 @@ export function Button({
             style={[
               ui.btnLabel,
               { color: fg },
-              size === 'sm' && { fontSize: 13 },
-              size === 'lg' && { fontSize: 16 },
+              size === 'sm' && { fontSize: 15 },
+              size === 'lg' && { fontSize: 18 },
             ]}
           >
             {label}
@@ -464,7 +467,7 @@ export function Sheet({
           clear of the keyboard rather than sitting behind it. */}
       <KeyboardAvoidingView
         style={ui.sheetBackdrop}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
       >
         <Pressable style={{ flex: 1 }} onPress={onClose} />
         <SafeAreaView edges={['bottom']} style={ui.sheet}>
@@ -624,7 +627,7 @@ const ui = StyleSheet.create({
   },
   btnBordered: { borderWidth: 1, borderColor: COLORS.borderStrong },
   btnDisabled: { opacity: 0.45 },
-  btnLabel: { fontSize: 14.5, fontWeight: '600', letterSpacing: -0.1 },
+  btnLabel: { fontSize: 16, fontWeight: '700', letterSpacing: -0.1 },
 
   pill: {
     flexDirection: 'row',

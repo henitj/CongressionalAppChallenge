@@ -13,16 +13,14 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
 import { Button } from '../components/ui';
-import { COLORS, RADIUS, SPACING, TREE_RULES, TYPOGRAPHY } from '../constants/theme';
+import { COLORS, RADIUS, SPACING, TREE_RULES } from '../constants/theme';
 
 /**
  * First-run walkthrough.
  *
- * Four screens, because four is what it takes to explain the two things that
- * are not obvious — that trees are symbolic, and that the app refuses to send
- * you out in dangerous weather. Everything else can be discovered.
- *
- * Skippable from the first screen. Nobody should be trapped in an intro.
+ * Written in plain language for older adults and anyone who is new to the
+ * app. No jargon, no scary headlines, no "we only read location in the
+ * background" legalese.
  */
 
 type Page = {
@@ -35,44 +33,44 @@ type Page = {
 const PAGES: Page[] = [
   {
     icon: 'navigation',
-    title: 'Track what you move',
-    body: 'Start a hike or a ride and EcoTrek measures it with GPS. It recognises which Austin trail you are on by itself.',
+    title: 'Walk or ride. We measure the miles.',
+    body: 'Tap Start, put your phone in your pocket, and go. EcoTrek records how far you walk, hike, or bike.',
     points: [
-      { icon: 'map-pin', text: '14 trails with automatic detection' },
-      { icon: 'flag', text: 'Cover 70% of one to log a completion' },
-      { icon: 'battery', text: 'Location is read only while you record, never in the background' },
+      { icon: 'map-pin', text: 'It can tell which Austin trail you are on.' },
+      { icon: 'flag', text: 'Finish most of a trail and we mark it complete.' },
+      { icon: 'battery', text: 'We only use GPS while you are recording. When you stop, we stop.' },
     ],
   },
   {
     icon: 'tree',
-    title: 'Miles become trees',
-    body: `One tree per ${TREE_RULES.hikeMilesPerTree} mile hiked, one per ${TREE_RULES.bikeMilesPerTree} miles biked.`,
+    title: 'Every mile grows your forest.',
+    body: `Walk ${TREE_RULES.hikeMilesPerTree} mile, earn 1 tree. Bike ${TREE_RULES.bikeMilesPerTree} miles, earn 1 tree.`,
     points: [
       {
         icon: 'info',
-        text: 'Trees are a symbolic measure of your effort. No real tree is planted and no organisation is involved.',
+        text: 'Trees are a fun way to see your progress. No real tree is planted.',
       },
-      { icon: 'star', text: 'They sit alongside EcoPoints, badges and levels' },
+      { icon: 'star', text: 'You also earn points, badges, and levels as you go.' },
     ],
   },
   {
-    icon: 'shield',
-    title: 'It tells you when not to go',
-    body: 'Austin heat and flash floods are the real hazard, so conditions come before encouragement.',
+    icon: 'sun',
+    title: 'We check the weather for you.',
+    body: 'See today’s temperature and the next few hours before you head out. If it is too hot or stormy, we will say so clearly.',
     points: [
-      { icon: 'thermometer', text: 'Live heat index, storms, air quality and UV' },
-      { icon: 'alert-triangle', text: 'Official National Weather Service warnings' },
-      { icon: 'clock', text: 'In dangerous conditions the Start button asks you to reconsider' },
+      { icon: 'thermometer', text: 'Current temperature, right on the home screen.' },
+      { icon: 'clock', text: 'The next few hours, so you can pick a cooler time.' },
+      { icon: 'shield', text: 'A simple note if it is safer to stay inside.' },
     ],
   },
   {
     icon: 'users',
-    title: 'Bring people with you',
-    body: 'Clubs are invite-only. Everything you earn adds to your club as well as to you.',
+    title: 'Bring people with you.',
+    body: 'Join a club with a short code from a friend. Your miles help the whole group.',
     points: [
-      { icon: 'lock', text: 'Join with a six-character code from a member' },
-      { icon: 'target', text: 'Five small challenges every week, reset on Monday' },
-      { icon: 'flame', text: 'A streak for showing up, and a world top ten to climb' },
+      { icon: 'lock', text: 'Clubs are invite-only. You need a 6-character code.' },
+      { icon: 'target', text: 'Five small goals each week. Nothing huge.' },
+      { icon: 'flame', text: 'A weekly streak for showing up — that is enough.' },
     ],
   },
 ];
@@ -100,10 +98,10 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
           <View style={styles.mark}>
-            <Icon name="tree" size={18} color={COLORS.primaryGlow} strokeWidth={2} />
+            <Icon name="tree" size={20} color={COLORS.primaryGlow} strokeWidth={2} />
           </View>
           {!last ? (
-            <Pressable onPress={onDone} hitSlop={12}>
+            <Pressable onPress={onDone} hitSlop={16} accessibilityLabel="Skip introduction">
               <Text style={styles.skip}>Skip</Text>
             </Pressable>
           ) : null}
@@ -120,7 +118,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
           {PAGES.map((p) => (
             <View key={p.title} style={[styles.page, { width }]}>
               <View style={styles.iconWrap}>
-                <Icon name={p.icon} size={34} color={COLORS.primaryGlow} strokeWidth={1.7} />
+                <Icon name={p.icon} size={36} color={COLORS.primaryGlow} strokeWidth={1.7} />
               </View>
 
               <Text style={styles.title}>{p.title}</Text>
@@ -130,7 +128,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
                 {p.points.map((pt) => (
                   <View key={pt.text} style={styles.point}>
                     <View style={styles.pointIcon}>
-                      <Icon name={pt.icon} size={15} color={COLORS.primaryGlow} strokeWidth={1.9} />
+                      <Icon name={pt.icon} size={18} color={COLORS.primaryGlow} strokeWidth={1.9} />
                     </View>
                     <Text style={styles.pointText}>{pt.text}</Text>
                   </View>
@@ -146,7 +144,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
               <Pressable
                 key={p.title}
                 onPress={() => goTo(i)}
-                hitSlop={8}
+                hitSlop={12}
                 accessibilityLabel={`Go to step ${i + 1}`}
               >
                 <View style={[styles.dot, i === page && styles.dotActive]} />
@@ -179,57 +177,59 @@ const styles = StyleSheet.create({
     paddingVertical: SPACING.md,
   },
   mark: {
-    width: 38,
-    height: 38,
+    width: 44,
+    height: 44,
     borderRadius: RADIUS.md,
     backgroundColor: 'rgba(255,255,255,0.09)',
     alignItems: 'center',
     justifyContent: 'center',
   },
-  skip: { ...TYPOGRAPHY.bodyMed, color: 'rgba(255,255,255,0.55)' },
+  skip: { fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.75)' },
 
   page: { paddingHorizontal: SPACING.lg, justifyContent: 'center', flex: 1 },
   iconWrap: {
-    width: 72,
-    height: 72,
+    width: 80,
+    height: 80,
     borderRadius: RADIUS.xl,
     backgroundColor: 'rgba(255,255,255,0.08)',
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.lg,
   },
-  title: { fontSize: 32, fontWeight: '700', color: '#fff', letterSpacing: -0.5 },
+  title: { fontSize: 30, fontWeight: '700', color: '#fff', letterSpacing: -0.4, lineHeight: 36 },
   body: {
-    ...TYPOGRAPHY.body,
-    color: 'rgba(255,255,255,0.68)',
-    marginTop: SPACING.sm + 2,
-    maxWidth: 380,
+    fontSize: 18,
+    lineHeight: 27,
+    fontWeight: '400',
+    color: 'rgba(255,255,255,0.78)',
+    marginTop: SPACING.md,
+    maxWidth: 400,
   },
   points: { marginTop: SPACING.xl, gap: SPACING.md },
   point: { flexDirection: 'row', gap: SPACING.sm + 4, alignItems: 'flex-start' },
   pointIcon: {
-    width: 30,
-    height: 30,
+    width: 36,
+    height: 36,
     borderRadius: RADIUS.sm,
     backgroundColor: 'rgba(255,255,255,0.07)',
     alignItems: 'center',
     justifyContent: 'center',
   },
   pointText: {
-    ...TYPOGRAPHY.small,
-    color: 'rgba(255,255,255,0.7)',
+    fontSize: 16,
+    lineHeight: 23,
+    color: 'rgba(255,255,255,0.8)',
     flex: 1,
-    lineHeight: 20,
-    paddingTop: 5,
+    paddingTop: 6,
   },
 
   footer: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md, gap: SPACING.md },
-  dots: { flexDirection: 'row', justifyContent: 'center', gap: 7, paddingVertical: SPACING.sm },
+  dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: SPACING.sm },
   dot: {
-    width: 7,
-    height: 7,
-    borderRadius: 4,
+    width: 10,
+    height: 10,
+    borderRadius: 5,
     backgroundColor: 'rgba(255,255,255,0.22)',
   },
-  dotActive: { backgroundColor: COLORS.primaryGlow, width: 20 },
+  dotActive: { backgroundColor: COLORS.primaryGlow, width: 24 },
 });

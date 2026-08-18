@@ -107,24 +107,29 @@ export const RADIUS = {
 
 export const TYPOGRAPHY = {
   display: { fontSize: 36, fontWeight: '700' as const, letterSpacing: -0.3 },
-  h1: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.2 },
-  h2: { fontSize: 22, fontWeight: '700' as const, letterSpacing: -0.15 },
-  h3: { fontSize: 18, fontWeight: '600' as const, letterSpacing: -0.2 },
-  h4: { fontSize: 16, fontWeight: '600' as const, letterSpacing: -0.1 },
-  body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 24 },
-  bodyMed: { fontSize: 16, fontWeight: '500' as const, lineHeight: 24 },
-  small: { fontSize: 14, fontWeight: '400' as const, lineHeight: 20 },
-  smallMed: { fontSize: 14, fontWeight: '600' as const },
-  caption: { fontSize: 13, fontWeight: '500' as const, letterSpacing: 0 },
+  h1: { fontSize: 30, fontWeight: '700' as const, letterSpacing: -0.2 },
+  h2: { fontSize: 24, fontWeight: '700' as const, letterSpacing: -0.15 },
+  h3: { fontSize: 20, fontWeight: '600' as const, letterSpacing: -0.2 },
+  h4: { fontSize: 17, fontWeight: '600' as const, letterSpacing: -0.1 },
+  body: { fontSize: 17, fontWeight: '400' as const, lineHeight: 26 },
+  bodyMed: { fontSize: 17, fontWeight: '500' as const, lineHeight: 26 },
+  small: { fontSize: 16, fontWeight: '400' as const, lineHeight: 23 },
+  smallMed: { fontSize: 16, fontWeight: '600' as const },
+  caption: { fontSize: 15, fontWeight: '500' as const, letterSpacing: 0 },
   overline: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    letterSpacing: 0.9,
+    fontSize: 13,
+    fontWeight: '700' as const,
+    letterSpacing: 0.6,
     textTransform: 'uppercase' as const,
   },
-  micro: { fontSize: 11, fontWeight: '600' as const, letterSpacing: 0.6 },
-  metric: { fontSize: 30, fontWeight: '700' as const, letterSpacing: -0.3 },
+  micro: { fontSize: 13, fontWeight: '600' as const, letterSpacing: 0.2 },
+  metric: { fontSize: 32, fontWeight: '700' as const, letterSpacing: -0.3 },
   metricLg: { fontSize: 48, fontWeight: '700' as const, letterSpacing: -0.5 },
+};
+
+/** Minimum comfortable tap target for older and disabled users. */
+export const TOUCH = {
+  min: 52,
 };
 
 export const SHADOWS = {
