@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Share } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
@@ -16,6 +16,7 @@ import { useSettings } from '../constants/SettingsContext';
 import { buildRecap, lastWeekStart, RecapMetric } from '../services/recap';
 import { weekKey } from '../services/dates';
 import { computeRecords } from '../services/records';
+import { shareText } from '../services/share';
 
 /**
  * Last week, summarised.
@@ -67,12 +68,11 @@ export default function RecapScreen() {
   }, [records, history, weekStartMs]);
 
   const share = () => {
-    Share.share({
-      message:
-        `My EcoTrek week (${recap.rangeLabel}):\n` +
-        `${recap.miles} mi · ${recap.activities} activities · ${recap.trees} trees · ${recap.points} points\n` +
-        `Out on ${recap.activeDays} of 7 days.`,
-    });
+    shareText(
+      `My EcoTrek week (${recap.rangeLabel}):\n` +
+        `${recap.miles} miles · ${recap.activities} activities · ${recap.trees} trees · ${recap.points} points\n` +
+        `I got outside on ${recap.activeDays} of 7 days.`
+    );
   };
 
   return (

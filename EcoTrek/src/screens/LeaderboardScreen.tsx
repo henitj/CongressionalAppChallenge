@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useCallback, useState } from 'react';
 import {
   View,
   Text,
@@ -7,7 +7,6 @@ import {
   TextInput,
   Alert,
   Switch,
-  Share,
   RefreshControl,
 } from 'react-native';
 
@@ -43,6 +42,8 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useActivity } from '../context/ActivityContext';
+import { shareText } from '../services/share';
+import { useResetOnLeave } from '../hooks/useResetOnLeave';
 
 type Tab = 'my_club' | 'ranking';
 
@@ -89,6 +90,20 @@ export default function LeaderboardScreen() {
   const [code, setCode] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  useResetOnLeave(
+    useCallback(() => {
+      setTab('my_club');
+      setShowCreate(false);
+      setShowJoin(false);
+      setShowCap(false);
+      setShowGoal(false);
+      setError(null);
+      setName('');
+      setDescription('');
+      setCode('');
+    }, [])
+  );
 
   // Explainers earn their keep for the first few sessions, then get out of
   // the way. Nobody needs to be told how scoring works on their tenth visit.
@@ -154,9 +169,9 @@ export default function LeaderboardScreen() {
 
   const shareCode = async () => {
     if (!myClub) return;
-    await Share.share({
-      message: `Join my EcoTrek club "${myClub.name}" — enter code ${myClub.code} in the app.`,
-    });
+    await shareText(
+      `Join my EcoTrek club "${myClub.name}".\nOpen the app and enter this code: ${myClub.code}`
+    );
   };
 
   const spotsLeft = myClub ? myClub.maxMembers - myClub.members.length : 0;

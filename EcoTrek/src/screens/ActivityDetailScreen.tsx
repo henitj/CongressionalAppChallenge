@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Alert, Share } from 'react-native';
+import { View, Text, StyleSheet, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import Header from '../components/Header';
@@ -12,6 +12,7 @@ import { useActivity } from '../context/ActivityContext';
 import { useSettings } from '../constants/SettingsContext';
 import { getTrailById } from '../constants/austinTrails';
 import { FLAG_MESSAGES } from '../services/trailDetection';
+import { shareText } from '../services/share';
 
 /**
  * A single activity, including the route it drew.
@@ -118,19 +119,18 @@ export default function ActivityDetailScreen() {
   };
 
   const share = () => {
-    Share.share({
-      message:
-        `${activity.type === 'bike' ? 'Rode' : 'Hiked'} ${formatDistanceCompact(activity.miles)} ` +
+    shareText(
+      `${activity.type === 'bike' ? 'I rode' : 'I walked'} ${formatDistanceCompact(activity.miles)} ` +
         `${formatDistanceUnit()}${trail ? ` on the ${trail.name}` : ''} in ${formatDuration(activity.durationSec)}` +
-        `${activity.trees > 0 ? `, earning ${activity.trees} tree${activity.trees === 1 ? '' : 's'}` : ''}. ` +
-        `Tracked with EcoTrek.`,
-    });
+        `${activity.trees > 0 ? `, and earned ${activity.trees} tree${activity.trees === 1 ? '' : 's'}` : ''}. ` +
+        `Tracked with EcoTrek.`
+    );
   };
 
   return (
     <Screen>
       <Header
-        title={activity.type === 'bike' ? 'Bike ride' : 'Hike'}
+        title={activity.type === 'bike' ? 'Bike ride' : 'Walk'}
         subtitle={started.toLocaleDateString(undefined, {
           weekday: 'long',
           month: 'long',

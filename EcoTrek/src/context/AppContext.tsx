@@ -44,7 +44,7 @@ type AppContextType = {
   permission: PermissionState;
   locating: boolean;
   /** Prompts for permission if needed, then resolves coordinates. */
-  requestLocation: (opts?: { silent?: boolean }) => Promise<Coords | null>;
+  requestLocation: (opts?: { silent?: boolean; permissionOnly?: boolean }) => Promise<Coords | null>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -58,6 +58,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [permission, setPermission] = useState<PermissionState>('unknown');
   const [locating, setLocating] = useState(false);
   const inFlight = useRef<Promise<Coords | null> | null>(null);
+  const coordsRef = useRef<Coords | null>(null);
+  coordsRef.current = coords;
 
   /* ── Trails load immediately; they do not need permission ──────────────── */
   const refreshTrails = useCallback(async () => {
@@ -99,8 +101,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const requestLocation = useCallback(
-    async (opts: { silent?: boolean } = {}): Promise<Coords | null> => {
-      if (inFlight.current) return inFlight.current;
+    async (opts: { silent?: boolean; permissionOnly?: boolean } = {}): Promise<Coords | null> => {
+      if (inFlight.current && !opts.permissionOnly) return inFlight.current;
 
       const run = (async (): Promise<Coords | null> => {
         setLocating(true);
@@ -108,7 +110,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (Platform.OS === 'web') {
             if (typeof navigator === 'undefined' || !navigator.geolocation) {
               setPermission('unavailable');
-              return null;
+              return opts.permissionOnly ? DEFAULT_LOCATION : null;
             }
             return await new Promise<Coords | null>((resolve) => {
               navigator.geolocation.getCurrentPosition(
@@ -123,9 +125,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 },
                 () => {
                   setPermission('denied');
-                  resolve(null);
+                  resolve(opts.permissionOnly ? DEFAULT_LOCATION : null);
                 },
-                { enableHighAccuracy: false, timeout: 8000, maximumAge: 300000 }
+                { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
               );
             });
           }
@@ -148,22 +150,55 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
 
           setPermission('granted');
-          const pos = await Location.getCurrentPositionAsync({
-            accuracy: Location.Accuracy.Balanced,
-          });
+
+          // Starting a hike should not wait for a fresh GPS lock. Last-known
+          // is plenty; ActiveTracking will pick up a precise fix on its own.
+          if (opts.permissionOnly) {
+            if (coordsRef.current) return coordsRef.current;
+            try {
+              const last = await Location.getLastKnownPositionAsync();
+              if (last) {
+                const c = { latitude: last.coords.latitude, longitude: last.coords.longitude };
+                setCoords(c);
+                return c;
+              }
+            } catch {
+              /* ignore */
+            }
+            return DEFAULT_LOCATION;
+          }
+
+          try {
+            const last = await Location.getLastKnownPositionAsync();
+            if (last && Date.now() - last.timestamp < 180_000) {
+              const c = { latitude: last.coords.latitude, longitude: last.coords.longitude };
+              setCoords(c);
+              return c;
+            }
+          } catch {
+            /* ignore */
+          }
+
+          const pos = await Promise.race([
+            Location.getCurrentPositionAsync({
+              accuracy: Location.Accuracy.Balanced,
+            }),
+            new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
+          ]);
+          if (!pos) return coordsRef.current;
           const c = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
           setCoords(c);
           return c;
         } catch (e) {
           console.warn('[location] failed', e);
-          return null;
+          return coordsRef.current;
         } finally {
           setLocating(false);
           inFlight.current = null;
         }
       })();
 
-      inFlight.current = run;
+      if (!opts.permissionOnly) inFlight.current = run;
       return run;
     },
     []

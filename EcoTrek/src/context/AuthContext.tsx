@@ -11,6 +11,7 @@ import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
 import { GOOGLE_AUTH, isGoogleConfigured } from '../constants/authConfig';
 import { setAuthTokenProvider } from '../services/api';
+import { copyUserData } from '../services/storage';
 
 WebBrowser.maybeCompleteAuthSession();
 
@@ -33,6 +34,7 @@ type AuthState = {
   googleConfigured: boolean;
   signInWithGoogle: () => Promise<void>;
   signInAsGuest: (name?: string) => Promise<void>;
+  updateUser: (updates: Partial<Pick<User, 'name' | 'picture'>>) => Promise<void>;
   signOut: () => Promise<void>;
 };
 
@@ -43,6 +45,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const guestToMigrate = React.useRef<string | null>(null);
 
   const googleConfigured = isGoogleConfigured();
 
@@ -86,6 +89,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       if (accessToken) {
         fetchGoogleProfile(accessToken)
           .then(async (profile) => {
+            const fromGuest = guestToMigrate.current;
+            guestToMigrate.current = null;
+            if (fromGuest) {
+              await copyUserData(fromGuest, profile.id);
+            }
             const u: User = {
               id: profile.id,
               name: profile.name ?? profile.email,
@@ -109,6 +117,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const signInWithGoogle = useCallback(async () => {
     setError(null);
+    if (user?.provider === 'guest') guestToMigrate.current = user.id;
     if (!googleConfigured) {
       setError(
         'Google OAuth is not configured. Add your client IDs to src/constants/authConfig.ts.'
@@ -123,7 +132,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     } catch (e: any) {
       setError(e?.message ?? 'Could not start Google sign-in');
     }
-  }, [promptAsync, googleConfigured]);
+  }, [promptAsync, googleConfigured, user]);
 
   const signInAsGuest = useCallback(async (name = 'Guest Trekker') => {
     const u: User = {
@@ -134,6 +143,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     };
     setUser(u);
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(u));
+  }, []);
+
+  const updateUser = useCallback(async (updates: Partial<Pick<User, 'name' | 'picture'>>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const next = { ...prev, ...updates };
+      AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
+      return next;
+    });
   }, []);
 
   const signOut = useCallback(async () => {
@@ -162,9 +180,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       googleConfigured,
       signInWithGoogle,
       signInAsGuest,
+      updateUser,
       signOut,
     }),
-    [user, loading, error, googleConfigured, signInWithGoogle, signInAsGuest, signOut]
+    [user, loading, error, googleConfigured, signInWithGoogle, signInAsGuest, updateUser, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

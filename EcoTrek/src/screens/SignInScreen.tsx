@@ -21,23 +21,23 @@ import { APP_NAME, PRIVACY_POLICY_URL } from '../constants/appInfo';
 const FEATURES: { icon: IconName; title: string; text: string }[] = [
   {
     icon: 'navigation',
-    title: 'Track every mile',
-    text: 'GPS distance for hikes and rides, with automatic trail detection.',
+    title: 'See how far you go',
+    text: 'Start a walk or ride. We measure the miles for you.',
   },
   {
-    icon: 'shield',
-    title: 'Know before you go',
-    text: 'Live heat, storm and flood warnings straight from the National Weather Service.',
+    icon: 'sun',
+    title: 'Check the weather first',
+    text: 'Today’s temperature and the next few hours, right on the home screen.',
   },
   {
     icon: 'target',
-    title: 'Five small challenges a week',
-    text: 'Simple habits, not marathons. Points count toward your club.',
+    title: 'Five small goals a week',
+    text: 'Nothing huge. Just enough to keep you moving.',
   },
   {
     icon: 'users',
-    title: 'Compete as a team',
-    text: 'Pool your miles with your school, team or friends.',
+    title: 'Cheer each other on',
+    text: 'Join a club with a short code from a friend.',
   },
 ];
 
@@ -51,10 +51,8 @@ export default function SignInScreen() {
   const rise = useRef(new Animated.Value(20)).current;
 
   useEffect(() => {
-    Animated.parallel([
-      Animated.timing(fade, { toValue: 1, duration: 500, useNativeDriver: true }),
-      Animated.timing(rise, { toValue: 0, duration: 500, useNativeDriver: true }),
-    ]).start();
+    fade.setValue(1);
+    rise.setValue(0);
   }, [fade, rise]);
 
   const handleGoogle = async () => {
@@ -187,8 +185,8 @@ export default function SignInScreen() {
             />
           </View>
           <Text style={styles.guestNote}>
-            Guest data is not backed up. If you reinstall the app or change phones, it is gone.
-            Signing in with Google keeps it.
+            You can start now and save your walks later with Google. Your walks on this phone will
+            come with you.
           </Text>
           <Button label="Start as guest" full loading={busy} onPress={handleGuest} />
         </View>

@@ -1,4 +1,4 @@
-import React, { useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, RefreshControl, Linking, TextInput } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -12,6 +12,7 @@ import { useApp } from '../context/AppContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useActivity } from '../context/ActivityContext';
 import { useResponsive } from '../hooks/useResponsive';
+import { useResetOnLeave } from '../hooks/useResetOnLeave';
 
 type SortKey = 'nearest' | 'shortest' | 'longest' | 'easiest' | 'rating';
 
@@ -49,6 +50,16 @@ export default function TrailsScreen() {
   const [query, setQuery] = useState('');
   const [selected, setSelected] = useState<Trail | null>(null);
   const [showSort, setShowSort] = useState(false);
+
+  useResetOnLeave(
+    useCallback(() => {
+      setFilter('all');
+      setSort('nearest');
+      setQuery('');
+      setSelected(null);
+      setShowSort(false);
+    }, [])
+  );
 
   // The assistant can deep-link straight to a trail.
   useEffect(() => {
@@ -353,12 +364,12 @@ export default function TrailsScreen() {
 
             <View style={{ gap: SPACING.sm }}>
               <Button
-                label="Track an activity here"
+                label="Start a walk here"
                 icon="play"
                 full
                 onPress={() => {
                   setSelected(null);
-                  navigation.navigate('Track');
+                  navigation.navigate('Tabs', { screen: 'Track' });
                 }}
               />
               <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
@@ -451,13 +462,15 @@ function TrailCard({
           size="sm"
           icon="activity"
         />
-        <Pill label={trail.difficulty} tone={difficultyTone as any} size="sm" />
-        {trail.rating ? <Pill label={String(trail.rating)} tone="neutral" size="sm" icon="star" /> : null}
-        {completed ? (
-          <Pill label="Completed" tone="primary" size="sm" icon="flag" />
-        ) : visited ? (
-          <Pill label="Visited" tone="neutral" size="sm" />
-        ) : null}
+        <Pill
+          label={trail.difficulty === 'Easy' ? 'Easy' : trail.difficulty === 'Moderate' ? 'Medium' : 'Hard'}
+          tone={difficultyTone as any}
+          size="sm"
+        />
+        {trail.petFriendly ? <Pill label="Dogs" tone="primary" size="sm" /> : null}
+        {trail.waterStations ? <Pill label="Water" tone="neutral" size="sm" icon="droplet" /> : null}
+        {trail.restroomsAvailable ? <Pill label="Bathrooms" tone="neutral" size="sm" /> : null}
+        {completed ? <Pill label="Done" tone="primary" size="sm" icon="flag" /> : visited ? <Pill label="Visited" tone="neutral" size="sm" /> : null}
       </View>
     </Card>
   );

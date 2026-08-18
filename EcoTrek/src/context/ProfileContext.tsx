@@ -18,6 +18,8 @@ export type UserProfile = {
   createdAt: number;
   /** Weight history for graphing */
   weightHistory: { date: number; weight: number }[];
+  emergencyName?: string;
+  emergencyPhone?: string;
 };
 
 const EMPTY_PROFILE: UserProfile = {
@@ -29,6 +31,8 @@ const EMPTY_PROFILE: UserProfile = {
   stepLengthInches: 0,
   createdAt: 0,
   weightHistory: [],
+  emergencyName: '',
+  emergencyPhone: '',
 };
 
 type ProfileState = {

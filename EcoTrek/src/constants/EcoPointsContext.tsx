@@ -33,11 +33,23 @@ export type PointEvent = {
   timestamp: number;
 };
 
+export type BadgeCategory = 'start' | 'distance' | 'streak' | 'community';
+
+export const BADGE_CATEGORY_ORDER: BadgeCategory[] = ['start', 'distance', 'streak', 'community'];
+
+export const BADGE_CATEGORY_LABEL: Record<BadgeCategory, string> = {
+  start: 'Getting started',
+  distance: 'Miles and trees',
+  streak: 'Showing up',
+  community: 'Challenges and clubs',
+};
+
 export type Badge = {
   id: string;
   name: string;
   description: string;
   icon: IconName;
+  category: BadgeCategory;
   unlocked: boolean;
   unlockedAt?: number;
 };
@@ -135,57 +147,42 @@ function getLevel(points: number) {
 }
 
 const DEFAULT_BADGES: Badge[] = [
-  // ── Getting started ──────────────────────────────────────────────────────
-  { id: 'first_hike', name: 'First Steps', description: 'Complete your first hike', icon: 'boot', unlocked: false },
-  { id: 'first_ride', name: 'Wheels Up', description: 'Complete your first bike ride', icon: 'bike', unlocked: false },
-  { id: 'first_tree', name: 'Seed Planter', description: 'Earn your first tree', icon: 'leaf', unlocked: false },
+  { id: 'first_hike', name: 'First Steps', description: 'Finish your first walk or hike', icon: 'boot', category: 'start', unlocked: false },
+  { id: 'first_ride', name: 'Wheels Up', description: 'Finish your first bike ride', icon: 'bike', category: 'start', unlocked: false },
+  { id: 'first_tree', name: 'Seed Planter', description: 'Earn your first tree', icon: 'leaf', category: 'start', unlocked: false },
 
-  // ── Distance ─────────────────────────────────────────────────────────────
-  { id: 'five_miles', name: 'Five Miler', description: 'Cover 5 total miles', icon: 'activity', unlocked: false },
-  { id: 'twenty_five_miles', name: 'Distance Runner', description: 'Cover 25 total miles', icon: 'trending-up', unlocked: false },
-  { id: 'hundred_miles', name: 'Century Trekker', description: 'Cover 100 total miles', icon: 'award', unlocked: false },
-  { id: 'ten_trees', name: 'Mini Forest', description: 'Earn 10 trees', icon: 'tree', unlocked: false },
-  { id: 'fifty_trees', name: 'Grove Keeper', description: 'Earn 50 trees', icon: 'tree', unlocked: false },
+  { id: 'first_challenge', name: 'Challenger', description: 'Finish your first weekly challenge', icon: 'target', category: 'start', unlocked: false },
+  { id: 'first_trail', name: 'Trail Bagger', description: 'Complete a named trail', icon: 'map', category: 'start', unlocked: false },
+  { id: 'first_cleanup', name: 'Cleanup Crew', description: 'Log your first trail cleanup', icon: 'trash', category: 'start', unlocked: false },
 
-  // ── Streaks ──────────────────────────────────────────────────────────────
-  { id: 'streak_3', name: 'Warming Up', description: 'Reach a 3-day streak', icon: 'flame', unlocked: false },
-  { id: 'streak_7', name: 'Seven Straight', description: 'Reach a 7-day streak', icon: 'flame', unlocked: false },
-  { id: 'streak_14', name: 'Two Weeks Deep', description: 'Reach a 14-day streak', icon: 'flame', unlocked: false },
-  { id: 'streak_30', name: 'Unbroken', description: 'Reach a 30-day streak', icon: 'flame', unlocked: false },
-  { id: 'streak_60', name: 'Two Month Machine', description: 'Reach a 60-day streak', icon: 'flame', unlocked: false },
-  { id: 'streak_100', name: 'Triple Digits', description: 'Reach a 100-day streak', icon: 'flame', unlocked: false },
-  { id: 'streak_365', name: 'Year of Trails', description: 'Reach a 365-day streak', icon: 'crown', unlocked: false },
-  { id: 'perfect_week', name: 'Perfect Week', description: 'Log an activity all seven days of one week', icon: 'calendar', unlocked: false },
-  { id: 'perfect_weeks_4', name: 'Four Perfect Weeks', description: 'Log four flawless weeks in total', icon: 'calendar', unlocked: false },
-  { id: 'month_20', name: 'Twenty in Thirty', description: 'Get out on 20 days within a single month', icon: 'target', unlocked: false },
-  { id: 'comeback', name: 'Comeback', description: 'Lose a 7-day streak and build a new one', icon: 'refresh', unlocked: false },
-  { id: 'hundred_days', name: 'Hundred Days Out', description: 'Log activities on 100 separate days', icon: 'award', unlocked: false },
+  { id: 'five_miles', name: 'Five Miler', description: 'Cover 5 total miles', icon: 'activity', category: 'distance', unlocked: false },
+  { id: 'twenty_five_miles', name: 'Distance Runner', description: 'Cover 25 total miles', icon: 'trending-up', category: 'distance', unlocked: false },
+  { id: 'hundred_miles', name: 'Century Trekker', description: 'Cover 100 total miles', icon: 'award', category: 'distance', unlocked: false },
+  { id: 'ten_trees', name: 'Mini Forest', description: 'Earn 10 trees', icon: 'tree', category: 'distance', unlocked: false },
+  { id: 'fifty_trees', name: 'Grove Keeper', description: 'Earn 50 trees', icon: 'tree', category: 'distance', unlocked: false },
+  { id: 'five_hundred_points', name: 'Point Collector', description: 'Earn 500 EcoPoints', icon: 'star', category: 'distance', unlocked: false },
+  { id: 'thousand_points', name: 'EcoElite', description: 'Earn 1,000 EcoPoints', icon: 'star', category: 'distance', unlocked: false },
 
-  // ── Field log ────────────────────────────────────────────────────────────
-  { id: 'first_sighting', name: 'First Sighting', description: 'Log your first species', icon: 'eye', unlocked: false },
-  { id: 'ten_species', name: 'Naturalist', description: 'Log 10 different species', icon: 'eye', unlocked: false },
-  { id: 'thirty_species', name: 'Field Guide', description: 'Log 30 different species', icon: 'search', unlocked: false },
-  { id: 'all_species', name: 'Completionist', description: 'Log every species in the catalogue', icon: 'award', unlocked: false },
-  { id: 'botanist', name: 'Botanist', description: 'Log 15 different plants', icon: 'leaf', unlocked: false },
-  { id: 'tracker', name: 'Tracker', description: 'Log 15 different animals', icon: 'eye', unlocked: false },
-  { id: 'first_cleanup', name: 'Cleanup Crew', description: 'Log your first trail cleanup', icon: 'trash', unlocked: false },
-  { id: 'ten_cleanups', name: 'Trail Keeper', description: 'Log 10 cleanups', icon: 'trash', unlocked: false },
-  { id: 'hundred_pieces', name: 'Hundred Pieces', description: 'Collect 100 pieces of litter', icon: 'shield', unlocked: false },
+  { id: 'streak_3', name: 'Warming Up', description: 'Reach a 3-week streak', icon: 'flame', category: 'streak', unlocked: false },
+  { id: 'streak_7', name: 'Seven Straight', description: 'Reach a 7-week streak', icon: 'flame', category: 'streak', unlocked: false },
+  { id: 'streak_14', name: 'Two Weeks Deep', description: 'Reach a 14-week streak', icon: 'flame', category: 'streak', unlocked: false },
+  { id: 'streak_30', name: 'Unbroken', description: 'Reach a 30-week streak', icon: 'flame', category: 'streak', unlocked: false },
+  { id: 'perfect_week', name: 'Perfect Week', description: 'Log an activity all seven days of one week', icon: 'calendar', category: 'streak', unlocked: false },
+  { id: 'perfect_weeks_4', name: 'Four Perfect Weeks', description: 'Log four flawless weeks', icon: 'calendar', category: 'streak', unlocked: false },
+  { id: 'comeback', name: 'Comeback', description: 'Lose a long streak and build a new one', icon: 'refresh', category: 'streak', unlocked: false },
+  { id: 'hundred_days', name: 'Hundred Days Out', description: 'Log activities on 100 separate days', icon: 'award', category: 'streak', unlocked: false },
 
-  // ── Challenges, trails, clubs ────────────────────────────────────────────
-  { id: 'first_challenge', name: 'Challenger', description: 'Finish your first weekly challenge', icon: 'target', unlocked: false },
-  { id: 'ten_challenges', name: 'Habit Builder', description: 'Finish 10 challenges', icon: 'target', unlocked: false },
-  { id: 'fifty_challenges', name: 'Relentless', description: 'Finish 50 challenges', icon: 'zap', unlocked: false },
-  { id: 'first_trail', name: 'Trail Bagger', description: 'Complete a full named trail', icon: 'map', unlocked: false },
-  { id: 'five_trails', name: 'Trail Master', description: 'Complete 5 different trails', icon: 'flag', unlocked: false },
-  { id: 'five_hundred_points', name: 'Point Collector', description: 'Earn 500 EcoPoints', icon: 'star', unlocked: false },
-  { id: 'thousand_points', name: 'EcoElite', description: 'Earn 1,000 EcoPoints', icon: 'star', unlocked: false },
-  { id: 'trail_steward', name: 'Trail Steward', description: 'Reach the Trail Steward level', icon: 'shield', unlocked: false },
-  { id: 'eco_champion', name: 'EcoChampion', description: 'Reach the EcoChampion level', icon: 'crown', unlocked: false },
-  { id: 'club_member', name: 'Team Player', description: 'Join a club', icon: 'users', unlocked: false },
-  { id: 'club_founder', name: 'Club Founder', description: 'Create a club', icon: 'crown', unlocked: false },
-  { id: 'goal_getter', name: 'Goal Getter', description: 'Help your club hit a weekly goal', icon: 'target', unlocked: false },
-  { id: 'goal_streak', name: 'In Formation', description: 'Hit five club weekly goals', icon: 'users', unlocked: false },
+  { id: 'ten_challenges', name: 'Habit Builder', description: 'Finish 10 challenges', icon: 'target', category: 'community', unlocked: false },
+  { id: 'fifty_challenges', name: 'Relentless', description: 'Finish 50 challenges', icon: 'zap', category: 'community', unlocked: false },
+  { id: 'five_trails', name: 'Trail Master', description: 'Complete 5 different trails', icon: 'flag', category: 'community', unlocked: false },
+  { id: 'ten_cleanups', name: 'Trail Keeper', description: 'Log 10 cleanups', icon: 'trash', category: 'community', unlocked: false },
+  { id: 'hundred_pieces', name: 'Hundred Pieces', description: 'Collect 100 pieces of litter', icon: 'shield', category: 'community', unlocked: false },
+  { id: 'club_member', name: 'Team Player', description: 'Join a club', icon: 'users', category: 'community', unlocked: false },
+  { id: 'club_founder', name: 'Club Founder', description: 'Create a club', icon: 'crown', category: 'community', unlocked: false },
+  { id: 'goal_getter', name: 'Goal Getter', description: 'Help your club hit a weekly goal', icon: 'target', category: 'community', unlocked: false },
+  { id: 'goal_streak', name: 'In Formation', description: 'Hit five club weekly goals', icon: 'users', category: 'community', unlocked: false },
+  { id: 'trail_steward', name: 'Trail Steward', description: 'Reach the Trail Steward level', icon: 'shield', category: 'community', unlocked: false },
+  { id: 'eco_champion', name: 'EcoChampion', description: 'Reach the EcoChampion level', icon: 'crown', category: 'community', unlocked: false },
 ];
 
 const EcoPointsContext = createContext<EcoPointsState | null>(null);
@@ -211,8 +208,12 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
       ]);
       if (cancelled) return;
 
-      // Merge in any badges added by an app update.
-      const merged = DEFAULT_BADGES.map((d) => b.find((x) => x.id === d.id) ?? d);
+      // Keep unlock state from storage, but take names/categories from the
+      // current catalogue so retired badges (species, etc.) disappear.
+      const merged = DEFAULT_BADGES.map((d) => {
+        const stored = b.find((x) => x.id === d.id);
+        return stored ? { ...d, unlocked: stored.unlocked, unlockedAt: stored.unlockedAt } : d;
+      });
 
       setHistory(h);
       setBadges(merged);

@@ -25,7 +25,6 @@ export default function ChallengesScreen() {
   const { myClub } = useClub();
   const { totalActivities } = useActivity();
   const [busyId, setBusyId] = useState<string | null>(null);
-
   // Explainers are for new users. After a few activities they are just clutter.
   const showBasics = totalActivities < 3 && lifetimeCompleted < 3;
 

@@ -1,157 +1,98 @@
-import React, { useCallback, useEffect, useState } from 'react';
-import { View, Text, StyleSheet, Alert, Platform } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
+import React, { useCallback } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
 
 import Header from '../components/Header';
 import Icon from '../components/Icon';
 import { Screen, Card, Button, Segmented, Banner } from '../components/ui';
-
-import { COLORS, RADIUS, SPACING, TREE_RULES, TYPOGRAPHY } from '../constants/theme';
-import { getCurrentPosition } from '../services/location';
+import { COLORS, SPACING, TREE_RULES, TYPOGRAPHY } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
-import { useSettings } from '../constants/SettingsContext';
 import { useApp } from '../context/AppContext';
 import { useWeather } from '../context/WeatherContext';
-
-type Mode = 'hike' | 'bike';
+import { useResetOnLeave } from '../hooks/useResetOnLeave';
+import { useStartActivity } from '../hooks/useStartActivity';
+import { useTheme } from '../context/ThemeContext';
 
 export default function TrackScreen() {
-  const navigation = useNavigation<any>();
   const { totalActivities } = useActivity();
-  const { formatDistanceUnit } = useSettings();
-  const { permission, requestLocation } = useApp();
+  const { permission } = useApp();
   const { report } = useWeather();
+  const { mode, setMode, start, starting } = useStartActivity('hike');
+  const { colors } = useTheme();
 
-  const [mode, setMode] = useState<Mode>('hike');
-  const [hasLocation, setHasLocation] = useState(false);
-
-  useEffect(() => {
-    (async () => {
-      const c = await getCurrentPosition();
-      if (c) setHasLocation(true);
-    })();
-  }, []);
-
-  const handleStart = useCallback(async () => {
-    const coords = await requestLocation();
-    if (!coords && Platform.OS !== 'web') {
-      Alert.alert(
-        'Location needed',
-        'EcoTrek measures your distance from GPS. Turn on location access for EcoTrek in your phone settings to track an activity.',
-        [{ text: 'OK' }]
-      );
-      return;
-    }
-
-    // Check for dangerous weather
-    if (report && report.level === 'danger') {
-      Alert.alert(
-        'Dangerous conditions',
-        report.headline + '\n\n' + report.summary,
-        [
-          { text: 'Not today', style: 'cancel' },
-          {
-            text: 'I understand the risk',
-            style: 'destructive',
-            onPress: () => navigation.navigate('ActiveTracking', { mode }),
-          },
-        ]
-      );
-      return;
-    }
-
-    navigation.navigate('ActiveTracking', { mode });
-  }, [requestLocation, report, navigation, mode]);
+  useResetOnLeave(
+    useCallback(() => {
+      setMode('hike');
+    }, [setMode])
+  );
 
   return (
     <Screen>
-      <Header
-        title="Track"
-        subtitle="Ready to go?"
-        actions={[{ icon: 'shield', onPress: () => navigation.navigate('Safety'), label: 'Safety' }]}
-      />
+      <Header title="Start" subtitle="Ready when you are" />
 
       <View style={styles.body}>
-        {/* Weather warning */}
         {report && report.level !== 'good' ? (
           <Banner
             tone={report.level === 'danger' ? 'danger' : report.level === 'warning' ? 'warning' : 'info'}
             icon={report.level === 'danger' ? 'alert-triangle' : 'info'}
             title={report.headline}
             message={report.summary}
-            onPress={() => navigation.navigate('Conditions')}
           />
         ) : null}
 
-        {/* Mode selector */}
         <Segmented
           options={[
-            { value: 'hike', label: 'Hike', icon: 'boot' },
+            { value: 'hike', label: 'Walk', icon: 'boot' },
             { value: 'bike', label: 'Bike', icon: 'bike' },
           ]}
           value={mode}
-          onChange={(v) => setMode(v as Mode)}
+          onChange={setMode}
         />
 
-        {/* Activity type info card */}
         <Card>
           <View style={styles.infoHeader}>
             <View style={styles.infoIcon}>
-              <Icon name={mode === 'hike' ? 'boot' : 'bike'} size={24} color={COLORS.primary} strokeWidth={1.8} />
+              <Icon name={mode === 'hike' ? 'boot' : 'bike'} size={26} color={colors.primary} strokeWidth={1.8} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.infoTitle}>
-                {mode === 'hike' ? 'Hiking Mode' : 'Biking Mode'}
-              </Text>
+              <Text style={styles.infoTitle}>{mode === 'hike' ? 'Walking' : 'Biking'}</Text>
               <Text style={styles.infoSub}>
                 {mode === 'hike'
-                  ? 'Speed limit: 20 mph • 1 tree per mile'
-                  : 'Speed limit: 30 mph • 1 tree per 3 miles'}
+                  ? `1 tree for every ${TREE_RULES.hikeMilesPerTree} mile`
+                  : `1 tree for every ${TREE_RULES.bikeMilesPerTree} miles`}
               </Text>
             </View>
           </View>
-
           <View style={styles.infoDetails}>
-            <InfoRow icon="trending-up" text={mode === 'hike' ? 'Walking, jogging, or hiking pace' : 'Cycling at a comfortable pace'} />
-            <InfoRow icon="shield" text="Activities are verified for fairness — excessive speed flags the activity" />
-            <InfoRow icon="battery" text="Keep the app open for best GPS accuracy" />
+            <InfoRow icon="play" text="Tap Start, put your phone away, and go." />
+            <InfoRow icon="battery" text="You can lock your phone. We keep measuring until you tap Finish." />
+            <InfoRow icon="shield" text="We check that you were walking or biking, so scores stay fair." />
           </View>
         </Card>
 
-        {/* How trees work */}
         {totalActivities < 3 ? (
           <Card tone="sunken">
             <Text style={styles.explainTitle}>How trees are earned</Text>
             <Text style={styles.explainText}>
-              1 tree per {TREE_RULES.hikeMilesPerTree} mile hiked, 1 per {TREE_RULES.bikeMilesPerTree}{' '}
-              miles biked. Trees are a symbolic measure of your effort inside EcoTrek.
+              Walk {TREE_RULES.hikeMilesPerTree} mile, earn 1 tree. Bike {TREE_RULES.bikeMilesPerTree} miles, earn 1
+              tree. Trees are just a fun way to see your effort.
             </Text>
           </Card>
         ) : null}
 
-        {/* Start button */}
         <Button
-          label={`Start ${mode === 'bike' ? 'ride' : 'hike'}`}
+          label={starting ? 'Starting…' : `Start ${mode === 'bike' ? 'ride' : 'walk'}`}
           icon="play"
           size="lg"
           full
-          onPress={handleStart}
+          loading={starting}
+          onPress={start}
         />
 
         {permission === 'denied' ? (
           <Text style={styles.permissionNote}>
-            Location access is off, so distance cannot be measured. Enable it in your phone's
-            settings for EcoTrek.
+            Location is off, so we cannot measure distance. Turn it on for EcoTrek in your phone settings.
           </Text>
         ) : null}
-
-        {/* Speed limit info */}
-        <View style={styles.speedInfo}>
-          <Icon name="shield" size={14} color={COLORS.textMuted} strokeWidth={2} />
-          <Text style={styles.speedInfoText}>
-            Anti-cheat: Speed is monitored during activity. 3 warnings and the activity may be flagged.
-          </Text>
-        </View>
       </View>
     </Screen>
   );
@@ -160,7 +101,7 @@ export default function TrackScreen() {
 function InfoRow({ icon, text }: { icon: any; text: string }) {
   return (
     <View style={styles.infoRow}>
-      <Icon name={icon} size={15} color={COLORS.textMuted} strokeWidth={2} />
+      <Icon name={icon} size={18} color={COLORS.textMuted} strokeWidth={2} />
       <Text style={styles.infoRowText}>{text}</Text>
     </View>
   );
@@ -168,40 +109,27 @@ function InfoRow({ icon, text }: { icon: any; text: string }) {
 
 const styles = StyleSheet.create({
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
-
   infoHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
   infoIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
     backgroundColor: COLORS.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   infoTitle: { ...TYPOGRAPHY.h3, color: COLORS.text },
-  infoSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
-
+  infoSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 4 },
   infoDetails: {
     marginTop: SPACING.md,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
-    gap: SPACING.sm + 2,
+    gap: SPACING.md,
   },
-  infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm },
-  infoRowText: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, flex: 1 },
-
-  explainTitle: { ...TYPOGRAPHY.h4, color: COLORS.text, marginBottom: 4 },
+  infoRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm + 2 },
+  infoRowText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, flex: 1 },
+  explainTitle: { ...TYPOGRAPHY.h4, color: COLORS.text, marginBottom: 6 },
   explainText: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
-
   permissionNote: { ...TYPOGRAPHY.small, color: COLORS.textMuted, textAlign: 'center' },
-
-  speedInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    justifyContent: 'center',
-    paddingVertical: SPACING.sm,
-  },
-  speedInfoText: { ...TYPOGRAPHY.small, color: COLORS.textMuted, flex: 1, textAlign: 'center' },
 });

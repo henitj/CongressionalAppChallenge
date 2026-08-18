@@ -22,7 +22,9 @@
       "bundleIdentifier": "com.ecotrek.app",
       "buildNumber": "1",
       "infoPlist": {
-        "NSLocationWhenInUseUsageDescription": "EcoTrek uses your location while you are recording to measure how far you hike or bike, and to show weather warnings for where you are. It never tracks you in the background.",
+        "NSLocationWhenInUseUsageDescription": "EcoTrek uses your location while you are recording a walk or ride, so it can measure how far you go and show weather for where you are.",
+        "NSLocationAlwaysAndWhenInUseUsageDescription": "EcoTrek keeps measuring your walk or ride if you lock your phone or switch apps. It only does this while a recording is running. When you tap Finish, it stops.",
+        "UIBackgroundModes": ["location"],
         "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
@@ -33,13 +35,14 @@
       "package": "com.ecotrek.app",
       "versionCode": 1,
       "edgeToEdgeEnabled": true,
+      "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "ACCESS_FINE_LOCATION",
         "ACCESS_COARSE_LOCATION",
+        "ACCESS_BACKGROUND_LOCATION",
+        "FOREGROUND_SERVICE",
+        "FOREGROUND_SERVICE_LOCATION",
         "POST_NOTIFICATIONS"
-      ],
-      "blockedPermissions": [
-        "ACCESS_BACKGROUND_LOCATION"
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
@@ -67,6 +70,7 @@
           "defaultChannel": "ecotrek-reminders"
         }
       ],
+      "expo-task-manager",
       "expo-web-browser"
     ],
     "extra": {

@@ -6,6 +6,7 @@ import Icon, { IconName } from './Icon';
 import { Avatar } from './ui';
 import { useAuth } from '../context/AuthContext';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 type Action = { icon: IconName; onPress: () => void; badge?: boolean; label?: string };
 
@@ -30,9 +31,10 @@ export default function Header({
 }: Props) {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const { colors, fontScale } = useTheme();
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safe, style]}>
+    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor: colors.background }, style]}>
       <View style={styles.bar}>
         {back ? (
           <Pressable
@@ -41,13 +43,17 @@ export default function Header({
             style={styles.iconBtn}
             accessibilityLabel="Go back"
           >
-            <Icon name="chevron-left" size={20} color={COLORS.text} strokeWidth={2.1} />
+            <Icon name="chevron-left" size={20} color={colors.text} strokeWidth={2.1} />
           </Pressable>
         ) : null}
 
         <View style={styles.titleWrap}>
-          {subtitle ? <Text style={styles.subtitle}>{subtitle}</Text> : null}
-          <Text style={styles.title} numberOfLines={1}>
+          {subtitle ? (
+            <Text style={[styles.subtitle, { color: colors.textMuted, fontSize: Math.round(13 * fontScale) }]} numberOfLines={2}>
+              {subtitle}
+            </Text>
+          ) : null}
+          <Text style={[styles.title, { color: colors.text, fontSize: Math.round(30 * fontScale) }]} numberOfLines={2}>
             {title}
           </Text>
         </View>
@@ -58,10 +64,10 @@ export default function Header({
               key={i}
               onPress={a.onPress}
               hitSlop={10}
-              style={styles.iconBtn}
+              style={[styles.iconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
               accessibilityLabel={a.label}
             >
-              <Icon name={a.icon} size={19} color={COLORS.textSecondary} strokeWidth={1.9} />
+              <Icon name={a.icon} size={19} color={colors.textSecondary} strokeWidth={1.9} />
               {a.badge ? <View style={styles.dot} /> : null}
             </Pressable>
           ))}
@@ -72,7 +78,7 @@ export default function Header({
               hitSlop={8}
               accessibilityLabel="Open profile"
             >
-              <Avatar name={user?.name} uri={user?.picture} size={34} />
+              <Avatar name={user?.name} uri={user?.picture} size={44} />
             </Pressable>
           ) : null}
         </View>
@@ -102,9 +108,9 @@ const styles = StyleSheet.create({
   },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   iconBtn: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: COLORS.surface,

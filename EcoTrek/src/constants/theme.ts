@@ -107,24 +107,29 @@ export const RADIUS = {
 
 export const TYPOGRAPHY = {
   display: { fontSize: 36, fontWeight: '700' as const, letterSpacing: -0.3 },
-  h1: { fontSize: 28, fontWeight: '700' as const, letterSpacing: -0.2 },
-  h2: { fontSize: 22, fontWeight: '700' as const, letterSpacing: -0.15 },
-  h3: { fontSize: 18, fontWeight: '600' as const, letterSpacing: -0.2 },
-  h4: { fontSize: 16, fontWeight: '600' as const, letterSpacing: -0.1 },
-  body: { fontSize: 16, fontWeight: '400' as const, lineHeight: 24 },
-  bodyMed: { fontSize: 16, fontWeight: '500' as const, lineHeight: 24 },
-  small: { fontSize: 14, fontWeight: '400' as const, lineHeight: 20 },
-  smallMed: { fontSize: 14, fontWeight: '600' as const },
-  caption: { fontSize: 13, fontWeight: '500' as const, letterSpacing: 0 },
+  h1: { fontSize: 30, fontWeight: '700' as const, letterSpacing: -0.2 },
+  h2: { fontSize: 24, fontWeight: '700' as const, letterSpacing: -0.15 },
+  h3: { fontSize: 20, fontWeight: '600' as const, letterSpacing: -0.2 },
+  h4: { fontSize: 17, fontWeight: '600' as const, letterSpacing: -0.1 },
+  body: { fontSize: 17, fontWeight: '400' as const, lineHeight: 26 },
+  bodyMed: { fontSize: 17, fontWeight: '500' as const, lineHeight: 26 },
+  small: { fontSize: 16, fontWeight: '400' as const, lineHeight: 23 },
+  smallMed: { fontSize: 16, fontWeight: '600' as const },
+  caption: { fontSize: 15, fontWeight: '500' as const, letterSpacing: 0 },
   overline: {
-    fontSize: 12,
-    fontWeight: '600' as const,
-    letterSpacing: 0.9,
+    fontSize: 13,
+    fontWeight: '700' as const,
+    letterSpacing: 0.6,
     textTransform: 'uppercase' as const,
   },
-  micro: { fontSize: 11, fontWeight: '600' as const, letterSpacing: 0.6 },
-  metric: { fontSize: 30, fontWeight: '700' as const, letterSpacing: -0.3 },
+  micro: { fontSize: 13, fontWeight: '600' as const, letterSpacing: 0.2 },
+  metric: { fontSize: 32, fontWeight: '700' as const, letterSpacing: -0.3 },
   metricLg: { fontSize: 48, fontWeight: '700' as const, letterSpacing: -0.5 },
+};
+
+/** Minimum comfortable tap target for older and disabled users. */
+export const TOUCH = {
+  min: 52,
 };
 
 export const SHADOWS = {
@@ -165,14 +170,103 @@ export const TREE_RULES = {
 };
 
 export const LEVELS = [
-  { name: 'New Trekker', min: 0 },
-  { name: 'Seedling', min: 100 },
-  { name: 'Trail Walker', min: 300 },
-  { name: 'Forest Friend', min: 700 },
-  { name: 'Trail Steward', min: 1500 },
-  { name: 'Forest Guardian', min: 3000 },
-  { name: 'Peak Explorer', min: 6000 },
-  { name: 'EcoChampion', min: 12000 },
-  { name: 'Earth Defender', min: 25000 },
-  { name: 'Trail Legend', min: 50000 },
+  { name: 'Just starting', min: 0 },
+  { name: 'Getting going', min: 100 },
+  { name: 'Regular walker', min: 300 },
+  { name: 'Weekend regular', min: 700 },
+  { name: 'Out often', min: 1500 },
+  { name: 'Every week', min: 3000 },
+  { name: 'Long walks', min: 6000 },
+  { name: 'Top of the trail', min: 12000 },
+  { name: 'All season', min: 25000 },
+  { name: 'Trail legend', min: 50000 },
 ];
+
+export type Appearance = 'light' | 'dark' | 'highContrast';
+export type TextSize = 'default' | 'large' | 'xlarge';
+
+export type ColorPalette = typeof COLORS;
+
+export const PALETTES: Record<Appearance, ColorPalette> = {
+  light: { ...COLORS },
+  dark: {
+    ...COLORS,
+    primary: '#5FCB9A',
+    primaryDark: '#07140F',
+    primaryMid: '#3FA97A',
+    primaryLight: '#7DD4AD',
+    primaryGlow: '#A6E6C8',
+    primarySurface: '#163528',
+    accent: '#F0B15A',
+    accentLight: '#3A2A14',
+    accentDark: '#F0B15A',
+    background: '#0E1713',
+    backgroundDark: '#0A120E',
+    surface: '#18241E',
+    surfaceElevated: '#1E2D26',
+    surfaceSunken: '#121C17',
+    surfaceOverlay: 'rgba(14,23,19,0.97)',
+    text: '#F2F7F4',
+    textSecondary: '#D5E0DA',
+    textMuted: '#B4C4BB',
+    textLight: '#8A9C93',
+    textInverse: '#0E1713',
+    border: '#2C3D34',
+    borderLight: '#24332C',
+    borderStrong: '#3D5248',
+    danger: '#FF7A7A',
+    dangerLight: '#3A1818',
+    warning: '#F0B15A',
+    warningLight: '#3A2A14',
+    success: '#5FCB9A',
+    successLight: '#163528',
+    info: '#7EB6F0',
+    infoLight: '#152433',
+    successBorder: '#2A5A44',
+    infoBorder: '#2A4560',
+    warningBorder: '#5A4520',
+    dangerBorder: '#5A2A2A',
+  },
+  highContrast: {
+    ...COLORS,
+    primary: '#005C3A',
+    primaryDark: '#00281A',
+    primaryMid: '#005C3A',
+    primaryLight: '#00784C',
+    primaryGlow: '#005C3A',
+    primarySurface: '#E3F5EC',
+    accent: '#8A4B00',
+    accentLight: '#FFF4D6',
+    accentDark: '#8A4B00',
+    background: '#FFFFFF',
+    backgroundDark: '#F4F4F4',
+    surface: '#FFFFFF',
+    surfaceElevated: '#FFFFFF',
+    surfaceSunken: '#F4F4F4',
+    text: '#000000',
+    textSecondary: '#000000',
+    textMuted: '#1A1A1A',
+    textLight: '#333333',
+    textInverse: '#FFFFFF',
+    border: '#000000',
+    borderLight: '#333333',
+    borderStrong: '#000000',
+    danger: '#9B0000',
+    dangerLight: '#FFE8E8',
+    warning: '#8A4B00',
+    warningLight: '#FFF4D6',
+    success: '#005C3A',
+    successLight: '#E3F5EC',
+    info: '#003A8A',
+    infoLight: '#E8F1FF',
+    successBorder: '#000000',
+    infoBorder: '#000000',
+    warningBorder: '#000000',
+    dangerBorder: '#000000',
+  },
+};
+
+export function fontScaleFor(size: TextSize, simpleMode: boolean) {
+  const base = size === 'xlarge' ? 1.32 : size === 'large' ? 1.16 : 1;
+  return simpleMode ? base + 0.06 : base;
+}

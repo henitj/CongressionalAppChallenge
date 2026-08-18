@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -7,19 +7,20 @@ import {
   ScrollView,
   KeyboardAvoidingView,
   Platform,
-  Pressable,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
-import { Button, Card } from '../components/ui';
+import { Button } from '../components/ui';
 import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useProfile } from '../context/ProfileContext';
+import { useAuth } from '../context/AuthContext';
 
 type Step = 'welcome' | 'name' | 'body' | 'activity';
 
 export default function SetupScreen({ onDone }: { onDone: () => void }) {
   const { setProfile } = useProfile();
+  const { user, updateUser } = useAuth();
   const [step, setStep] = useState<Step>('welcome');
   const [firstName, setFirstName] = useState('');
   const [lastName, setLastName] = useState('');
@@ -29,41 +30,59 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
   const [weight, setWeight] = useState('');
   const [stepLength, setStepLength] = useState('');
   const [busy, setBusy] = useState(false);
+  const scrollRef = useRef<ScrollView>(null);
 
   const handleComplete = async () => {
     setBusy(true);
-    const totalInches = (parseInt(heightFt) || 0) * 12 + (parseInt(heightIn) || 0);
-    // Default step length based on height if not provided
+    const totalInches = (parseInt(heightFt, 10) || 0) * 12 + (parseInt(heightIn, 10) || 0);
     const defaultStepLength = totalInches > 0 ? Math.round(totalInches * 0.413) : 28;
+    const first = firstName.trim();
+    const last = lastName.trim();
 
     await setProfile({
-      firstName: firstName.trim(),
-      lastName: lastName.trim(),
-      age: parseInt(age) || 30,
+      firstName: first,
+      lastName: last,
+      age: parseInt(age, 10) || 30,
       heightInches: totalInches || 67,
-      weightPounds: parseInt(weight) || 155,
-      stepLengthInches: parseInt(stepLength) || defaultStepLength,
+      weightPounds: parseInt(weight, 10) || 155,
+      stepLengthInches: parseInt(stepLength, 10) || defaultStepLength,
     });
+
+    const full = `${first} ${last}`.trim();
+    if (full) await updateUser({ name: full });
+
     setBusy(false);
     onDone();
   };
 
+  const skipSetup = async () => {
+    const first = firstName.trim() || (user?.name ?? '').trim().split(/\s+/)[0] || 'Friend';
+    const totalInches = (parseInt(heightFt, 10) || 0) * 12 + (parseInt(heightIn, 10) || 0);
+    await setProfile({
+      firstName: first,
+      lastName: lastName.trim(),
+      age: parseInt(age, 10) || 0,
+      heightInches: totalInches,
+      weightPounds: parseInt(weight, 10) || 0,
+      stepLengthInches: parseInt(stepLength, 10) || 0,
+    });
+    onDone();
+  };
+
   const canProceedName = firstName.trim().length > 0;
-  const canProceedBody = (parseInt(heightFt) || 0) > 0 && (parseInt(weight) || 0) > 0;
+  const canProceedBody = (parseInt(heightFt, 10) || 0) > 0 && (parseInt(weight, 10) || 0) > 0;
+
+  const estimatedStep = Math.round(((parseInt(heightFt, 10) || 5) * 12 + (parseInt(heightIn, 10) || 7)) * 0.413);
 
   return (
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <KeyboardAvoidingView
           style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+          behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+          keyboardVerticalOffset={Platform.OS === 'ios' ? 8 : 0}
         >
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            {/* Progress indicator */}
+          <View style={styles.topBar}>
             <View style={styles.progress}>
               <ProgressDot active={step === 'welcome'} done={step !== 'welcome'} />
               <ProgressLine />
@@ -73,31 +92,32 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
               <ProgressLine />
               <ProgressDot active={step === 'activity'} done={false} />
             </View>
+            <Button label="Skip" variant="ghost" onPress={skipSetup} />
+          </View>
 
+          <ScrollView
+            ref={scrollRef}
+            contentContainerStyle={styles.scroll}
+            showsVerticalScrollIndicator={false}
+            keyboardShouldPersistTaps="handled"
+            keyboardDismissMode="on-drag"
+            automaticallyAdjustKeyboardInsets
+          >
             {step === 'welcome' ? (
               <View style={styles.stepContent}>
                 <View style={styles.iconCircle}>
                   <Icon name="user" size={36} color={COLORS.primary} strokeWidth={1.8} />
                 </View>
-                <Text style={styles.title}>Let's set up your profile</Text>
+                <Text style={styles.title}>A few things about you</Text>
                 <Text style={styles.subtitle}>
-                  This helps us calculate your calories burned, pace recommendations, and personalize your experience. It only takes a minute.
+                  This helps us estimate calories and show your name on the home screen. It takes about a minute.
                 </Text>
 
                 <View style={styles.benefits}>
-                  <BenefitRow icon="zap" text="Accurate calorie estimates" />
-                  <BenefitRow icon="trending-up" text="Personalized pace tracking" />
-                  <BenefitRow icon="activity" text="Better distance calculations" />
-                  <BenefitRow icon="shield" text="Your data stays private on your device" />
+                  <BenefitRow icon="zap" text="Better calorie estimates" />
+                  <BenefitRow icon="trending-up" text="A pace that fits you" />
+                  <BenefitRow icon="shield" text="Your answers stay on this phone" />
                 </View>
-
-                <Button
-                  label="Get started"
-                  size="lg"
-                  full
-                  iconRight="arrow-right"
-                  onPress={() => setStep('name')}
-                />
               </View>
             ) : null}
 
@@ -106,8 +126,8 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                 <View style={styles.iconCircle}>
                   <Icon name="user" size={36} color={COLORS.primary} strokeWidth={1.8} />
                 </View>
-                <Text style={styles.title}>What's your name?</Text>
-                <Text style={styles.subtitle}>We'll use this to personalize your experience.</Text>
+                <Text style={styles.title}>What should we call you?</Text>
+                <Text style={styles.subtitle}>We use your first name on the home screen.</Text>
 
                 <View style={styles.form}>
                   <FormField
@@ -116,30 +136,22 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                     onChange={setFirstName}
                     placeholder="Jane"
                     autoFocus
+                    onFocus={() => scrollRef.current?.scrollTo({ y: 0, animated: true })}
                   />
                   <FormField
                     label="Last name"
                     value={lastName}
                     onChange={setLastName}
                     placeholder="Doe"
+                    onFocus={() => scrollRef.current?.scrollTo({ y: 80, animated: true })}
                   />
                   <FormField
                     label="Age"
                     value={age}
                     onChange={setAge}
-                    placeholder="25"
+                    placeholder="65"
                     keyboard="number-pad"
-                  />
-                </View>
-
-                <View style={styles.navRow}>
-                  <Button label="Back" variant="ghost" onPress={() => setStep('welcome')} />
-                  <Button
-                    label="Continue"
-                    iconRight="arrow-right"
-                    disabled={!canProceedName}
-                    onPress={() => setStep('body')}
-                    style={{ flex: 1 }}
+                    onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
                   />
                 </View>
               </View>
@@ -150,9 +162,9 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                 <View style={styles.iconCircle}>
                   <Icon name="activity" size={36} color={COLORS.primary} strokeWidth={1.8} />
                 </View>
-                <Text style={styles.title}>Your body measurements</Text>
+                <Text style={styles.title}>Height and weight</Text>
                 <Text style={styles.subtitle}>
-                  Used to calculate calories burned. You can update your weight anytime in settings.
+                  Used only to estimate calories. You can change your weight later.
                 </Text>
 
                 <View style={styles.form}>
@@ -167,6 +179,7 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                         keyboardType="number-pad"
                         maxLength={1}
                         style={styles.input}
+                        accessibilityLabel="Height in feet"
                       />
                       <Text style={styles.inputHint}>feet</Text>
                     </View>
@@ -179,28 +192,19 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                         keyboardType="number-pad"
                         maxLength={2}
                         style={styles.input}
+                        accessibilityLabel="Height in inches"
                       />
                       <Text style={styles.inputHint}>inches</Text>
                     </View>
                   </View>
 
                   <FormField
-                    label="Weight (lbs)"
+                    label="Weight (pounds)"
                     value={weight}
                     onChange={setWeight}
                     placeholder="155"
                     keyboard="number-pad"
-                  />
-                </View>
-
-                <View style={styles.navRow}>
-                  <Button label="Back" variant="ghost" onPress={() => setStep('name')} />
-                  <Button
-                    label="Continue"
-                    iconRight="arrow-right"
-                    disabled={!canProceedBody}
-                    onPress={() => setStep('activity')}
-                    style={{ flex: 1 }}
+                    onFocus={() => scrollRef.current?.scrollToEnd({ animated: true })}
                   />
                 </View>
               </View>
@@ -213,7 +217,7 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                 </View>
                 <Text style={styles.title}>Step length (optional)</Text>
                 <Text style={styles.subtitle}>
-                  If you know your average step length, it improves distance accuracy. We'll estimate it from your height if you skip.
+                  Skip this if you are not sure. We will estimate it from your height.
                 </Text>
 
                 <View style={styles.form}>
@@ -221,31 +225,73 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                     label="Step length (inches)"
                     value={stepLength}
                     onChange={setStepLength}
-                    placeholder={`~${Math.round(((parseInt(heightFt) || 5) * 12 + (parseInt(heightIn) || 7)) * 0.413)}`}
+                    placeholder={`About ${estimatedStep}`}
                     keyboard="number-pad"
                   />
                   <Text style={styles.fieldHint}>
-                    Most people's step length is about 41% of their height.
-                    {heightFt && heightIn
-                      ? ` Based on your height, that's about ${Math.round(((parseInt(heightFt) || 5) * 12 + (parseInt(heightIn) || 7)) * 0.413)} inches.`
+                    Most people’s step length is about 41% of their height.
+                    {heightFt
+                      ? ` Based on your height, that is about ${estimatedStep} inches.`
                       : ''}
                   </Text>
-                </View>
-
-                <View style={styles.navRow}>
-                  <Button label="Back" variant="ghost" onPress={() => setStep('body')} />
-                  <Button
-                    label="Finish setup"
-                    iconRight="check"
-                    full
-                    loading={busy}
-                    onPress={handleComplete}
-                    style={{ flex: 1 }}
-                  />
                 </View>
               </View>
             ) : null}
           </ScrollView>
+
+          <View style={styles.footer}>
+            {step === 'welcome' ? (
+              <Button
+                label="Continue"
+                size="lg"
+                full
+                iconRight="arrow-right"
+                onPress={() => setStep('name')}
+              />
+            ) : null}
+
+            {step === 'name' ? (
+              <View style={styles.navRow}>
+                <Button label="Back" variant="ghost" onPress={() => setStep('welcome')} />
+                <Button
+                  label="Continue"
+                  iconRight="arrow-right"
+                  disabled={!canProceedName}
+                  onPress={() => setStep('body')}
+                  style={{ flex: 1 }}
+                  size="lg"
+                />
+              </View>
+            ) : null}
+
+            {step === 'body' ? (
+              <View style={styles.navRow}>
+                <Button label="Back" variant="ghost" onPress={() => setStep('name')} />
+                <Button
+                  label="Continue"
+                  iconRight="arrow-right"
+                  disabled={!canProceedBody}
+                  onPress={() => setStep('activity')}
+                  style={{ flex: 1 }}
+                  size="lg"
+                />
+              </View>
+            ) : null}
+
+            {step === 'activity' ? (
+              <View style={styles.navRow}>
+                <Button label="Back" variant="ghost" onPress={() => setStep('body')} />
+                <Button
+                  label="Finish setup"
+                  iconRight="check"
+                  loading={busy}
+                  onPress={handleComplete}
+                  style={{ flex: 1 }}
+                  size="lg"
+                />
+              </View>
+            ) : null}
+          </View>
         </KeyboardAvoidingView>
       </SafeAreaView>
     </View>
@@ -259,6 +305,7 @@ function FormField({
   placeholder,
   keyboard,
   autoFocus,
+  onFocus,
 }: {
   label: string;
   value: string;
@@ -266,9 +313,10 @@ function FormField({
   placeholder?: string;
   keyboard?: 'default' | 'number-pad';
   autoFocus?: boolean;
+  onFocus?: () => void;
 }) {
   return (
-    <View style={{ gap: 6 }}>
+    <View style={{ gap: 8 }}>
       <Text style={styles.fieldLabel}>{label}</Text>
       <TextInput
         value={value}
@@ -277,7 +325,9 @@ function FormField({
         placeholderTextColor={COLORS.textLight}
         keyboardType={keyboard ?? 'default'}
         autoFocus={autoFocus}
+        onFocus={onFocus}
         style={styles.input}
+        accessibilityLabel={label}
       />
     </View>
   );
@@ -287,7 +337,7 @@ function BenefitRow({ icon, text }: { icon: IconName; text: string }) {
   return (
     <View style={styles.benefitRow}>
       <View style={styles.benefitIcon}>
-        <Icon name={icon} size={16} color={COLORS.primary} strokeWidth={2} />
+        <Icon name={icon} size={18} color={COLORS.primary} strokeWidth={2} />
       </View>
       <Text style={styles.benefitText}>{text}</Text>
     </View>
@@ -303,7 +353,7 @@ function ProgressDot({ active, done }: { active: boolean; done: boolean }) {
         done && styles.progressDotDone,
       ]}
     >
-      {done ? <Icon name="check" size={10} color="#fff" strokeWidth={3} /> : null}
+      {done ? <Icon name="check" size={12} color="#fff" strokeWidth={3} /> : null}
     </View>
   );
 }
@@ -317,30 +367,38 @@ const styles = StyleSheet.create({
   scroll: {
     flexGrow: 1,
     paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.xl,
+    paddingBottom: 40,
   },
 
+  topBar: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingHorizontal: SPACING.md,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.sm,
+    gap: SPACING.sm,
+  },
   progress: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.xl,
+    flex: 1,
     gap: 0,
   },
   progressDot: {
-    width: 12,
-    height: 12,
-    borderRadius: 6,
+    width: 16,
+    height: 16,
+    borderRadius: 8,
     backgroundColor: COLORS.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  progressDotActive: { backgroundColor: COLORS.primary, width: 14, height: 14, borderRadius: 7 },
+  progressDotActive: { backgroundColor: COLORS.primary, width: 18, height: 18, borderRadius: 9 },
   progressDotDone: { backgroundColor: COLORS.primary },
-  progressLine: { width: 30, height: 2, backgroundColor: COLORS.borderStrong },
+  progressLine: { width: 28, height: 3, backgroundColor: COLORS.borderStrong },
 
-  stepContent: { gap: SPACING.lg, alignItems: 'center' },
+  stepContent: { gap: SPACING.lg, alignItems: 'center', paddingTop: SPACING.sm },
   iconCircle: {
     width: 80,
     height: 80,
@@ -354,7 +412,7 @@ const styles = StyleSheet.create({
     ...TYPOGRAPHY.body,
     color: COLORS.textSecondary,
     textAlign: 'center',
-    maxWidth: 340,
+    maxWidth: 360,
     marginTop: -SPACING.sm,
   },
 
@@ -369,30 +427,40 @@ const styles = StyleSheet.create({
   },
   benefitRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
   benefitIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 16,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: COLORS.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
   benefitText: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flex: 1 },
 
-  form: { width: '100%', gap: SPACING.md },
+  form: { width: '100%', gap: SPACING.lg },
   fieldLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
   fieldHint: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
   input: {
     backgroundColor: COLORS.surface,
     borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderStrong,
     paddingHorizontal: SPACING.md,
-    paddingVertical: 14,
-    ...TYPOGRAPHY.body,
+    paddingVertical: 16,
+    minHeight: 56,
+    fontSize: 18,
+    fontWeight: '500',
     color: COLORS.text,
   },
-  inputHint: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textAlign: 'center', marginTop: 4 },
+  inputHint: { ...TYPOGRAPHY.small, color: COLORS.textMuted, textAlign: 'center', marginTop: 6 },
   heightRow: { flexDirection: 'row', gap: SPACING.md },
 
+  footer: {
+    paddingHorizontal: SPACING.lg,
+    paddingTop: SPACING.sm,
+    paddingBottom: SPACING.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    backgroundColor: COLORS.background,
+  },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, width: '100%' },
 });
