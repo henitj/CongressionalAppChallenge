@@ -5,6 +5,7 @@ import { createNativeStackNavigator } from '@react-navigation/native-stack';
 
 import HomeScreen from '../screens/HomeScreen';
 import TrackScreen from '../screens/TrackScreen';
+import ActiveTrackingScreen from '../screens/ActiveTrackingScreen';
 import TrailsScreen from '../screens/TrailsScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -15,9 +16,9 @@ import ChallengesScreen from '../screens/ChallengesScreen';
 import ConditionsScreen from '../screens/ConditionsScreen';
 import StreakScreen from '../screens/StreakScreen';
 import AssistantScreen from '../screens/AssistantScreen';
-import SpeciesScreen from '../screens/SpeciesScreen';
 import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 import RecapScreen from '../screens/RecapScreen';
+import HistoryScreen from '../screens/HistoryScreen';
 
 import Icon, { IconName } from '../components/Icon';
 import { COLORS } from '../constants/theme';
@@ -38,8 +39,8 @@ function TabItem({ icon, label, focused }: { icon: IconName; label: string; focu
     <View style={styles.tabItem}>
       <Icon
         name={icon}
-        size={21}
-        color={focused ? COLORS.primary : COLORS.textLight}
+        size={22}
+        color={focused ? COLORS.primary : COLORS.textMuted}
         strokeWidth={focused ? 2.2 : 1.8}
       />
       <Text style={[styles.tabLabel, focused && styles.tabLabelActive]} numberOfLines={1}>
@@ -82,16 +83,24 @@ export default function RootNavigator() {
   return (
     <Stack.Navigator screenOptions={{ headerShown: false }}>
       <Stack.Screen name="Tabs" component={Tabs} />
+      <Stack.Screen
+        name="ActiveTracking"
+        component={ActiveTrackingScreen}
+        options={{
+          gestureEnabled: false,
+          animation: 'slide_from_bottom',
+        }}
+      />
       <Stack.Screen name="Impact" component={ImpactScreen} />
       <Stack.Screen name="Challenges" component={ChallengesScreen} />
       <Stack.Screen name="Conditions" component={ConditionsScreen} />
       <Stack.Screen name="Streak" component={StreakScreen} />
       <Stack.Screen name="Assistant" component={AssistantScreen} />
-      <Stack.Screen name="Species" component={SpeciesScreen} />
       <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
       <Stack.Screen name="Recap" component={RecapScreen} />
       <Stack.Screen name="Safety" component={SafetyScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
+      <Stack.Screen name="History" component={HistoryScreen} />
     </Stack.Navigator>
   );
 }
@@ -101,8 +110,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.surface,
     borderTopWidth: 1,
     borderTopColor: COLORS.border,
-    height: Platform.OS === 'ios' ? 84 : 66,
-    paddingBottom: Platform.OS === 'ios' ? 24 : 8,
+    height: Platform.OS === 'ios' ? 88 : 70,
+    paddingBottom: Platform.OS === 'ios' ? 28 : 10,
     paddingTop: 4,
     elevation: 0,
     shadowOpacity: 0,
@@ -110,13 +119,13 @@ const styles = StyleSheet.create({
   tabItem: {
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 3,
+    gap: 4,
     width: 64,
   },
   tabLabel: {
-    fontSize: 10.5,
+    fontSize: 11,
     fontWeight: '500',
-    color: COLORS.textLight,
+    color: COLORS.textMuted,
     letterSpacing: 0.1,
   },
   tabLabelActive: {

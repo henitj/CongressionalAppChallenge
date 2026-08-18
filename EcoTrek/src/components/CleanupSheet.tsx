@@ -23,7 +23,7 @@ export default function CleanupSheet({
   visible: boolean;
   onClose: () => void;
 }) {
-  const { logCleanup } = useLogbook();
+  const { addCleanup } = useLogbook();
   const { coords, trails } = useApp();
 
   const [pieces, setPieces] = useState(5);
@@ -38,7 +38,7 @@ export default function CleanupSheet({
     if (pieces < 1) return;
     setSaving(true);
     try {
-      await logCleanup(pieces, trail?.id ?? null);
+      await addCleanup(pieces);
       setPieces(5);
       onClose();
     } finally {

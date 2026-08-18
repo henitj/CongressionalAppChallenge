@@ -14,6 +14,7 @@ import { useAuth } from './AuthContext';
 import { useStreak } from './StreakContext';
 import { useClub } from '../constants/ClubContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
+import { useProfile, estimateCalories, estimateElevation } from './ProfileContext';
 import { keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 
@@ -31,7 +32,6 @@ export type Activity = {
   points: number;
   path: Coord[];
   grant?: TreeGrant;
-  /** Trail we matched this activity to, if any. */
   trailId?: string;
   trailName?: string;
   trailCompleted?: boolean;
@@ -40,6 +40,14 @@ export type Activity = {
   valid: boolean;
   flagReason?: string | null;
   avgMph: number;
+  /** Number of speed limit violations during the activity */
+  strikeCount: number;
+  /** Calories burned estimate */
+  calories: number;
+  /** Elevation gain in feet */
+  elevationGain: number;
+  /** Elevation loss in feet */
+  elevationLoss: number;
 };
 
 export type ActivityResult = {
@@ -63,8 +71,9 @@ type ContextValue = {
   trailsCompleted: number;
   uniqueTrailsCompleted: number;
   longestMiles: number;
+  totalCalories: number;
   addActivity: (
-    a: Omit<Activity, 'id' | 'userId' | 'trees' | 'points' | 'grant' | 'valid' | 'avgMph'>
+    a: Omit<Activity, 'id' | 'userId' | 'trees' | 'points' | 'grant' | 'valid' | 'avgMph' | 'strikeCount' | 'calories' | 'elevationGain' | 'elevationLoss'>
   ) => Promise<ActivityResult>;
   deleteActivity: (id: string) => Promise<void>;
   clearHistory: () => Promise<void>;
@@ -91,6 +100,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
   const { award } = useEcoPoints();
   const { recordActivity } = useStreak();
   const { contribute, myClub } = useClub();
+  const { profile } = useProfile();
 
   const userId = user?.id ?? null;
   const storeKey = keyFor(userId, 'activities');
@@ -98,8 +108,6 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
   const [history, setHistory] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
-  /* ── Load persisted history (this used to be memory-only and vanished on
-        every app close) ──────────────────────────────────────────────────── */
   useEffect(() => {
     let cancelled = false;
     setLoading(true);
@@ -112,13 +120,11 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
       if (isBackendConfigured()) {
         const res = await api.get<Activity[]>(ROUTES.activities);
         if (!cancelled && res.ok && Array.isArray(res.data)) {
-          // Merge server + local, dedup by id, newest first.
           const byId = new Map<string, Activity>();
           [...res.data, ...local].forEach((a) => byId.set(a.id, a));
           const merged = [...byId.values()].sort((a, b) => b.startedAt - a.startedAt);
           setHistory(merged);
           saveJSON(storeKey, merged);
-          /* eslint-disable-next-line no-void */
         }
       }
     })();
@@ -127,11 +133,6 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     };
   }, [storeKey]);
 
-  /**
-   * Updates history from the previous value rather than a captured one.
-   * The old version read `history` out of the closure, so two saves landing
-   * in the same tick could drop the first.
-   */
   const persist = useCallback(
     (update: (prev: Activity[]) => Activity[]) => {
       setHistory((prev) => {
@@ -143,16 +144,18 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     [storeKey]
   );
 
-  /* ── Record a finished activity ────────────────────────────────────────── */
   const addActivity = useCallback<ContextValue['addActivity']>(
     async (input) => {
       const path = thinPath(input.path ?? []);
 
-      // 1. Plausibility check.
+      // 1. Plausibility check with strike system
       const validation = validateActivity(path, input.miles, input.durationSec, input.type);
 
-      // 2. Trail detection + completion.
+      // 2. Trail detection + completion
       const completion = evaluateCompletion(path, input.miles);
+
+      // 3. Elevation estimate
+      const elevation = estimateElevation(path);
 
       const trees = validation.valid ? computeTrees(input.type, input.miles) : 0;
       const id = `act-${input.startedAt}`;
@@ -167,6 +170,12 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         valid: validation.valid,
         flagReason: validation.flagReason,
         avgMph: Math.round(validation.avgMph * 10) / 10,
+        strikeCount: validation.strikeCount,
+        calories: validation.valid
+          ? estimateCalories(input.type, input.durationSec, validation.avgMph, profile)
+          : 0,
+        elevationGain: elevation.gain,
+        elevationLoss: elevation.loss,
         trailId: completion.trail?.id,
         trailName: completion.trail?.name,
         trailCompleted: validation.valid && completion.completed,
@@ -174,7 +183,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         grant: trees > 0 ? createGrant(id, trees, 'activity') : undefined,
       };
 
-      // 3. Award points — only for activities that passed validation.
+      // 4. Award points — only for activities that passed validation
       let pointsAwarded = 0;
       if (validation.valid) {
         const mileAction = input.type === 'hike' ? 'hike_mile' : 'bike_mile';
@@ -195,15 +204,11 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
 
       activity.points = pointsAwarded;
 
-      // Replace rather than append if this id already exists, so a
-      // double-tapped Finish button cannot create a duplicate.
+      // Replace rather than append if this id already exists
       persist((prev) => [activity, ...prev.filter((a) => a.id !== activity.id)].slice(0, 500));
 
       if (validation.valid) {
-        // 4. Streak calendar.
         await recordActivity(input.miles, trees, input.startedAt);
-
-        // 5. Club contribution.
         if (myClub) {
           await contribute({ points: pointsAwarded, trees, miles: input.miles, activities: 1 });
         }
@@ -223,7 +228,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         rejectionReason: validation.flagReason,
       };
     },
-    [persist, award, recordActivity, contribute, myClub, userId]
+    [persist, award, recordActivity, contribute, myClub, userId, profile]
   );
 
   const deleteActivity = useCallback(
@@ -238,7 +243,6 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     persist(() => []);
   }, [persist]);
 
-  /* ── Aggregates (invalid activities never count) ───────────────────────── */
   const stats = useMemo(() => {
     const valid = history.filter((a) => a.valid);
     const completedTrailIds = new Set(
@@ -253,6 +257,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
       trailsCompleted: valid.filter((a) => a.trailCompleted).length,
       uniqueTrailsCompleted: completedTrailIds.size,
       longestMiles: valid.reduce((m, a) => Math.max(m, a.miles), 0),
+      totalCalories: valid.reduce((s, a) => s + (a.calories || 0), 0),
     };
   }, [history]);
 
