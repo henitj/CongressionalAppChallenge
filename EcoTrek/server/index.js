@@ -22,7 +22,32 @@ const PORT = process.env.PORT ?? 8787;
 /** Routes that do not require a signed-in user. */
 const PUBLIC_ROUTES = new Set(['GET /api/trails', 'GET /api/health']);
 
-function send(res, status, body) {
+/**
+ * Basic per-IP rate limit. The app makes short bursts (a sync is ~10
+ * requests), so 240/min is generous for one person and hostile for a script.
+ * Uses the socket address; behind a reverse proxy, front it with the
+ * platform's own limiter or set the proxy's address limits instead.
+ */
+const RATE_LIMIT = 240;
+const RATE_WINDOW_MS = 60_000;
+const hits = new Map();
+
+function isRateLimited(ip) {
+  const now = Date.now();
+  const h = hits.get(ip);
+  if (!h || now > h.resetAt) {
+    // Opportunistic cleanup so the map cannot grow without bound.
+    if (hits.size > 10_000) {
+      for (const [k, v] of hits) if (now > v.resetAt) hits.delete(k);
+    }
+    hits.set(ip, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return false;
+  }
+  h.count += 1;
+  return h.count > RATE_LIMIT;
+}
+
+function send(res, status, body, extraHeaders = {}) {
   const payload = body === undefined ? '' : JSON.stringify(body);
   res.writeHead(status, {
     'Content-Type': 'application/json; charset=utf-8',
@@ -32,8 +57,18 @@ function send(res, status, body) {
     'Access-Control-Allow-Headers': 'Content-Type, Authorization',
     'Access-Control-Allow-Methods': 'GET, POST, PATCH, DELETE, OPTIONS',
     'Cache-Control': 'no-store',
+    'X-Content-Type-Options': 'nosniff',
+    ...extraHeaders,
   });
   res.end(payload);
+}
+
+/** Body-size and JSON errors carry their own status so they do not land as 500s. */
+function bad(status, publicMessage) {
+  const e = new Error(publicMessage);
+  e.status = status;
+  e.publicMessage = publicMessage;
+  return e;
 }
 
 async function readBody(req) {
@@ -42,14 +77,14 @@ async function readBody(req) {
   for await (const chunk of req) {
     size += chunk.length;
     // GPS paths can be chunky; anything past 2 MB is not legitimate.
-    if (size > 2_000_000) throw new Error('Request body too large');
+    if (size > 2_000_000) throw bad(413, 'body_too_large');
     chunks.push(chunk);
   }
   if (!chunks.length) return {};
   try {
     return JSON.parse(Buffer.concat(chunks).toString('utf8'));
   } catch {
-    throw new Error('Body is not valid JSON');
+    throw bad(400, 'invalid_json');
   }
 }
 
@@ -65,7 +100,12 @@ function matchRoute(method, pathname) {
     let ok = true;
     for (let i = 0; i < pattern.length; i++) {
       if (pattern[i].startsWith(':')) {
-        params[pattern[i].slice(1)] = decodeURIComponent(actual[i]);
+        // A malformed % sequence here must not take the process down.
+        try {
+          params[pattern[i].slice(1)] = decodeURIComponent(actual[i]);
+        } catch {
+          params[pattern[i].slice(1)] = actual[i];
+        }
       } else if (pattern[i] !== actual[i]) {
         ok = false;
         break;
@@ -79,7 +119,17 @@ function matchRoute(method, pathname) {
 const server = createServer(async (req, res) => {
   if (req.method === 'OPTIONS') return send(res, 204);
 
-  const url = new URL(req.url, `http://${req.headers.host}`);
+  if (isRateLimited(req.socket?.remoteAddress ?? 'unknown')) {
+    return send(res, 429, { error: 'rate_limited', retryAfterSeconds: 60 }, { 'Retry-After': '60' });
+  }
+
+  // A hostile Host header or request line must not crash the process either.
+  let url;
+  try {
+    url = new URL(req.url, `http://${req.headers.host ?? 'localhost'}`);
+  } catch {
+    return send(res, 400, { error: 'bad_request' });
+  }
   const pathname = url.pathname.replace(/\/+$/, '') || '/';
   const key = `${req.method} ${pathname}`;
 
@@ -87,7 +137,12 @@ const server = createServer(async (req, res) => {
     return send(res, 200, { ok: true, service: 'ecotrek-api' });
   }
 
-  const matched = matchRoute(req.method, pathname);
+  let matched;
+  try {
+    matched = matchRoute(req.method, pathname);
+  } catch {
+    return send(res, 400, { error: 'bad_request' });
+  }
   if (!matched) return send(res, 404, { error: 'not_found' });
 
   try {

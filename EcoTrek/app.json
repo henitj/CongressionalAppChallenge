@@ -12,7 +12,7 @@
     "splash": {
       "image": "./assets/splash.png",
       "resizeMode": "contain",
-      "backgroundColor": "#43644F"
+      "backgroundColor": "#1C4830"
     },
     "assetBundlePatterns": [
       "**/*"
@@ -46,7 +46,7 @@
       ],
       "adaptiveIcon": {
         "foregroundImage": "./assets/adaptive-icon.png",
-        "backgroundColor": "#6E8A70"
+        "backgroundColor": "#5FCB59"
       }
     },
     "web": {

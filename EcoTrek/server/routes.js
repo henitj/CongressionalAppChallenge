@@ -18,6 +18,23 @@ function fail(status, publicMessage) {
 
 const ms = (v) => (v ? new Date(v).getTime() : 0);
 
+/**
+ * Clamps a client-supplied number into a sane range. The app is the only
+ * intended client and always sends realistic values; this is defence in depth
+ * so a hand-crafted request cannot deposit absurd numbers into shared
+ * leaderboards.
+ */
+function clampNumber(v, min, max, fallback = 0) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(max, Math.max(min, n));
+}
+
+/** Caps a client-supplied string so nothing unbounded reaches the database. */
+function capString(v, max) {
+  return String(v ?? '').slice(0, max);
+}
+
 /* ── Mappers: database row → the shape the app already uses ───────────────── */
 
 function toActivity(r) {
@@ -175,6 +192,14 @@ export const routes = [
     handler: async ({ user, body, sql }) => {
       const a = body;
       if (!a?.id || !a.type) throw fail(400, 'invalid_activity');
+      if (a.type !== 'hike' && a.type !== 'bike') throw fail(400, 'invalid_activity');
+
+      // Sanity caps: no real walk is 500 miles or a month long.
+      const miles = clampNumber(a.miles, 0, 500);
+      const durationSec = clampNumber(a.durationSec, 0, 172_800);
+      const trees = clampNumber(a.trees ?? 0, 0, 10_000);
+      const points = clampNumber(a.points ?? 0, 0, 10_000);
+      const path = Array.isArray(a.path) ? a.path.slice(0, 2000) : [];
 
       const rows = await sql`
         INSERT INTO activities (
@@ -185,13 +210,14 @@ export const routes = [
         ) VALUES (
           ${user.id}, ${a.id}, ${a.type},
           to_timestamp(${a.startedAt} / 1000.0), to_timestamp(${a.endedAt} / 1000.0),
-          ${a.durationSec}, ${a.miles}, ${a.trees ?? 0}, ${a.points ?? 0},
-          ${JSON.stringify(a.path ?? [])}::jsonb, 'gps', ${a.valid !== false},
-          ${a.flagReason ?? null}, ${a.trailId ?? null}, ${a.trailName ?? null},
-          ${!!a.trailCompleted}, ${a.coveragePercent ?? null},
-          ${a.grant?.species ?? null},
-          ${a.path?.[0]?.latitude ?? null}, ${a.path?.[0]?.longitude ?? null},
-          ${a.path?.at(-1)?.latitude ?? null}, ${a.path?.at(-1)?.longitude ?? null}
+          ${durationSec}, ${miles},
+          ${trees}, ${points},
+          ${JSON.stringify(path)}::jsonb, 'gps', ${a.valid !== false},
+          ${capString(a.flagReason, 60) || null}, ${capString(a.trailId, 60) || null},
+          ${capString(a.trailName, 120) || null},
+          ${!!a.trailCompleted}, ${a.coveragePercent ?? null}, ${a.grant?.species ?? null},
+          ${path[0]?.latitude ?? null}, ${path[0]?.longitude ?? null},
+          ${path.at(-1)?.latitude ?? null}, ${path.at(-1)?.longitude ?? null}
         )
         -- Re-sending the same activity (offline retry) updates instead of
         -- duplicating. This is what client_id is for.
@@ -233,9 +259,12 @@ export const routes = [
     handler: async ({ user, body, sql }) => {
       const e = body;
       if (!e?.action || typeof e.points !== 'number') throw fail(400, 'invalid_event');
+      const points = clampNumber(e.points, 0, 1000);
+      const label = capString(e.label ?? e.action, 120);
+      const action = capString(e.action, 60);
       const rows = await sql`
         INSERT INTO point_events (user_id, action, points, label, idempotency_key, created_at)
-        VALUES (${user.id}, ${e.action}, ${e.points}, ${e.label ?? e.action}, ${e.id ?? null},
+        VALUES (${user.id}, ${action}, ${points}, ${label}, ${e.id ?? null},
                 to_timestamp(${e.timestamp ?? Date.now()} / 1000.0))
         ON CONFLICT (user_id, idempotency_key) DO NOTHING
         RETURNING *`;
@@ -344,7 +373,8 @@ export const routes = [
     method: 'POST',
     path: '/api/challenges/:id/complete',
     handler: async ({ user, params, body, sql }) => {
-      const { weekId, points = 0 } = body;
+      const { weekId } = body;
+      const points = clampNumber(body.points ?? 0, 0, 200);
       if (!weekId) throw fail(400, 'week_required');
       await sql`
         INSERT INTO user_challenges (user_id, challenge_slug, week_id, points, is_complete, completed_at, progress)
@@ -365,8 +395,9 @@ export const routes = [
     method: 'POST',
     path: '/api/clubs',
     handler: async ({ user, body, sql }) => {
-      const name = (body.name ?? '').trim();
+      const name = capString(body.name, 40).trim();
       if (name.length < 3) throw fail(400, 'name_too_short');
+      const description = capString(body.description, 300).trim();
 
       const existing = await sql`
         SELECT 1 FROM club_members WHERE user_id = ${user.id} AND left_at IS NULL LIMIT 1`;
@@ -378,7 +409,7 @@ export const routes = [
         try {
           const rows = await sql`
             INSERT INTO clubs (name, code, description, owner_id, is_locked, max_members)
-            VALUES (${name}, ${generateCode()}, ${(body.description ?? '').trim()},
+            VALUES (${name}, ${generateCode()}, ${description},
                     ${user.id}, ${!!body.isLocked}, ${clampCap(body.maxMembers)})
             RETURNING *`;
           club = rows[0];
@@ -511,8 +542,13 @@ export const routes = [
     method: 'POST',
     path: '/api/clubs/:id/contribute',
     handler: async ({ user, params, body, sql }) => {
-      const { points = 0, trees = 0, miles = 0 } = body;
-      const { activities = 0, weekId = null } = body;
+      // All contribution numbers are clamped: real contributions are small,
+      // and shared club totals deserve not to be poisoned by crafted input.
+      const points = clampNumber(body.points ?? 0, 0, 10_000);
+      const trees = clampNumber(body.trees ?? 0, 0, 1_000);
+      const miles = clampNumber(body.miles ?? 0, 0, 500);
+      const activities = clampNumber(body.activities ?? 0, 0, 50);
+      const { weekId = null } = body;
 
       await sql`
         UPDATE club_members
@@ -711,8 +747,8 @@ export const routes = [
     handler: async ({ user, body, sql }) => {
       await sql`
         INSERT INTO devices (user_id, device_id, platform, app_version, expo_push_token)
-        VALUES (${user.id}, ${body.deviceId}, ${body.platform ?? null},
-                ${body.appVersion ?? null}, ${body.expoPushToken ?? null})
+        VALUES (${user.id}, ${capString(body.deviceId, 120)}, ${capString(body.platform, 20) || null},
+                ${capString(body.appVersion, 20) || null}, ${capString(body.expoPushToken, 160) || null})
         ON CONFLICT (user_id, device_id) DO UPDATE
           SET expo_push_token = EXCLUDED.expo_push_token,
               app_version = EXCLUDED.app_version,
