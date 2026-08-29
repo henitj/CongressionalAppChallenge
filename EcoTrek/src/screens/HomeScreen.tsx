@@ -58,15 +58,17 @@ export default function HomeScreen() {
     ? nextChallenge.kind === 'auto'
       ? `${nextChallenge.title} · ${Math.min(nextChallenge.progress, nextChallenge.target ?? 1)} of ${nextChallenge.target ?? 1}`
       : nextChallenge.title
-    : 'All five challenges are done for the week';
+    : 'All five challenges are complete.';
+
+  const streakTitle = currentStreak > 0 ? `${currentStreak}-week streak` : 'Start your streak';
 
   const clubMessage = myClub
     ? activeGoal
       ? activeGoal.metAt
-        ? `${myClub.name} already hit this week's goal.`
+        ? `${myClub.name} reached this week's goal.`
         : `${myClub.name} is chasing ${activeGoal.target} ${goalLabel(activeGoal.metric)}.`
       : `${myClub.name} is ready for more miles this week.`
-    : 'Walk solo or join a club later — your progress still counts.';
+    : 'Your miles count even when you walk solo.';
 
   return (
     <Screen>
@@ -98,7 +100,7 @@ export default function HomeScreen() {
             <View style={{ flex: 1, minWidth: 0 }}>
               <Text style={styles.panelEyebrow}>Weekly momentum</Text>
               <Text style={styles.panelTitle} numberOfLines={1}>
-                {currentStreak} week streak
+                {streakTitle}
               </Text>
             </View>
             <Pill label={timeLeftLabel} tone="neutral" size="sm" icon="clock" />
@@ -122,25 +124,25 @@ export default function HomeScreen() {
             <QuickAction
               icon="tree"
               title="Impact"
-              hint="Miles, trees and records"
+              hint="Trees and miles"
               onPress={() => navigation.navigate('Impact')}
             />
             <QuickAction
               icon="clock"
               title="My walks"
-              hint="Open your full history"
+              hint="Your activity"
               onPress={() => navigation.navigate('History')}
             />
             <QuickAction
               icon="map"
               title="Trails"
-              hint="Browse Austin routes"
+              hint="Find a route"
               onPress={() => navigation.navigate('Trails')}
             />
             <QuickAction
               icon="target"
               title="Weekly goals"
-              hint="See this week’s challenges"
+              hint="This week's goals"
               onPress={() => navigation.navigate('Challenges')}
             />
           </View>
@@ -221,9 +223,9 @@ export default function HomeScreen() {
             </Card>
           ) : (
             <Card tone="sunken">
-              <Text style={styles.emptyTitle}>You have not walked yet</Text>
+              <Text style={styles.emptyTitle}>No walks yet</Text>
               <Text style={styles.emptyText}>
-                Tap Start when you are ready. Even one short walk is enough to begin.
+                Start with a short walk and your progress will show up here.
               </Text>
             </Card>
           )}
@@ -319,8 +321,8 @@ function makeStyles(c: ColorPalette, t: Typography) {
       borderWidth: 1,
       borderColor: c.border,
       padding: SPACING.md,
-      minHeight: 118,
-      justifyContent: 'space-between',
+      minHeight: 136,
+      justifyContent: 'flex-start',
     },
     quickIcon: {
       width: 38,

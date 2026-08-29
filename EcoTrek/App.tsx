@@ -10,7 +10,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import RootNavigator from './src/navigation/RootNavigator';
 import SignInScreen from './src/screens/SignInScreen';
 import OnboardingGate from './src/components/OnboardingGate';
-import Icon from './src/components/Icon';
+import Logo from './src/components/Logo';
 import { APP_NAME } from './src/constants/appInfo';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
@@ -127,9 +127,7 @@ function Gate() {
   if (loading) {
     return (
       <View style={{ ...styles.loading, backgroundColor: colors.background }}>
-        <View style={[styles.mark, { backgroundColor: colors.primarySurface }]}>
-          <Icon name="tree" size={30} color={colors.primary} strokeWidth={1.9} />
-        </View>
+        <Logo size={62} />
         <Text style={[styles.appName, { color: colors.text }]}>{APP_NAME}</Text>
         <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 18 }} />
       </View>
@@ -200,14 +198,6 @@ export default function App() {
 const styles = StyleSheet.create({
   loading: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  mark: {
-    width: 62,
-    height: 62,
-    borderRadius: 20,
-    backgroundColor: 'rgba(255,255,255,0.09)',
     alignItems: 'center',
     justifyContent: 'center',
   },

@@ -71,6 +71,7 @@ export default function ActiveTrackingScreen() {
 
   const trees = computeTrees(mode, miles);
   const speedLimit = SPEED_LIMITS[mode];
+  const finishLabel = mode === 'bike' ? 'Finish ride' : 'Finish walk';
   const avgMph = elapsed > 0 ? miles / (elapsed / 3600) : 0;
   const calories = estimateCalories(mode, elapsed, avgMph, profile);
   const { report } = useWeather();
@@ -303,8 +304,7 @@ export default function ActiveTrackingScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        {/* Top bar — Stop lives here, big and within thumb reach, so ending
-            a hike never depends on scrolling or remembering where Finish is. */}
+        {/* Top bar — keep the finish action visible and within thumb reach. */}
         <View style={styles.topBar}>
           <Pressable onPress={handleDiscard} style={styles.backBtn} hitSlop={12} accessibilityLabel="Discard activity">
             <Icon name="x" size={20} color="#fff" strokeWidth={2.2} />
@@ -327,12 +327,12 @@ export default function ActiveTrackingScreen() {
             <Pressable
               onPress={handleFinish}
               disabled={saving}
-              style={({ pressed }) => [styles.stopBtn, pressed && { opacity: 0.85 }]}
-              accessibilityLabel="Stop and save"
+              style={({ pressed }) => [styles.finishBtn, pressed && { opacity: 0.85 }]}
+              accessibilityLabel={`${finishLabel} and save`}
               accessibilityRole="button"
             >
-              <Icon name="stop" size={15} color="#fff" strokeWidth={2} filled />
-              <Text style={styles.stopLabel}>Stop</Text>
+              <Icon name="flag" size={15} color="#fff" strokeWidth={2} />
+              <Text style={styles.finishLabel}>{finishLabel}</Text>
             </Pressable>
           </View>
         </View>
@@ -432,7 +432,7 @@ export default function ActiveTrackingScreen() {
                 </Text>
                 <View style={styles.alertButtons}>
                   <Button
-                    label="End activity"
+                    label="Finish activity"
                     onPress={handleFinish}
                     style={{ flex: 1 }}
                   />
@@ -450,8 +450,8 @@ export default function ActiveTrackingScreen() {
           {/* Finish button */}
           <View style={styles.finishRow}>
             <Button
-              label={mode === 'bike' ? 'Finish ride' : 'Finish walk'}
-              icon="stop"
+              label={finishLabel}
+              icon="flag"
               size="lg"
               full
               loading={saving}
@@ -569,29 +569,29 @@ function makeStyles(c: ColorPalette, t: Typography) {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // The one-tap exit. Red on purpose — it is the "I am done" control and it
-  // should be the easiest thing on this screen to find.
-  stopBtn: {
+  // A clear, positive finish action reads as completing the activity rather
+  // than pausing it or triggering an emergency stop.
+  finishBtn: {
     minHeight: 48,
     paddingHorizontal: SPACING.md + 2,
     paddingRight: SPACING.md + 4,
     borderRadius: RADIUS.pill,
-    backgroundColor: '#E5484D',
+    backgroundColor: '#2B9A6E',
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
     shadowColor: '#000',
-    shadowOpacity: 0.25,
+    shadowOpacity: 0.2,
     shadowRadius: 6,
     shadowOffset: { width: 0, height: 2 },
     elevation: 4,
   },
-  stopLabel: {
+  finishLabel: {
     fontSize: 17,
     fontWeight: '800',
     color: '#fff',
-    letterSpacing: 0.2,
+    letterSpacing: 0.1,
   },
 
   mapContainer: {

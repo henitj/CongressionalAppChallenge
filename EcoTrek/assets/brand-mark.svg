@@ -1,0 +1,26 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
+  <rect width="1024" height="1024" fill="#0D3D2D"/>
+  <circle cx="512" cy="512" r="368" fill="#1A7A5A"/>
+
+  <!-- A single route that grows into a leaf: movement + a lighter footprint. -->
+  <path
+    d="M 330 790 C 418 742 568 744 594 650 C 620 558 482 520 420 474 C 366 434 404 360 514 307"
+    fill="none"
+    stroke="#FFF8E5"
+    stroke-width="82"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <path
+    d="M 504 318 C 494 220 596 132 736 128 C 732 261 646 340 504 318 Z"
+    fill="#7DD4AD"
+  />
+  <path
+    d="M 510 311 C 568 257 631 195 714 145"
+    fill="none"
+    stroke="#0D3D2D"
+    stroke-width="18"
+    stroke-linecap="round"
+  />
+  <circle cx="321" cy="796" r="24" fill="#E8943A"/>
+</svg>

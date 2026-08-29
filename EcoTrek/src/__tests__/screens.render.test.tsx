@@ -179,17 +179,17 @@ describe('review fixes', () => {
   });
 });
 
-describe('stop button, feedback and the removed contacts feature', () => {
-  it('tracking puts a big one-tap Stop control in the top bar', async () => {
+describe('finish button, feedback and the removed contacts feature', () => {
+  it('tracking puts a clear Finish walk control in the top bar', async () => {
     const utils = await mount(ActiveTrackingScreen, /Recording/);
-    expect(utils.getByLabelText('Stop and save')).toBeTruthy();
+    expect(utils.getByLabelText('Finish walk and save')).toBeTruthy();
     expect(utils.getByLabelText('Pause')).toBeTruthy();
-    expect(utils.getByText('Stop')).toBeTruthy();
+    expect(utils.getAllByText('Finish walk').length).toBeGreaterThanOrEqual(1);
   });
 
-  it('tapping Stop finishes the hike and shows the summary', async () => {
+  it('tapping Finish walk finishes the hike and shows the summary', async () => {
     const utils = await mount(ActiveTrackingScreen, /Recording/);
-    fireEvent.press(utils.getByLabelText('Stop and save'));
+    fireEvent.press(utils.getByLabelText('Finish walk and save'));
     // A zero-second, zero-mile activity is rejected by design — the summary
     // must still appear, and no feedback button is offered for it.
     await waitFor(() => expect(utils.queryByText('This one did not count')).toBeTruthy(), { timeout: 8000 });
@@ -294,7 +294,7 @@ describe('screens that do not need the provider stack', () => {
 describe('empty states say something useful', () => {
   it('Home tells a brand new user what to do', async () => {
     const { queryByText } = await mount(HomeScreen, 'Your last walk');
-    expect(queryByText(/You have not walked yet/i)).toBeTruthy();
+    expect(queryByText(/No walks yet/i)).toBeTruthy();
   });
 
   it('Clubs opens on the tab that explains how to join', async () => {

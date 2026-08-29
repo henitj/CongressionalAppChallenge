@@ -39,7 +39,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 | **My walks** | This week's miles plus every saved walk. Recap and records are one tap away. |
 | **Background recording** | Keeps measuring if you lock the phone. Android shows "EcoTrek is recording." Stops on Finish. |
 | **Weather** | One tiny box on Home: temperature, condition, and a single friendly line. We are not a weather app. Full detail is one tap away. |
-| **Safety** | A big one-tap Stop button at the top of the live screen, plus Call 911 (with a confirm step). Sit-down reminder after 25 minutes. |
+| **Safety** | A clear one-tap Finish button at the top of the live screen, plus Call 911 (with a confirm step). Sit-down reminder after 25 minutes. |
 | **Text size / look** | Normal, Large, Extra large. Light, Dark, or Sky (sunrise / afternoon / sunset in daytime only). |
 | **Your photo** | Tap the avatar on your profile to pick or take your own picture. It becomes your profile logo everywhere. |
 | **Share card** | A real picture — your photo plus your stats — sent through the system share sheet. If a device can't make a picture, it falls back to sharing the stats as text, and the card is always on screen to show someone directly. |

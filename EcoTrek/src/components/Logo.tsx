@@ -4,10 +4,9 @@ import { Image, ImageStyle, StyleProp } from 'react-native';
 const LOGO = require('../../assets/logo.png');
 
 /**
- * The EcoTrek mark — a deep-forest-green circular emblem with a cream
- * winding trail that flows up into a fresh leaf, a warm orange sun, and
- * two cream pine trees at the base. This is the app's face: it greets
- * people on the intro and sign-in screens, matching the installed app icon.
+ * The EcoTrek mark: one clear route growing into a leaf. The route represents
+ * every walk or ride we measure; the leaf keeps the lighter-footprint idea
+ * visible without adding extra scenery that disappears at small sizes.
  *
  * The source file (assets/logo.png) is square with the brand background
  * baked in, so we round the corners here and it sits cleanly on any surface.
