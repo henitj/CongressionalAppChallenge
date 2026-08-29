@@ -1,11 +1,4 @@
-import React, {
-  createContext,
-  useCallback,
-  useContext,
-  useEffect,
-  useMemo,
-  useState,
-} from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Coord } from '../services/location';
 import { TREE_RULES } from '../constants/theme';
 import { createGrant, TreeGrant } from '../services/trees';

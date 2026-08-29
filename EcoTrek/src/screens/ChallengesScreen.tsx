@@ -1,15 +1,18 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import Header from '../components/Header';
 import Icon from '../components/Icon';
 import ChallengeItem from '../components/ChallengeItem';
 import { Screen, Card, Pill, ProgressBar, Banner } from '../components/ui';
-import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { SPACING, ColorPalette } from '../constants/theme';
 import { useChallenges } from '../context/ChallengeContext';
 import { useClub } from '../constants/ClubContext';
 import { useActivity } from '../context/ActivityContext';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 export default function ChallengesScreen() {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const {
     challenges,
     completedCount,
@@ -130,30 +133,36 @@ export default function ChallengesScreen() {
 }
 
 function Rule({ icon, text }: { icon: any; text: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.rule}>
-      <Icon name={icon} size={15} color={COLORS.textMuted} strokeWidth={1.9} />
+      <Icon name={icon} size={15} color={colors.textMuted} strokeWidth={1.9} />
       <Text style={styles.ruleText}>{text}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
   summaryTop: { flexDirection: 'row', alignItems: 'center' },
-  summaryValue: { fontSize: 34, fontWeight: '700', color: COLORS.text, letterSpacing: -0.4 },
-  summaryTotal: { fontSize: 20, color: COLORS.textLight, fontWeight: '600' },
-  summaryLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  summaryValue: { fontSize: 34, fontWeight: '700', color: c.text, letterSpacing: -0.4 },
+  summaryTotal: { fontSize: 20, color: c.textLight, fontWeight: '600' },
+  summaryLabel: { ...t.small, color: c.textMuted },
   pointsBox: {
     alignItems: 'flex-end',
     paddingLeft: SPACING.md,
     borderLeftWidth: 1,
-    borderLeftColor: COLORS.borderLight,
+    borderLeftColor: c.borderLight,
   },
-  pointsValue: { ...TYPOGRAPHY.h2, color: COLORS.accentDark },
-  pointsLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+  pointsValue: { ...t.h2, color: c.accentDark },
+  pointsLabel: { ...t.micro, color: c.textMuted },
   summaryFooter: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.md - 2 },
-  howTitle: { ...TYPOGRAPHY.h4, color: COLORS.text, marginBottom: SPACING.sm + 2 },
+  howTitle: { ...t.h4, color: c.text, marginBottom: SPACING.sm + 2 },
   rule: { flexDirection: 'row', gap: SPACING.sm + 2, marginBottom: SPACING.sm + 2 },
-  ruleText: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, flex: 1 },
-});
+  ruleText: { ...t.small, color: c.textSecondary, flex: 1 },
+
+  });
+}

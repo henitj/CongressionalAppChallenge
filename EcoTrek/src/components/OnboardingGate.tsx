@@ -1,15 +1,17 @@
 import React, { useEffect, useState } from 'react';
-import { View, ActivityIndicator, StyleSheet } from 'react-native';
+import { View, ActivityIndicator } from 'react-native';
+import Icon from './Icon';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
 import { keyFor, loadJSON, saveJSON } from '../services/storage';
-import { COLORS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 import OnboardingScreen from '../screens/OnboardingScreen';
 import SetupScreen from '../screens/SetupScreen';
 
 /**
- * Shows the first-run walkthrough once per account, then the profile setup,
- * then gets out of the way.
+ * First run, once per account: profile setup (Get Started) immediately after
+ * sign-in, then the short app introduction, then the app. Both steps are
+ * persisted, so returning users go straight to home.
  */
 export default function OnboardingGate({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
@@ -42,26 +44,39 @@ export default function OnboardingGate({ children }: { children: React.ReactNode
     // hasProfile flips once Setup writes a first name (or Skip does).
   };
 
+  const { colors } = useTheme();
+
   if (!checked || profileLoading) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator color={COLORS.primaryGlow} />
+      <View
+        style={{
+          flex: 1,
+          backgroundColor: colors.primaryDark,
+          alignItems: 'center',
+          justifyContent: 'center',
+          gap: 14,
+        }}
+      >
+        <View
+          style={{
+            width: 62,
+            height: 62,
+            borderRadius: 20,
+            backgroundColor: 'rgba(255,255,255,0.09)',
+            alignItems: 'center',
+            justifyContent: 'center',
+          }}
+        >
+          <Icon name="tree" size={30} color={colors.primaryGlow} strokeWidth={1.9} />
+        </View>
+        <ActivityIndicator size="small" color={colors.primaryGlow} />
       </View>
     );
   }
 
-  if (!onboarded) return <OnboardingScreen onDone={finishOnboarding} />;
-
   if (!hasProfile) return <SetupScreen onDone={finishSetup} />;
+
+  if (!onboarded) return <OnboardingScreen onDone={finishOnboarding} />;
 
   return <>{children}</>;
 }
-
-const styles = StyleSheet.create({
-  loading: {
-    flex: 1,
-    backgroundColor: COLORS.primaryDark,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-});

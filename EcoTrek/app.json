@@ -71,7 +71,14 @@
         }
       ],
       "expo-task-manager",
-      "expo-web-browser"
+      "expo-web-browser",
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "EcoTrek uses your camera so you can take a picture of yourself for your profile photo.",
+          "photosPermission": "EcoTrek uses your photo library so you can pick a picture of yourself for your profile photo."
+        }
+      ]
     ],
     "extra": {
       "eas": {

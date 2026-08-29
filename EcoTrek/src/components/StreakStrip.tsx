@@ -1,7 +1,8 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, StyleSheet, StyleProp, ViewStyle } from 'react-native';
 import { useStreak } from '../context/StreakContext';
-import { COLORS, RADIUS } from '../constants/theme';
+import { ColorPalette, RADIUS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * Visual week-by-week streak strip. Shows the last N weeks as colored squares.
@@ -17,6 +18,8 @@ export default function StreakStrip({
   style?: StyleProp<ViewStyle>;
 }) {
   const { weekHistory } = useStreak();
+  const { colors } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const display = weekHistory(weeks);
 
   return (
@@ -37,19 +40,21 @@ export default function StreakStrip({
   );
 }
 
-const styles = StyleSheet.create({
-  row: { flexDirection: 'row', gap: 4 },
-  compact: { gap: 3 },
-  cell: {
-    flex: 1,
-    height: 28,
-    borderRadius: RADIUS.xs + 2,
-    backgroundColor: COLORS.surfaceSunken,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-  cellCompact: { height: 20 },
-  cellActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  cellFrozen: { backgroundColor: COLORS.accent, borderColor: COLORS.accent },
-  cellCurrent: { backgroundColor: COLORS.primarySurface, borderColor: COLORS.primaryGlow },
-});
+function makeStyles(c: ColorPalette) {
+  return StyleSheet.create({
+    row: { flexDirection: 'row', gap: 4 },
+    compact: { gap: 3 },
+    cell: {
+      flex: 1,
+      height: 28,
+      borderRadius: RADIUS.xs + 2,
+      backgroundColor: c.surfaceSunken,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    cellCompact: { height: 20 },
+    cellActive: { backgroundColor: c.primary, borderColor: c.primary },
+    cellFrozen: { backgroundColor: c.accent, borderColor: c.accent },
+    cellCurrent: { backgroundColor: c.primarySurface, borderColor: c.primaryGlow },
+  });
+}

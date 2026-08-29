@@ -1,64 +1,57 @@
-import React, { useEffect, useRef, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  TextInput,
-  Animated,
-  Linking,
-  KeyboardAvoidingView,
-  Platform,
-  ScrollView,
-} from 'react-native';
+import React, { useMemo, useState } from 'react';
+import { View, Text, StyleSheet, TextInput, Pressable, Linking, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
 import { Button, Sheet } from '../components/ui';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { APP_NAME, PRIVACY_POLICY_URL } from '../constants/appInfo';
+import { useTheme, Typography } from '../context/ThemeContext';
 
-const FEATURES: { icon: IconName; title: string; text: string }[] = [
-  {
-    icon: 'navigation',
-    title: 'See how far you go',
-    text: 'Start a walk or ride. We measure the miles for you.',
-  },
-  {
-    icon: 'sun',
-    title: 'Check the weather first',
-    text: 'Today’s temperature and the next few hours, right on the home screen.',
-  },
-  {
-    icon: 'target',
-    title: 'Five small goals a week',
-    text: 'Nothing huge. Just enough to keep you moving.',
-  },
-  {
-    icon: 'users',
-    title: 'Cheer each other on',
-    text: 'Join a club with a short code from a friend.',
-  },
+const FEATURES: { icon: IconName; title: string }[] = [
+  { icon: 'navigation', title: 'Tap Start, and we count the miles for you' },
+  { icon: 'sun', title: 'Today’s weather, in plain words' },
+  { icon: 'tree', title: 'Miles become trees in your forest' },
 ];
 
 export default function SignInScreen() {
-  const { signInWithGoogle, signInAsGuest, error, googleConfigured } = useAuth();
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+  const { signInWithGoogle, signInWithLocalGoogle, localGoogleAccounts, signInAsGuest, error } = useAuth();
   const [showGuest, setShowGuest] = useState(false);
   const [guestName, setGuestName] = useState('');
+  const [showGoogle, setShowGoogle] = useState(false);
+  const [pickingNew, setPickingNew] = useState(false);
+  const [googleName, setGoogleName] = useState('');
+  const [googleEmail, setGoogleEmail] = useState('');
   const [busy, setBusy] = useState(false);
 
-  const fade = useRef(new Animated.Value(0)).current;
-  const rise = useRef(new Animated.Value(20)).current;
-
-  useEffect(() => {
-    fade.setValue(1);
-    rise.setValue(0);
-  }, [fade, rise]);
+  // The web demo cannot round-trip a real OAuth redirect, so there Google
+  // sign-in goes through the local account sheet. Native uses the real flow.
+  const useLocalGoogle = Platform.OS === 'web';
 
   const handleGoogle = async () => {
+    if (useLocalGoogle) {
+      setPickingNew(localGoogleAccounts.length === 0);
+      setGoogleName('');
+      setGoogleEmail('');
+      setShowGoogle(true);
+      return;
+    }
     setBusy(true);
     try {
       await signInWithGoogle();
+    } finally {
+      setBusy(false);
+    }
+  };
+
+  const handleLocalPick = async (name: string, email: string) => {
+    setBusy(true);
+    try {
+      await signInWithLocalGoogle(name, email);
+      setShowGoogle(false);
     } finally {
       setBusy(false);
     }
@@ -77,92 +70,147 @@ export default function SignInScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-        <KeyboardAvoidingView
-          style={{ flex: 1 }}
-          behavior={Platform.OS === 'ios' ? 'padding' : undefined}
+        <ScrollView
+          contentContainerStyle={styles.scroll}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
         >
-          <ScrollView
-            contentContainerStyle={styles.scroll}
-            showsVerticalScrollIndicator={false}
-            keyboardShouldPersistTaps="handled"
-          >
-            <Animated.View style={{ opacity: fade, transform: [{ translateY: rise }] }}>
-              {/* Mark */}
-              <View style={styles.mark}>
-                <Icon name="tree" size={30} color={COLORS.primaryGlow} strokeWidth={1.9} />
-              </View>
+          {/* Mark */}
+          <View style={styles.mark}>
+            <Icon name="tree" size={30} color={colors.primaryGlow} strokeWidth={1.9} />
+          </View>
 
-              <Text style={styles.title}>{APP_NAME}</Text>
-              <Text style={styles.tagline}>
-                Every mile you move under your own power grows your forest.
-              </Text>
+          <Text style={[styles.title, typography.display]}>{APP_NAME}</Text>
+          <Text style={[styles.tagline, typography.body]}>
+            Every mile you move under your own power grows your forest.
+          </Text>
 
-              {/* Features */}
-              <View style={styles.features}>
-                {FEATURES.map((f) => (
-                  <View key={f.title} style={styles.feature}>
-                    <View style={styles.featureIcon}>
-                      <Icon name={f.icon} size={17} color={COLORS.primaryGlow} strokeWidth={1.9} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.featureTitle}>{f.title}</Text>
-                      <Text style={styles.featureText}>{f.text}</Text>
-                    </View>
-                  </View>
-                ))}
-              </View>
-            </Animated.View>
-
-            <View style={{ flex: 1 }} />
-
-            {/* Actions */}
-            <Animated.View style={{ opacity: fade, gap: SPACING.sm + 2 }}>
-              {error ? (
-                <View style={styles.errorBox}>
-                  <Icon name="alert-circle" size={15} color={COLORS.dangerLight} strokeWidth={2} />
-                  <Text style={styles.errorText}>{error}</Text>
+          <View style={styles.features}>
+            {FEATURES.map((f) => (
+              <View key={f.title} style={styles.feature}>
+                <View style={styles.featureIcon}>
+                  <Icon name={f.icon} size={17} color={colors.primaryGlow} strokeWidth={1.9} />
                 </View>
-              ) : null}
+                <Text style={[styles.featureText, typography.bodyMed]}>{f.title}</Text>
+              </View>
+            ))}
+          </View>
 
-              {googleConfigured ? (
-                <Button
-                  label="Continue with Google"
-                  variant="secondary"
-                  size="lg"
-                  full
-                  loading={busy}
-                  onPress={handleGoogle}
-                />
-              ) : (
-                <View style={styles.configNote}>
-                  <Icon name="info" size={14} color="rgba(255,255,255,0.6)" strokeWidth={2} />
-                  <Text style={styles.configNoteText}>
-                    Google sign-in is not configured yet. Add your client IDs in
-                    src/constants/authConfig.ts.
-                  </Text>
-                </View>
-              )}
+          <View style={{ flex: 1 }} />
 
-              <Button
-                label="Continue as guest"
-                variant="ghost"
-                tone="rgba(255,255,255,0.85)"
-                size="lg"
-                full
-                onPress={() => setShowGuest(true)}
-              />
+          {/* Actions */}
+          <View style={{ gap: SPACING.sm + 2 }}>
+            {error ? (
+              <View style={styles.errorBox}>
+                <Icon name="alert-circle" size={15} color={colors.dangerLight} strokeWidth={2} />
+                <Text style={[styles.errorText, typography.small]}>{error}</Text>
+              </View>
+            ) : null}
 
-              <Text style={styles.legal}>
-                By continuing you agree to our{' '}
-                <Text style={styles.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
-                  privacy policy
-                </Text>
-                . EcoTrek uses your location only while you are recording an activity.
+            <Button
+              label="Continue with Google"
+              variant="secondary"
+              size="lg"
+              full
+              loading={busy && !useLocalGoogle}
+              onPress={handleGoogle}
+            />
+
+            <Button
+              label="Continue as guest"
+              variant="ghost"
+              tone="rgba(255,255,255,0.85)"
+              size="lg"
+              full
+              onPress={() => setShowGuest(true)}
+            />
+
+            <Text style={[styles.legal, typography.small]}>
+              By continuing you agree to our{' '}
+              <Text
+                style={styles.legalLink}
+                onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
+              >
+                privacy policy
               </Text>
-            </Animated.View>
-          </ScrollView>
-        </KeyboardAvoidingView>
+              . EcoTrek uses your location only while you are recording an activity.
+            </Text>
+          </View>
+        </ScrollView>
       </SafeAreaView>
+
+      {/* Google account sheet — the web demo's stand-in for the Google popup */}
+      <Sheet
+        visible={showGoogle}
+        onClose={() => setShowGoogle(false)}
+        title="Sign in with Google"
+        subtitle={pickingNew ? 'New here? Tell us who you are.' : 'Choose an account to continue'}
+      >
+        <View style={{ gap: SPACING.md }}>
+          {!pickingNew && localGoogleAccounts.length > 0 ? (
+            <View style={{ gap: 2 }}>
+              {localGoogleAccounts.map((a) => (
+                <Pressable
+                  key={a.email}
+                  style={({ pressed }) => [styles.googleRow, pressed && { opacity: 0.7 }]}
+                  onPress={() => handleLocalPick(a.name, a.email)}
+                  accessibilityRole="button"
+                  accessibilityLabel={`Sign in as ${a.name}`}
+                >
+                  <View style={styles.googleAvatar}>
+                    <Text style={styles.googleAvatarText}>
+                      {a.name.trim().charAt(0).toUpperCase() || '?'}
+                    </Text>
+                  </View>
+                  <View style={{ flex: 1 }}>
+                    <Text style={[styles.googleName, typography.bodyMed]}>{a.name}</Text>
+                    <Text style={[styles.googleEmail, typography.small]}>{a.email}</Text>
+                  </View>
+                </Pressable>
+              ))}
+            </View>
+          ) : null}
+
+          {pickingNew ? (
+            <>
+              <View style={{ gap: 8 }}>
+                <Text style={[styles.fieldLabel, typography.overline]}>Full name</Text>
+                <TextInput
+                  value={googleName}
+                  onChangeText={setGoogleName}
+                  placeholder="Jane Doe"
+                  placeholderTextColor={colors.textLight}
+                  maxLength={50}
+                  style={styles.input}
+                  onSubmitEditing={() => googleEmail.trim() && handleLocalPick(googleName, googleEmail)}
+                />
+              </View>
+              <View style={{ gap: 8 }}>
+                <Text style={[styles.fieldLabel, typography.overline]}>Email</Text>
+                <TextInput
+                  value={googleEmail}
+                  onChangeText={setGoogleEmail}
+                  placeholder="jane@example.com"
+                  placeholderTextColor={colors.textLight}
+                  keyboardType="email-address"
+                  autoCapitalize="none"
+                  style={styles.input}
+                  onSubmitEditing={() => googleName.trim() && handleLocalPick(googleName, googleEmail)}
+                />
+              </View>
+              <Button
+                label="Continue"
+                full
+                loading={busy}
+                disabled={!googleName.trim() || !googleEmail.trim()}
+                onPress={() => handleLocalPick(googleName, googleEmail)}
+              />
+            </>
+          ) : (
+            <Button label="Use another account" variant="secondary" full onPress={() => setPickingNew(true)} />
+          )}
+        </View>
+      </Sheet>
 
       <Sheet
         visible={showGuest}
@@ -172,21 +220,21 @@ export default function SignInScreen() {
       >
         <View style={{ gap: SPACING.md }}>
           <View style={{ gap: 6 }}>
-            <Text style={styles.fieldLabel}>What should we call you?</Text>
+            <Text style={[styles.fieldLabel, typography.overline]}>What should we call you?</Text>
             <TextInput
               value={guestName}
               onChangeText={setGuestName}
               placeholder="Guest Trekker"
-              placeholderTextColor={COLORS.textLight}
+              placeholderTextColor={colors.textLight}
               maxLength={30}
               style={styles.input}
               returnKeyType="done"
               onSubmitEditing={handleGuest}
             />
           </View>
-          <Text style={styles.guestNote}>
-            You can start now and save your walks later with Google. Your walks on this phone will
-            come with you.
+          <Text style={[styles.guestNote, typography.small]}>
+            You can start now and switch to Google later. Your walks on this phone will come with
+            you.
           </Text>
           <Button label="Start as guest" full loading={busy} onPress={handleGuest} />
         </View>
@@ -195,87 +243,91 @@ export default function SignInScreen() {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.primaryDark },
-  scroll: {
-    flexGrow: 1,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.xl,
-    paddingBottom: SPACING.lg,
-  },
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+    root: { flex: 1, backgroundColor: c.primaryDark },
+    scroll: {
+      flexGrow: 1,
+      paddingHorizontal: SPACING.lg,
+      paddingTop: SPACING.xl,
+      paddingBottom: SPACING.lg,
+    },
 
-  mark: {
-    width: 62,
-    height: 62,
-    borderRadius: RADIUS.xl,
-    backgroundColor: 'rgba(255,255,255,0.09)',
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginBottom: SPACING.lg,
-  },
-  title: { fontSize: 40, fontWeight: '700', color: '#fff', letterSpacing: -0.45 },
-  tagline: {
-    ...TYPOGRAPHY.body,
-    color: 'rgba(255,255,255,0.68)',
-    marginTop: SPACING.sm,
-    maxWidth: 320,
-  },
+    mark: {
+      width: 62,
+      height: 62,
+      borderRadius: RADIUS.xl,
+      backgroundColor: 'rgba(255,255,255,0.09)',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginBottom: SPACING.lg,
+    },
+    title: { color: '#fff' },
+    tagline: { color: 'rgba(255,255,255,0.68)', marginTop: SPACING.sm, maxWidth: 320 },
 
-  features: { marginTop: SPACING.xl, gap: SPACING.md + 2 },
-  feature: { flexDirection: 'row', gap: SPACING.md - 2, alignItems: 'flex-start' },
-  featureIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.sm + 2,
-    backgroundColor: 'rgba(255,255,255,0.08)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  featureTitle: { ...TYPOGRAPHY.h4, color: '#fff' },
-  featureText: {
-    ...TYPOGRAPHY.small,
-    color: 'rgba(255,255,255,0.55)',
-    marginTop: 2,
-  },
+    features: { marginTop: SPACING.xl, gap: SPACING.md + 2 },
+    feature: { flexDirection: 'row', gap: SPACING.md - 2, alignItems: 'center' },
+    featureIcon: {
+      width: 36,
+      height: 36,
+      borderRadius: RADIUS.sm + 2,
+      backgroundColor: 'rgba(255,255,255,0.08)',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    featureText: { color: 'rgba(255,255,255,0.85)', flex: 1 },
 
-  errorBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: 'rgba(192,57,43,0.25)',
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm + 4,
-  },
-  errorText: { ...TYPOGRAPHY.small, color: COLORS.dangerLight, flex: 1 },
+    errorBox: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.sm,
+      backgroundColor: 'rgba(192,57,43,0.25)',
+      borderRadius: RADIUS.md,
+      padding: SPACING.sm + 4,
+    },
+    errorText: { color: c.dangerLight, flex: 1 },
 
-  configNote: {
-    flexDirection: 'row',
-    gap: SPACING.sm,
-    backgroundColor: 'rgba(255,255,255,0.06)',
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm + 4,
-  },
-  configNoteText: { ...TYPOGRAPHY.small, color: 'rgba(255,255,255,0.6)', flex: 1 },
+    fieldLabel: { color: c.textMuted },
+    input: {
+      backgroundColor: c.surfaceSunken,
+      borderRadius: RADIUS.md,
+      borderWidth: 1,
+      borderColor: c.border,
+      paddingHorizontal: SPACING.md - 2,
+      paddingVertical: 13,
+      ...t.body,
+      color: c.text,
+    },
+    guestNote: { color: c.textMuted },
 
-  legal: {
-    ...TYPOGRAPHY.small,
-    color: 'rgba(255,255,255,0.4)',
-    textAlign: 'center',
-    marginTop: SPACING.sm,
-    lineHeight: 18,
-  },
-  legalLink: { color: 'rgba(255,255,255,0.75)', textDecorationLine: 'underline' },
+    googleRow: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.sm + 4,
+      paddingVertical: SPACING.sm,
+      paddingHorizontal: SPACING.sm + 2,
+      borderRadius: RADIUS.md,
+      borderWidth: 1,
+      borderColor: c.border,
+    },
+    googleAvatar: {
+      width: 40,
+      height: 40,
+      borderRadius: 20,
+      backgroundColor: c.primarySurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    googleAvatarText: { ...t.h3, color: c.primary },
+    googleName: { color: c.text },
+    googleEmail: { color: c.textMuted },
 
-  fieldLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
-  input: {
-    backgroundColor: COLORS.surfaceSunken,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    paddingHorizontal: SPACING.md - 2,
-    paddingVertical: 13,
-    ...TYPOGRAPHY.body,
-    color: COLORS.text,
-  },
-  guestNote: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
-});
+    legal: {
+      color: 'rgba(255,255,255,0.4)',
+      textAlign: 'center',
+      marginTop: SPACING.sm,
+      lineHeight: 18,
+    },
+    legalLink: { color: 'rgba(255,255,255,0.75)', textDecorationLine: 'underline' },
+  });
+}

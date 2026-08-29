@@ -3,7 +3,8 @@ import { View, StyleSheet } from 'react-native';
 import { Platform } from 'react-native';
 import MapView, { Marker, Polyline, Circle, PROVIDER_GOOGLE } from 'react-native-maps';
 import { Coord } from '../services/location';
-import { COLORS, RADIUS } from '../constants/theme';
+import { RADIUS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 type Props = {
   path: Coord[];
@@ -14,6 +15,7 @@ type Props = {
 
 export default function LiveMap({ path, current, height = 260, follow = true }: Props) {
   const mapRef = useRef<MapView | null>(null);
+  const { colors } = useTheme();
 
   useEffect(() => {
     if (follow && current && mapRef.current) {
@@ -35,7 +37,19 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
   };
 
   return (
-    <View style={[styles.wrap, { height }]}>
+    <View
+      style={[
+        {
+          width: '100%',
+          borderRadius: RADIUS.md,
+          overflow: 'hidden',
+          backgroundColor: colors.backgroundDark,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        { height },
+      ]}
+    >
       <MapView
         ref={(r) => {
           mapRef.current = r;
@@ -66,7 +80,7 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
               latitude: path[0].latitude,
               longitude: path[0].longitude,
             }}
-            pinColor={COLORS.accent}
+            pinColor={colors.accent}
             title="Start"
           />
         )}
@@ -91,14 +105,3 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    width: '100%',
-    borderRadius: RADIUS.md,
-    overflow: 'hidden',
-    backgroundColor: COLORS.backgroundDark,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-});

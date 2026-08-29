@@ -6,7 +6,7 @@ import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, Pill, Button, Divider, EmptyState } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useStreak } from '../context/StreakContext';
@@ -17,6 +17,7 @@ import { buildRecap, lastWeekStart, RecapMetric } from '../services/recap';
 import { weekKey } from '../services/dates';
 import { computeRecords } from '../services/records';
 import { shareText } from '../services/share';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 /**
  * Last week, summarised.
@@ -26,6 +27,8 @@ import { shareText } from '../services/share';
  * a recap is the natural moment to notice you beat one.
  */
 export default function RecapScreen() {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const { history } = useActivity();
   const { history: pointHistory } = useEcoPoints();
@@ -172,7 +175,7 @@ export default function RecapScreen() {
                   {freshRecords.map((r) => (
                     <Card key={r.id} style={styles.recordCard}>
                       <View style={styles.recordIcon}>
-                        <Icon name="award" size={17} color={COLORS.accentDark} strokeWidth={2} />
+                        <Icon name="award" size={17} color={colors.accentDark} strokeWidth={2} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.recordLabel}>{r.label}</Text>
@@ -218,6 +221,8 @@ export default function RecapScreen() {
 }
 
 function HeroStat({ value, unit, label }: { value: string; unit?: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
@@ -230,6 +235,8 @@ function HeroStat({ value, unit, label }: { value: string; unit?: string; label:
 }
 
 function MetricRow({ metric }: { metric: RecapMetric }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const up = metric.changePercent != null && metric.changePercent > 0;
 
   return (
@@ -246,10 +253,10 @@ function MetricRow({ metric }: { metric: RecapMetric }) {
             <Icon
               name={up ? 'trending-up' : 'chevron-down'}
               size={13}
-              color={up ? COLORS.primary : COLORS.textMuted}
+              color={up ? colors.primary : colors.textMuted}
               strokeWidth={2.2}
             />
-            <Text style={[styles.metricDelta, up && { color: COLORS.primary }]}>
+            <Text style={[styles.metricDelta, up && { color: colors.primary }]}>
               {Math.abs(metric.changePercent)}%
             </Text>
           </>
@@ -260,9 +267,11 @@ function MetricRow({ metric }: { metric: RecapMetric }) {
 }
 
 function Extra({ icon, value, label }: { icon: IconName; value: number; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.extra}>
-      <Icon name={icon} size={15} color={COLORS.primary} strokeWidth={1.9} />
+      <Icon name={icon} size={15} color={colors.primary} strokeWidth={1.9} />
       <Text style={styles.extraValue}>{value}</Text>
       <Text style={styles.extraLabel}>{label}</Text>
     </View>
@@ -273,12 +282,14 @@ function formatMetric(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(1)));
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
 
   hero: { padding: SPACING.md + 2, gap: SPACING.md },
-  heroLabel: { ...TYPOGRAPHY.overline, color: 'rgba(255,255,255,0.5)' },
-  heroHeadline: { ...TYPOGRAPHY.h1, color: '#fff', marginTop: -6 },
+  heroLabel: { ...t.overline, color: 'rgba(255,255,255,0.5)' },
+  heroHeadline: { ...t.h1, color: '#fff', marginTop: -6 },
   heroStats: {
     flexDirection: 'row',
     paddingTop: SPACING.md - 2,
@@ -286,16 +297,16 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.1)',
   },
   heroStatValue: { fontSize: 22, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
-  heroStatUnit: { ...TYPOGRAPHY.micro, color: 'rgba(255,255,255,0.6)' },
+  heroStatUnit: { ...t.micro, color: 'rgba(255,255,255,0.6)' },
   heroStatLabel: {
-    ...TYPOGRAPHY.micro,
+    ...t.micro,
     color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
     marginTop: 2,
   },
 
-  sectionTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, marginBottom: SPACING.sm + 2 },
-  sectionLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  sectionTitle: { ...t.h3, color: c.text, marginBottom: SPACING.sm + 2 },
+  sectionLabel: { ...t.overline, color: c.textMuted },
 
   metricRow: {
     flexDirection: 'row',
@@ -304,8 +315,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     gap: SPACING.sm,
   },
-  metricLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.textSecondary, flex: 1 },
-  metricValue: { ...TYPOGRAPHY.h4, color: COLORS.text, minWidth: 52, textAlign: 'right' },
+  metricLabel: { ...t.bodyMed, color: c.textSecondary, flex: 1 },
+  metricValue: { ...t.h4, color: c.text, minWidth: 52, textAlign: 'right' },
   metricChange: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -313,28 +324,30 @@ const styles = StyleSheet.create({
     minWidth: 64,
     justifyContent: 'flex-end',
   },
-  metricDelta: { ...TYPOGRAPHY.smallMed, color: COLORS.textMuted },
-  metricFlat: { ...TYPOGRAPHY.small, color: COLORS.textLight },
+  metricDelta: { ...t.smallMed, color: c.textMuted },
+  metricFlat: { ...t.small, color: c.textLight },
 
   extras: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md, marginTop: SPACING.sm + 2 },
   extra: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  extraValue: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  extraLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  extraValue: { ...t.h4, color: c.text },
+  extraLabel: { ...t.small, color: c.textMuted },
 
   recordCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
   recordIcon: {
     width: 36,
     height: 36,
     borderRadius: RADIUS.sm + 2,
-    backgroundColor: COLORS.accentLight,
+    backgroundColor: c.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  recordLabel: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  recordDetail: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
-  recordValue: { ...TYPOGRAPHY.h3, color: COLORS.accentDark },
-  recordUnit: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  recordLabel: { ...t.h4, color: c.text },
+  recordDetail: { ...t.small, color: c.textMuted, marginTop: 1 },
+  recordValue: { ...t.h3, color: c.accentDark },
+  recordUnit: { ...t.small, color: c.textMuted },
 
-  aboutTitle: { ...TYPOGRAPHY.h4, color: COLORS.text, marginBottom: 4 },
-  aboutText: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
-});
+  aboutTitle: { ...t.h4, color: c.text, marginBottom: 4 },
+  aboutText: { ...t.small, color: c.textMuted },
+
+  });
+}

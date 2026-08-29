@@ -20,6 +20,12 @@ export type UserProfile = {
   weightHistory: { date: number; weight: number }[];
   emergencyName?: string;
   emergencyPhone?: string;
+  /**
+   * Photo the user picked themselves for their profile logo (file URI on
+   * native, data URI on web). Falls back to the Google sign-in picture when
+   * null, and to initials when that is missing too.
+   */
+  avatarUri?: string | null;
 };
 
 const EMPTY_PROFILE: UserProfile = {
@@ -33,6 +39,7 @@ const EMPTY_PROFILE: UserProfile = {
   weightHistory: [],
   emergencyName: '',
   emergencyPhone: '',
+  avatarUri: null,
 };
 
 type ProfileState = {
@@ -41,6 +48,8 @@ type ProfileState = {
   loading: boolean;
   setProfile: (p: Partial<UserProfile>) => Promise<void>;
   updateWeight: (weight: number) => Promise<void>;
+  /** Set (or clear, with null) the user's own profile photo. */
+  setAvatar: (uri: string | null) => Promise<void>;
   clearProfile: () => Promise<void>;
 };
 
@@ -98,6 +107,17 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     });
   }, [storeKey]);
 
+  const setAvatar = useCallback(
+    async (uri: string | null) => {
+      setProfileState((prev) => {
+        const next = { ...prev, avatarUri: uri };
+        saveJSON(storeKey, next);
+        return next;
+      });
+    },
+    [storeKey]
+  );
+
   const clearProfile = useCallback(async () => {
     setProfileState(EMPTY_PROFILE);
     saveJSON(storeKey, EMPTY_PROFILE);
@@ -111,8 +131,9 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     loading,
     setProfile,
     updateWeight,
+    setAvatar,
     clearProfile,
-  }), [profile, hasProfile, loading, setProfile, updateWeight, clearProfile]);
+  }), [profile, hasProfile, loading, setProfile, updateWeight, setAvatar, clearProfile]);
 
   return <ProfileContext.Provider value={value}>{children}</ProfileContext.Provider>;
 }

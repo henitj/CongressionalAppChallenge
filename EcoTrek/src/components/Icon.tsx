@@ -1,6 +1,6 @@
 import React from 'react';
 import Svg, { Path, Circle, Rect, Polygon } from 'react-native-svg';
-import { COLORS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 /**
  * Line-icon set for EcoTrek.
@@ -84,7 +84,8 @@ export type IconName =
   | 'battery'
   | 'download'
   | 'external-link'
-  | 'help-circle';
+  | 'help-circle'
+  | 'pencil';
 
 type Props = {
   name: IconName;
@@ -98,18 +99,20 @@ type Props = {
 export default function Icon({
   name,
   size = 22,
-  color = COLORS.text,
+  color,
   strokeWidth = 1.8,
   filled = false,
 }: Props) {
+  const { colors } = useTheme();
+  const resolved = color ?? colors.text;
   const s = {
-    stroke: color,
+    stroke: resolved,
     strokeWidth,
     strokeLinecap: 'round' as const,
     strokeLinejoin: 'round' as const,
     fill: 'none',
   };
-  const solid = { fill: color, stroke: 'none' };
+  const solid = { fill: resolved, stroke: 'none' };
 
   return (
     <Svg width={size} height={size} viewBox="0 0 24 24">
@@ -301,6 +304,16 @@ function render(name: IconName, s: any, solid: any, filled: boolean) {
           <Circle {...s} cx={12} cy={12} r={9} />
           <Path {...s} d="M9.6 9.3a2.5 2.5 0 1 1 3.3 2.4c-.6.2-.9.8-.9 1.4v.4" />
           <Circle {...solid} cx={12} cy={16.7} r={1.05} />
+        </>
+      );
+    case 'pencil':
+      return (
+        <>
+          <Path
+            {...s}
+            d="M17 3a2.83 2.83 0 1 1 4 4L7.5 20.5 2 22l1.5-5.5Z"
+          />
+          {filled ? null : <Path {...s} d="m15 5 4 4" />}
         </>
       );
     case 'shield':

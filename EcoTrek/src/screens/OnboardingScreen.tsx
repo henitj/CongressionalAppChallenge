@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -13,7 +13,8 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
 import { Button } from '../components/ui';
-import { COLORS, RADIUS, SPACING } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 type Page = { icon: IconName; title: string; body: string };
 
@@ -26,16 +27,23 @@ const PAGES: Page[] = [
   {
     icon: 'tree',
     title: 'Miles become trees.',
-    body: 'Walk a mile, earn a tree. It is just a fun way to see your progress. No real tree is planted.',
+    body: 'Walk a mile, earn a tree. A fun way to watch your progress grow. No real tree is planted.',
   },
   {
     icon: 'sun',
     title: 'We check the weather.',
     body: 'See today’s temperature before you go. If it is too hot or stormy, we will say so in plain words.',
   },
+  {
+    icon: 'users',
+    title: 'Walk with friends.',
+    body: 'Join a club with a short code and cheer each other on. Or enjoy the quiet solo miles.',
+  },
 ];
 
 export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
@@ -57,13 +65,11 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
           <View style={styles.mark}>
-            <Icon name="tree" size={22} color={COLORS.primaryGlow} strokeWidth={2} />
+            <Icon name="tree" size={22} color={colors.primaryGlow} strokeWidth={2} />
           </View>
-          {!last ? (
-            <Pressable onPress={onDone} hitSlop={16} accessibilityLabel="Skip introduction">
-              <Text style={styles.skip}>Skip</Text>
-            </Pressable>
-          ) : null}
+          <Pressable onPress={onDone} hitSlop={16} accessibilityLabel="Skip introduction">
+            <Text style={[styles.skip, typography.smallMed]}>Skip</Text>
+          </Pressable>
         </View>
 
         <ScrollView
@@ -77,10 +83,10 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
           {PAGES.map((p) => (
             <View key={p.title} style={[styles.page, { width }]}>
               <View style={styles.picture}>
-                <Icon name={p.icon} size={72} color={COLORS.primaryGlow} strokeWidth={1.5} />
+                <Icon name={p.icon} size={72} color={colors.primaryGlow} strokeWidth={1.5} />
               </View>
-              <Text style={styles.title}>{p.title}</Text>
-              <Text style={styles.body}>{p.body}</Text>
+              <Text style={[styles.title, typography.h1]}>{p.title}</Text>
+              <Text style={[styles.body, typography.body]}>{p.body}</Text>
             </View>
           ))}
         </ScrollView>
@@ -107,8 +113,10 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.primaryDark },
+function makeStyles(c: ColorPalette) {
+  return StyleSheet.create({
+
+  root: { flex: 1, backgroundColor: c.primaryDark },
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -124,7 +132,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  skip: { fontSize: 18, fontWeight: '600', color: 'rgba(255,255,255,0.8)' },
+  skip: { color: 'rgba(255,255,255,0.8)' },
   page: {
     paddingHorizontal: SPACING.xl,
     justifyContent: 'center',
@@ -141,16 +149,12 @@ const styles = StyleSheet.create({
     marginBottom: SPACING.xl,
   },
   title: {
-    fontSize: 32,
-    fontWeight: '700',
     color: '#fff',
     textAlign: 'center',
     letterSpacing: -0.4,
     lineHeight: 38,
   },
   body: {
-    fontSize: 20,
-    lineHeight: 30,
     color: 'rgba(255,255,255,0.8)',
     textAlign: 'center',
     marginTop: SPACING.md,
@@ -159,5 +163,7 @@ const styles = StyleSheet.create({
   footer: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md, gap: SPACING.md },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: SPACING.sm },
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.22)' },
-  dotActive: { backgroundColor: COLORS.primaryGlow, width: 24 },
-});
+  dotActive: { backgroundColor: c.primaryGlow, width: 24 },
+
+  });
+}

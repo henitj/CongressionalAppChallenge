@@ -42,6 +42,7 @@ import {
 } from '../constants/species';
 import { computeRecords, RecordActivity } from '../services/records';
 import { buildRecap, lastWeekStart, RecapActivity } from '../services/recap';
+import { buildVerdict, buildShortNote, LEVEL_META, Advisory, SafetyLevel } from '../services/weather';
 
 let passed = 0;
 const results: string[] = [];
@@ -704,6 +705,52 @@ test('lastWeekStart lands on the Monday before this one', () => {
   const start = lastWeekStart(new Date(2026, 7, 16)); // Sunday 16 Aug
   assert.equal(start.getDay(), 1, 'must be a Monday');
   assert.equal(dayKey(start), '2026-08-03');
+});
+
+/* ── Weather verdict tone ─────────────────────────────────────────────────── */
+// We are not a weather app. The verdict must read as calm advice, never as
+// an alarm. These guard the tone that got called out in review.
+
+function adv(id: string, level: SafetyLevel): Advisory {
+  return { id, level, icon: 'sun', title: id, detail: 'detail' };
+}
+
+test('good weather reads as an invitation, not a status code', () => {
+  const { headline, summary } = buildVerdict('good', [], 'Partly cloudy', 78);
+  assert.match(headline, /nice day/i);
+  assert.match(summary, /78°F/);
+});
+
+test('a hot day is a nudge toward the morning, not a scolding', () => {
+  const advisories = [adv('heat', 'caution')];
+  const { headline } = buildVerdict('caution', advisories, 'Sunny', 96);
+  assert.match(headline, /you can head out/i);
+  const note = buildShortNote('caution', advisories);
+  assert.match(note, /morning/i);
+  assert.match(note, /water/i);
+  assert.doesNotMatch(note, /do not|danger|warning/i);
+});
+
+test('warning stays doable and gentle', () => {
+  const { headline } = buildVerdict('warning', [adv('heat-high', 'warning')], 'Sunny', 102);
+  assert.match(headline, /doable/i);
+  assert.doesNotMatch(headline, /danger|stay inside|do not/i);
+});
+
+test('danger says stay in without shouting', () => {
+  const { headline, summary } = buildVerdict('danger', [adv('storm', 'danger')], 'Thunderstorm', 84);
+  assert.match(headline, /stay in/i);
+  // It still tells you the actual reason from the top advisory.
+  assert.match(summary, /detail/i);
+});
+
+test('level labels are friendly, not alarm-level', () => {
+  const labels = Object.values(LEVEL_META).map((m) => m.label);
+  // The old "Use caution / Poor conditions / Stay inside" trio is gone.
+  assert.ok(labels.includes('Good to go'));
+  assert.ok(labels.includes('Doable, take it easy'));
+  assert.ok(labels.includes('Stay in today'));
+  assert.ok(!labels.some((l) => /poor conditions|use caution/i.test(l)));
 });
 
 /* ── Report ───────────────────────────────────────────────────────────────── */

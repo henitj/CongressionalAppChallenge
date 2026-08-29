@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -128,11 +128,11 @@ async function mount(Component: React.ComponentType<any>, anchor: string | RegEx
 /** Each screen plus a string that only appears once it has really rendered. */
 const SCREENS: [string, React.ComponentType<any>, string | RegExp][] = [
   ['Home', HomeScreen, 'Your last walk'],
-  ['Track', TrackScreen, /How trees are earned/i],
+  ['Track', TrackScreen, /1 tree per 1 mile/],
   ['More', MoreScreen, 'My walks'],
   ['Trails', TrailsScreen, 'Ask about a trail'],
   ['Clubs', LeaderboardScreen, 'My club'],
-  ['Profile', ProfileScreen, 'See all badges'],
+  ['Profile', ProfileScreen, /earned/],
   ['Impact', ImpactScreen, /Everything you have logged/i],
   ['Challenges', ChallengesScreen, /Completed this week/i],
   ['Conditions', ConditionsScreen, /Conditions unavailable|Today and the next few hours/i],
@@ -155,6 +155,28 @@ describe('every screen renders on an empty account', () => {
   }
 });
 
+describe('review fixes', () => {
+  it('More is grouped into sections, not one flat list', async () => {
+    const { queryByText } = await mount(MoreScreen, 'My walks');
+    expect(queryByText('Explore')).toBeTruthy();
+    expect(queryByText('App')).toBeTruthy();
+    expect(queryByText('Safety')).toBeTruthy();
+    expect(queryByText('Settings')).toBeTruthy();
+  });
+
+  it('Profile offers to add your own photo', async () => {
+    const { getByLabelText } = await mount(ProfileScreen, 'Share my progress');
+    expect(getByLabelText('Add your photo')).toBeTruthy();
+  });
+
+  it('Share opens a picture card you can send as an image', async () => {
+    const utils = await mount(ProfileScreen, 'Share my progress');
+    fireEvent.press(utils.getByText('Share my progress'));
+    await waitFor(() => expect(utils.queryByText('Share as picture')).toBeTruthy(), { timeout: 4000 });
+    expect(utils.queryByText(/this is the picture you share/i)).toBeTruthy();
+  });
+});
+
 describe('screens that do not need the provider stack', () => {
   it('SignIn renders, including the guest route', async () => {
     const { queryByText } = render(
@@ -170,6 +192,7 @@ describe('screens that do not need the provider stack', () => {
       </SafeAreaProvider>
     );
     await waitFor(() => expect(queryByText('Continue as guest')).toBeTruthy());
+    expect(queryByText('Continue with Google')).toBeTruthy();
     expect(queryByText('EcoTrek')).toBeTruthy();
   });
 
@@ -193,7 +216,7 @@ describe('screens that do not need the provider stack', () => {
       </SafeAreaProvider>
     );
     await waitFor(() => expect(queryByText('Skip')).toBeTruthy());
-    expect(queryByText(/A few things about you/i)).toBeTruthy();
+    expect(queryByText(/What should we call you/i)).toBeTruthy();
   });
 
   it('Onboarding renders and can be skipped', async () => {

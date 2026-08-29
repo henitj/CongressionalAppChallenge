@@ -89,6 +89,8 @@ export type WeatherReport = {
   level: SafetyLevel;
   headline: string;
   summary: string;
+  /** One short, friendly sentence for the tiny home-screen box. */
+  shortNote: string;
   /** Suggested lower-risk window today, e.g. "7 AM – 9 AM". Null if none. */
   bestWindow: string | null;
   /** True when we served stale/cached data because the network failed. */
@@ -326,7 +328,7 @@ export async function getWeatherReport(
       icon: 'cloud-lightning',
       title: 'Thunderstorms right now',
       detail:
-        'Lightning is the danger, not the rain. Trails and creek crossings are unsafe — wait it out indoors.',
+        'It is the lightning, not the rain, that is the problem. Trails and creek crossings are unsafe — wait it out indoors and we will see you when it passes.',
     });
   }
 
@@ -337,7 +339,8 @@ export async function getWeatherReport(
       level: 'danger',
       icon: 'cloud-snow',
       title: 'Freezing rain',
-      detail: 'Trails will be sheeted in ice. Falls and hypothermia are real risks — stay in today.',
+      detail:
+        'Trails will be sheeted in ice, and slips are easy. Stay in for today — it will still be there tomorrow.',
     });
   }
 
@@ -350,8 +353,8 @@ export async function getWeatherReport(
       icon: 'cloud-snow',
       title: heavy ? 'Heavy snow' : 'Snow falling',
       detail: heavy
-        ? 'Visibility and footing are both bad. Postpone your trek.'
-        : 'Footing is slick and trail markers get buried. Shorten your route and tell someone where you are.',
+        ? 'It is coming down hard, and footing is going to be poor. Postpone this one and pick a lighter day.'
+        : 'Footing will be slick and markers get buried. A short, flat loop is a good choice, and tell someone where you are.',
     });
   }
 
@@ -363,7 +366,7 @@ export async function getWeatherReport(
       icon: 'cloud-rain',
       title: 'Heavy rain',
       detail:
-        'Creek crossings rise fast and low-water areas flood. Never cross moving water you cannot see the bottom of.',
+        'Creeks rise fast in this rain, so stay on the main trail and skip low-water crossings. Never wade moving water you cannot see the bottom of.',
     });
   } else if ([61, 63, 80, 81, 51, 53, 55].includes(code)) {
     advisories.push({
@@ -371,7 +374,7 @@ export async function getWeatherReport(
       level: 'caution',
       icon: 'cloud-rain',
       title: 'Rain in the area',
-      detail: 'Rock and boardwalk sections get slippery. Bring a layer and watch your footing.',
+      detail: 'Some rain around — take it a little slower on slick rock and boardwalk sections.',
     });
   }
 
@@ -383,7 +386,7 @@ export async function getWeatherReport(
       icon: 'thermometer',
       title: `Feels like ${Math.round(feelsLikeF)}°F`,
       detail:
-        'Heat stroke range. Do not hike or ride now. Go early morning instead, or take today off.',
+        'That is too hot for a walk right now. If you really want to move, early morning is far safer — or just take the day off.',
     });
   } else if (feelsLikeF >= 100) {
     advisories.push({
@@ -391,15 +394,17 @@ export async function getWeatherReport(
       level: 'warning',
       icon: 'thermometer',
       title: `Feels like ${Math.round(feelsLikeF)}°F`,
-      detail: 'Dangerous heat. Keep it short and shaded, carry more water than you think you need.',
+      detail:
+        'Hot out there. Go early or late, carry more water than you think you need, and skip the open, shade-free stretches.',
     });
   } else if (feelsLikeF >= 93) {
     advisories.push({
       id: 'heat',
       level: 'caution',
       icon: 'thermometer',
-      title: 'Hot out',
-      detail: 'Carry at least one litre of water per hour and take shade breaks.',
+      title: 'A bit hot',
+      detail:
+        'It is a little hot — maybe head out in the morning, and carry a bit of extra water. Shade breaks are your friend.',
     });
   }
 
@@ -410,7 +415,7 @@ export async function getWeatherReport(
       level: 'danger',
       icon: 'thermometer',
       title: `Feels like ${Math.round(feelsLikeF)}°F`,
-      detail: 'Frostbite risk on exposed skin within 30 minutes. Stay in.',
+      detail: 'Exposed skin can freeze in about half an hour out there. Stay in and try again when it warms up.',
     });
   } else if (feelsLikeF <= 32) {
     advisories.push({
@@ -418,7 +423,7 @@ export async function getWeatherReport(
       level: 'warning',
       icon: 'thermometer',
       title: 'Freezing conditions',
-      detail: 'Layer up, cover extremities, and cut your route short if you stop sweating.',
+      detail: 'Chilly. Layer up, keep to shorter loops so you stay warm, and cut it short if you stop sweating.',
     });
   }
 
@@ -429,15 +434,15 @@ export async function getWeatherReport(
       level: 'warning',
       icon: 'wind',
       title: `Gusts to ${Math.round(windGustMph)} mph`,
-      detail: 'Falling limbs are the risk. Avoid wooded trails and open bridges on a bike.',
+      detail: 'Breezy enough to drop limbs. Give the trees some space, and avoid open bridges on a bike.',
     });
   } else if (windGustMph >= 22) {
     advisories.push({
       id: 'wind',
       level: 'caution',
       icon: 'wind',
-      title: 'Windy',
-      detail: 'Crosswinds can push a bike around. Ride defensively near traffic.',
+      title: 'Breezy',
+      detail: 'A bit of wind around. Hold onto your hat, and ride defensively near traffic.',
     });
   }
 
@@ -447,16 +452,16 @@ export async function getWeatherReport(
       id: 'uv-extreme',
       level: 'warning',
       icon: 'sun',
-      title: `UV index ${Math.round(uvIndex)} — extreme`,
-      detail: 'Unprotected skin burns in about 10 minutes. Hat, sunscreen, long sleeves.',
+      title: `UV index ${Math.round(uvIndex)} — very strong`,
+      detail: 'Unprotected skin burns in about 10 minutes. A hat, sunscreen and long sleeves are worth it today.',
     });
   } else if (uvIndex >= 8) {
     advisories.push({
       id: 'uv',
       level: 'caution',
       icon: 'sun',
-      title: `UV index ${Math.round(uvIndex)} — very high`,
-      detail: 'Wear sunscreen and sunglasses, seek shade midday.',
+      title: `UV index ${Math.round(uvIndex)}`,
+      detail: 'Strong sun. Sunscreen and sunglasses, and look for shade around midday.',
     });
   }
 
@@ -466,16 +471,16 @@ export async function getWeatherReport(
       id: 'aqi-bad',
       level: 'warning',
       icon: 'cloud-fog',
-      title: `Air quality unhealthy (AQI ${aqi})`,
-      detail: 'Hard exercise pulls more of this into your lungs. Take it easy or move indoors.',
+      title: `Air quality is poor (AQI ${aqi})`,
+      detail: 'Hard exercise pulls more air in than usual. An easy pace, or an indoor day, is the kind thing to do.',
     });
   } else if (aqi !== null && aqi >= 101) {
     advisories.push({
       id: 'aqi',
       level: 'caution',
       icon: 'cloud-fog',
-      title: `Air quality poor (AQI ${aqi})`,
-      detail: 'If you have asthma, keep the effort light today.',
+      title: `Air quality a little heavy (AQI ${aqi})`,
+      detail: 'If breathing feels off, keep the effort light today.',
     });
   }
 
@@ -485,8 +490,8 @@ export async function getWeatherReport(
       id: 'fog',
       level: 'caution',
       icon: 'cloud-fog',
-      title: 'Low visibility',
-      detail: 'Drivers cannot see you. Wear something bright and use lights on a bike.',
+      title: 'Foggy in places',
+      detail: 'Drivers cannot see you well. Wear something bright and use lights on a bike.',
     });
   }
 
@@ -497,8 +502,8 @@ export async function getWeatherReport(
       id: 'dark',
       level: 'caution',
       icon: 'moon',
-      title: 'Losing daylight',
-      detail: 'Most Austin trails are unlit. Bring a headlamp or pick a shorter loop.',
+      title: 'Daylight is fading',
+      detail: 'Most Austin trails are unlit after dark. Bring a headlamp or pick a shorter loop.',
     });
   }
 
@@ -506,6 +511,7 @@ export async function getWeatherReport(
 
   const level = worst(advisories.map((a) => a.level));
   const { headline, summary } = buildVerdict(level, advisories, condition, tempF);
+  const shortNote = buildShortNote(level, advisories, { highF, lowF });
 
   const report: WeatherReport = {
     fetchedAt: Date.now(),
@@ -533,6 +539,7 @@ export async function getWeatherReport(
     level,
     headline,
     summary,
+    shortNote,
     bestWindow: findBestWindow(hourlyRaw, nowIdx),
     stale: false,
   };
@@ -543,33 +550,84 @@ export async function getWeatherReport(
 
 /* ── Verdict copy ─────────────────────────────────────────────────────────── */
 
-function buildVerdict(level: SafetyLevel, advisories: Advisory[], condition: string, temp: number) {
+/**
+ * Verdict copy. Deliberately calm and conversational: this is a walk app,
+ * not a weather app, so the tone is "here is what to keep in mind", never
+ * "warning, danger, do not go outside".
+ *
+ * Exported (rather than hidden) so the tone itself has a test — a walk app
+ * that starts shouting "DANGER" again is a regression.
+ */
+export function buildVerdict(level: SafetyLevel, advisories: Advisory[], condition: string, temp: number) {
   const top = advisories[0];
   switch (level) {
     case 'danger':
       return {
-        headline: 'Stay inside today',
-        summary: top
-          ? `${top.title}. ${top.detail}`
-          : 'Weather is unsafe right now. Wait until it passes.',
+        headline: 'Stay in today',
+        summary: top ? top.detail : 'It is rough out there right now — it will pass.',
       };
     case 'warning':
       return {
-        headline: 'Be careful today',
-        summary: top
-          ? `${top.title}. ${top.detail}`
-          : 'Weather is rough. Keep it short and stay alert.',
+        headline: 'Doable, take it easy',
+        summary: top ? top.detail : 'A little rough out there — keep it short and comfortable.',
       };
     case 'caution':
       return {
-        headline: 'A good day, with a few notes',
-        summary: top ? `${top.title}. ${top.detail}` : 'A few small things to watch for.',
+        headline: 'You can head out',
+        summary: top ? top.detail : `${condition}, ${Math.round(temp)}°F. A nice one.`,
       };
     default:
       return {
-        headline: 'Nice day to go outside',
-        summary: `${condition}, ${Math.round(temp)}°F.`,
+        headline: 'Nice day to get outside',
+        summary: `${condition}, ${Math.round(temp)}°F. Go enjoy it.`,
       };
+  }
+}
+
+/**
+ * The one-line version for the tiny home-screen box. Keyed off the top
+ * advisory so the note matches what is actually happening today.
+ */
+export function buildShortNote(
+  level: SafetyLevel,
+  advisories: Advisory[],
+  temps?: { highF: number; lowF: number }
+): string {
+  const topId = advisories[0]?.id;
+  const byId: Record<string, string> = {
+    heat: 'A little hot — maybe go in the morning and carry extra water.',
+    'heat-high': 'Hot out — go early or late, and carry plenty of water.',
+    'heat-extreme': 'Too hot for a walk — early morning only, or rest up.',
+    cold: 'Chilly — layer up and keep it short.',
+    'cold-extreme': 'It will freeze you out there — stay in for today.',
+    wind: 'Breezy — hold onto your hat.',
+    'wind-high': 'Gusty — avoid open bridges on a bike.',
+    rain: 'Some rain around — take it easy on slick spots.',
+    'rain-heavy': 'Heavy rain — creeks run high, stay on the main trail.',
+    snow: 'Slippery out — short, flat loops only.',
+    storm: 'Thunderstorms — wait it out indoors.',
+    ice: 'Iced trails — stay in, and we will see you tomorrow.',
+    uv: 'Strong sun — sunscreen and a hat will do it.',
+    'uv-extreme': 'Very strong sun — hat, sunscreen, shaded route.',
+    aqi: 'Air is a little heavy — an easy pace is fine.',
+    'aqi-bad': 'Air quality poor — an indoor day is perfectly fine.',
+    fog: 'Foggy — wear something bright, use lights on a bike.',
+    dark: 'Daylight is fading — headlamp handy.',
+  };
+  if (topId && byId[topId]) return byId[topId];
+
+  switch (level) {
+    case 'danger':
+      return 'Best day to rest — the trail will still be there tomorrow.';
+    case 'warning':
+      return 'Doable, but take it easy today.';
+    case 'caution':
+      return 'Good to go, with a few small things to keep in mind.';
+    default:
+      // A nice day: the one forecast detail worth showing is high/low.
+      return temps
+        ? `High ${Math.round(temps.highF)}° · Low ${Math.round(temps.lowF)}° — go enjoy it.`
+        : 'A nice one — go enjoy it.';
   }
 }
 
@@ -635,7 +693,7 @@ export const LEVEL_META: Record<
   { label: string; tone: 'success' | 'info' | 'warning' | 'danger'; short: string }
 > = {
   good: { label: 'Good to go', tone: 'success', short: 'GOOD' },
-  caution: { label: 'Use caution', tone: 'info', short: 'CAUTION' },
-  warning: { label: 'Poor conditions', tone: 'warning', short: 'WARNING' },
-  danger: { label: 'Stay inside', tone: 'danger', short: 'DANGER' },
+  caution: { label: 'Good, mostly', tone: 'info', short: 'FINE' },
+  warning: { label: 'Doable, take it easy', tone: 'warning', short: 'EASY' },
+  danger: { label: 'Stay in today', tone: 'danger', short: 'REST' },
 };

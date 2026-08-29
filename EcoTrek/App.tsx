@@ -10,7 +10,8 @@ import { NavigationContainer } from '@react-navigation/native';
 import RootNavigator from './src/navigation/RootNavigator';
 import SignInScreen from './src/screens/SignInScreen';
 import OnboardingGate from './src/components/OnboardingGate';
-import { COLORS } from './src/constants/theme';
+import Icon from './src/components/Icon';
+import { APP_NAME } from './src/constants/appInfo';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { AppProvider } from './src/context/AppContext';
@@ -119,11 +120,16 @@ function ClubLayer({ children }: { children: React.ReactNode }) {
 
 function Gate() {
   const { user, loading } = useAuth();
+  const { colors } = useTheme();
 
   if (loading) {
     return (
-      <View style={styles.loading}>
-        <ActivityIndicator size="large" color={COLORS.primaryGlow} />
+      <View style={{ ...styles.loading, backgroundColor: colors.primaryDark }}>
+        <View style={styles.mark}>
+          <Icon name="tree" size={30} color={colors.primaryGlow} strokeWidth={1.9} />
+        </View>
+        <Text style={styles.appName}>{APP_NAME}</Text>
+        <ActivityIndicator size="small" color={colors.primaryGlow} style={{ marginTop: 18 }} />
       </View>
     );
   }
@@ -164,8 +170,11 @@ function ThemedStatusBar() {
 }
 
 if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
-(Text as any).defaultProps.allowFontScaling = true;
-(Text as any).defaultProps.maxFontSizeMultiplier = 1.8;
+// The app owns text sizing: Settings → text size scales the whole type ramp
+// through ThemeContext, uniformly. If we also let the OS accessibility scale
+// apply on top, the two multipliers fight each other and on a phone with
+// large system text the layout blew up. One scaler, predictable result.
+(Text as any).defaultProps.allowFontScaling = false;
 
 export default function App() {
   return (
@@ -187,8 +196,22 @@ export default function App() {
 const styles = StyleSheet.create({
   loading: {
     flex: 1,
-    backgroundColor: COLORS.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  mark: {
+    width: 62,
+    height: 62,
+    borderRadius: 20,
+    backgroundColor: 'rgba(255,255,255,0.09)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  appName: {
+    fontSize: 28,
+    fontWeight: '700',
+    color: '#fff',
+    letterSpacing: -0.4,
+    marginTop: 16,
   },
 });

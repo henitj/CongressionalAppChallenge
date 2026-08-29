@@ -1,7 +1,8 @@
 import React, { useEffect, useRef } from 'react';
-import { View, StyleSheet } from 'react-native';
+import { View } from 'react-native';
 import { Coord } from '../services/location';
-import { COLORS, RADIUS } from '../constants/theme';
+import { RADIUS } from '../constants/theme';
+import { useTheme } from '../context/ThemeContext';
 
 type Props = {
   path: Coord[];
@@ -41,6 +42,7 @@ function loadLeaflet(): Promise<any> {
 }
 
 export default function LiveMap({ path, current, height = 260, follow = true }: Props) {
+  const { colors } = useTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<any>(null);
   const polylineRef = useRef<any>(null);
@@ -146,8 +148,8 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
       } else {
         accuracyCircleRef.current = L.circle(ll, {
           radius: current.accuracy,
-          color: COLORS.primary,
-          fillColor: COLORS.primary,
+          color: colors.primary,
+          fillColor: colors.primary,
           fillOpacity: 0.08,
           weight: 1,
           opacity: 0.4,
@@ -161,19 +163,20 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
   }, [current, follow]);
 
   return (
-    <View style={[styles.wrap, { height }]}>
+    <View
+      style={[
+        {
+          width: '100%',
+          borderRadius: RADIUS.md,
+          overflow: 'hidden',
+          backgroundColor: colors.backgroundDark,
+          borderWidth: 1,
+          borderColor: colors.border,
+        },
+        { height },
+      ]}
+    >
       <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
     </View>
   );
 }
-
-const styles = StyleSheet.create({
-  wrap: {
-    width: '100%',
-    borderRadius: RADIUS.md,
-    overflow: 'hidden',
-    backgroundColor: COLORS.backgroundDark,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-  },
-});

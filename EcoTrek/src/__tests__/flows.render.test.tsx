@@ -162,6 +162,10 @@ describe('recording an activity', () => {
     expect(harness.activity.totalMiles).toBe(0);
     expect(harness.activity.totalTrees).toBe(0);
     expect(harness.points.totalPoints).toBe(before);
+    // A drive must not complete an auto challenge either (40 "miles" would
+    // have ticked off "Cover 2 miles" / "Cover 5 miles" for free).
+    await waitFor(() => expect(harness.challenges.completedCount).toBe(0));
+    expect(harness.challenges.pointsEarnedThisWeek).toBe(0);
   });
 
   it('does not double count a repeated save', async () => {
