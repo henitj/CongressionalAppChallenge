@@ -189,7 +189,10 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
     let trees = 0;
     let activities = 0;
     for (const a of history) {
-      if (a.startedAt >= since) {
+      // Invalid activities (flagged as drives / implausible speed) must not
+      // complete a challenge — a 40-mph "hike" earning points would be a
+      // cheat, not a reward.
+      if (a.valid && a.startedAt >= since) {
         miles += a.miles;
         trees += a.trees;
         activities += 1;

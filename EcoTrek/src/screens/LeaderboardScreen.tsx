@@ -185,6 +185,7 @@ export default function LeaderboardScreen() {
       <Header
         title="Clubs"
         subtitle={myClub ? myClub.name : 'Team up'}
+        back
         actions={
           myClub
             ? [{ icon: 'share', onPress: shareCode, label: 'Share club code' }]

@@ -174,3 +174,16 @@ Today is **16 August 2026**. The Congressional App Challenge closes in
 | Location fell back to a simulated walker when permission was denied, inventing distance and awarding real trees | Simulator deleted; failures now surface an error and record nothing |
 | `club_joined`, `plant_identified`, `photo_uploaded` and `cleanup` were scoring rules with no feature behind them | All now have features, except `photo_uploaded` which was removed |
 | Leaderboard ranked every club on the phone | Ranking moved into Postgres, top ten plus your own row |
+
+## Second-pass review fixes
+
+| Was a problem | Now |
+|---|---|
+| Pushed screens (Trails, Clubs, Profile) had no back button, so people could get stuck | Every pushed screen's header has a back chevron; if there is no history it returns to the tabs instead of doing nothing |
+| More tab was one flat list of seven unrelated things | Grouped into You / Explore / App sections |
+| Home weather showed a status banner, a headline, feels-like, and an hourly strip, and the Conditions page repeated it | Home is one tiny box — temperature, condition, one friendly sentence; the full report lives one tap away and nothing is shown twice |
+| Weather verdicts read "Stay inside today / Poor conditions" like an alarm | Calm, useful copy: "You can head out — maybe go in the morning and carry extra water". A test locks the tone in |
+| Streak reminder said "your 4-day streak" when streaks are measured in weeks, and the other reminders were vague | Three accurate streak states (safe this week / keep it going / start one), and the challenge and recap reminders now say exactly what is left and where to look |
+| Share sent plain text and the "picture" was only described, not produced | Share captures the card (photo, name, stats) into a PNG and sends it through the system share sheet; if a device cannot make a picture it falls back to text and says so; the card is always on screen to show someone directly |
+| Profile logo was only the Google sign-in picture | Tap the avatar to pick a photo or take one; it is compressed, square-cropped on native, stored in the app's documents, and used everywhere the avatar appears |
+| A flagged "drive" (40 mph average) still completed an auto weekly challenge and awarded 25 points | `weekStats` only counts valid activities; the regression is covered by the flow test |

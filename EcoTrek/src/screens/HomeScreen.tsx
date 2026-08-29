@@ -48,7 +48,7 @@ export default function HomeScreen() {
       />
 
       <View style={styles.body}>
-        <ConditionsCard compact />
+        <ConditionsCard />
 
         <Segmented
           options={[

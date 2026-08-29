@@ -17,6 +17,7 @@ import { useSettings } from '../constants/SettingsContext';
 import { useClub, sortedMembers } from '../constants/ClubContext';
 import { useProfile } from '../context/ProfileContext';
 import { fullNameOf } from '../services/displayName';
+import { chooseAvatarAction, pickAndStoreAvatarPhoto } from '../services/avatar';
 import ShareCard from '../components/ShareCard';
 
 export default function ProfileScreen() {
@@ -29,7 +30,7 @@ export default function ProfileScreen() {
     useEcoPoints();
   const { formatDistanceCompact: formatDistance, formatDistanceUnit } = useSettings();
   const { myClub, myRank, clubsLeading } = useClub();
-  const { profile, updateWeight } = useProfile();
+  const { profile, updateWeight, setAvatar } = useProfile();
 
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [showWeightEditor, setShowWeightEditor] = useState(false);
@@ -43,6 +44,20 @@ export default function ProfileScreen() {
   }, [myClub, user?.id]);
 
   const shareImpact = () => setShowShare(true);
+
+  const avatarUri = profile.avatarUri ?? user?.picture ?? null;
+
+  const changePhoto = () => {
+    chooseAvatarAction(!!profile.avatarUri, async (choice) => {
+      if (choice === null) return;
+      if (choice === 'remove') {
+        await setAvatar(null);
+        return;
+      }
+      const stored = await pickAndStoreAvatarPhoto(choice, profile.avatarUri);
+      if (stored) await setAvatar(stored);
+    });
+  };
 
   const handleUpdateWeight = async () => {
     const w = parseInt(newWeight);
@@ -64,6 +79,7 @@ export default function ProfileScreen() {
     <Screen>
       <Header
         title="Profile"
+        back
         hideAvatar
         actions={[{ icon: 'sliders', onPress: () => navigation.navigate('Settings'), label: 'Settings' }]}
       />
@@ -72,7 +88,18 @@ export default function ProfileScreen() {
         {/* Impact card */}
         <Card tone="dark" style={styles.impactCard}>
           <View style={styles.impactHeader}>
-            <Avatar name={displayName} uri={user?.picture} size={62} ring="rgba(255,255,255,0.18)" />
+            <Pressable
+              onPress={changePhoto}
+              style={styles.avatarWrap}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel={profile.avatarUri ? 'Change your photo' : 'Add your photo'}
+            >
+              <Avatar name={displayName} uri={avatarUri} size={62} ring="rgba(255,255,255,0.18)" />
+              <View style={styles.avatarChip}>
+                <Icon name="camera" size={12} color="#fff" strokeWidth={2.2} />
+              </View>
+            </Pressable>
             <View style={{ flex: 1 }}>
               <Text style={styles.impactName} numberOfLines={2}>
                 {displayName}
@@ -128,6 +155,8 @@ export default function ProfileScreen() {
           trees={totalTrees}
           streak={currentStreak}
           level={level}
+          trails={uniqueTrailsCompleted}
+          avatarUri={avatarUri}
         />
 
         {/* Weight tracking */}
@@ -503,6 +532,20 @@ const styles = StyleSheet.create({
 
   impactCard: { padding: SPACING.md + 2, gap: SPACING.md },
   impactHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md - 2 },
+  avatarWrap: { position: 'relative' },
+  avatarChip: {
+    position: 'absolute',
+    bottom: -2,
+    right: -2,
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    backgroundColor: COLORS.primary,
+    borderWidth: 2,
+    borderColor: COLORS.primaryDark,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
   impactName: { ...TYPOGRAPHY.h1, color: '#fff' },
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
   impactLevel: { ...TYPOGRAPHY.smallMed, color: COLORS.primaryGlow },

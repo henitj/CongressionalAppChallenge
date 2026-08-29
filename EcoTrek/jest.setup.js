@@ -62,6 +62,25 @@ jest.mock('expo-auth-session/providers/google', () => ({
   useAuthRequest: () => [null, null, jest.fn()],
 }));
 
+// view-shot is a native module (and ships ESM source Jest won't transform).
+// Rendering is what we test; capture just needs to exist and resolve.
+jest.mock('react-native-view-shot', () => {
+  const React = require('react');
+  const { View } = require('react-native');
+  const ViewShot = React.forwardRef((props, ref) => {
+    React.useImperativeHandle(ref, () => ({
+      capture: async () => 'file://mock-capture.png',
+    }));
+    return React.createElement(View, null, props.children);
+  });
+  return {
+    __esModule: true,
+    default: ViewShot,
+    captureRef: async () => 'file://mock-capture.png',
+    releaseCapture: () => {},
+  };
+});
+
 // The weather services are real network calls. Tests must never hit them.
 global.fetch = jest.fn(async () => ({
   ok: false,

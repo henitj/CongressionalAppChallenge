@@ -5,6 +5,7 @@ import { useNavigation } from '@react-navigation/native';
 import Icon, { IconName } from './Icon';
 import { Avatar } from './ui';
 import { useAuth } from '../context/AuthContext';
+import { useProfile } from '../context/ProfileContext';
 import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
@@ -31,14 +32,22 @@ export default function Header({
 }: Props) {
   const navigation = useNavigation<any>();
   const { user } = useAuth();
+  const { profile } = useProfile();
   const { colors, fontScale } = useTheme();
+
+  // Always go somewhere: if there is nothing to go back to (cold open,
+  // deep link) fall back to the home tabs instead of a dead tap.
+  const goBack = () => {
+    if (navigation.canGoBack?.()) navigation.goBack();
+    else navigation.navigate('Tabs');
+  };
 
   return (
     <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor: colors.background }, style]}>
       <View style={styles.bar}>
         {back ? (
           <Pressable
-            onPress={() => navigation.goBack()}
+            onPress={goBack}
             hitSlop={12}
             style={styles.iconBtn}
             accessibilityLabel="Go back"
@@ -78,7 +87,7 @@ export default function Header({
               hitSlop={8}
               accessibilityLabel="Open profile"
             >
-              <Avatar name={user?.name} uri={user?.picture} size={44} />
+              <Avatar name={user?.name} uri={profile.avatarUri ?? user?.picture} size={44} />
             </Pressable>
           ) : null}
         </View>

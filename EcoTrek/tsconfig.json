@@ -5,7 +5,13 @@
     "jsx": "react-native",
     "baseUrl": ".",
     "paths": {
-      "@/*": ["src/*"]
+      "@/*": ["src/*"],
+      /*
+        view-shot ships its source through the `react-native` export
+        condition, which drags its .tsx files into our typecheck and trips
+        --noUnusedLocals. Point at the built declarations instead — same API.
+      */
+      "react-native-view-shot": ["node_modules/react-native-view-shot/lib/index.d.ts"]
     }
   },
   "include": ["**/*.ts", "**/*.tsx"],

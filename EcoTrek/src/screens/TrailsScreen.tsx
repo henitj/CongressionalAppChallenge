@@ -135,6 +135,7 @@ export default function TrailsScreen() {
       <Header
         title="Trails"
         subtitle={`${completedCount} of ${trails.length} completed`}
+        back
         actions={[{ icon: 'shield', onPress: () => navigation.navigate('Safety'), label: 'Safety' }]}
       />
 

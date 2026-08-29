@@ -59,7 +59,7 @@ const NotificationContext = createContext<NotificationState | null>(null);
 
 export function NotificationProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const { currentStreak } = useStreak();
+  const { currentStreak, activeThisWeek } = useStreak();
   const { completedCount, totalCount } = useChallenges();
 
   const storeKey = keyFor(user?.id ?? null, 'notifications');
@@ -103,7 +103,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
         return;
       }
       if (prefs.streakReminder) {
-        await scheduleStreakReminder(currentStreak, prefs.reminderHour);
+        await scheduleStreakReminder(currentStreak, prefs.reminderHour, activeThisWeek);
       }
       if (prefs.challengeReminder) {
         await scheduleChallengeReminder(Math.max(0, totalCount - completedCount));
@@ -122,6 +122,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     prefs.reminderHour,
     permissionGranted,
     currentStreak,
+    activeThisWeek,
     completedCount,
     totalCount,
   ]);

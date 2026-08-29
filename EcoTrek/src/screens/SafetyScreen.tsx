@@ -101,7 +101,7 @@ export default function SafetyScreen() {
           <Banner
             tone="danger"
             icon="alert-triangle"
-            title="Conditions are dangerous right now"
+            title="Right now, staying in is the better call"
             message="Whatever you had planned, it will still be there tomorrow. Sit this one out."
             onPress={() => navigation.navigate('Conditions')}
           />

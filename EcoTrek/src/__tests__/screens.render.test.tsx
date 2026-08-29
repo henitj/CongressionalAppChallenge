@@ -1,5 +1,5 @@
 import React from 'react';
-import { render, waitFor } from '@testing-library/react-native';
+import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -153,6 +153,28 @@ describe('every screen renders on an empty account', () => {
       expect(queryByText(anchor)).toBeTruthy();
     });
   }
+});
+
+describe('review fixes', () => {
+  it('More is grouped into sections, not one flat list', async () => {
+    const { queryByText } = await mount(MoreScreen, 'My walks');
+    expect(queryByText('Explore')).toBeTruthy();
+    expect(queryByText('App')).toBeTruthy();
+    expect(queryByText('Safety')).toBeTruthy();
+    expect(queryByText('Settings')).toBeTruthy();
+  });
+
+  it('Profile offers to add your own photo', async () => {
+    const { getByLabelText } = await mount(ProfileScreen, 'Share my progress');
+    expect(getByLabelText('Add your photo')).toBeTruthy();
+  });
+
+  it('Share opens a picture card you can send as an image', async () => {
+    const utils = await mount(ProfileScreen, 'Share my progress');
+    fireEvent.press(utils.getByText('Share my progress'));
+    await waitFor(() => expect(utils.queryByText('Share as picture')).toBeTruthy(), { timeout: 4000 });
+    expect(utils.queryByText(/this is the picture you share/i)).toBeTruthy();
+  });
 });
 
 describe('screens that do not need the provider stack', () => {

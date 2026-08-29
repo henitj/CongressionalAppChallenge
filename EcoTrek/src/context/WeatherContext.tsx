@@ -62,12 +62,14 @@ export function WeatherProvider({
         );
         setReport(r);
 
-        // Push a heads-up for genuinely dangerous conditions.
+        // Push a heads-up for genuinely dangerous conditions. The tone stays
+        // calm and factual — it tells you what is happening and what to do,
+        // it does not shout at you.
         if (notifyRef.current && r.level === 'danger' && r.advisories.length) {
           const top = r.advisories[0];
           const today = new Date().toDateString();
           sendSafetyAlert(
-            `Do not head out: ${top.title}`,
+            `Weather heads-up: ${top.title}`,
             top.detail,
             `${today}:${top.id}`
           );

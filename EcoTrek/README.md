@@ -13,16 +13,18 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 | | |
 |---|---|
 | **Start from Home** | Walk or Bike, then one large Start button. The Start tab is the same action with a bit more explanation. |
-| **Three tabs** | Home · Start · More. Trails, clubs, profile, settings, and My walks live under More. |
+| **Three tabs** | Home · Start · More. More is grouped into You / Explore / App so it reads as sections, not a dump. |
+| **Back button** | Every screen you open has a chevron at the top-left that takes you back. No dead ends. |
 | **My walks** | This week’s miles plus every saved walk. Recap and records are one tap away. |
 | **Background recording** | Keeps measuring if you lock the phone. Android shows “EcoTrek is recording.” Stops on Finish. |
-| **Weather** | Temperature and the next few hours on Home. No extra report page. |
+| **Weather** | One tiny box on Home: temperature, condition, and a single friendly line. We are not a weather app. Full detail is one tap away. |
 | **Safety** | Call 911 and Text my contact on the live screen. Sit-down reminder after 25 minutes. |
 | **Simple mode** | Bigger text. Clubs and weekly goals stay out of the way. |
 | **Text size / look** | Normal, Large, Extra large. Light, Dark, High contrast. Less motion. |
 | **Guest → Google** | Walks already on the phone are copied when you save with Google. |
 | **Skippable setup** | The first-run name and height questions can be skipped. |
-| **Share card** | A simple picture-style card you send to family. |
+| **Your photo** | Tap the avatar on your profile to pick or take your own picture. It becomes your profile logo everywhere. |
+| **Share card** | A real picture — your photo plus your stats — sent through the system share sheet. If a device can’t make a picture, it falls back to sharing the stats as text, and the card is always on screen to show someone directly. |
 | **Trails** | 14 Austin trails, offline. Cards show distance, easy/medium/hard, dogs, water, bathrooms. |
 | **Trees** | Symbolic only. 1 per mile walked, 1 per 3 miles biked. |
 
@@ -66,7 +68,8 @@ src/services/location.ts        foreground watch + background task
 src/services/locationTask.ts    TaskManager definition
 src/services/storage.ts         per-user keys + guest → Google copy
 src/hooks/useStartActivity.ts   shared Start logic for Home and Start tab
-src/components/ShareCard.tsx    shareable progress card
+src/components/ShareCard.tsx    shareable progress picture (view-shot → share sheet)
+src/services/avatar.ts          profile photo: pick/take, compress, store
 ```
 
 ---

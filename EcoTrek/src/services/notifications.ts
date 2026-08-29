@@ -107,25 +107,38 @@ async function cancel(identifier: string) {
 }
 
 /**
- * Daily nudge at `hour` local time. We reschedule it every launch so it always
- * reflects the user's current streak length.
+ * Evening nudge at `hour` local time. We reschedule it every launch so it
+ * always reflects the user's current streak.
+ *
+ * The streak is measured in WEEKS (a week counts once you have logged at
+ * least one activity in it), so the copy says weeks — saying "day streak"
+ * here used to confuse everyone who opened it.
  */
-export async function scheduleStreakReminder(streak: number, hour = 18) {
+export async function scheduleStreakReminder(streak: number, hour = 18, activeThisWeek = false) {
   const N = getModule();
   if (!N || Platform.OS === 'web') return;
 
   await cancel(IDENTIFIERS.streak);
 
-  const body =
-    streak >= 2
-      ? `Your ${streak}-day streak ends at midnight. A short walk keeps it alive.`
-      : 'Log any hike or ride today to start a streak.';
+  // Three accurate states, each saying something true:
+  let title: string;
+  let body: string;
+  if (activeThisWeek) {
+    title = `Your ${streak}-week streak is safe`;
+    body = 'You have already been out this week, so there is nothing to do. Enjoy the rest of it.';
+  } else if (streak >= 1) {
+    title = `Keep your ${streak}-week streak going`;
+    body = 'Log one walk or ride this week to keep it alive. Ten minutes counts.';
+  } else {
+    title = 'Start a weekly streak';
+    body = 'Log one walk or ride this week. That is all it takes — then just keep going.';
+  }
 
   try {
     await N.scheduleNotificationAsync({
       identifier: IDENTIFIERS.streak,
       content: {
-        title: streak >= 2 ? `Keep your ${streak}-day streak` : 'Get outside today',
+        title,
         body,
         ...(Platform.OS === 'android' ? { channelId: CHANNELS.reminders } : {}),
       },
@@ -140,7 +153,7 @@ export async function scheduleStreakReminder(streak: number, hour = 18) {
   }
 }
 
-/** Saturday morning: "2 challenges left, they reset Monday." */
+/** Saturday morning: tells you exactly what is left and when it resets. */
 export async function scheduleChallengeReminder(remaining: number) {
   const N = getModule();
   if (!N || Platform.OS === 'web') return;
@@ -148,12 +161,17 @@ export async function scheduleChallengeReminder(remaining: number) {
   await cancel(IDENTIFIERS.challenge);
   if (remaining <= 0) return;
 
+  const body =
+    remaining === 1
+      ? 'You have one left before they reset Monday. It only takes a few minutes.'
+      : `You have ${remaining} left before they reset Monday. Pick one — most take less than 15 minutes.`;
+
   try {
     await N.scheduleNotificationAsync({
       identifier: IDENTIFIERS.challenge,
       content: {
-        title: 'Weekly challenges reset Monday',
-        body: `You have ${remaining} challenge${remaining === 1 ? '' : 's'} left. Each one adds points to your club.`,
+        title: remaining === 1 ? 'One challenge left this week' : `${remaining} challenges left this week`,
+        body,
         ...(Platform.OS === 'android' ? { channelId: CHANNELS.reminders } : {}),
       },
       trigger: {
@@ -185,8 +203,8 @@ export async function scheduleWeeklyRecap() {
     await N.scheduleNotificationAsync({
       identifier: IDENTIFIERS.recap,
       content: {
-        title: 'Your week is in',
-        body: 'See how far you went, and what you beat.',
+        title: 'Your week is wrapped up',
+        body: 'Open your recap for the numbers that matter — miles, trees, streak and challenges. Takes 30 seconds.',
         ...(Platform.OS === 'android' ? { channelId: CHANNELS.reminders } : {}),
       },
       trigger: {
