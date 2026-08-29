@@ -26,6 +26,7 @@ import { NotificationProvider, useNotifications } from './src/context/Notificati
 import { WeatherProvider } from './src/context/WeatherContext';
 import { AnalyticsProvider } from './src/constants/AnalyticsContext';
 import { ProfileProvider } from './src/context/ProfileContext';
+import { LogbookProvider } from './src/context/LogbookContext';
 import { useClubGoalRewards } from './src/hooks/useClubGoalRewards';
 
 /**
@@ -38,6 +39,7 @@ import { useClubGoalRewards } from './src/hooks/useClubGoalRewards';
  *   Club        → clubs (needs Auth)
  *   Streak      → weekly streaks (awards points)
  *   Activity    → hikes and rides (records streak + club contributions, needs Profile)
+ *   Logbook     → cleanups and field log stats
  *   Challenge   → weekly challenges
  *   Notification→ reminders
  *   Weather     → conditions
@@ -138,10 +140,11 @@ function Gate() {
 
   return (
     <EcoPointsProvider>
-        <ProfileProvider>
-          <ClubLayer>
-            <StreakProvider>
-              <ActivityProvider>
+      <ProfileProvider>
+        <ClubLayer>
+          <StreakProvider>
+            <ActivityProvider>
+              <LogbookProvider>
                 <ChallengeProvider>
                   <NotificationProvider>
                     <WeatherLayer>
@@ -156,10 +159,11 @@ function Gate() {
                     </WeatherLayer>
                   </NotificationProvider>
                 </ChallengeProvider>
-              </ActivityProvider>
-            </StreakProvider>
-          </ClubLayer>
-        </ProfileProvider>
+              </LogbookProvider>
+            </ActivityProvider>
+          </StreakProvider>
+        </ClubLayer>
+      </ProfileProvider>
     </EcoPointsProvider>
   );
 }

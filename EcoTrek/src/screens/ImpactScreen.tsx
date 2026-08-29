@@ -44,6 +44,11 @@ export default function ImpactScreen() {
     [history]
   );
 
+  const impactHeadline =
+    totalTrees > 0
+      ? `Your walks have earned ${totalTrees} symbolic tree${totalTrees === 1 ? '' : 's'} in EcoTrek.`
+      : 'Your forest is waiting for its first symbolic tree.';
+
   const confirmDelete = (id: string) => {
     Alert.alert('Delete this activity?', 'It will be removed from your history and totals.', [
       { text: 'Cancel', style: 'cancel' },
@@ -56,11 +61,28 @@ export default function ImpactScreen() {
       <Header title="Impact" subtitle="Everything you have logged" back />
 
       <View style={styles.body}>
+        <Card tone="accent">
+          <View style={styles.heroHead}>
+            <View style={styles.heroIcon}>
+              <Icon name="tree" size={20} color={colors.accentDark} strokeWidth={1.9} />
+            </View>
+            <View style={{ flex: 1 }}>
+              <Text style={styles.heroTitle}>{totalTrees} trees earned</Text>
+              <Text style={styles.heroText}>{impactHeadline}</Text>
+            </View>
+          </View>
+          <View style={styles.heroStats}>
+            <MiniStat value={String(cleanupCount)} label="Cleanups" />
+            <MiniStat value={String(litterCollected)} label="Litter" />
+            <MiniStat value={String(totalPoints)} label="Points" />
+          </View>
+        </Card>
+
         {/* Summary */}
         <Card>
           <View style={styles.summaryGrid}>
             <Summary value={formatDistanceCompact(totalMiles)} unit={formatDistanceUnit()} label="Distance" />
-            <Summary value={String(totalTrees)} label="Trees" />
+            <Summary value={String(totalTrees)} label="Trees earned" />
             <Summary value={String(totalActivities)} label="Activities" />
             <Summary value={String(uniqueTrailsCompleted)} label="Trails" />
           </View>
@@ -157,7 +179,7 @@ export default function ImpactScreen() {
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.forestCount}>{totalTrees}</Text>
-                  <Text style={styles.forestLabel}>trees in your forest</Text>
+                  <Text style={styles.forestLabel}>symbolic trees in your forest</Text>
                 </View>
               </View>
               <Divider style={{ marginVertical: SPACING.md - 2 }} />
@@ -167,7 +189,7 @@ export default function ImpactScreen() {
               </Text>
             </Card>
 
-            <Banner tone="neutral" icon="info" title="What these trees are" message={TREES_DISCLAIMER} />
+            <Banner tone="neutral" icon="info" title="These are in-app trees, not partner plantings" message={TREES_DISCLAIMER} />
 
             {grants.length === 0 ? (
               <EmptyState
@@ -365,6 +387,26 @@ function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
 
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
+
+  heroHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+  heroIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: RADIUS.md,
+    backgroundColor: 'rgba(255,255,255,0.55)',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  heroTitle: { ...t.h3, color: c.accentDark },
+  heroText: { ...t.small, color: c.textSecondary, marginTop: 2 },
+  heroStats: {
+    flexDirection: 'row',
+    gap: SPACING.sm,
+    marginTop: SPACING.md - 2,
+    paddingTop: SPACING.sm + 2,
+    borderTopWidth: 1,
+    borderTopColor: c.warningBorder,
+  },
 
   summaryGrid: { flexDirection: 'row' },
   summaryItem: { flex: 1 },
