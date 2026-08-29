@@ -28,8 +28,9 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
   // Prefill from the sign-in name so nobody types it twice.
   const authName = (user?.name ?? '').trim();
   const authParts = authName.split(/\s+/).filter(Boolean);
+  const hasSignedInName = authParts.length > 0;
 
-  const [step, setStep] = useState<Step>('name');
+  const [step, setStep] = useState<Step>(hasSignedInName ? 'body' : 'name');
   const [firstName, setFirstName] = useState(authParts[0] ?? '');
   const [lastName, setLastName] = useState(authParts.slice(1).join(' '));
   const [age, setAge] = useState('');
@@ -152,7 +153,9 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                 </View>
                 <Text style={styles.title}>Height and weight</Text>
                 <Text style={styles.subtitle}>
-                  Used only to estimate calories. You can change your weight later.
+                  {hasSignedInName
+                    ? `You're already signed in as ${authName}. Add these only if you want calorie estimates — you can skip and change them later.`
+                    : 'Used only to estimate calories. You can change your weight later.'}
                 </Text>
 
                 <View style={styles.form}>

@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable, TextInput, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
+import GoogleAccountSheet from '../components/GoogleAccountSheet';
 import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, SectionHeader, Segmented, Divider, Banner, Button } from '../components/ui';
 
@@ -39,6 +40,7 @@ export default function SettingsScreen() {
   const { profile, setProfile } = useProfile();
   const [emName, setEmName] = useState(profile.emergencyName ?? '');
   const [emPhone, setEmPhone] = useState(profile.emergencyPhone ?? '');
+  const [showGoogleSheet, setShowGoogleSheet] = useState(false);
   const { user, signOut, signInWithGoogle } = useAuth();
   const { resetPoints } = useEcoPoints();
   const { clearHistory } = useActivity();
@@ -70,6 +72,14 @@ export default function SettingsScreen() {
     } else {
       await notif.disable();
     }
+  };
+
+  const handleGoogleUpgrade = async () => {
+    if (Platform.OS === 'web') {
+      setShowGoogleSheet(true);
+      return;
+    }
+    await signInWithGoogle();
   };
 
   const confirmReset = () => {
@@ -144,7 +154,7 @@ export default function SettingsScreen() {
                   label="Save with Google"
                   full
                   style={{ marginTop: SPACING.sm }}
-                  onPress={() => signInWithGoogle()}
+                  onPress={handleGoogleUpgrade}
                 />
               </>
             ) : null}
@@ -421,6 +431,14 @@ export default function SettingsScreen() {
 
         <Button label="Sign out" variant="secondary" icon="log-out" full onPress={signOut} />
       </View>
+
+      {Platform.OS === 'web' ? (
+        <GoogleAccountSheet
+          visible={showGoogleSheet}
+          onClose={() => setShowGoogleSheet(false)}
+          mode="upgrade"
+        />
+      ) : null}
     </Screen>
   );
 }

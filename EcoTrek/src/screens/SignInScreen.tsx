@@ -1,8 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Pressable, Linking, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, TextInput, Linking, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
+import GoogleAccountSheet from '../components/GoogleAccountSheet';
 import { Button, Sheet } from '../components/ui';
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
@@ -18,13 +19,10 @@ const FEATURES: { icon: IconName; title: string }[] = [
 export default function SignInScreen() {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
-  const { signInWithGoogle, signInWithLocalGoogle, localGoogleAccounts, signInAsGuest, error } = useAuth();
+  const { signInWithGoogle, signInAsGuest, error } = useAuth();
   const [showGuest, setShowGuest] = useState(false);
   const [guestName, setGuestName] = useState('');
   const [showGoogle, setShowGoogle] = useState(false);
-  const [pickingNew, setPickingNew] = useState(false);
-  const [googleName, setGoogleName] = useState('');
-  const [googleEmail, setGoogleEmail] = useState('');
   const [busy, setBusy] = useState(false);
 
   // The web demo cannot round-trip a real OAuth redirect, so there Google
@@ -33,25 +31,12 @@ export default function SignInScreen() {
 
   const handleGoogle = async () => {
     if (useLocalGoogle) {
-      setPickingNew(localGoogleAccounts.length === 0);
-      setGoogleName('');
-      setGoogleEmail('');
       setShowGoogle(true);
       return;
     }
     setBusy(true);
     try {
       await signInWithGoogle();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleLocalPick = async (name: string, email: string) => {
-    setBusy(true);
-    try {
-      await signInWithLocalGoogle(name, email);
-      setShowGoogle(false);
     } finally {
       setBusy(false);
     }
@@ -139,78 +124,9 @@ export default function SignInScreen() {
         </ScrollView>
       </SafeAreaView>
 
-      {/* Google account sheet — the web demo's stand-in for the Google popup */}
-      <Sheet
-        visible={showGoogle}
-        onClose={() => setShowGoogle(false)}
-        title="Sign in with Google"
-        subtitle={pickingNew ? 'New here? Tell us who you are.' : 'Choose an account to continue'}
-      >
-        <View style={{ gap: SPACING.md }}>
-          {!pickingNew && localGoogleAccounts.length > 0 ? (
-            <View style={{ gap: 2 }}>
-              {localGoogleAccounts.map((a) => (
-                <Pressable
-                  key={a.email}
-                  style={({ pressed }) => [styles.googleRow, pressed && { opacity: 0.7 }]}
-                  onPress={() => handleLocalPick(a.name, a.email)}
-                  accessibilityRole="button"
-                  accessibilityLabel={`Sign in as ${a.name}`}
-                >
-                  <View style={styles.googleAvatar}>
-                    <Text style={styles.googleAvatarText}>
-                      {a.name.trim().charAt(0).toUpperCase() || '?'}
-                    </Text>
-                  </View>
-                  <View style={{ flex: 1 }}>
-                    <Text style={[styles.googleName, typography.bodyMed]}>{a.name}</Text>
-                    <Text style={[styles.googleEmail, typography.small]}>{a.email}</Text>
-                  </View>
-                </Pressable>
-              ))}
-            </View>
-          ) : null}
-
-          {pickingNew ? (
-            <>
-              <View style={{ gap: 8 }}>
-                <Text style={[styles.fieldLabel, typography.overline]}>Full name</Text>
-                <TextInput
-                  value={googleName}
-                  onChangeText={setGoogleName}
-                  placeholder="Jane Doe"
-                  placeholderTextColor={colors.textLight}
-                  maxLength={50}
-                  style={styles.input}
-                  onSubmitEditing={() => googleEmail.trim() && handleLocalPick(googleName, googleEmail)}
-                />
-              </View>
-              <View style={{ gap: 8 }}>
-                <Text style={[styles.fieldLabel, typography.overline]}>Email</Text>
-                <TextInput
-                  value={googleEmail}
-                  onChangeText={setGoogleEmail}
-                  placeholder="jane@example.com"
-                  placeholderTextColor={colors.textLight}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  style={styles.input}
-                  onSubmitEditing={() => googleName.trim() && handleLocalPick(googleName, googleEmail)}
-                />
-              </View>
-              <Button
-                label="Continue"
-                full
-                loading={busy}
-                disabled={!googleName.trim() || !googleEmail.trim()}
-                onPress={() => handleLocalPick(googleName, googleEmail)}
-              />
-            </>
-          ) : (
-            <Button label="Use another account" variant="secondary" full onPress={() => setPickingNew(true)} />
-          )}
-        </View>
-      </Sheet>
+      {useLocalGoogle ? (
+        <GoogleAccountSheet visible={showGoogle} onClose={() => setShowGoogle(false)} mode="signin" />
+      ) : null}
 
       <Sheet
         visible={showGuest}
@@ -299,28 +215,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
       color: c.text,
     },
     guestNote: { color: c.textMuted },
-
-    googleRow: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: SPACING.sm + 4,
-      paddingVertical: SPACING.sm,
-      paddingHorizontal: SPACING.sm + 2,
-      borderRadius: RADIUS.md,
-      borderWidth: 1,
-      borderColor: c.border,
-    },
-    googleAvatar: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: c.primarySurface,
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    googleAvatarText: { ...t.h3, color: c.primary },
-    googleName: { color: c.text },
-    googleEmail: { color: c.textMuted },
 
     legal: {
       color: 'rgba(255,255,255,0.4)',
