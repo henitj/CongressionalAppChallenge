@@ -2,25 +2,29 @@
   <rect width="1024" height="1024" fill="#0D3D2D"/>
   <circle cx="512" cy="512" r="368" fill="#1A7A5A"/>
 
-  <!-- A single route that grows into a leaf: movement + a lighter footprint. -->
+  <!-- A trail-marker pin makes location and outdoor movement immediate. -->
   <path
-    d="M 330 790 C 418 742 568 744 594 650 C 620 558 482 520 420 474 C 366 434 404 360 514 307"
-    fill="none"
-    stroke="#FFF8E5"
-    stroke-width="82"
-    stroke-linecap="round"
-    stroke-linejoin="round"
+    d="M 512 820 C 430 716 290 570 290 425 C 290 296 389 198 512 198 C 635 198 734 296 734 425 C 734 570 594 716 512 820 Z"
+    fill="#FFF8E5"
   />
+  <!-- The route runs through the pin and grows into one simple leaf. -->
   <path
-    d="M 504 318 C 494 220 596 132 736 128 C 732 261 646 340 504 318 Z"
-    fill="#7DD4AD"
-  />
-  <path
-    d="M 510 311 C 568 257 631 195 714 145"
+    d="M 512 746 C 472 680 430 624 434 563 C 437 513 473 473 515 433"
     fill="none"
-    stroke="#0D3D2D"
-    stroke-width="18"
+    stroke="#1A7A5A"
+    stroke-width="32"
     stroke-linecap="round"
   />
-  <circle cx="321" cy="796" r="24" fill="#E8943A"/>
+  <path
+    d="M 449 430 C 438 344 520 274 629 267 C 620 369 548 441 449 430 Z"
+    fill="#1A7A5A"
+  />
+  <path
+    d="M 456 423 C 512 372 569 317 617 278"
+    fill="none"
+    stroke="#E8943A"
+    stroke-width="14"
+    stroke-linecap="round"
+  />
+  <circle cx="512" cy="746" r="18" fill="#E8943A"/>
 </svg>

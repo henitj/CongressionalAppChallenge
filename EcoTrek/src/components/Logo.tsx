@@ -4,9 +4,10 @@ import { Image, ImageStyle, StyleProp } from 'react-native';
 const LOGO = require('../../assets/logo.png');
 
 /**
- * The EcoTrek mark: one clear route growing into a leaf. The route represents
- * every walk or ride we measure; the leaf keeps the lighter-footprint idea
- * visible without adding extra scenery that disappears at small sizes.
+ * The EcoTrek mark: a trail-marker pin with one route growing into a leaf.
+ * The pin represents location tracking, while the leaf keeps the
+ * lighter-footprint idea visible without extra scenery that disappears at
+ * small sizes.
  *
  * The source file (assets/logo.png) is square with the brand background
  * baked in, so we round the corners here and it sits cleanly on any surface.
