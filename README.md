@@ -2,7 +2,7 @@
 
 **Tap Start. Walk. We count the miles.**
 
-EcoTrek is a React Native (Expo) app for walkers, hikers, and cyclists in Austin, Texas. It measures how far you go, shows today’s weather, and keeps a simple record of your walks. It is built so older adults and people with disabilities can use it without extra help — large type, plain words, and a short path to Start.
+EcoTrek is a React Native (Expo) app for walkers, hikers, and cyclists in Austin, Texas. It measures how far you go, shows today's weather, and keeps a simple record of your walks. It is built so older adults and people with disabilities can use it without extra help — large type, plain words, and a short path to Start.
 
 Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Averineni and Basil Vinesh.
 
@@ -10,16 +10,17 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 
 ## What it does
 
-- **Start a walk or ride from Home.** Pick Walk or Bike and tap one large button. No extra page required.
+- **One big Start button.** The Start tab: pick Walk or Bike, tap Start, put the phone away. Home stays a quiet dashboard (weather, this week, last walk).
 - **GPS tracking that keeps going** if you lock the phone. It stops when you tap Finish.
-- **Weather on Home** — current temperature and the next few hours. A clear note if it is safer to stay inside.
-- **Three tabs only** — Home, Start, and More. Trails, clubs, profile, and settings live under More.
-- **My walks** — this week’s miles plus every walk you have saved, in one place.
-- **Austin trails** — 14 trails with distance, easy / medium / hard, dogs, water, and bathrooms. Works offline.
+- **Weather on Home** — one tiny box: temperature, condition, and a single friendly line. Full detail is one tap away.
+- **Three tabs only** — Home, Start, and More. Profile, walks, impact, trails, clubs, safety, and settings live under More.
+- **My walks** — this week's miles plus every walk you have saved, in one place.
+- **Austin trails** — 14 trails with area, distance, easy / medium / hard, dogs, water, and bathrooms. Works offline.
 - **Safety on the trail** — Call 911 and Text my contact on the live tracking screen. A sit-down reminder after 25 minutes.
 - **Simple mode, large text, dark and high-contrast looks** — in Settings.
-- **Guest or Google.** Start as a guest, then save with Google later. Walks already on the phone come with you.
-- **Setup is optional.** You can skip the name and height questions and start walking.
+- **Google sign-in works for both signing in and signing up** — one tap, seamless. On the web demo a built-in account sheet stands in for the Google popup. Guest needs no account at all, and a guest's data is copied when you later sign in with Google.
+- **First run, once per account** — Get Started (your name is pre-filled) → a four-page intro you can skip → home. You never do it again. Your name stays editable on your profile.
+- **Share a picture of your progress** — your photo plus your stats, sent through the system share sheet.
 - **Trees and points** are a fun way to see effort. No real trees are planted.
 
 ---
@@ -27,11 +28,11 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 ## Easy to use
 
 - **Simple mode** hides clubs and weekly goals from More and bumps text size.
-- **Text size** — Normal, Large, or Extra large. The phone’s own text size is also honored.
-- **Dark** and **High contrast** themes.
+- **Text size** — Normal, Large, or Extra large. One app-wide scaler applies the size to every screen, so larger text never breaks a layout.
+- **Dark** and **High contrast** themes re-theme the whole app — no screen is left behind.
 - **Less motion** skips fades and slides (and follows the system setting).
 - **Emergency contact** — save a name and number in Settings, then text them from a walk.
-- Large tap targets and plain language throughout (“points,” “level,” “skip a week,” “your progress”).
+- Large tap targets and plain language throughout ("points," "level," "skip a week," "your progress").
 
 ---
 
@@ -66,7 +67,7 @@ Copy `.env.example` to `.env` if you want Google sign-in or a backend. The app w
 
 ```bash
 npm test          # logic + render tests
-npm run typecheck
+npm run verify    # strict typecheck + both suites
 ```
 
 ---
@@ -79,4 +80,4 @@ Location is used **only while a walk or ride is recording**, including if the ph
 
 ## Project layout
 
-See `EcoTrek/README.md` for the full file tree, backend notes, and launch checklist.
+See `EcoTrek/README.md` for the full file tree, theming notes, backend notes, and launch checklist.

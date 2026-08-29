@@ -34,6 +34,8 @@ export default function SignInScreen() {
   const handleGoogle = async () => {
     if (useLocalGoogle) {
       setPickingNew(localGoogleAccounts.length === 0);
+      setGoogleName('');
+      setGoogleEmail('');
       setShowGoogle(true);
       return;
     }
