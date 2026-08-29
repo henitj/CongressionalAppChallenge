@@ -16,7 +16,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Three tabs only** — Home, Start, and More. Profile, walks, impact, trails, clubs, safety, and settings live under More.
 - **My walks** — this week's miles plus every walk you have saved, in one place.
 - **Austin trails** — 14 trails with area, distance, easy / medium / hard, dogs, water, and bathrooms. Works offline.
-- **Safety on the trail** — Call 911 and Text my contact on the live tracking screen. A sit-down reminder after 25 minutes.
+- **Safety on the trail** — a big one-tap Stop button always at the top of the live tracking screen, plus Call 911 (with a confirm step). A sit-down reminder after 25 minutes.
 - **Simple mode, large text, dark and high-contrast looks** — in Settings.
 - **Google sign-in works for both signing in and signing up** — one tap, seamless. On the web demo a built-in account sheet stands in for the Google popup. Guest needs no account at all, and a guest's data is copied when you later sign in with Google.
 - **First run, once per account** — Get Started (your name is pre-filled) → a four-page intro you can skip → home. You never do it again. Your name stays editable on your profile.
@@ -31,7 +31,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Text size** — Normal, Large, or Extra large. One app-wide scaler applies the size to every screen, so larger text never breaks a layout.
 - **Dark** and **High contrast** themes re-theme the whole app — no screen is left behind.
 - **Less motion** skips fades and slides (and follows the system setting).
-- **Emergency contact** — save a name and number in Settings, then text them from a walk.
+- **Give feedback** — a star-rating popup right after a first finished hike, and a Give Feedback button at the bottom of the Profile page. Ratings post to the team's Google Form (links live in `EcoTrek/src/constants/feedback.ts`).
 - Large tap targets and plain language throughout ("points," "level," "skip a week," "your progress").
 
 ---

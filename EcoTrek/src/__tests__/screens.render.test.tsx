@@ -40,6 +40,7 @@ import SignInScreen from '../screens/SignInScreen';
 import SetupScreen from '../screens/SetupScreen';
 import BadgesScreen from '../screens/BadgesScreen';
 import MoreScreen from '../screens/MoreScreen';
+import ActiveTrackingScreen from '../screens/ActiveTrackingScreen';
 
 /**
  * Render smoke tests.
@@ -174,6 +175,62 @@ describe('review fixes', () => {
     fireEvent.press(utils.getByText('Share my progress'));
     await waitFor(() => expect(utils.queryByText('Share as picture')).toBeTruthy(), { timeout: 4000 });
     expect(utils.queryByText(/this is the picture you share/i)).toBeTruthy();
+  });
+});
+
+describe('stop button, feedback and the removed contacts feature', () => {
+  it('tracking puts a big one-tap Stop control in the top bar', async () => {
+    const utils = await mount(ActiveTrackingScreen, /Recording/);
+    expect(utils.getByLabelText('Stop and save')).toBeTruthy();
+    expect(utils.getByLabelText('Pause')).toBeTruthy();
+    expect(utils.getByText('Stop')).toBeTruthy();
+  });
+
+  it('tapping Stop finishes the hike and shows the summary', async () => {
+    const utils = await mount(ActiveTrackingScreen, /Recording/);
+    fireEvent.press(utils.getByLabelText('Stop and save'));
+    // A zero-second, zero-mile activity is rejected by design — the summary
+    // must still appear, and a rejected activity must not ask for feedback.
+    await waitFor(() => expect(utils.queryByText('This one did not count')).toBeTruthy(), { timeout: 8000 });
+    expect(utils.queryByText('Give feedback')).toBeNull();
+    expect(utils.queryByText('Done')).toBeTruthy();
+  });
+
+  it('the contacts feature is gone from Settings', async () => {
+    const utils = await mount(SettingsScreen, 'Units');
+    expect(utils.queryByText('Emergency contact')).toBeNull();
+    expect(utils.queryByLabelText('Emergency contact name')).toBeNull();
+    expect(utils.queryByLabelText('Emergency contact phone')).toBeNull();
+  });
+
+  it('Profile ends with a Give Feedback button that opens the star popup', async () => {
+    const utils = await mount(ProfileScreen, 'Share my progress');
+    fireEvent.press(utils.getByText('Give Feedback'));
+    await waitFor(() => expect(utils.queryByText('Submit')).toBeTruthy());
+    expect(utils.getByLabelText('3 stars')).toBeTruthy();
+  });
+
+  it('picking stars and submitting thanks the hiker', async () => {
+    const utils = await mount(ProfileScreen, 'Share my progress');
+    fireEvent.press(utils.getByText('Give Feedback'));
+    await waitFor(() => expect(utils.queryByText('Submit')).toBeTruthy());
+    // Submit is disabled until a star is picked.
+    fireEvent.press(utils.getByText('Submit'));
+    expect(utils.queryByText('Thank you!')).toBeNull();
+    fireEvent.press(utils.getByLabelText('4 stars'));
+    fireEvent.press(utils.getByText('Submit'));
+    await waitFor(() => expect(utils.queryByText('Thank you!')).toBeTruthy(), { timeout: 4000 });
+  });
+
+  it('closing the feedback popup works without submitting', async () => {
+    const utils = await mount(ProfileScreen, 'Share my progress');
+    fireEvent.press(utils.getByText('Give Feedback'));
+    await waitFor(() => expect(utils.queryByText('Not now')).toBeTruthy());
+    fireEvent.press(utils.getByText('Not now'));
+    await waitFor(() => expect(utils.queryByText('Not now')).toBeNull());
+    // It can be reopened from the same screen.
+    fireEvent.press(utils.getByText('Give Feedback'));
+    await waitFor(() => expect(utils.queryByText('Not now')).toBeTruthy());
   });
 });
 

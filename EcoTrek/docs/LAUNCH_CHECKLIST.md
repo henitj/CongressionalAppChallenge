@@ -94,6 +94,10 @@ grey rectangle. It is free for mobile map display.
       Weekly challenges, Clubs roster, Profile impact card, Conditions report.
 - [ ] **[you]** Short description, 80 characters max.
 - [ ] **[you]** Full description, 4000 characters max.
+- [ ] **[you]** Paste the feedback Google Form links into
+      `src/constants/feedback.ts` (the one file — instructions at the top of
+      it). Until then, the Give Feedback popup still works but ratings are not
+      uploaded anywhere.
 
 ## 7. Play Console forms
 

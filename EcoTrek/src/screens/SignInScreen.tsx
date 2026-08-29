@@ -3,6 +3,7 @@ import { View, Text, StyleSheet, TextInput, Linking, Platform, ScrollView } from
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
+import Logo from '../components/Logo';
 import GoogleAccountSheet from '../components/GoogleAccountSheet';
 import { Button, Sheet } from '../components/ui';
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
@@ -58,9 +59,7 @@ export default function SignInScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <View style={styles.mark}>
-            <Icon name="tree" size={30} color={colors.primary} strokeWidth={1.9} />
-          </View>
+          <Logo size={88} style={styles.mark} />
 
           <Text style={styles.title}>{APP_NAME}</Text>
           <Text style={styles.tagline}>
@@ -161,12 +160,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
     },
 
     mark: {
-      width: 62,
-      height: 62,
-      borderRadius: RADIUS.xl,
-      backgroundColor: c.primarySurface,
-      alignItems: 'center',
-      justifyContent: 'center',
       marginBottom: SPACING.lg,
     },
     title: { ...t.display, color: c.text },
