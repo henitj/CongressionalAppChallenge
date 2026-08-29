@@ -18,8 +18,6 @@ export type UserProfile = {
   createdAt: number;
   /** Weight history for graphing */
   weightHistory: { date: number; weight: number }[];
-  emergencyName?: string;
-  emergencyPhone?: string;
   /**
    * Photo the user picked themselves for their profile logo (file URI on
    * native, data URI on web). Falls back to the Google sign-in picture when
@@ -37,8 +35,6 @@ const EMPTY_PROFILE: UserProfile = {
   stepLengthInches: 0,
   createdAt: 0,
   weightHistory: [],
-  emergencyName: '',
-  emergencyPhone: '',
   avatarUri: null,
 };
 
@@ -68,7 +64,12 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       const stored = await loadJSON<UserProfile>(storeKey, EMPTY_PROFILE);
       if (!cancelled) {
-        setProfileState(stored);
+        // Older builds stored an emergency contact. That feature is gone, so
+        // its fields are scrubbed the first time an old profile is read.
+        const clean = { ...stored } as UserProfile & { emergencyName?: string; emergencyPhone?: string };
+        delete clean.emergencyName;
+        delete clean.emergencyPhone;
+        setProfileState(clean);
         setLoading(false);
       }
     })();

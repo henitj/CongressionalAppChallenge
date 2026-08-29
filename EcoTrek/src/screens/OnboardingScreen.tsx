@@ -12,8 +12,9 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
+import Logo from '../components/Logo';
 import { Button } from '../components/ui';
-import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
+import { SPACING, ColorPalette } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 type Page = { icon: IconName; title: string; body: string };
@@ -64,9 +65,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
-          <View style={styles.mark}>
-            <Icon name="tree" size={22} color={colors.primaryGlow} strokeWidth={2} />
-          </View>
+          <Logo size={46} />
           <Pressable onPress={onDone} hitSlop={16} accessibilityLabel="Skip introduction">
             <Text style={[styles.skip, typography.smallMed]}>Skip</Text>
           </Pressable>
@@ -123,14 +122,6 @@ function makeStyles(c: ColorPalette) {
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.md,
-  },
-  mark: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.md,
-    backgroundColor: 'rgba(255,255,255,0.09)',
-    alignItems: 'center',
-    justifyContent: 'center',
   },
   skip: { color: 'rgba(255,255,255,0.8)' },
   page: {

@@ -396,7 +396,7 @@ export default function TrailsScreen() {
                   style={{ flex: 1 }}
                   onPress={() =>
                     Linking.openURL(
-                      `https://maps.google.com/?q=${selected.startLat},${selected.startLng}`
+                      `https://maps.google.com/?q=${encodeURIComponent(`${selected.startLat},${selected.startLng}`)}`
                     )
                   }
                 />

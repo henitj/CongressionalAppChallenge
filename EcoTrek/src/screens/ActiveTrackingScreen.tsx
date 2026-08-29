@@ -8,6 +8,7 @@ import Icon, { IconName } from '../components/Icon';
 import { Button } from '../components/ui';
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
+import { openFeedbackForm } from '../constants/feedback';
 import {
   Coord,
   getCurrentPosition,
@@ -49,8 +50,6 @@ export default function ActiveTrackingScreen() {
   const [currentMph, setCurrentMph] = useState(0);
   const [elevationGain, setElevationGain] = useState(0);
   const [elevationLoss, setElevationLoss] = useState(0);
-  const [speedWarnings, setSpeedWarnings] = useState(0);
-  const [warningToast, setWarningToast] = useState<string | null>(null);
   const [showSpeedAlert, setShowSpeedAlert] = useState(false);
   const [isBackgrounded, setIsBackgrounded] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -63,8 +62,7 @@ export default function ActiveTrackingScreen() {
   pausedRef.current = paused;
   const pausedTotalRef = useRef(0);
   const pausedAtRef = useRef<number | null>(null);
-  const overLimitRef = useRef(false);
-  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const strikesRef = useRef(0);
 
   const nearbyTrail: Trail | null = useMemo(
     () => detectCurrentTrail(current, trails.length ? trails : undefined),
@@ -89,24 +87,6 @@ export default function ActiveTrackingScreen() {
         { text: 'Cancel', style: 'cancel' },
         { text: 'Call 911', style: 'destructive', onPress: () => Linking.openURL('tel:911') },
       ]
-    );
-  };
-
-  const textContact = () => {
-    const phone = (profile.emergencyPhone ?? '').replace(/[^\d+]/g, '');
-    if (!phone) {
-      Alert.alert(
-        'No contact saved',
-        'Add a name and phone number in Settings so we can text them for you.'
-      );
-      return;
-    }
-    const where = nearbyTrail?.name ?? 'a walk';
-    const body = encodeURIComponent(
-      `Hi${profile.emergencyName ? ` ${profile.emergencyName}` : ''}, I am on ${where} with EcoTrek. I wanted you to know where I am.`
-    );
-    Linking.openURL(`sms:${phone}?body=${body}`).catch(() =>
-      Alert.alert('Could not open Messages', 'Try sending a text yourself.')
     );
   };
 
@@ -162,13 +142,8 @@ export default function ActiveTrackingScreen() {
 
           // Speed limit check
           if (mph > speedLimit && lastRef.current) {
-            setSpeedWarnings((prev) => {
-              const next = prev + 1;
-              if (next >= 3 && !showSpeedAlert) {
-                setShowSpeedAlert(true);
-              }
-              return next;
-            });
+            strikesRef.current += 1;
+            if (strikesRef.current >= 3) setShowSpeedAlert(true);
           }
 
           // Track elevation
@@ -301,6 +276,17 @@ export default function ActiveTrackingScreen() {
             )}
 
             <View style={styles.resultButtons}>
+              {!result.rejected ? (
+                <Button
+                  label="Give feedback"
+                  icon="star"
+                  variant="secondary"
+                  size="lg"
+                  full
+                  onPress={openFeedbackForm}
+                  style={{ marginBottom: SPACING.sm }}
+                />
+              ) : null}
               <Button
                 label="Done"
                 size="lg"
@@ -317,25 +303,38 @@ export default function ActiveTrackingScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        {/* Top bar */}
+        {/* Top bar — Stop lives here, big and within thumb reach, so ending
+            a hike never depends on scrolling or remembering where Finish is. */}
         <View style={styles.topBar}>
-          <Pressable onPress={handleDiscard} style={styles.backBtn} hitSlop={12}>
+          <Pressable onPress={handleDiscard} style={styles.backBtn} hitSlop={12} accessibilityLabel="Discard activity">
             <Icon name="x" size={20} color="#fff" strokeWidth={2.2} />
           </Pressable>
           <View style={styles.topCenter}>
             <View style={styles.recordingDot} />
-            <Text style={styles.topLabel}>
+            <Text style={styles.topLabel} numberOfLines={1}>
               {paused ? 'Paused' : isBackgrounded ? 'Recording in background' : 'Recording'}
             </Text>
           </View>
-          <Pressable
-            onPress={togglePause}
-            style={styles.pauseBtn}
-            hitSlop={8}
-            accessibilityLabel={paused ? 'Resume' : 'Pause'}
-          >
-            <Icon name={paused ? 'play' : 'pause'} size={18} color="#fff" strokeWidth={2} />
-          </Pressable>
+          <View style={styles.topActions}>
+            <Pressable
+              onPress={togglePause}
+              style={styles.pauseBtn}
+              hitSlop={8}
+              accessibilityLabel={paused ? 'Resume' : 'Pause'}
+            >
+              <Icon name={paused ? 'play' : 'pause'} size={18} color="#fff" strokeWidth={2} />
+            </Pressable>
+            <Pressable
+              onPress={handleFinish}
+              disabled={saving}
+              style={({ pressed }) => [styles.stopBtn, pressed && { opacity: 0.85 }]}
+              accessibilityLabel="Stop and save"
+              accessibilityRole="button"
+            >
+              <Icon name="stop" size={15} color="#fff" strokeWidth={2} filled />
+              <Text style={styles.stopLabel}>Stop</Text>
+            </Pressable>
+          </View>
         </View>
 
         {/* Map — takes up the top half */}
@@ -361,22 +360,8 @@ export default function ActiveTrackingScreen() {
           >
             <Icon name="alert-triangle" size={18} color={colors.danger} strokeWidth={2} />
           </Pressable>
-          <Pressable
-            onPress={textContact}
-            style={styles.helpIconBtn}
-            accessibilityLabel="Text my contact"
-          >
-            <Icon name="users" size={18} color={colors.primary} strokeWidth={2} />
-          </Pressable>
           <View style={{ flex: 1 }} />
         </View>
-
-        {warningToast ? (
-          <View style={styles.warningBanner}>
-            <Icon name="alert-triangle" size={16} color={colors.warning} strokeWidth={2} />
-            <Text style={styles.warningText}>{warningToast}</Text>
-          </View>
-        ) : null}
 
         {showRest ? (
           <View style={styles.restBanner}>
@@ -563,7 +548,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  topCenter: { flexDirection: 'row', alignItems: 'center', gap: 8 },
+  topCenter: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 8, marginHorizontal: SPACING.xs },
   recordingDot: {
     width: 10,
     height: 10,
@@ -571,6 +556,11 @@ function makeStyles(c: ColorPalette, t: Typography) {
     backgroundColor: '#FF4444',
   },
   topLabel: { ...t.bodyMed, color: '#fff' },
+  topActions: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+  },
   pauseBtn: {
     width: 48,
     height: 48,
@@ -578,6 +568,30 @@ function makeStyles(c: ColorPalette, t: Typography) {
     backgroundColor: 'rgba(255,255,255,0.12)',
     alignItems: 'center',
     justifyContent: 'center',
+  },
+  // The one-tap exit. Red on purpose — it is the "I am done" control and it
+  // should be the easiest thing on this screen to find.
+  stopBtn: {
+    minHeight: 48,
+    paddingHorizontal: SPACING.md + 2,
+    paddingRight: SPACING.md + 4,
+    borderRadius: RADIUS.pill,
+    backgroundColor: '#E5484D',
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    gap: 7,
+    shadowColor: '#000',
+    shadowOpacity: 0.25,
+    shadowRadius: 6,
+    shadowOffset: { width: 0, height: 2 },
+    elevation: 4,
+  },
+  stopLabel: {
+    fontSize: 17,
+    fontWeight: '800',
+    color: '#fff',
+    letterSpacing: 0.2,
   },
 
   mapContainer: {
@@ -657,18 +671,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
   },
   statBoxValue: { ...t.h3, color: c.text },
   statBoxLabel: { ...t.micro, color: c.textMuted },
-
-  warningBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: c.warningLight,
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm + 4,
-    borderWidth: 1,
-    borderColor: c.warningBorder,
-  },
-  warningText: { ...t.small, color: c.warning, flex: 1 },
 
   alertOverlay: {
     ...StyleSheet.absoluteFillObject,

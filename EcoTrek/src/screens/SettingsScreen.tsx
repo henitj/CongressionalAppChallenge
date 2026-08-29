@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable, TextInput, Platform } from 'react-native';
+import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable, Platform } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
@@ -11,7 +11,6 @@ import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useTheme, Typography } from '../context/ThemeContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useAuth } from '../context/AuthContext';
-import { useProfile } from '../context/ProfileContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useActivity } from '../context/ActivityContext';
 import { useNotifications } from '../context/NotificationContext';
@@ -33,9 +32,6 @@ export default function SettingsScreen() {
     textSize,
     setTextSize,
   } = useSettings();
-  const { profile, setProfile } = useProfile();
-  const [emName, setEmName] = useState(profile.emergencyName ?? '');
-  const [emPhone, setEmPhone] = useState(profile.emergencyPhone ?? '');
   const [showGoogleSheet, setShowGoogleSheet] = useState(false);
   const { user, signOut, signInWithGoogle } = useAuth();
   const { resetPoints } = useEcoPoints();
@@ -190,41 +186,6 @@ export default function SettingsScreen() {
                 Sky follows daytime only: sunrise in the morning, bright afternoon, sunset in the evening.
                 At night it stays light.
               </Text>
-            </View>
-          </Card>
-        </View>
-
-        {/* Emergency contact */}
-        <View>
-          <SectionHeader title="Emergency contact" />
-          <Card style={{ gap: SPACING.md - 2 }}>
-            <Text style={styles.note}>
-              Saved on this phone. During a walk you can send them a text with one tap.
-            </Text>
-            <View style={{ gap: 6 }}>
-              <Text style={styles.settingLabel}>Name</Text>
-              <TextInput
-                value={emName}
-                onChangeText={setEmName}
-                onEndEditing={() => setProfile({ emergencyName: emName.trim(), emergencyPhone: emPhone.trim() })}
-                placeholder="Alex"
-                placeholderTextColor={colors.textLight}
-                style={styles.input}
-                accessibilityLabel="Emergency contact name"
-              />
-            </View>
-            <View style={{ gap: 6 }}>
-              <Text style={styles.settingLabel}>Phone</Text>
-              <TextInput
-                value={emPhone}
-                onChangeText={setEmPhone}
-                onEndEditing={() => setProfile({ emergencyName: emName.trim(), emergencyPhone: emPhone.trim() })}
-                placeholder="5125551234"
-                placeholderTextColor={colors.textLight}
-                keyboardType="phone-pad"
-                style={styles.input}
-                accessibilityLabel="Emergency contact phone"
-              />
             </View>
           </Card>
         </View>
@@ -518,17 +479,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
 
   note: { ...t.small, color: c.textMuted, marginTop: SPACING.sm },
   pad: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.md - 2 },
-  input: {
-    backgroundColor: c.surfaceSunken,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
-    borderColor: c.border,
-    paddingHorizontal: SPACING.md,
-    paddingVertical: 14,
-    minHeight: 52,
-    ...t.body,
-    color: c.text,
-  },
 
   });
 }

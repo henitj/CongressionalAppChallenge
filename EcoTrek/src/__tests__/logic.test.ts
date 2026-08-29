@@ -43,7 +43,7 @@ import {
 import { computeRecords, RecordActivity } from '../services/records';
 import { buildRecap, lastWeekStart, RecapActivity } from '../services/recap';
 import { buildVerdict, buildShortNote, LEVEL_META, Advisory, SafetyLevel } from '../services/weather';
-import { paletteFor, skyPhaseForHour } from '../constants/theme';
+import { FEEDBACK_FORM_URL } from '../constants/feedback';
 
 let passed = 0;
 const results: string[] = [];
@@ -752,6 +752,15 @@ test('level labels are friendly, not alarm-level', () => {
   assert.ok(labels.includes('Doable, take it easy'));
   assert.ok(labels.includes('Stay in today'));
   assert.ok(!labels.some((l) => /poor conditions|use caution/i.test(l)));
+});
+
+/* ── Feedback (Google Form) ─────────────────────────────────────────────── */
+
+test('the feedback form link is hardcoded to the team Google Form', () => {
+  // One constant, used everywhere. If the form ever moves, this is the line
+  // that changes — no user ever sees or types a link.
+  assert.equal(FEEDBACK_FORM_URL, 'https://forms.gle/E3p559tiqrNMtZDS7');
+  assert.match(FEEDBACK_FORM_URL, /^https:\/\//);
 });
 
 /* ── Report ───────────────────────────────────────────────────────────────── */

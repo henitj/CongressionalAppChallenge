@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
+import { Linking, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -40,6 +41,7 @@ import SignInScreen from '../screens/SignInScreen';
 import SetupScreen from '../screens/SetupScreen';
 import BadgesScreen from '../screens/BadgesScreen';
 import MoreScreen from '../screens/MoreScreen';
+import ActiveTrackingScreen from '../screens/ActiveTrackingScreen';
 
 /**
  * Render smoke tests.
@@ -174,6 +176,55 @@ describe('review fixes', () => {
     fireEvent.press(utils.getByText('Share my progress'));
     await waitFor(() => expect(utils.queryByText('Share as picture')).toBeTruthy(), { timeout: 4000 });
     expect(utils.queryByText(/this is the picture you share/i)).toBeTruthy();
+  });
+});
+
+describe('stop button, feedback and the removed contacts feature', () => {
+  it('tracking puts a big one-tap Stop control in the top bar', async () => {
+    const utils = await mount(ActiveTrackingScreen, /Recording/);
+    expect(utils.getByLabelText('Stop and save')).toBeTruthy();
+    expect(utils.getByLabelText('Pause')).toBeTruthy();
+    expect(utils.getByText('Stop')).toBeTruthy();
+  });
+
+  it('tapping Stop finishes the hike and shows the summary', async () => {
+    const utils = await mount(ActiveTrackingScreen, /Recording/);
+    fireEvent.press(utils.getByLabelText('Stop and save'));
+    // A zero-second, zero-mile activity is rejected by design — the summary
+    // must still appear, and no feedback button is offered for it.
+    await waitFor(() => expect(utils.queryByText('This one did not count')).toBeTruthy(), { timeout: 8000 });
+    expect(utils.queryByText('Give feedback')).toBeNull();
+    expect(utils.queryByText('Done')).toBeTruthy();
+  });
+
+  it('the contacts feature is gone from Settings', async () => {
+    const utils = await mount(SettingsScreen, 'Units');
+    expect(utils.queryByText('Emergency contact')).toBeNull();
+    expect(utils.queryByLabelText('Emergency contact name')).toBeNull();
+    expect(utils.queryByLabelText('Emergency contact phone')).toBeNull();
+  });
+
+  it('Profile ends with a Give Feedback button that opens the Google Form', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    const utils = await mount(ProfileScreen, 'Share my progress');
+    fireEvent.press(utils.getByText('Give Feedback'));
+    expect(openURL).toHaveBeenCalledTimes(1);
+    expect(openURL).toHaveBeenCalledWith('https://forms.gle/E3p559tiqrNMtZDS7');
+    openURL.mockRestore();
+  });
+
+  it('a failed open shows a friendly alert instead of crashing', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('no browser'));
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
+    const utils = await mount(ProfileScreen, 'Share my progress');
+    fireEvent.press(utils.getByText('Give Feedback'));
+    await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+    expect(alert.mock.calls[0][0]).toBe('One moment');
+    // The button still works afterwards — the failure did not break anything.
+    fireEvent.press(utils.getByText('Give Feedback'));
+    expect(openURL).toHaveBeenCalledTimes(2);
+    openURL.mockRestore();
+    alert.mockRestore();
   });
 });
 
