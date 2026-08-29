@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -6,17 +6,18 @@ import Header from '../components/Header';
 import Icon from '../components/Icon';
 import { Screen, Card, Pill, EmptyState } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useActivity, Activity } from '../context/ActivityContext';
 import { useSettings } from '../constants/SettingsContext';
 import { weekStart } from '../services/dates';
-import { useTheme } from '../context/ThemeContext';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 export default function HistoryScreen() {
   const navigation = useNavigation<any>();
   const { history } = useActivity();
   const { formatDistanceCompact, formatDistance, formatDistanceUnit } = useSettings();
-  const { colors } = useTheme();
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
   const recent = history;
   const weekBegin = weekStart().getTime();
@@ -93,7 +94,8 @@ function ActivityHistoryCard({
   });
 
   const durationMin = Math.floor(activity.durationSec / 60);
-  const { colors } = useTheme();
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
   return (
     <Card onPress={onPress}>
@@ -169,6 +171,8 @@ function ActivityHistoryCard({
 }
 
 function StatBlock({ value, label }: { value: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.statBlock}>
       <Text style={styles.statValue}>{value}</Text>
@@ -178,15 +182,19 @@ function StatBlock({ value, label }: { value: string; label: string }) {
 }
 
 function DetailItem({ icon, label }: { icon: any; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.detailItem}>
-      <Icon name={icon} size={13} color={COLORS.textMuted} strokeWidth={2} />
+      <Icon name={icon} size={13} color={colors.textMuted} strokeWidth={2} />
       <Text style={styles.detailLabel}>{label}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
   body: { paddingHorizontal: SPACING.md },
 
   cardHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
@@ -197,10 +205,10 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  hikeIcon: { backgroundColor: COLORS.primary },
-  bikeIcon: { backgroundColor: COLORS.info },
-  cardTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  cardDate: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
+  hikeIcon: { backgroundColor: c.primary },
+  bikeIcon: { backgroundColor: c.info },
+  cardTitle: { ...t.h4, color: c.text },
+  cardDate: { ...t.small, color: c.textMuted, marginTop: 2 },
 
   statsRow: {
     flexDirection: 'row',
@@ -208,11 +216,11 @@ const styles = StyleSheet.create({
     marginTop: SPACING.md,
     paddingTop: SPACING.md,
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
+    borderTopColor: c.borderLight,
   },
   statBlock: { alignItems: 'center', flex: 1 },
-  statValue: { ...TYPOGRAPHY.h3, color: COLORS.text },
-  statLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase', marginTop: 2 },
+  statValue: { ...t.h3, color: c.text },
+  statLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase', marginTop: 2 },
 
   detailsRow: {
     flexDirection: 'row',
@@ -222,43 +230,43 @@ const styles = StyleSheet.create({
     gap: SPACING.xs,
   },
   detailItem: { flexDirection: 'row', alignItems: 'center', gap: 4 },
-  detailLabel: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
+  detailLabel: { ...t.small, color: c.textSecondary },
 
   completionBadge: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginTop: SPACING.md,
-    backgroundColor: COLORS.successLight,
+    backgroundColor: c.successLight,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: RADIUS.sm,
   },
-  completionText: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
+  completionText: { ...t.smallMed, color: c.primary },
 
   strikeWarning: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginTop: SPACING.sm + 4,
-    backgroundColor: COLORS.warningLight,
+    backgroundColor: c.warningLight,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: RADIUS.sm,
   },
-  strikeText: { ...TYPOGRAPHY.small, color: COLORS.warning },
+  strikeText: { ...t.small, color: c.warning },
 
   rejectionBox: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 6,
     marginTop: SPACING.md,
-    backgroundColor: COLORS.dangerLight,
+    backgroundColor: c.dangerLight,
     paddingVertical: 8,
     paddingHorizontal: 12,
     borderRadius: RADIUS.sm,
   },
-  rejectionText: { ...TYPOGRAPHY.small, color: COLORS.danger, flex: 1 },
+  rejectionText: { ...t.small, color: c.danger, flex: 1 },
 
   viewAll: {
     flexDirection: 'row',
@@ -267,8 +275,10 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
     padding: SPACING.md,
   },
-  viewAllText: { ...TYPOGRAPHY.bodyMed, color: COLORS.primary },
-  weekLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
-  weekValue: { ...TYPOGRAPHY.h1, color: COLORS.text, marginTop: 4 },
-  weekMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, fontWeight: '500' },
-});
+  viewAllText: { ...t.bodyMed, color: c.primary },
+  weekLabel: { ...t.overline, color: c.textMuted },
+  weekValue: { ...t.h1, color: c.text, marginTop: 4 },
+  weekMeta: { ...t.small, color: c.textMuted, fontWeight: '500' },
+
+  });
+}

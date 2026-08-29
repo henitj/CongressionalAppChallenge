@@ -1,4 +1,4 @@
-import React, { useRef, useState } from 'react';
+import React, { useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -10,20 +10,28 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
-import Icon, { IconName } from '../components/Icon';
+import Icon from '../components/Icon';
 import { Button } from '../components/ui';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useProfile } from '../context/ProfileContext';
 import { useAuth } from '../context/AuthContext';
+import { useTheme, Typography } from '../context/ThemeContext';
 
-type Step = 'welcome' | 'name' | 'body' | 'activity';
+type Step = 'name' | 'body' | 'activity';
 
 export default function SetupScreen({ onDone }: { onDone: () => void }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const { setProfile } = useProfile();
   const { user, updateUser } = useAuth();
-  const [step, setStep] = useState<Step>('welcome');
-  const [firstName, setFirstName] = useState('');
-  const [lastName, setLastName] = useState('');
+
+  // Prefill from the sign-in name so nobody types it twice.
+  const authName = (user?.name ?? '').trim();
+  const authParts = authName.split(/\s+/).filter(Boolean);
+
+  const [step, setStep] = useState<Step>('name');
+  const [firstName, setFirstName] = useState(authParts[0] ?? '');
+  const [lastName, setLastName] = useState(authParts.slice(1).join(' '));
   const [age, setAge] = useState('');
   const [heightFt, setHeightFt] = useState('');
   const [heightIn, setHeightIn] = useState('');
@@ -84,8 +92,6 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
         >
           <View style={styles.topBar}>
             <View style={styles.progress}>
-              <ProgressDot active={step === 'welcome'} done={step !== 'welcome'} />
-              <ProgressLine />
               <ProgressDot active={step === 'name'} done={['body', 'activity'].includes(step)} />
               <ProgressLine />
               <ProgressDot active={step === 'body'} done={step === 'activity'} />
@@ -103,28 +109,10 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
             keyboardDismissMode="on-drag"
             automaticallyAdjustKeyboardInsets
           >
-            {step === 'welcome' ? (
-              <View style={styles.stepContent}>
-                <View style={styles.iconCircle}>
-                  <Icon name="user" size={36} color={COLORS.primary} strokeWidth={1.8} />
-                </View>
-                <Text style={styles.title}>A few things about you</Text>
-                <Text style={styles.subtitle}>
-                  This helps us estimate calories and show your name on the home screen. It takes about a minute.
-                </Text>
-
-                <View style={styles.benefits}>
-                  <BenefitRow icon="zap" text="Better calorie estimates" />
-                  <BenefitRow icon="trending-up" text="A pace that fits you" />
-                  <BenefitRow icon="shield" text="Your answers stay on this phone" />
-                </View>
-              </View>
-            ) : null}
-
             {step === 'name' ? (
               <View style={styles.stepContent}>
                 <View style={styles.iconCircle}>
-                  <Icon name="user" size={36} color={COLORS.primary} strokeWidth={1.8} />
+                  <Icon name="user" size={36} color={colors.primary} strokeWidth={1.8} />
                 </View>
                 <Text style={styles.title}>What should we call you?</Text>
                 <Text style={styles.subtitle}>We use your first name on the home screen.</Text>
@@ -160,7 +148,7 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
             {step === 'body' ? (
               <View style={styles.stepContent}>
                 <View style={styles.iconCircle}>
-                  <Icon name="activity" size={36} color={COLORS.primary} strokeWidth={1.8} />
+                  <Icon name="activity" size={36} color={colors.primary} strokeWidth={1.8} />
                 </View>
                 <Text style={styles.title}>Height and weight</Text>
                 <Text style={styles.subtitle}>
@@ -175,7 +163,7 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                         value={heightFt}
                         onChangeText={setHeightFt}
                         placeholder="5"
-                        placeholderTextColor={COLORS.textLight}
+                        placeholderTextColor={colors.textLight}
                         keyboardType="number-pad"
                         maxLength={1}
                         style={styles.input}
@@ -188,7 +176,7 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                         value={heightIn}
                         onChangeText={setHeightIn}
                         placeholder="7"
-                        placeholderTextColor={COLORS.textLight}
+                        placeholderTextColor={colors.textLight}
                         keyboardType="number-pad"
                         maxLength={2}
                         style={styles.input}
@@ -213,7 +201,7 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
             {step === 'activity' ? (
               <View style={styles.stepContent}>
                 <View style={styles.iconCircle}>
-                  <Icon name="boot" size={36} color={COLORS.primary} strokeWidth={1.8} />
+                  <Icon name="boot" size={36} color={colors.primary} strokeWidth={1.8} />
                 </View>
                 <Text style={styles.title}>Step length (optional)</Text>
                 <Text style={styles.subtitle}>
@@ -240,28 +228,15 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
           </ScrollView>
 
           <View style={styles.footer}>
-            {step === 'welcome' ? (
+            {step === 'name' ? (
               <Button
                 label="Continue"
-                size="lg"
-                full
                 iconRight="arrow-right"
-                onPress={() => setStep('name')}
+                disabled={!canProceedName}
+                onPress={() => setStep('body')}
+                full
+                size="lg"
               />
-            ) : null}
-
-            {step === 'name' ? (
-              <View style={styles.navRow}>
-                <Button label="Back" variant="ghost" onPress={() => setStep('welcome')} />
-                <Button
-                  label="Continue"
-                  iconRight="arrow-right"
-                  disabled={!canProceedName}
-                  onPress={() => setStep('body')}
-                  style={{ flex: 1 }}
-                  size="lg"
-                />
-              </View>
             ) : null}
 
             {step === 'body' ? (
@@ -315,6 +290,8 @@ function FormField({
   autoFocus?: boolean;
   onFocus?: () => void;
 }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ gap: 8 }}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -322,7 +299,7 @@ function FormField({
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={COLORS.textLight}
+        placeholderTextColor={colors.textLight}
         keyboardType={keyboard ?? 'default'}
         autoFocus={autoFocus}
         onFocus={onFocus}
@@ -333,18 +310,9 @@ function FormField({
   );
 }
 
-function BenefitRow({ icon, text }: { icon: IconName; text: string }) {
-  return (
-    <View style={styles.benefitRow}>
-      <View style={styles.benefitIcon}>
-        <Icon name={icon} size={18} color={COLORS.primary} strokeWidth={2} />
-      </View>
-      <Text style={styles.benefitText}>{text}</Text>
-    </View>
-  );
-}
-
 function ProgressDot({ active, done }: { active: boolean; done: boolean }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View
       style={[
@@ -359,11 +327,15 @@ function ProgressDot({ active, done }: { active: boolean; done: boolean }) {
 }
 
 function ProgressLine() {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return <View style={styles.progressLine} />;
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
+  root: { flex: 1, backgroundColor: c.background },
   scroll: {
     flexGrow: 1,
     paddingHorizontal: SPACING.lg,
@@ -390,68 +362,48 @@ const styles = StyleSheet.create({
     width: 16,
     height: 16,
     borderRadius: 8,
-    backgroundColor: COLORS.borderStrong,
+    backgroundColor: c.borderStrong,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  progressDotActive: { backgroundColor: COLORS.primary, width: 18, height: 18, borderRadius: 9 },
-  progressDotDone: { backgroundColor: COLORS.primary },
-  progressLine: { width: 28, height: 3, backgroundColor: COLORS.borderStrong },
+  progressDotActive: { backgroundColor: c.primary, width: 18, height: 18, borderRadius: 9 },
+  progressDotDone: { backgroundColor: c.primary },
+  progressLine: { width: 28, height: 3, backgroundColor: c.borderStrong },
 
   stepContent: { gap: SPACING.lg, alignItems: 'center', paddingTop: SPACING.sm },
   iconCircle: {
     width: 80,
     height: 80,
     borderRadius: 40,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  title: { ...TYPOGRAPHY.h1, color: COLORS.text, textAlign: 'center' },
+  title: { ...t.h1, color: c.text, textAlign: 'center' },
   subtitle: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textSecondary,
+    ...t.body,
+    color: c.textSecondary,
     textAlign: 'center',
     maxWidth: 360,
     marginTop: -SPACING.sm,
   },
 
-  benefits: {
-    width: '100%',
-    backgroundColor: COLORS.surface,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: COLORS.border,
-    padding: SPACING.md,
-    gap: SPACING.md,
-  },
-  benefitRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
-  benefitIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: COLORS.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  benefitText: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flex: 1 },
-
   form: { width: '100%', gap: SPACING.lg },
-  fieldLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
-  fieldHint: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  fieldLabel: { ...t.overline, color: c.textMuted },
+  fieldHint: { ...t.small, color: c.textMuted },
   input: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderRadius: RADIUS.md,
     borderWidth: 1.5,
-    borderColor: COLORS.borderStrong,
+    borderColor: c.borderStrong,
     paddingHorizontal: SPACING.md,
     paddingVertical: 16,
     minHeight: 56,
     fontSize: 18,
     fontWeight: '500',
-    color: COLORS.text,
+    color: c.text,
   },
-  inputHint: { ...TYPOGRAPHY.small, color: COLORS.textMuted, textAlign: 'center', marginTop: 6 },
+  inputHint: { ...t.small, color: c.textMuted, textAlign: 'center', marginTop: 6 },
   heightRow: { flexDirection: 'row', gap: SPACING.md },
 
   footer: {
@@ -459,8 +411,10 @@ const styles = StyleSheet.create({
     paddingTop: SPACING.sm,
     paddingBottom: SPACING.sm,
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-    backgroundColor: COLORS.background,
+    borderTopColor: c.borderLight,
+    backgroundColor: c.background,
   },
   navRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, width: '100%' },
-});
+
+  });
+}

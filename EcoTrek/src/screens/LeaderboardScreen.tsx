@@ -1,4 +1,4 @@
-import React, { useCallback, useState } from 'react';
+import React, { useCallback, useMemo, useState } from 'react';
 import {
   View,
   Text,
@@ -26,7 +26,7 @@ import {
   ProgressBar,
 } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import {
   Club,
   GOAL_METRIC_LABEL,
@@ -44,10 +44,13 @@ import { useSettings } from '../constants/SettingsContext';
 import { useActivity } from '../context/ActivityContext';
 import { shareText } from '../services/share';
 import { useResetOnLeave } from '../hooks/useResetOnLeave';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 type Tab = 'my_club' | 'ranking';
 
 export default function LeaderboardScreen() {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const { user } = useAuth();
   const {
     myClub,
@@ -179,7 +182,7 @@ export default function LeaderboardScreen() {
   return (
     <Screen
       refreshControl={
-        <RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={COLORS.textMuted} />
+        <RefreshControl refreshing={syncing} onRefresh={refresh} tintColor={colors.textMuted} />
       }
     >
       <Header
@@ -225,7 +228,7 @@ export default function LeaderboardScreen() {
 
                 {myClubRanking ? (
                   <View style={styles.worldRank}>
-                    <Icon name="globe" size={14} color={COLORS.primaryGlow} strokeWidth={2} />
+                    <Icon name="globe" size={14} color={colors.primaryGlow} strokeWidth={2} />
                     <Text style={styles.worldRankText}>
                       Ranked #{myClubRanking.rank} of {totalClubs} club
                       {totalClubs === 1 ? '' : 's'}
@@ -263,7 +266,7 @@ export default function LeaderboardScreen() {
                       <Icon
                         name={activeGoal.metAt ? 'check' : 'target'}
                         size={17}
-                        color={activeGoal.metAt ? '#fff' : COLORS.primary}
+                        color={activeGoal.metAt ? '#fff' : colors.primary}
                         strokeWidth={activeGoal.metAt ? 2.6 : 2}
                       />
                     </View>
@@ -278,7 +281,7 @@ export default function LeaderboardScreen() {
 
                   <ProgressBar
                     percent={(activeGoal.progress / activeGoal.target) * 100}
-                    color={activeGoal.metAt ? COLORS.primary : COLORS.accent}
+                    color={activeGoal.metAt ? colors.primary : colors.accent}
                     style={{ marginTop: SPACING.md - 2 }}
                   />
                   <Text style={styles.goalProgress}>
@@ -305,7 +308,7 @@ export default function LeaderboardScreen() {
                       <Button
                         label="Remove"
                         variant="ghost"
-                        tone={COLORS.textMuted}
+                        tone={colors.textMuted}
                         size="sm"
                         onPress={clearGoal}
                       />
@@ -315,7 +318,7 @@ export default function LeaderboardScreen() {
               ) : myClub.ownerId === user?.id ? (
                 <Card tone="sunken">
                   <View style={styles.goalEmpty}>
-                    <Icon name="target" size={18} color={COLORS.textMuted} strokeWidth={1.9} />
+                    <Icon name="target" size={18} color={colors.textMuted} strokeWidth={1.9} />
                     <View style={{ flex: 1 }}>
                       <Text style={styles.goalEmptyTitle}>No weekly goal set</Text>
                       <Text style={styles.goalEmptyText}>
@@ -356,7 +359,7 @@ export default function LeaderboardScreen() {
                 </View>
                 <ProgressBar
                   percent={(myClub.members.length / myClub.maxMembers) * 100}
-                  color={spotsLeft <= 2 ? COLORS.warning : COLORS.primary}
+                  color={spotsLeft <= 2 ? colors.warning : colors.primary}
                   style={{ marginTop: SPACING.sm + 2 }}
                 />
                 <Text style={styles.capHint}>
@@ -417,7 +420,7 @@ export default function LeaderboardScreen() {
                                 {isMe ? ' (you)' : ''}
                               </Text>
                               {m.role === 'owner' ? (
-                                <Icon name="crown" size={13} color={COLORS.accent} strokeWidth={2} />
+                                <Icon name="crown" size={13} color={colors.accent} strokeWidth={2} />
                               ) : null}
                             </View>
                             <View style={styles.memberBarTrack}>
@@ -456,13 +459,13 @@ export default function LeaderboardScreen() {
                     <Switch
                       value={myClub.isLocked}
                       onValueChange={lockClub}
-                      trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+                      trackColor={{ false: colors.border, true: colors.primaryLight }}
                       thumbColor="#fff"
                     />
                   </View>
                   <Divider style={{ marginVertical: SPACING.sm + 2 }} />
                   <Pressable onPress={confirmDelete} style={styles.dangerRow}>
-                    <Icon name="trash" size={16} color={COLORS.danger} strokeWidth={1.9} />
+                    <Icon name="trash" size={16} color={colors.danger} strokeWidth={1.9} />
                     <Text style={styles.dangerText}>Delete club</Text>
                   </Pressable>
                 </Card>
@@ -476,7 +479,7 @@ export default function LeaderboardScreen() {
             <>
               <Card style={styles.ctaCard}>
                 <View style={styles.ctaIcon}>
-                  <Icon name="users" size={24} color={COLORS.primary} strokeWidth={1.8} />
+                  <Icon name="users" size={24} color={colors.primary} strokeWidth={1.8} />
                 </View>
                 <Text style={styles.ctaTitle}>You are not in a club</Text>
                 <Text style={styles.ctaText}>
@@ -659,7 +662,7 @@ export default function LeaderboardScreen() {
             <Switch
               value={locked}
               onValueChange={setLocked}
-              trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+              trackColor={{ false: colors.border, true: colors.primaryLight }}
               thumbColor="#fff"
             />
           </View>
@@ -681,7 +684,7 @@ export default function LeaderboardScreen() {
             value={code}
             onChangeText={(t) => setCode(t.toUpperCase().replace(/[^A-Z0-9]/g, ''))}
             placeholder="ABC123"
-            placeholderTextColor={COLORS.textLight}
+            placeholderTextColor={colors.textLight}
             autoCapitalize="characters"
             autoCorrect={false}
             maxLength={6}
@@ -830,6 +833,8 @@ function ClubRankRow({
   formatDistance: (m: number) => string;
   unit: string;
 }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={[styles.rankRow, isMine && styles.rowHighlight]}>
       <RankBadge rank={rank} />
@@ -856,23 +861,27 @@ function formatGoalValue(n: number): string {
 }
 
 function RankBadge({ rank }: { rank: number }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const top = rank <= 3;
   const bg =
     rank === 1
-      ? COLORS.accent
+      ? colors.accent
       : rank === 2
-      ? COLORS.medalSilver
+      ? colors.medalSilver
       : rank === 3
-      ? COLORS.medalBronze
-      : COLORS.surfaceSunken;
+      ? colors.medalBronze
+      : colors.surfaceSunken;
   return (
-    <View style={[styles.rankBadge, { backgroundColor: top ? bg : COLORS.surfaceSunken }]}>
+    <View style={[styles.rankBadge, { backgroundColor: top ? bg : colors.surfaceSunken }]}>
       <Text style={[styles.rankBadgeText, top && { color: '#fff' }]}>{rank}</Text>
     </View>
   );
 }
 
 function DarkStat({ value, label }: { value: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1 }}>
       <Text style={styles.darkStatValue}>{value}</Text>
@@ -882,6 +891,8 @@ function DarkStat({ value, label }: { value: string; label: string }) {
 }
 
 function ContribStat({ value, label }: { value: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1 }}>
       <Text style={styles.contribValue}>{value}</Text>
@@ -891,9 +902,11 @@ function ContribStat({ value, label }: { value: string; label: string }) {
 }
 
 function Rule({ icon, text }: { icon: IconName; text: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.rule}>
-      <Icon name={icon} size={15} color={COLORS.textMuted} strokeWidth={1.9} />
+      <Icon name={icon} size={15} color={colors.textMuted} strokeWidth={1.9} />
       <Text style={styles.ruleText}>{text}</Text>
     </View>
   );
@@ -914,6 +927,8 @@ function Field({
   multiline?: boolean;
   maxLength?: number;
 }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ gap: 6 }}>
       <Text style={styles.fieldLabel}>{label}</Text>
@@ -921,7 +936,7 @@ function Field({
         value={value}
         onChangeText={onChange}
         placeholder={placeholder}
-        placeholderTextColor={COLORS.textLight}
+        placeholderTextColor={colors.textLight}
         multiline={multiline}
         maxLength={maxLength}
         style={[styles.input, multiline && styles.inputMultiline]}
@@ -930,7 +945,9 @@ function Field({
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
 
   clubHeader: { gap: SPACING.md, padding: SPACING.md },
@@ -943,8 +960,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  clubTitle: { ...TYPOGRAPHY.h2, color: '#fff' },
-  clubSub: { ...TYPOGRAPHY.small, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
+  clubTitle: { ...t.h2, color: '#fff' },
+  clubSub: { ...t.small, color: 'rgba(255,255,255,0.6)', marginTop: 1 },
 
   worldRank: {
     flexDirection: 'row',
@@ -955,7 +972,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 12,
     borderRadius: RADIUS.sm,
   },
-  worldRankText: { ...TYPOGRAPHY.smallMed, color: COLORS.primaryGlow },
+  worldRankText: { ...t.smallMed, color: c.primaryGlow },
 
   clubStats: {
     flexDirection: 'row',
@@ -963,9 +980,9 @@ const styles = StyleSheet.create({
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
   },
-  darkStatValue: { ...TYPOGRAPHY.h3, color: '#fff' },
+  darkStatValue: { ...t.h3, color: '#fff' },
   darkStatLabel: {
-    ...TYPOGRAPHY.micro,
+    ...t.micro,
     color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
     marginTop: 1,
@@ -978,52 +995,52 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.md,
     padding: SPACING.sm + 4,
   },
-  codeLabel: { ...TYPOGRAPHY.micro, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' },
-  codeValue: { ...TYPOGRAPHY.h2, color: '#fff', letterSpacing: 3, marginTop: 2 },
+  codeLabel: { ...t.micro, color: 'rgba(255,255,255,0.55)', textTransform: 'uppercase' },
+  codeValue: { ...t.h2, color: '#fff', letterSpacing: 3, marginTop: 2 },
   codeShare: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  codeShareText: { ...TYPOGRAPHY.smallMed, color: '#fff' },
+  codeShareText: { ...t.smallMed, color: '#fff' },
 
-  sectionLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
-  sectionTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, marginBottom: SPACING.sm + 2 },
+  sectionLabel: { ...t.overline, color: c.textMuted },
+  sectionTitle: { ...t.h3, color: c.text, marginBottom: SPACING.sm + 2 },
 
   goalHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
   goalIcon: {
     width: 38,
     height: 38,
     borderRadius: RADIUS.sm + 2,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  goalIconMet: { backgroundColor: COLORS.primary },
-  goalTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, marginTop: 1 },
-  goalProgress: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 6 },
+  goalIconMet: { backgroundColor: c.primary },
+  goalTitle: { ...t.h3, color: c.text, marginTop: 1 },
+  goalProgress: { ...t.small, color: c.textMuted, marginTop: 6 },
   goalActions: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginTop: SPACING.md - 2 },
   goalEmpty: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
-  goalEmptyTitle: { ...TYPOGRAPHY.h4, color: COLORS.textSecondary },
-  goalEmptyText: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  goalEmptyTitle: { ...t.h4, color: c.textSecondary },
+  goalEmptyText: { ...t.small, color: c.textMuted, marginTop: 1 },
 
   capRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
-  capValue: { ...TYPOGRAPHY.h4, color: COLORS.text, marginTop: 2 },
-  capHint: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 6 },
+  capValue: { ...t.h4, color: c.text, marginTop: 2 },
+  capHint: { ...t.small, color: c.textMuted, marginTop: 6 },
   capOptions: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   capChip: {
     paddingVertical: 9,
     paddingHorizontal: 16,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
   },
-  capChipOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  capChipText: { ...TYPOGRAPHY.smallMed, color: COLORS.textSecondary },
+  capChipOn: { backgroundColor: c.primary, borderColor: c.primary },
+  capChipText: { ...t.smallMed, color: c.textSecondary },
   capChipTextOn: { color: '#fff' },
 
   contribHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   contribStats: { flexDirection: 'row', marginTop: SPACING.sm + 2 },
-  contribValue: { ...TYPOGRAPHY.h2, color: COLORS.text },
-  contribLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
-  contribShare: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 6 },
+  contribValue: { ...t.h2, color: c.text },
+  contribLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
+  contribShare: { ...t.small, color: c.textMuted, marginTop: 6 },
 
   memberRow: {
     flexDirection: 'row',
@@ -1031,23 +1048,23 @@ const styles = StyleSheet.create({
     gap: SPACING.sm + 2,
     padding: SPACING.md - 3,
   },
-  rowHighlight: { backgroundColor: COLORS.primarySurface },
+  rowHighlight: { backgroundColor: c.primarySurface },
   memberNameRow: { flexDirection: 'row', alignItems: 'center', gap: 5 },
-  memberName: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flexShrink: 1 },
+  memberName: { ...t.bodyMed, color: c.text, flexShrink: 1 },
   memberBarTrack: {
     height: 4,
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderRadius: 2,
     marginTop: 5,
     overflow: 'hidden',
   },
-  memberBarFill: { height: '100%', backgroundColor: COLORS.primaryLight, borderRadius: 2 },
+  memberBarFill: { height: '100%', backgroundColor: c.primaryLight, borderRadius: 2 },
   memberStats: { alignItems: 'flex-end' },
-  memberPoints: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  memberSub: { fontSize: 10.5, color: COLORS.textMuted, marginTop: 1 },
+  memberPoints: { ...t.h4, color: c.text },
+  memberSub: { fontSize: 10.5, color: c.textMuted, marginTop: 1 },
 
   rankHeader: { flexDirection: 'row', alignItems: 'baseline', justifyContent: 'space-between' },
-  rankCount: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  rankCount: { ...t.small, color: c.textMuted },
   rankRow: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -1055,15 +1072,15 @@ const styles = StyleSheet.create({
     padding: SPACING.md - 3,
   },
   rankNameRow: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  rankName: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flexShrink: 1 },
-  rankMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
-  rankPoints: { ...TYPOGRAPHY.h4, color: COLORS.primary },
+  rankName: { ...t.bodyMed, color: c.text, flexShrink: 1 },
+  rankMeta: { ...t.small, color: c.textMuted, marginTop: 1 },
+  rankPoints: { ...t.h4, color: c.primary },
   yourPositionLabel: {
-    ...TYPOGRAPHY.overline,
-    color: COLORS.textMuted,
+    ...t.overline,
+    color: c.textMuted,
     marginBottom: SPACING.sm,
   },
-  gapHint: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: SPACING.sm },
+  gapHint: { ...t.small, color: c.textMuted, marginTop: SPACING.sm },
 
   rankBadge: {
     width: 26,
@@ -1072,67 +1089,69 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rankBadgeText: { ...TYPOGRAPHY.smallMed, color: COLORS.textSecondary, fontSize: 12 },
+  rankBadgeText: { ...t.smallMed, color: c.textSecondary, fontSize: 12 },
 
   settingRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md, marginTop: SPACING.sm + 2 },
-  settingTitle: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  settingSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  settingTitle: { ...t.bodyMed, color: c.text },
+  settingSub: { ...t.small, color: c.textMuted, marginTop: 1 },
 
   dangerRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  dangerText: { ...TYPOGRAPHY.bodyMed, color: COLORS.danger },
+  dangerText: { ...t.bodyMed, color: c.danger },
 
   leaveBtn: { alignSelf: 'center', padding: SPACING.sm },
-  leaveText: { ...TYPOGRAPHY.small, color: COLORS.textMuted, textDecorationLine: 'underline' },
+  leaveText: { ...t.small, color: c.textMuted, textDecorationLine: 'underline' },
 
   ctaCard: { alignItems: 'center', paddingVertical: SPACING.lg },
   ctaIcon: {
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.md - 2,
   },
-  ctaTitle: { ...TYPOGRAPHY.h2, color: COLORS.text },
+  ctaTitle: { ...t.h2, color: c.text },
   ctaText: {
-    ...TYPOGRAPHY.small,
-    color: COLORS.textMuted,
+    ...t.small,
+    color: c.textMuted,
     textAlign: 'center',
     marginTop: 6,
     maxWidth: 320,
   },
   ctaButtons: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.lg, alignSelf: 'stretch' },
 
-  explainTitle: { ...TYPOGRAPHY.h4, color: COLORS.text, marginBottom: SPACING.sm + 2 },
-  explainBody: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
+  explainTitle: { ...t.h4, color: c.text, marginBottom: SPACING.sm + 2 },
+  explainBody: { ...t.small, color: c.textSecondary },
   rule: { flexDirection: 'row', gap: SPACING.sm + 2, marginBottom: SPACING.sm },
-  ruleText: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, flex: 1 },
+  ruleText: { ...t.small, color: c.textSecondary, flex: 1 },
 
-  fieldLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
-  fieldHint: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  fieldLabel: { ...t.overline, color: c.textMuted },
+  fieldHint: { ...t.small, color: c.textMuted },
   input: {
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     paddingHorizontal: SPACING.md - 2,
     paddingVertical: 12,
-    ...TYPOGRAPHY.body,
-    color: COLORS.text,
+    ...t.body,
+    color: c.text,
   },
   inputMultiline: { minHeight: 78, textAlignVertical: 'top' },
   codeInput: {
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     paddingVertical: 16,
     textAlign: 'center',
     fontSize: 26,
     fontWeight: '700',
     letterSpacing: 8,
-    color: COLORS.text,
+    color: c.text,
   },
-  error: { ...TYPOGRAPHY.small, color: COLORS.danger },
-});
+  error: { ...t.small, color: c.danger },
+
+  });
+}

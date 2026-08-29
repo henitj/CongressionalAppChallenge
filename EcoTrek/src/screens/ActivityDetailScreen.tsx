@@ -7,12 +7,13 @@ import LiveMap from '../components/LiveMap';
 import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, Pill, Button, Divider, EmptyState, Banner } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
 import { useSettings } from '../constants/SettingsContext';
 import { getTrailById } from '../constants/austinTrails';
 import { FLAG_MESSAGES } from '../services/trailDetection';
 import { shareText } from '../services/share';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 /**
  * A single activity, including the route it drew.
@@ -21,6 +22,8 @@ import { shareText } from '../services/share';
  * shown — this is where it finally gets used.
  */
 export default function ActivityDetailScreen() {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { history, deleteActivity } = useActivity();
@@ -161,7 +164,7 @@ export default function ActivityDetailScreen() {
         ) : (
           <Card tone="sunken">
             <View style={styles.noRoute}>
-              <Icon name="map" size={18} color={COLORS.textMuted} strokeWidth={1.8} />
+              <Icon name="map" size={18} color={colors.textMuted} strokeWidth={1.8} />
               <Text style={styles.noRouteText}>No route was recorded for this activity.</Text>
             </View>
           </Card>
@@ -279,16 +282,18 @@ export default function ActivityDetailScreen() {
           <DetailRow icon="map-pin" label="GPS points" value={String(activity.path.length)} />
         </Card>
 
-        <Button label="Delete activity" variant="ghost" tone={COLORS.danger} icon="trash" full onPress={confirmDelete} />
+        <Button label="Delete activity" variant="ghost" tone={colors.danger} icon="trash" full onPress={confirmDelete} />
       </View>
     </Screen>
   );
 }
 
 function Stat({ icon, value, label }: { icon: IconName; value: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1, gap: 3 }}>
-      <Icon name={icon} size={14} color={COLORS.textMuted} strokeWidth={1.9} />
+      <Icon name={icon} size={14} color={colors.textMuted} strokeWidth={1.9} />
       <Text style={styles.statValue}>{value}</Text>
       <Text style={styles.statLabel}>{label}</Text>
     </View>
@@ -296,10 +301,12 @@ function Stat({ icon, value, label }: { icon: IconName; value: string; label: st
 }
 
 function DetailRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.detailRow}>
       <View style={styles.detailIcon}>
-        <Icon name={icon} size={15} color={COLORS.textMuted} strokeWidth={1.9} />
+        <Icon name={icon} size={15} color={colors.textMuted} strokeWidth={1.9} />
       </View>
       <Text style={styles.detailLabel}>{label}</Text>
       <Text style={styles.detailValue}>{value}</Text>
@@ -322,36 +329,38 @@ function formatPace(minutesPerMile: number): string {
   return `${m}:${String(s).padStart(2, '0')}`;
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
 
   mapWrap: {
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
   },
   noRoute: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2 },
-  noRouteText: { ...TYPOGRAPHY.small, color: COLORS.textMuted, flex: 1 },
+  noRouteText: { ...t.small, color: c.textMuted, flex: 1 },
 
   headline: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  headlineValue: { fontSize: 44, fontWeight: '700', color: COLORS.text, letterSpacing: -0.6 },
-  headlineUnit: { ...TYPOGRAPHY.h3, color: COLORS.textMuted },
+  headlineValue: { fontSize: 44, fontWeight: '700', color: c.text, letterSpacing: -0.6 },
+  headlineUnit: { ...t.h3, color: c.textMuted },
   statRow: {
     flexDirection: 'row',
     marginTop: SPACING.md,
     paddingTop: SPACING.sm + 2,
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
+    borderTopColor: c.borderLight,
   },
-  statValue: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  statLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
+  statValue: { ...t.h4, color: c.text },
+  statLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
 
-  sectionLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
-  sectionTitle: { ...TYPOGRAPHY.h3, color: COLORS.text, marginBottom: SPACING.sm + 2 },
-  trailName: { ...TYPOGRAPHY.h3, color: COLORS.text, marginTop: 3 },
-  trailMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
-  coverage: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, marginTop: SPACING.sm },
+  sectionLabel: { ...t.overline, color: c.textMuted },
+  sectionTitle: { ...t.h3, color: c.text, marginBottom: SPACING.sm + 2 },
+  trailName: { ...t.h3, color: c.text, marginTop: 3 },
+  trailMeta: { ...t.small, color: c.textMuted, marginTop: 1 },
+  coverage: { ...t.small, color: c.textSecondary, marginTop: SPACING.sm },
   tags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: SPACING.sm + 2 },
 
   splitRow: {
@@ -361,16 +370,16 @@ const styles = StyleSheet.create({
     paddingVertical: 11,
     paddingHorizontal: SPACING.md - 2,
   },
-  splitMile: { ...TYPOGRAPHY.smallMed, color: COLORS.textMuted, width: 20 },
+  splitMile: { ...t.smallMed, color: c.textMuted, width: 20 },
   splitBarTrack: {
     flex: 1,
     height: 6,
     borderRadius: 3,
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     overflow: 'hidden',
   },
-  splitBarFill: { height: '100%', backgroundColor: COLORS.primaryLight, borderRadius: 3 },
-  splitTime: { ...TYPOGRAPHY.smallMed, color: COLORS.text, minWidth: 78, textAlign: 'right' },
+  splitBarFill: { height: '100%', backgroundColor: c.primaryLight, borderRadius: 3 },
+  splitTime: { ...t.smallMed, color: c.text, minWidth: 78, textAlign: 'right' },
 
   detailRow: {
     flexDirection: 'row',
@@ -383,10 +392,12 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  detailLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.textSecondary, flex: 1 },
-  detailValue: { ...TYPOGRAPHY.h4, color: COLORS.text },
-});
+  detailLabel: { ...t.bodyMed, color: c.textSecondary, flex: 1 },
+  detailValue: { ...t.h4, color: c.text },
+
+  });
+}

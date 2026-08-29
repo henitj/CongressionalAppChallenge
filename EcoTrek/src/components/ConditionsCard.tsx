@@ -2,11 +2,11 @@ import React from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Icon, { IconName } from './Icon';
-import { ColorPalette, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
 import { useWeather } from '../context/WeatherContext';
 import { LEVEL_META, SafetyLevel } from '../services/weather';
 import { useSettings } from '../constants/SettingsContext';
-import { useTheme } from '../context/ThemeContext';
+import { Typography, useTheme } from '../context/ThemeContext';
 
 function toneFor(c: ColorPalette): Record<SafetyLevel, { bg: string; border: string }> {
   return {
@@ -29,8 +29,8 @@ export default function ConditionsCard() {
   const navigation = useNavigation<any>();
   const { report, loading, error, refresh } = useWeather();
   const { formatTemp } = useSettings();
-  const { colors } = useTheme();
-  const styles = React.useMemo(() => makeWeatherStyles(colors), [colors]);
+  const { colors, typography } = useTheme();
+  const styles = React.useMemo(() => makeWeatherStyles(colors, typography), [colors, typography]);
 
   if (loading && !report) {
     return (
@@ -89,7 +89,7 @@ export default function ConditionsCard() {
   );
 }
 
-function makeWeatherStyles(c: ColorPalette) {
+function makeWeatherStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
     card: {
       borderRadius: RADIUS.lg,
@@ -105,7 +105,7 @@ function makeWeatherStyles(c: ColorPalette) {
       gap: SPACING.sm,
       paddingVertical: SPACING.md + 4,
     },
-    loadingText: { ...TYPOGRAPHY.small, color: c.textMuted, flex: 1 },
+    loadingText: { ...t.small, color: c.textMuted, flex: 1 },
     row: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2 },
     iconWrap: {
       width: 40,
@@ -115,8 +115,8 @@ function makeWeatherStyles(c: ColorPalette) {
       justifyContent: 'center',
     },
     topLine: { flexDirection: 'row', alignItems: 'baseline', gap: SPACING.sm - 2 },
-    temp: { fontSize: 24, fontWeight: '700', color: c.text, letterSpacing: -0.4 },
-    condition: { ...TYPOGRAPHY.body, color: c.textSecondary },
-    note: { ...TYPOGRAPHY.small, color: c.textSecondary, marginTop: 2 },
+    temp: { ...t.h2, color: c.text, letterSpacing: -0.4 },
+    condition: { ...t.body, color: c.textSecondary },
+    note: { ...t.small, color: c.textSecondary, marginTop: 2 },
   });
 }

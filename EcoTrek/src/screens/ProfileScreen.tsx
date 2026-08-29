@@ -7,11 +7,10 @@ import Icon, { IconName } from '../components/Icon';
 import StreakStrip from '../components/StreakStrip';
 import { Screen, Card, Pill, SectionHeader, Avatar, Divider, ProgressBar, Sheet, Button } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useActivity } from '../context/ActivityContext';
 import { useStreak } from '../context/StreakContext';
-import { useChallenges } from '../context/ChallengeContext';
 import { useEcoPoints, Badge } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useClub, sortedMembers } from '../constants/ClubContext';
@@ -19,23 +18,28 @@ import { useProfile } from '../context/ProfileContext';
 import { fullNameOf } from '../services/displayName';
 import { chooseAvatarAction, pickAndStoreAvatarPhoto } from '../services/avatar';
 import ShareCard from '../components/ShareCard';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 export default function ProfileScreen() {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
-  const { user, signOut } = useAuth();
-  const { totalMiles, totalTrees, totalActivities, uniqueTrailsCompleted, totalCalories } = useActivity();
+  const { user, signOut, updateUser } = useAuth();
+  const { totalMiles, totalTrees, uniqueTrailsCompleted } = useActivity();
   const { currentStreak, longestStreak, totalActiveWeeks, availableFreezes } = useStreak();
-  const { lifetimeCompleted } = useChallenges();
   const { totalPoints, level, progressPercent, nextLevelPoints, badges, unlockedBadges } =
     useEcoPoints();
   const { formatDistanceCompact: formatDistance, formatDistanceUnit } = useSettings();
   const { myClub, myRank, clubsLeading } = useClub();
-  const { profile, updateWeight, setAvatar } = useProfile();
+  const { profile, setProfile, updateWeight, setAvatar } = useProfile();
 
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [showWeightEditor, setShowWeightEditor] = useState(false);
   const [newWeight, setNewWeight] = useState('');
   const [showShare, setShowShare] = useState(false);
+  const [showNameEditor, setShowNameEditor] = useState(false);
+  const [editFirst, setEditFirst] = useState('');
+  const [editLast, setEditLast] = useState('');
   const displayName = fullNameOf(profile, user?.name);
 
   const memberSince = useMemo(() => {
@@ -46,6 +50,22 @@ export default function ProfileScreen() {
   const shareImpact = () => setShowShare(true);
 
   const avatarUri = profile.avatarUri ?? user?.picture ?? null;
+
+  const openNameEditor = () => {
+    setEditFirst(profile.firstName);
+    setEditLast(profile.lastName);
+    setShowNameEditor(true);
+  };
+
+  const handleSaveName = async () => {
+    const first = editFirst.trim();
+    const last = editLast.trim();
+    if (!first) return;
+    await setProfile({ firstName: first, lastName: last });
+    const full = `${first} ${last}`.trim();
+    await updateUser({ name: full });
+    setShowNameEditor(false);
+  };
 
   const changePhoto = () => {
     chooseAvatarAction(!!profile.avatarUri, async (choice) => {
@@ -100,12 +120,21 @@ export default function ProfileScreen() {
                 <Icon name="camera" size={12} color="#fff" strokeWidth={2.2} />
               </View>
             </Pressable>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.impactName} numberOfLines={2}>
-                {displayName}
-              </Text>
+            <Pressable
+              style={{ flex: 1 }}
+              onPress={openNameEditor}
+              hitSlop={8}
+              accessibilityRole="button"
+              accessibilityLabel="Edit your name"
+            >
+              <View style={{ flexDirection: 'row', alignItems: 'center', gap: 6 }}>
+                <Text style={styles.impactName} numberOfLines={1}>
+                  {displayName}
+                </Text>
+                <Icon name="pencil" size={14} color="rgba(255,255,255,0.55)" strokeWidth={2} />
+              </View>
               <View style={styles.levelRow}>
-                <Icon name="award" size={13} color={COLORS.primaryGlow} strokeWidth={2} />
+                <Icon name="award" size={13} color={colors.primaryGlow} strokeWidth={2} />
                 <Text style={styles.impactLevel}>{level}</Text>
               </View>
               {profile.age > 0 ? (
@@ -113,7 +142,7 @@ export default function ProfileScreen() {
                   {profile.age} yrs · {Math.floor(profile.heightInches / 12)}'{profile.heightInches % 12}" · {profile.weightPounds} lbs
                 </Text>
               ) : null}
-            </View>
+            </Pressable>
           </View>
 
           <View style={styles.levelProgress}>
@@ -123,7 +152,7 @@ export default function ProfileScreen() {
             </View>
             <ProgressBar
               percent={progressPercent}
-              color={COLORS.primaryGlow}
+              color={colors.primaryGlow}
               track="rgba(255,255,255,0.14)"
               height={6}
             />
@@ -182,10 +211,10 @@ export default function ProfileScreen() {
         ) : profile.weightPounds > 0 ? (
           <Card tone="sunken">
             <View style={{ flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 }}>
-              <Icon name="activity" size={18} color={COLORS.textMuted} strokeWidth={1.9} />
+              <Icon name="activity" size={18} color={colors.textMuted} strokeWidth={1.9} />
               <View style={{ flex: 1 }}>
-                <Text style={{ ...TYPOGRAPHY.h4, color: COLORS.textSecondary }}>Track your weight</Text>
-                <Text style={{ ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 }}>
+                <Text style={{ ...typography.h4, color: colors.textSecondary }}>Track your weight</Text>
+                <Text style={{ ...typography.small, color: colors.textMuted, marginTop: 2 }}>
                   Update your weight regularly to see trends over time.
                 </Text>
               </View>
@@ -216,7 +245,7 @@ export default function ProfileScreen() {
                 return (
                   <Card key={c.id} style={styles.leadCard} onPress={() => navigation.navigate('Clubs')}>
                     <View style={styles.crownWrap}>
-                      <Icon name="crown" size={18} color={COLORS.accentDark} strokeWidth={2} />
+                      <Icon name="crown" size={18} color={colors.accentDark} strokeWidth={2} />
                     </View>
                     <View style={{ flex: 1 }}>
                       <Text style={styles.leadTitle} numberOfLines={1}>
@@ -227,7 +256,7 @@ export default function ProfileScreen() {
                         {second ? ` · ${lead.toLocaleString()} ahead of second` : ' · unopposed so far'}
                       </Text>
                     </View>
-                    <Icon name="chevron-right" size={17} color={COLORS.textLight} />
+                    <Icon name="chevron-right" size={17} color={colors.textLight} />
                   </Card>
                 );
               })}
@@ -237,7 +266,7 @@ export default function ProfileScreen() {
           <Card onPress={() => navigation.navigate('Clubs')}>
             <View style={styles.clubRow}>
               <View style={styles.clubIcon}>
-                <Icon name="users" size={17} color={COLORS.primary} strokeWidth={1.9} />
+                <Icon name="users" size={17} color={colors.primary} strokeWidth={1.9} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.clubName} numberOfLines={1}>
@@ -250,7 +279,7 @@ export default function ProfileScreen() {
                     : ''}
                 </Text>
               </View>
-              <Icon name="chevron-right" size={17} color={COLORS.textLight} />
+              <Icon name="chevron-right" size={17} color={colors.textLight} />
             </View>
           </Card>
         ) : null}
@@ -273,9 +302,9 @@ export default function ProfileScreen() {
             <Text style={styles.streakCaption}>Last 8 weeks</Text>
             <StreakStrip style={{ marginTop: SPACING.sm + 2 }} />
             <View style={styles.legend}>
-              <LegendItem color={COLORS.primary} label="Active" />
-              <LegendItem color={COLORS.accent} label="Frozen" />
-              <LegendItem color={COLORS.surfaceSunken} border={COLORS.border} label="Missed" />
+              <LegendItem color={colors.primary} label="Active" />
+              <LegendItem color={colors.accent} label="Frozen" />
+              <LegendItem color={colors.surfaceSunken} border={colors.border} label="Missed" />
             </View>
           </Card>
         </View>
@@ -311,7 +340,7 @@ export default function ProfileScreen() {
                   <Icon
                     name={b.icon}
                     size={26}
-                    color={b.unlocked ? COLORS.primary : COLORS.textLight}
+                    color={b.unlocked ? colors.primary : colors.textLight}
                     strokeWidth={1.9}
                   />
                   <Text
@@ -323,54 +352,11 @@ export default function ProfileScreen() {
                 </Pressable>
               ))}
             </View>
-            <Button
-              label="See all badges"
-              variant="secondary"
-              full
-              iconRight="chevron-right"
-              onPress={() => navigation.navigate('Badges')}
-              style={{ marginTop: SPACING.md }}
-            />
           </Card>
         </View>
-
-        {/* Lifetime numbers */}
-        <View>
-          <SectionHeader title="Lifetime" action="Full history" onAction={() => navigation.navigate('History')} />
-          <Card padded={false}>
-            <StatRow icon="activity" label="Total distance" value={`${formatDistance(totalMiles)} ${formatDistanceUnit()}`} />
-            <Divider style={{ marginLeft: 58 }} />
-            <StatRow icon="route" label="Activities logged" value={String(totalActivities)} />
-            <Divider style={{ marginLeft: 58 }} />
-            <StatRow icon="tree" label="Trees earned" value={String(totalTrees)} />
-            <Divider style={{ marginLeft: 58 }} />
-            <StatRow icon="flag" label="Trails completed" value={String(uniqueTrailsCompleted)} />
-            <Divider style={{ marginLeft: 58 }} />
-            <StatRow icon="target" label="Challenges finished" value={String(lifetimeCompleted)} />
-            <Divider style={{ marginLeft: 58 }} />
-            <StatRow icon="zap" label="Calories burned" value={totalCalories.toLocaleString()} />
-            <Divider style={{ marginLeft: 58 }} />
-            <StatRow icon="star" label="EcoPoints" value={totalPoints.toLocaleString()} />
-          </Card>
-        </View>
-
-        {/* Links */}
-        <Card padded={false}>
-          <LinkRow icon="clock" label="Activity history" onPress={() => navigation.navigate('History')} />
-          <Divider style={{ marginLeft: 58 }} />
-          <LinkRow icon="calendar" label="Weekly streak" onPress={() => navigation.navigate('Streak')} />
-          <Divider style={{ marginLeft: 58 }} />
-          <LinkRow icon="target" label="Weekly challenges" onPress={() => navigation.navigate('Challenges')} />
-          <Divider style={{ marginLeft: 58 }} />
-          <LinkRow icon="award" label="Badges" onPress={() => navigation.navigate('Badges')} />
-          <Divider style={{ marginLeft: 58 }} />
-          <LinkRow icon="shield" label="Trail safety" onPress={() => navigation.navigate('Safety')} />
-          <Divider style={{ marginLeft: 58 }} />
-          <LinkRow icon="sliders" label="Settings" onPress={() => navigation.navigate('Settings')} />
-        </Card>
 
         <Pressable onPress={confirmSignOut} style={styles.signOut}>
-          <Icon name="log-out" size={16} color={COLORS.textMuted} strokeWidth={1.9} />
+          <Icon name="log-out" size={16} color={colors.textMuted} strokeWidth={1.9} />
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
       </View>
@@ -388,7 +374,7 @@ export default function ProfileScreen() {
               <Icon
                 name={selectedBadge.icon}
                 size={38}
-                color={selectedBadge.unlocked ? COLORS.primary : COLORS.textLight}
+                color={selectedBadge.unlocked ? colors.primary : colors.textLight}
                 strokeWidth={1.7}
               />
             </View>
@@ -421,11 +407,47 @@ export default function ProfileScreen() {
               onChangeText={setNewWeight}
               keyboardType="number-pad"
               placeholder="155"
-              placeholderTextColor={COLORS.textLight}
+              placeholderTextColor={colors.textLight}
               style={styles.input}
             />
           </View>
           <Button label="Save" full onPress={handleUpdateWeight} />
+        </View>
+      </Sheet>
+
+      {/* Name editor */}
+      <Sheet
+        visible={showNameEditor}
+        onClose={() => setShowNameEditor(false)}
+        title="Edit your name"
+        subtitle="Shown on your home screen and shared card"
+      >
+        <View style={{ gap: SPACING.md }}>
+          <View style={{ gap: 6 }}>
+            <Text style={styles.fieldLabel}>First name</Text>
+            <TextInput
+              value={editFirst}
+              onChangeText={setEditFirst}
+              placeholder="Jane"
+              placeholderTextColor={colors.textLight}
+              maxLength={30}
+              style={styles.input}
+              accessibilityLabel="First name"
+            />
+          </View>
+          <View style={{ gap: 6 }}>
+            <Text style={styles.fieldLabel}>Last name</Text>
+            <TextInput
+              value={editLast}
+              onChangeText={setEditLast}
+              placeholder="Doe"
+              placeholderTextColor={colors.textLight}
+              maxLength={30}
+              style={styles.input}
+              accessibilityLabel="Last name"
+            />
+          </View>
+          <Button label="Save" full disabled={!editFirst.trim()} onPress={handleSaveName} />
         </View>
       </Sheet>
     </Screen>
@@ -433,6 +455,8 @@ export default function ProfileScreen() {
 }
 
 function WeightGraph({ data }: { data: { date: number; weight: number }[] }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   if (data.length < 2) return null;
 
   const weights = data.map((d) => d.weight);
@@ -468,6 +492,8 @@ function WeightGraph({ data }: { data: { date: number; weight: number }[] }) {
 }
 
 function ImpactStat({ value, unit, label }: { value: string; unit?: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
@@ -480,9 +506,11 @@ function ImpactStat({ value, unit, label }: { value: string; unit?: string; labe
 }
 
 function StreakStat({ value, label, icon, highlight }: { value: number; label: string; icon: IconName; highlight?: boolean }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1, gap: 3 }}>
-      <Icon name={icon} size={15} color={highlight ? COLORS.accent : COLORS.textMuted} strokeWidth={2} />
+      <Icon name={icon} size={15} color={highlight ? colors.accent : colors.textMuted} strokeWidth={2} />
       <Text style={styles.streakStatValue}>{value}</Text>
       <Text style={styles.streakStatLabel}>{label}</Text>
     </View>
@@ -490,6 +518,8 @@ function StreakStat({ value, label, icon, highlight }: { value: number; label: s
 }
 
 function LegendItem({ color, border, label }: { color: string; border?: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.legendItem}>
       <View
@@ -503,31 +533,9 @@ function LegendItem({ color, border, label }: { color: string; border?: string; 
   );
 }
 
-function StatRow({ icon, label, value }: { icon: IconName; label: string; value: string }) {
-  return (
-    <View style={styles.statRow}>
-      <View style={styles.statRowIcon}>
-        <Icon name={icon} size={16} color={COLORS.textMuted} strokeWidth={1.9} />
-      </View>
-      <Text style={styles.statRowLabel}>{label}</Text>
-      <Text style={styles.statRowValue}>{value}</Text>
-    </View>
-  );
-}
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
 
-function LinkRow({ icon, label, onPress }: { icon: IconName; label: string; onPress: () => void }) {
-  return (
-    <Pressable onPress={onPress} style={({ pressed }) => [styles.statRow, pressed && { opacity: 0.7 }]}>
-      <View style={styles.statRowIcon}>
-        <Icon name={icon} size={16} color={COLORS.primary} strokeWidth={1.9} />
-      </View>
-      <Text style={[styles.statRowLabel, { flex: 1 }]}>{label}</Text>
-      <Icon name="chevron-right" size={17} color={COLORS.textLight} />
-    </Pressable>
-  );
-}
-
-const styles = StyleSheet.create({
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
 
   impactCard: { padding: SPACING.md + 2, gap: SPACING.md },
@@ -540,20 +548,20 @@ const styles = StyleSheet.create({
     width: 22,
     height: 22,
     borderRadius: 11,
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     borderWidth: 2,
-    borderColor: COLORS.primaryDark,
+    borderColor: c.primaryDark,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  impactName: { ...TYPOGRAPHY.h1, color: '#fff' },
+  impactName: { ...t.h1, color: '#fff' },
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
-  impactLevel: { ...TYPOGRAPHY.smallMed, color: COLORS.primaryGlow },
-  profileMeta: { ...TYPOGRAPHY.micro, color: 'rgba(255,255,255,0.45)', marginTop: 4 },
+  impactLevel: { ...t.smallMed, color: c.primaryGlow },
+  profileMeta: { ...t.micro, color: 'rgba(255,255,255,0.45)', marginTop: 4 },
 
   levelProgress: { gap: 5 },
   levelProgressLabels: { flexDirection: 'row', justifyContent: 'space-between' },
-  levelProgressText: { ...TYPOGRAPHY.micro, color: 'rgba(255,255,255,0.55)' },
+  levelProgressText: { ...t.micro, color: 'rgba(255,255,255,0.55)' },
 
   impactStats: {
     flexDirection: 'row',
@@ -562,9 +570,9 @@ const styles = StyleSheet.create({
     borderTopColor: 'rgba(255,255,255,0.1)',
   },
   impactStatValue: { fontSize: 22, fontWeight: '700', color: '#fff', letterSpacing: -0.3 },
-  impactStatUnit: { ...TYPOGRAPHY.micro, color: 'rgba(255,255,255,0.6)' },
+  impactStatUnit: { ...t.micro, color: 'rgba(255,255,255,0.6)' },
   impactStatLabel: {
-    ...TYPOGRAPHY.micro,
+    ...t.micro,
     color: 'rgba(255,255,255,0.5)',
     textTransform: 'uppercase',
     marginTop: 2,
@@ -579,111 +587,93 @@ const styles = StyleSheet.create({
     paddingVertical: 12,
     borderRadius: RADIUS.md,
   },
-  shareBarText: { ...TYPOGRAPHY.smallMed, color: '#fff' },
+  shareBarText: { ...t.smallMed, color: '#fff' },
 
   weightHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  weightTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  weightSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: SPACING.sm },
+  weightTitle: { ...t.h4, color: c.text },
+  weightSub: { ...t.small, color: c.textMuted, marginTop: SPACING.sm },
 
   graphContainer: { flexDirection: 'row', alignItems: 'flex-end', gap: 3 },
   graphBar: { flex: 1, alignItems: 'center' },
   graphBarFill: {
     width: '70%',
-    backgroundColor: COLORS.primaryLight,
+    backgroundColor: c.primaryLight,
     borderRadius: 3,
     minHeight: 4,
   },
-  graphBarCurrent: { backgroundColor: COLORS.primary },
+  graphBarCurrent: { backgroundColor: c.primary },
   graphLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
-  graphLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+  graphLabel: { ...t.micro, color: c.textMuted },
 
   leadCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
   crownWrap: {
     width: 38,
     height: 38,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.accentLight,
+    backgroundColor: c.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  leadTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  leadSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  leadTitle: { ...t.h4, color: c.text },
+  leadSub: { ...t.small, color: c.textMuted, marginTop: 1 },
 
   clubRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
   clubIcon: {
     width: 38,
     height: 38,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  clubName: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  clubMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  clubName: { ...t.h4, color: c.text },
+  clubMeta: { ...t.small, color: c.textMuted, marginTop: 1 },
 
   streakStats: { flexDirection: 'row' },
-  streakStatValue: { ...TYPOGRAPHY.h1, color: COLORS.text },
-  streakStatLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
-  streakCaption: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  streakStatValue: { ...t.h1, color: c.text },
+  streakStatLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
+  streakCaption: { ...t.overline, color: c.textMuted },
   legend: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md, marginTop: SPACING.md - 2 },
   legendItem: { flexDirection: 'row', alignItems: 'center', gap: 5 },
   legendSwatch: { width: 11, height: 11, borderRadius: 6 },
-  legendText: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+  legendText: { ...t.micro, color: c.textMuted },
 
   badgeSummary: { flexDirection: 'row', alignItems: 'baseline', gap: 6 },
-  badgeCount: { ...TYPOGRAPHY.h1, color: COLORS.text },
-  badgeCountTotal: { ...TYPOGRAPHY.h3, color: COLORS.textLight, fontWeight: '500' },
-  badgeCountLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  badgeCount: { ...t.h1, color: c.text },
+  badgeCountTotal: { ...t.h3, color: c.textLight, fontWeight: '500' },
+  badgeCountLabel: { ...t.small, color: c.textMuted },
   badgePreviewRow: { flexDirection: 'row', gap: SPACING.sm },
   badgePreview: {
     flex: 1,
     aspectRatio: 1,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
-    backgroundColor: COLORS.surfaceSunken,
+    borderColor: c.border,
+    backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
     padding: 8,
   },
-  badgeUnlocked: { backgroundColor: COLORS.primarySurface, borderColor: COLORS.primaryGlow },
+  badgeUnlocked: { backgroundColor: c.primarySurface, borderColor: c.primaryGlow },
   badgeName: {
     fontSize: 13,
     fontWeight: '700',
-    color: COLORS.textMuted,
+    color: c.textMuted,
     textAlign: 'center',
     lineHeight: 17,
   },
-  badgeNameUnlocked: { color: COLORS.primary },
+  badgeNameUnlocked: { color: c.primary },
   badgeLarge: {
     width: 88,
     height: 88,
     borderRadius: RADIUS.xl,
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  badgeLargeUnlocked: { backgroundColor: COLORS.primarySurface },
-  badgeDesc: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center' },
-
-  statRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm + 4,
-    paddingVertical: 13,
-    paddingHorizontal: SPACING.md - 2,
-  },
-  statRowIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.surfaceSunken,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  statRowLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.textSecondary, flex: 1 },
-  statRowValue: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  badgeLargeUnlocked: { backgroundColor: c.primarySurface },
+  badgeDesc: { ...t.body, color: c.textSecondary, textAlign: 'center' },
 
   signOut: {
     flexDirection: 'row',
@@ -692,17 +682,19 @@ const styles = StyleSheet.create({
     gap: 7,
     padding: SPACING.md - 2,
   },
-  signOutText: { ...TYPOGRAPHY.bodyMed, color: COLORS.textMuted },
+  signOutText: { ...t.bodyMed, color: c.textMuted },
 
-  fieldLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  fieldLabel: { ...t.overline, color: c.textMuted },
   input: {
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     paddingHorizontal: SPACING.md - 2,
     paddingVertical: 13,
-    ...TYPOGRAPHY.body,
-    color: COLORS.text,
+    ...t.body,
+    color: c.text,
   },
-});
+
+  });
+}

@@ -6,7 +6,7 @@ import Icon, { IconName } from './Icon';
 import { Avatar } from './ui';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
-import { COLORS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { SPACING } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 type Action = { icon: IconName; onPress: () => void; badge?: boolean; label?: string };
@@ -33,7 +33,7 @@ export default function Header({
   const navigation = useNavigation<any>();
   const { user } = useAuth();
   const { profile } = useProfile();
-  const { colors, fontScale } = useTheme();
+  const { colors, typography } = useTheme();
 
   // Always go somewhere: if there is nothing to go back to (cold open,
   // deep link) fall back to the home tabs instead of a dead tap.
@@ -43,13 +43,13 @@ export default function Header({
   };
 
   return (
-    <SafeAreaView edges={['top']} style={[styles.safe, { backgroundColor: colors.background }, style]}>
+    <SafeAreaView edges={['top']} style={[{ backgroundColor: colors.background }, style]}>
       <View style={styles.bar}>
         {back ? (
           <Pressable
             onPress={goBack}
             hitSlop={12}
-            style={styles.iconBtn}
+            style={[styles.iconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
             accessibilityLabel="Go back"
           >
             <Icon name="chevron-left" size={20} color={colors.text} strokeWidth={2.1} />
@@ -58,11 +58,11 @@ export default function Header({
 
         <View style={styles.titleWrap}>
           {subtitle ? (
-            <Text style={[styles.subtitle, { color: colors.textMuted, fontSize: Math.round(13 * fontScale) }]} numberOfLines={2}>
+            <Text style={[styles.subtitle, typography.overline, { color: colors.textMuted }]} numberOfLines={2}>
               {subtitle}
             </Text>
           ) : null}
-          <Text style={[styles.title, { color: colors.text, fontSize: Math.round(30 * fontScale) }]} numberOfLines={2}>
+          <Text style={[styles.title, typography.h1, { color: colors.text }]} numberOfLines={2}>
             {title}
           </Text>
         </View>
@@ -77,7 +77,9 @@ export default function Header({
               accessibilityLabel={a.label}
             >
               <Icon name={a.icon} size={19} color={colors.textSecondary} strokeWidth={1.9} />
-              {a.badge ? <View style={styles.dot} /> : null}
+              {a.badge ? (
+                <View style={[styles.dot, { backgroundColor: colors.accent, borderColor: colors.surface }]} />
+              ) : null}
             </Pressable>
           ))}
 
@@ -96,10 +98,8 @@ export default function Header({
   );
 }
 
+// Color-free geometry; every color is applied at render time from the theme.
 const styles = StyleSheet.create({
-  safe: {
-    backgroundColor: COLORS.background,
-  },
   bar: {
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.sm,
@@ -109,12 +109,8 @@ const styles = StyleSheet.create({
     gap: SPACING.sm,
   },
   titleWrap: { flex: 1 },
-  title: { ...TYPOGRAPHY.h1, color: COLORS.text },
-  subtitle: {
-    ...TYPOGRAPHY.overline,
-    color: COLORS.textMuted,
-    marginBottom: 1,
-  },
+  title: { marginBottom: 0 },
+  subtitle: { marginBottom: 1 },
   actions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
   iconBtn: {
     width: 44,
@@ -122,9 +118,7 @@ const styles = StyleSheet.create({
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
   },
   dot: {
     position: 'absolute',
@@ -133,8 +127,6 @@ const styles = StyleSheet.create({
     width: 7,
     height: 7,
     borderRadius: 4,
-    backgroundColor: COLORS.accent,
     borderWidth: 1.5,
-    borderColor: COLORS.surface,
   },
 });

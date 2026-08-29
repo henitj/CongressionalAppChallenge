@@ -7,7 +7,7 @@ import LiveMap from '../components/LiveMap';
 import Icon, { IconName } from '../components/Icon';
 import { Button } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import {
   Coord,
   getCurrentPosition,
@@ -23,12 +23,15 @@ import { detectCurrentTrail } from '../services/trailDetection';
 import { Trail } from '../constants/austinTrails';
 import { useProfile, estimateCalories } from '../context/ProfileContext';
 import { useWeather } from '../context/WeatherContext';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 type Mode = 'hike' | 'bike';
 
 const SPEED_LIMITS: Record<Mode, number> = { hike: 20, bike: 30 };
 
 export default function ActiveTrackingScreen() {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const mode: Mode = route.params?.mode ?? 'hike';
@@ -238,7 +241,7 @@ export default function ActiveTrackingScreen() {
             <Icon
               name={result.rejected ? 'alert-circle' : 'check-circle'}
               size={64}
-              color={result.rejected ? COLORS.warning : COLORS.primary}
+              color={result.rejected ? colors.warning : colors.primary}
               strokeWidth={1.5}
             />
             <Text style={styles.resultTitle}>
@@ -270,7 +273,7 @@ export default function ActiveTrackingScreen() {
 
             {result.trailCompleted && (
               <View style={styles.trailCompleteBadge}>
-                <Icon name="flag" size={18} color={COLORS.primary} strokeWidth={2} />
+                <Icon name="flag" size={18} color={colors.primary} strokeWidth={2} />
                 <Text style={styles.trailCompleteText}>
                   Completed {result.trailName}!
                 </Text>
@@ -322,7 +325,7 @@ export default function ActiveTrackingScreen() {
           {/* Trail detection overlay */}
           {nearbyTrail ? (
             <View style={styles.trailBadge}>
-              <Icon name="map-pin" size={14} color={COLORS.primary} strokeWidth={2} />
+              <Icon name="map-pin" size={14} color={colors.primary} strokeWidth={2} />
               <Text style={styles.trailBadgeText} numberOfLines={1}>
                 {nearbyTrail.name}
               </Text>
@@ -336,24 +339,24 @@ export default function ActiveTrackingScreen() {
             style={styles.helpBtn}
             accessibilityLabel="Call 911"
           >
-            <Icon name="alert-triangle" size={16} color={COLORS.danger} strokeWidth={2} />
+            <Icon name="alert-triangle" size={16} color={colors.danger} strokeWidth={2} />
             <Text style={styles.helpDanger}>Call 911</Text>
           </Pressable>
           <Pressable onPress={textContact} style={styles.helpBtn} accessibilityLabel="Text my contact">
-            <Icon name="users" size={16} color={COLORS.primary} strokeWidth={2} />
+            <Icon name="users" size={16} color={colors.primary} strokeWidth={2} />
             <Text style={styles.helpSafe}>Text my contact</Text>
           </Pressable>
         </View>
 
         {showRest ? (
           <View style={styles.restBanner}>
-            <Icon name="clock" size={18} color={COLORS.accentDark} strokeWidth={2} />
+            <Icon name="clock" size={18} color={colors.accentDark} strokeWidth={2} />
             <Text style={styles.restText}>
               You have been out for {Math.floor(elapsed / 60)} minutes
               {report ? ` · it is ${formatTemp(report.tempF)}` : ''}. Want a sit-down?
             </Text>
             <Pressable onPress={() => setShowRest(false)} hitSlop={10} accessibilityLabel="Dismiss rest reminder">
-              <Icon name="x" size={16} color={COLORS.textMuted} />
+              <Icon name="x" size={16} color={colors.textMuted} />
             </Pressable>
           </View>
         ) : null}
@@ -378,7 +381,7 @@ export default function ActiveTrackingScreen() {
               <Text style={styles.speedLabel}>mph now</Text>
               {currentMph > speedLimit ? (
                 <View style={styles.speedWarning}>
-                  <Icon name="alert-triangle" size={12} color={COLORS.danger} strokeWidth={2} />
+                  <Icon name="alert-triangle" size={12} color={colors.danger} strokeWidth={2} />
                   <Text style={styles.speedWarningText}>Over {speedLimit} mph limit</Text>
                 </View>
               ) : null}
@@ -394,16 +397,16 @@ export default function ActiveTrackingScreen() {
           <View style={styles.statsGrid}>
             <StatBox icon="clock" value={formatTime(elapsed)} label="Time" />
             <StatBox icon="trending-up" value={`${Math.round(elevationGain)}`} label="Gain (ft)" />
-            <StatBox icon="trending-up" value={`${Math.round(elevationLoss)}`} label="Loss (ft)" iconColor={COLORS.textMuted} />
+            <StatBox icon="trending-up" value={`${Math.round(elevationLoss)}`} label="Loss (ft)" iconColor={colors.textMuted} />
             <StatBox icon="zap" value={String(calories)} label="Calories" />
             <StatBox icon="tree" value={String(trees)} label="Trees" />
-            <StatBox icon="alert-circle" value={`${speedWarnings}/3`} label="Warnings" iconColor={speedWarnings > 0 ? COLORS.warning : COLORS.textMuted} />
+            <StatBox icon="alert-circle" value={`${speedWarnings}/3`} label="Warnings" iconColor={speedWarnings > 0 ? colors.warning : colors.textMuted} />
           </View>
 
           {/* Speed warnings banner */}
           {speedWarnings > 0 && speedWarnings < 3 ? (
             <View style={styles.warningBanner}>
-              <Icon name="alert-triangle" size={16} color={COLORS.warning} strokeWidth={2} />
+              <Icon name="alert-triangle" size={16} color={colors.warning} strokeWidth={2} />
               <Text style={styles.warningText}>
                 Speed warning {speedWarnings}/3 — {speedWarnings === 1 ? 'One more and we will flag this activity.' : 'One more and this activity may not count.'}
               </Text>
@@ -414,7 +417,7 @@ export default function ActiveTrackingScreen() {
           {showSpeedAlert ? (
             <View style={styles.alertOverlay}>
               <View style={styles.alertBox}>
-                <Icon name="alert-circle" size={32} color={COLORS.danger} strokeWidth={2} />
+                <Icon name="alert-circle" size={32} color={colors.danger} strokeWidth={2} />
                 <Text style={styles.alertTitle}>Activity paused</Text>
                 <Text style={styles.alertText}>
                   We detected several moments where your speed exceeded what's expected for{' '}
@@ -459,9 +462,11 @@ export default function ActiveTrackingScreen() {
 }
 
 function StatBox({ icon, value, label, iconColor }: { icon: IconName; value: string; label: string; iconColor?: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.statBox}>
-      <Icon name={icon} size={14} color={iconColor ?? COLORS.primary} strokeWidth={2} />
+      <Icon name={icon} size={14} color={iconColor ?? colors.primary} strokeWidth={2} />
       <Text style={styles.statBoxValue}>{value}</Text>
       <Text style={styles.statBoxLabel}>{label}</Text>
     </View>
@@ -477,17 +482,21 @@ function formatTime(sec: number) {
 }
 
 function ResultStat({ label, value, icon }: { label: string; value: string; icon?: IconName }) {
+  const { colors, typography } = useTheme();
+  const resultStyles = useMemo(() => makeResultStyles(colors, typography), [colors, typography]);
   return (
     <View style={resultStyles.stat}>
-      {icon && <Icon name={icon} size={20} color={COLORS.primary} strokeWidth={2} />}
+      {icon && <Icon name={icon} size={20} color={colors.primary} strokeWidth={2} />}
       <Text style={resultStyles.statValue}>{value}</Text>
       <Text style={resultStyles.statLabel}>{label}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.primaryDark },
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
+  root: { flex: 1, backgroundColor: c.primaryDark },
 
   topBar: {
     flexDirection: 'row',
@@ -511,7 +520,7 @@ const styles = StyleSheet.create({
     borderRadius: 5,
     backgroundColor: '#FF4444',
   },
-  topLabel: { ...TYPOGRAPHY.bodyMed, color: '#fff' },
+  topLabel: { ...t.bodyMed, color: '#fff' },
   pauseBtn: {
     width: 48,
     height: 48,
@@ -542,11 +551,11 @@ const styles = StyleSheet.create({
     borderRadius: RADIUS.pill,
     maxWidth: '80%',
   },
-  trailBadgeText: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
+  trailBadgeText: { ...t.smallMed, color: c.primary },
 
   statsPanel: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderTopLeftRadius: RADIUS.xxl,
     borderTopRightRadius: RADIUS.xxl,
     marginTop: SPACING.md,
@@ -556,30 +565,30 @@ const styles = StyleSheet.create({
   },
 
   primaryRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, justifyContent: 'center' },
-  distanceValue: { ...TYPOGRAPHY.metricLg, color: COLORS.text },
-  distanceUnit: { ...TYPOGRAPHY.h3, color: COLORS.textMuted },
+  distanceValue: { ...t.metricLg, color: c.text },
+  distanceUnit: { ...t.h3, color: c.textMuted },
 
   speedRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderRadius: RADIUS.lg,
     paddingVertical: SPACING.md,
     gap: SPACING.lg,
   },
   speedBlock: { alignItems: 'center', flex: 1 },
-  speedValue: { fontSize: 32, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
-  speedOverLimit: { color: COLORS.danger },
-  speedLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
-  speedDivider: { width: 1, height: 40, backgroundColor: COLORS.border },
+  speedValue: { fontSize: 32, fontWeight: '700', color: c.text, letterSpacing: -0.3 },
+  speedOverLimit: { color: c.danger },
+  speedLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
+  speedDivider: { width: 1, height: 40, backgroundColor: c.border },
   speedWarning: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
     marginTop: 4,
   },
-  speedWarningText: { fontSize: 10, color: COLORS.danger, fontWeight: '600' },
+  speedWarningText: { fontSize: 10, color: c.danger, fontWeight: '600' },
 
   statsGrid: {
     flexDirection: 'row',
@@ -591,25 +600,25 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     alignItems: 'center',
     gap: 3,
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderRadius: RADIUS.md,
     paddingVertical: SPACING.sm + 2,
     paddingHorizontal: SPACING.xs,
   },
-  statBoxValue: { ...TYPOGRAPHY.h3, color: COLORS.text },
-  statBoxLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+  statBoxValue: { ...t.h3, color: c.text },
+  statBoxLabel: { ...t.micro, color: c.textMuted },
 
   warningBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.warningLight,
+    backgroundColor: c.warningLight,
     borderRadius: RADIUS.md,
     padding: SPACING.sm + 4,
     borderWidth: 1,
-    borderColor: COLORS.warningBorder,
+    borderColor: c.warningBorder,
   },
-  warningText: { ...TYPOGRAPHY.small, color: COLORS.warning, flex: 1 },
+  warningText: { ...t.small, color: c.warning, flex: 1 },
 
   alertOverlay: {
     ...StyleSheet.absoluteFillObject,
@@ -619,7 +628,7 @@ const styles = StyleSheet.create({
     zIndex: 100,
   },
   alertBox: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderRadius: RADIUS.xl,
     padding: SPACING.lg,
     marginHorizontal: SPACING.lg,
@@ -627,9 +636,9 @@ const styles = StyleSheet.create({
     gap: SPACING.md,
     maxWidth: 360,
   },
-  alertTitle: { ...TYPOGRAPHY.h2, color: COLORS.text },
-  alertText: { ...TYPOGRAPHY.body, color: COLORS.textSecondary, textAlign: 'center' },
-  alertSubtext: { ...TYPOGRAPHY.small, color: COLORS.textMuted, textAlign: 'center' },
+  alertTitle: { ...t.h2, color: c.text },
+  alertText: { ...t.body, color: c.textSecondary, textAlign: 'center' },
+  alertSubtext: { ...t.small, color: c.textMuted, textAlign: 'center' },
   alertButtons: { flexDirection: 'row', gap: SPACING.sm, width: '100%' },
 
   helpRow: { flexDirection: 'row', gap: SPACING.sm, paddingHorizontal: SPACING.md, marginTop: SPACING.sm },
@@ -639,41 +648,41 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 8,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderRadius: RADIUS.md,
     paddingVertical: 14,
     minHeight: 52,
   },
-  helpDanger: { ...TYPOGRAPHY.smallMed, color: COLORS.danger },
-  helpSafe: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
+  helpDanger: { ...t.smallMed, color: c.danger },
+  helpSafe: { ...t.smallMed, color: c.primary },
   restBanner: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
     marginHorizontal: SPACING.md,
     marginTop: SPACING.sm,
-    backgroundColor: COLORS.warningLight,
+    backgroundColor: c.warningLight,
     borderRadius: RADIUS.md,
     padding: SPACING.sm + 4,
   },
-  restText: { ...TYPOGRAPHY.small, color: COLORS.text, flex: 1 },
+  restText: { ...t.small, color: c.text, flex: 1 },
   finishRow: { paddingBottom: SPACING.md },
 
   resultContainer: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.lg,
     gap: SPACING.lg,
   },
   resultTitle: {
-    ...TYPOGRAPHY.h1,
-    color: COLORS.text,
+    ...t.h1,
+    color: c.text,
   },
   resultSubtitle: {
-    ...TYPOGRAPHY.body,
-    color: COLORS.textMuted,
+    ...t.body,
+    color: c.textMuted,
     textAlign: 'center',
   },
   resultStats: {
@@ -687,33 +696,39 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     paddingVertical: SPACING.sm,
     paddingHorizontal: SPACING.md,
     borderRadius: RADIUS.pill,
   },
   trailCompleteText: {
-    ...TYPOGRAPHY.bodyMed,
-    color: COLORS.primary,
+    ...t.bodyMed,
+    color: c.primary,
   },
   resultButtons: {
     width: '100%',
     marginTop: SPACING.md,
   },
-});
 
-const resultStyles = StyleSheet.create({
+  });
+}
+
+function makeResultStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
   stat: {
     alignItems: 'center',
     gap: SPACING.xs,
     minWidth: 100,
   },
   statValue: {
-    ...TYPOGRAPHY.h2,
-    color: COLORS.text,
+    ...t.h2,
+    color: c.text,
   },
   statLabel: {
-    ...TYPOGRAPHY.small,
-    color: COLORS.textMuted,
+    ...t.small,
+    color: c.textMuted,
   },
-});
+
+  });
+}

@@ -4,17 +4,20 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, Segmented, EmptyState, Pill, Divider, Banner } from '../components/ui';
-import { COLORS, RADIUS, SPACING, TREE_RULES, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, TREE_RULES, ColorPalette } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
 import { TREES_DISCLAIMER } from '../services/trees';
 import { computeRecords } from '../services/records';
 import { useLogbook } from '../context/LogbookContext';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 type Tab = 'activities' | 'forest' | 'records' | 'points';
 
 export default function ImpactScreen() {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { history, totalMiles, totalTrees, totalActivities, uniqueTrailsCompleted, deleteActivity } =
@@ -91,7 +94,7 @@ export default function ImpactScreen() {
                       <Icon
                         name={a.type === 'bike' ? 'bike' : 'boot'}
                         size={18}
-                        color={a.valid ? COLORS.primary : COLORS.textLight}
+                        color={a.valid ? colors.primary : colors.textLight}
                         strokeWidth={1.9}
                       />
                     </View>
@@ -113,7 +116,7 @@ export default function ImpactScreen() {
                       </Text>
                     </View>
                     <Pressable onPress={() => confirmDelete(a.id)} hitSlop={10}>
-                      <Icon name="trash" size={16} color={COLORS.textLight} strokeWidth={1.8} />
+                      <Icon name="trash" size={16} color={colors.textLight} strokeWidth={1.8} />
                     </Pressable>
                   </View>
 
@@ -150,7 +153,7 @@ export default function ImpactScreen() {
             <Card>
               <View style={styles.forestHead}>
                 <View style={styles.forestIcon}>
-                  <Icon name="tree" size={22} color={COLORS.primary} strokeWidth={1.9} />
+                  <Icon name="tree" size={22} color={colors.primary} strokeWidth={1.9} />
                 </View>
                 <View style={{ flex: 1 }}>
                   <Text style={styles.forestCount}>{totalTrees}</Text>
@@ -179,7 +182,7 @@ export default function ImpactScreen() {
                     {i > 0 ? <Divider style={{ marginLeft: 58 }} /> : null}
                     <View style={styles.grantRow}>
                       <View style={styles.grantIcon}>
-                        <Icon name="leaf" size={16} color={COLORS.primary} strokeWidth={1.9} />
+                        <Icon name="leaf" size={16} color={colors.primary} strokeWidth={1.9} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.grantSpecies}>{a.grant!.species}</Text>
@@ -221,7 +224,7 @@ export default function ImpactScreen() {
                       style={({ pressed }) => [styles.recordRow, pressed && { opacity: 0.7 }]}
                     >
                       <View style={styles.recordIcon}>
-                        <Icon name="award" size={16} color={COLORS.accentDark} strokeWidth={2} />
+                        <Icon name="award" size={16} color={colors.accentDark} strokeWidth={2} />
                       </View>
                       <View style={{ flex: 1 }}>
                         <Text style={styles.recordLabel}>{r.label}</Text>
@@ -234,7 +237,7 @@ export default function ImpactScreen() {
                         {r.unit ? <Text style={styles.recordUnit}> {r.unit}</Text> : null}
                       </Text>
                       {r.activityId ? (
-                        <Icon name="chevron-right" size={15} color={COLORS.textLight} />
+                        <Icon name="chevron-right" size={15} color={colors.textLight} />
                       ) : null}
                     </Pressable>
                   </View>
@@ -272,7 +275,7 @@ export default function ImpactScreen() {
                         <Icon
                           name={iconForAction(e.action)}
                           size={15}
-                          color={e.points >= 0 ? COLORS.primary : COLORS.danger}
+                          color={e.points >= 0 ? colors.primary : colors.danger}
                           strokeWidth={1.9}
                         />
                       </View>
@@ -287,7 +290,7 @@ export default function ImpactScreen() {
                           })}
                         </Text>
                       </View>
-                      <Text style={[styles.pointValue, e.points < 0 && { color: COLORS.danger }]}>
+                      <Text style={[styles.pointValue, e.points < 0 && { color: colors.danger }]}>
                         {e.points >= 0 ? '+' : ''}
                         {e.points}
                       </Text>
@@ -316,6 +319,8 @@ function iconForAction(action: string): IconName {
 }
 
 function Summary({ value, unit, label }: { value: string; unit?: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.summaryItem}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
@@ -328,6 +333,8 @@ function Summary({ value, unit, label }: { value: string; unit?: string; label: 
 }
 
 function FieldStat({ value, label }: { value: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1 }}>
       <Text style={styles.fieldValue}>{value}</Text>
@@ -337,6 +344,8 @@ function FieldStat({ value, label }: { value: string; label: string }) {
 }
 
 function MiniStat({ value, label }: { value: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1 }}>
       <Text style={styles.miniValue}>{value}</Text>
@@ -352,36 +361,38 @@ function formatDuration(sec: number) {
   return `${m}m`;
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
 
   summaryGrid: { flexDirection: 'row' },
   summaryItem: { flex: 1 },
-  summaryValue: { fontSize: 22, fontWeight: '700', color: COLORS.text, letterSpacing: -0.3 },
-  summaryUnit: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
-  summaryLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase', marginTop: 2 },
+  summaryValue: { fontSize: 22, fontWeight: '700', color: c.text, letterSpacing: -0.3 },
+  summaryUnit: { ...t.micro, color: c.textMuted },
+  summaryLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase', marginTop: 2 },
 
   activityHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
   activityIcon: {
     width: 38,
     height: 38,
     borderRadius: RADIUS.sm + 2,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  activityIconInvalid: { backgroundColor: COLORS.surfaceSunken },
-  activityTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  activityDate: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  activityIconInvalid: { backgroundColor: c.surfaceSunken },
+  activityTitle: { ...t.h4, color: c.text },
+  activityDate: { ...t.small, color: c.textMuted, marginTop: 1 },
   activityStats: {
     flexDirection: 'row',
     marginTop: SPACING.md - 2,
     paddingTop: SPACING.sm + 2,
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
+    borderTopColor: c.borderLight,
   },
-  miniValue: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  miniLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
+  miniValue: { ...t.h4, color: c.text },
+  miniLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
   activityTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginTop: SPACING.sm + 2 },
 
   forestHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md - 2 },
@@ -389,29 +400,29 @@ const styles = StyleSheet.create({
     width: 50,
     height: 50,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  forestCount: { fontSize: 32, fontWeight: '700', color: COLORS.text, letterSpacing: -0.4 },
-  forestLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
-  forestRule: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
+  forestCount: { fontSize: 32, fontWeight: '700', color: c.text, letterSpacing: -0.4 },
+  forestLabel: { ...t.small, color: c.textMuted },
+  forestRule: { ...t.small, color: c.textSecondary },
 
   grantRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4, padding: SPACING.md - 3 },
   grantIcon: {
     width: 32,
     height: 32,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  grantSpecies: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  grantMeta: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
-  grantCount: { ...TYPOGRAPHY.h4, color: COLORS.primary },
+  grantSpecies: { ...t.bodyMed, color: c.text },
+  grantMeta: { ...t.small, color: c.textMuted, marginTop: 1 },
+  grantCount: { ...t.h4, color: c.primary },
 
-  pointsTotal: { fontSize: 36, fontWeight: '700', color: COLORS.text, letterSpacing: -0.45 },
-  pointsLabel: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  pointsTotal: { fontSize: 36, fontWeight: '700', color: c.text, letterSpacing: -0.45 },
+  pointsLabel: { ...t.small, color: c.textMuted },
 
   recordRow: {
     flexDirection: 'row',
@@ -424,30 +435,32 @@ const styles = StyleSheet.create({
     width: 32,
     height: 32,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.accentLight,
+    backgroundColor: c.accentLight,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  recordLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  recordDetail: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
-  recordValue: { ...TYPOGRAPHY.h4, color: COLORS.accentDark },
-  recordUnit: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+  recordLabel: { ...t.bodyMed, color: c.text },
+  recordDetail: { ...t.small, color: c.textMuted, marginTop: 1 },
+  recordValue: { ...t.h4, color: c.accentDark },
+  recordUnit: { ...t.micro, color: c.textMuted },
 
-  sectionLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  sectionLabel: { ...t.overline, color: c.textMuted },
   fieldStats: { flexDirection: 'row', marginTop: SPACING.sm + 2 },
-  fieldValue: { ...TYPOGRAPHY.h2, color: COLORS.text },
-  fieldLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
+  fieldValue: { ...t.h2, color: c.text },
+  fieldLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
 
   pointRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4, padding: SPACING.sm + 4 },
   pointIcon: {
     width: 30,
     height: 30,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  pointLabel: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  pointDate: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, marginTop: 1 },
-  pointValue: { ...TYPOGRAPHY.h4, color: COLORS.primary },
-});
+  pointLabel: { ...t.bodyMed, color: c.text },
+  pointDate: { ...t.micro, color: c.textMuted, marginTop: 1 },
+  pointValue: { ...t.h4, color: c.primary },
+
+  });
+}

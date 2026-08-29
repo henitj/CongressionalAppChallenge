@@ -16,7 +16,7 @@ import Header from '../components/Header';
 import Icon from '../components/Icon';
 import { Card, Pill } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { Trail } from '../constants/austinTrails';
 import { useApp } from '../context/AppContext';
 import { useWeather } from '../context/WeatherContext';
@@ -28,6 +28,7 @@ import {
   STARTER_QUESTIONS,
 } from '../services/assistant';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 type Message = {
   id: string;
@@ -39,6 +40,8 @@ type Message = {
 };
 
 export default function AssistantScreen() {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { trails, coords } = useApp();
@@ -200,7 +203,7 @@ export default function AssistantScreen() {
           {showStarters ? (
             <View style={styles.intro}>
               <View style={styles.introIcon}>
-                <Icon name="help-circle" size={24} color={COLORS.primary} strokeWidth={1.8} />
+                <Icon name="help-circle" size={24} color={colors.primary} strokeWidth={1.8} />
               </View>
               <Text style={styles.introTitle}>What do you want to know?</Text>
               <Text style={styles.introText}>
@@ -215,7 +218,7 @@ export default function AssistantScreen() {
                 {STARTER_QUESTIONS.map((q) => (
                   <Pressable key={q} onPress={() => send(q)} style={styles.starter}>
                     <Text style={styles.starterText}>{q}</Text>
-                    <Icon name="arrow-right" size={13} color={COLORS.primary} strokeWidth={2.1} />
+                    <Icon name="arrow-right" size={13} color={colors.primary} strokeWidth={2.1} />
                   </Pressable>
                 ))}
               </View>
@@ -232,14 +235,14 @@ export default function AssistantScreen() {
             ) : (
               <View key={m.id} style={styles.assistantRow}>
                 <View style={styles.assistantAvatar}>
-                  <Icon name="leaf" size={14} color={COLORS.primary} strokeWidth={2} />
+                  <Icon name="leaf" size={14} color={colors.primary} strokeWidth={2} />
                 </View>
                 <View style={{ flex: 1, gap: SPACING.sm }}>
                   <View style={styles.assistantBubble}>
                     <Text style={styles.assistantText}>{m.text}</Text>
                     {m.upgrading ? (
                       <View style={styles.upgrading}>
-                        <ActivityIndicator size="small" color={COLORS.textLight} />
+                        <ActivityIndicator size="small" color={colors.textLight} />
                         <Text style={styles.upgradingText}>Checking for more detail…</Text>
                       </View>
                     ) : null}
@@ -259,7 +262,7 @@ export default function AssistantScreen() {
                             <Icon
                               name={t.type === 'bike' ? 'bike' : t.type === 'hike' ? 'boot' : 'route'}
                               size={16}
-                              color={COLORS.primary}
+                              color={colors.primary}
                               strokeWidth={1.9}
                             />
                           </View>
@@ -272,7 +275,7 @@ export default function AssistantScreen() {
                               <Pill label={t.difficulty} tone="neutral" size="sm" />
                             </View>
                           </View>
-                          <Icon name="chevron-right" size={16} color={COLORS.textLight} />
+                          <Icon name="chevron-right" size={16} color={colors.textLight} />
                         </Card>
                       ))}
                     </View>
@@ -285,10 +288,10 @@ export default function AssistantScreen() {
           {thinking ? (
             <View style={styles.assistantRow}>
               <View style={styles.assistantAvatar}>
-                <Icon name="leaf" size={14} color={COLORS.primary} strokeWidth={2} />
+                <Icon name="leaf" size={14} color={colors.primary} strokeWidth={2} />
               </View>
               <View style={styles.assistantBubble}>
-                <ActivityIndicator size="small" color={COLORS.textMuted} />
+                <ActivityIndicator size="small" color={colors.textMuted} />
               </View>
             </View>
           ) : null}
@@ -302,7 +305,7 @@ export default function AssistantScreen() {
             value={input}
             onChangeText={setInput}
             placeholder="Ask about a trail…"
-            placeholderTextColor={COLORS.textLight}
+            placeholderTextColor={colors.textLight}
             style={styles.input}
             multiline
             maxLength={200}
@@ -329,6 +332,8 @@ export default function AssistantScreen() {
 }
 
 function FollowUps({ onPick }: { onPick: (q: string) => void }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const options = [
     'Is it dog friendly?',
     'Is there water?',
@@ -346,8 +351,10 @@ function FollowUps({ onPick }: { onPick: (q: string) => void }) {
   );
 }
 
-const styles = StyleSheet.create({
-  root: { flex: 1, backgroundColor: COLORS.background },
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
+  root: { flex: 1, backgroundColor: c.background },
   scroll: { padding: SPACING.md, paddingBottom: SPACING.lg, gap: SPACING.md },
 
   intro: { alignItems: 'center', paddingVertical: SPACING.lg },
@@ -355,22 +362,22 @@ const styles = StyleSheet.create({
     width: 56,
     height: 56,
     borderRadius: 28,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.md - 2,
   },
-  introTitle: { ...TYPOGRAPHY.h2, color: COLORS.text },
+  introTitle: { ...t.h2, color: c.text },
   introText: {
-    ...TYPOGRAPHY.small,
-    color: COLORS.textMuted,
+    ...t.small,
+    color: c.textMuted,
     textAlign: 'center',
     marginTop: 6,
     maxWidth: 320,
   },
   introHint: {
-    ...TYPOGRAPHY.small,
-    color: COLORS.textLight,
+    ...t.small,
+    color: c.textLight,
     textAlign: 'center',
     marginTop: SPACING.sm,
     maxWidth: 320,
@@ -382,59 +389,59 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'space-between',
     gap: SPACING.sm,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     borderRadius: RADIUS.md,
     paddingVertical: 13,
     paddingHorizontal: SPACING.md - 2,
   },
-  starterText: { ...TYPOGRAPHY.bodyMed, color: COLORS.text, flex: 1 },
+  starterText: { ...t.bodyMed, color: c.text, flex: 1 },
 
   userRow: { alignItems: 'flex-end' },
   userBubble: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     borderRadius: RADIUS.lg,
     borderBottomRightRadius: RADIUS.xs,
     paddingVertical: 11,
     paddingHorizontal: SPACING.md - 2,
     maxWidth: '85%',
   },
-  userText: { ...TYPOGRAPHY.body, color: '#fff' },
+  userText: { ...t.body, color: '#fff' },
 
   assistantRow: { flexDirection: 'row', gap: SPACING.sm, alignItems: 'flex-start' },
   assistantAvatar: {
     width: 28,
     height: 28,
     borderRadius: 14,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
     marginTop: 2,
   },
   assistantBubble: {
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     borderRadius: RADIUS.lg,
     borderTopLeftRadius: RADIUS.xs,
     padding: SPACING.md - 2,
     flexShrink: 1,
   },
-  assistantText: { ...TYPOGRAPHY.body, color: COLORS.text },
+  assistantText: { ...t.body, color: c.text },
   upgrading: { flexDirection: 'row', alignItems: 'center', gap: 6, marginTop: SPACING.sm },
-  upgradingText: { ...TYPOGRAPHY.micro, color: COLORS.textLight },
+  upgradingText: { ...t.micro, color: c.textLight },
 
   trailCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2 },
   trailIcon: {
     width: 34,
     height: 34,
     borderRadius: RADIUS.sm + 2,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  trailName: { ...TYPOGRAPHY.h4, color: COLORS.text },
+  trailName: { ...t.h4, color: c.text },
   trailTags: { flexDirection: 'row', gap: 5, marginTop: 4 },
 
   followUps: { flexDirection: 'row', flexWrap: 'wrap', gap: 6, marginLeft: 36 },
@@ -442,11 +449,11 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
   },
-  followUpText: { ...TYPOGRAPHY.small, color: COLORS.primary, fontWeight: '500' },
+  followUpText: { ...t.small, color: c.primary, fontWeight: '500' },
 
   composer: {
     flexDirection: 'row',
@@ -455,36 +462,38 @@ const styles = StyleSheet.create({
     paddingHorizontal: SPACING.md,
     paddingTop: SPACING.sm,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    backgroundColor: COLORS.surface,
+    borderTopColor: c.border,
+    backgroundColor: c.surface,
   },
   input: {
     flex: 1,
     maxHeight: 110,
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     paddingHorizontal: SPACING.md - 2,
     paddingTop: 11,
     paddingBottom: 11,
-    ...TYPOGRAPHY.body,
-    color: COLORS.text,
+    ...t.body,
+    color: c.text,
   },
   sendBtn: {
     width: 42,
     height: 42,
     borderRadius: 21,
-    backgroundColor: COLORS.primary,
+    backgroundColor: c.primary,
     alignItems: 'center',
     justifyContent: 'center',
   },
   disclaimer: {
-    ...TYPOGRAPHY.micro,
-    color: COLORS.textLight,
+    ...t.micro,
+    color: c.textLight,
     textAlign: 'center',
     paddingHorizontal: SPACING.lg,
     paddingVertical: SPACING.sm,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
   },
-});
+
+  });
+}

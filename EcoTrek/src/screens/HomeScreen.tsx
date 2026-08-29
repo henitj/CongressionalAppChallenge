@@ -1,18 +1,19 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
 import Icon from '../components/Icon';
 import ConditionsCard from '../components/ConditionsCard';
-import { Screen, Card, Button, Segmented } from '../components/ui';
-import { ColorPalette, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { Screen, Card, Button } from '../components/ui';
+import { ColorPalette, SPACING } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useActivity } from '../context/ActivityContext';
+import { useStreak } from '../context/StreakContext';
 import { useProfile } from '../context/ProfileContext';
 import { useSettings } from '../constants/SettingsContext';
+import { weekStart } from '../services/dates';
 import { firstNameOf } from '../services/displayName';
-import { useStartActivity } from '../hooks/useStartActivity';
 import { useTheme } from '../context/ThemeContext';
 
 export default function HomeScreen() {
@@ -20,10 +21,18 @@ export default function HomeScreen() {
   const { user } = useAuth();
   const { profile } = useProfile();
   const { history } = useActivity();
+  const { currentStreak } = useStreak();
   const { formatDistance, formatDistanceUnit } = useSettings();
-  const { colors, fontScale } = useTheme();
+  const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { mode, setMode, start, starting } = useStartActivity('hike');
+
+  const week = useMemo(() => {
+    const since = weekStart().getTime();
+    const thisWeek = history.filter((a) => a.valid && a.startedAt >= since);
+    const miles = thisWeek.reduce((n, a) => n + a.miles, 0);
+    const trees = thisWeek.reduce((n, a) => n + (a.trees ?? 0), 0);
+    return { miles, trees, count: thisWeek.length };
+  }, [history]);
 
   const firstName = firstNameOf(profile.firstName, user?.name);
   const greeting = useMemo(() => {
@@ -44,36 +53,30 @@ export default function HomeScreen() {
           month: 'short',
           day: 'numeric',
         })}`}
-        actions={[{ icon: 'sliders', onPress: () => navigation.navigate('Settings'), label: 'Settings' }]}
       />
 
       <View style={styles.body}>
         <ConditionsCard />
 
-        <Segmented
-          options={[
-            { value: 'hike', label: 'Walk', icon: 'boot' },
-            { value: 'bike', label: 'Bike', icon: 'bike' },
-          ]}
-          value={mode}
-          onChange={(v) => setMode(v)}
-        />
-
-        <Pressable
-          onPress={start}
-          disabled={starting}
-          accessibilityRole="button"
-          accessibilityLabel={mode === 'bike' ? 'Start ride' : 'Start walk'}
-          style={({ pressed }) => [styles.startBtn, { backgroundColor: colors.primary }, pressed && { opacity: 0.88 }]}
-        >
-          <Icon name="play" size={28} color="#fff" strokeWidth={2.2} />
-          <Text style={[styles.startLabel, { fontSize: Math.round(22 * fontScale) }]}>
-            {starting ? 'Starting…' : mode === 'bike' ? 'Start ride' : 'Start walk'}
-          </Text>
-        </Pressable>
+        {week.count > 0 ? (
+          <View>
+            <Text style={[styles.section, typography.h3, { color: colors.text }]}>This week</Text>
+            <Card tone="sunken">
+              <View style={styles.weekRow}>
+                <WeekStat
+                  value={formatDistance(week.miles)}
+                  unit={formatDistanceUnit()}
+                  label="Distance"
+                />
+                <WeekStat value={String(week.trees)} label="Trees" />
+                <WeekStat value={String(currentStreak)} label="Wk streak" />
+              </View>
+            </Card>
+          </View>
+        ) : null}
 
         <View>
-          <Text style={styles.section}>Your last walk</Text>
+          <Text style={[styles.section, typography.h3, { color: colors.text }]}>Your last walk</Text>
           {last ? (
             <Card onPress={() => navigation.navigate('ActivityDetail', { activityId: last.id })}>
               <View style={styles.lastRow}>
@@ -86,10 +89,10 @@ export default function HomeScreen() {
                   />
                 </View>
                 <View style={{ flex: 1 }}>
-                  <Text style={styles.lastTitle} numberOfLines={1}>
+                  <Text style={[styles.lastTitle, typography.h4]} numberOfLines={1}>
                     {last.trailName ?? (last.type === 'bike' ? 'Bike ride' : 'Walk')}
                   </Text>
-                  <Text style={styles.lastMeta}>
+                  <Text style={[styles.lastMeta, typography.small]}>
                     {new Date(last.startedAt).toLocaleDateString(undefined, {
                       weekday: 'long',
                       month: 'short',
@@ -106,8 +109,10 @@ export default function HomeScreen() {
             </Card>
           ) : (
             <Card tone="sunken">
-              <Text style={styles.emptyTitle}>You have not walked yet</Text>
-              <Text style={styles.emptyText}>Tap Start walk when you are ready. That is all.</Text>
+              <Text style={[styles.emptyTitle, typography.h4]}>You have not walked yet</Text>
+              <Text style={[styles.emptyText, typography.body]}>
+                Tap the Start tab when you are ready — that is all there is to it.
+              </Text>
             </Card>
           )}
           <Button
@@ -122,33 +127,43 @@ export default function HomeScreen() {
   );
 }
 
+// Colors and type come from the theme at render time; this holds geometry.
 function makeStyles(c: ColorPalette) {
   return StyleSheet.create({
-  body: { paddingHorizontal: SPACING.md, gap: SPACING.lg },
-  startBtn: {
-    backgroundColor: c.primary,
-    borderRadius: RADIUS.xl,
-    minHeight: 88,
-    paddingVertical: 22,
-    alignItems: 'center',
-    justifyContent: 'center',
-    flexDirection: 'row',
-    gap: 12,
-  },
-  startLabel: { color: '#fff', fontWeight: '700', letterSpacing: -0.2 },
-  section: { ...TYPOGRAPHY.h3, color: c.text, marginBottom: SPACING.sm },
-  lastRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
-  lastIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: c.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  lastTitle: { ...TYPOGRAPHY.h4, color: c.text },
-  lastMeta: { ...TYPOGRAPHY.small, color: c.textMuted, marginTop: 3 },
-  emptyTitle: { ...TYPOGRAPHY.h4, color: c.text },
-  emptyText: { ...TYPOGRAPHY.body, color: c.textMuted, marginTop: 4 },
+    body: { paddingHorizontal: SPACING.md, gap: SPACING.lg },
+    section: { marginBottom: SPACING.sm },
+    lastRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
+    lastIcon: {
+      width: 48,
+      height: 48,
+      borderRadius: 24,
+      backgroundColor: c.primarySurface,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    lastTitle: { color: c.text },
+    lastMeta: { color: c.textMuted, marginTop: 3 },
+    emptyTitle: { color: c.text },
+    emptyText: { color: c.textMuted, marginTop: 4 },
+
+    weekRow: { flexDirection: 'row' },
+    weekStat: { flex: 1, alignItems: 'center', gap: 2 },
+    weekValue: { color: c.text },
+    weekUnit: { color: c.textMuted },
+    weekLabel: { color: c.textMuted, marginTop: 2 },
   });
+}
+
+function WeekStat({ value, unit, label }: { value: string; unit?: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors), [colors]);
+  return (
+    <View style={styles.weekStat}>
+      <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 3 }}>
+        <Text style={[styles.weekValue, typography.h3]}>{value}</Text>
+        {unit ? <Text style={[styles.weekUnit, typography.small]}>{unit}</Text> : null}
+      </View>
+      <Text style={[styles.weekLabel, typography.overline]}>{label}</Text>
+    </View>
+  );
 }

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -6,8 +6,8 @@ import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, SectionHeader, Segmented, Divider, Banner, Button } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
-import { useTheme } from '../context/ThemeContext';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
+import { useTheme, Typography } from '../context/ThemeContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useAuth } from '../context/AuthContext';
 import { useProfile } from '../context/ProfileContext';
@@ -46,7 +46,8 @@ export default function SettingsScreen() {
   const notif = useNotifications();
 
   const [busy, setBusy] = useState(false);
-  const { colors } = useTheme();
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
   // Setup problems are shown during development only. A real user cannot act
   // on "the Android client ID is missing", but the team needs to see it before
@@ -214,7 +215,7 @@ export default function SettingsScreen() {
                 onChangeText={setEmName}
                 onEndEditing={() => setProfile({ emergencyName: emName.trim(), emergencyPhone: emPhone.trim() })}
                 placeholder="Alex"
-                placeholderTextColor={COLORS.textLight}
+                placeholderTextColor={colors.textLight}
                 style={styles.input}
                 accessibilityLabel="Emergency contact name"
               />
@@ -226,7 +227,7 @@ export default function SettingsScreen() {
                 onChangeText={setEmPhone}
                 onEndEditing={() => setProfile({ emergencyName: emName.trim(), emergencyPhone: emPhone.trim() })}
                 placeholder="5125551234"
-                placeholderTextColor={COLORS.textLight}
+                placeholderTextColor={colors.textLight}
                 keyboardType="phone-pad"
                 style={styles.input}
                 accessibilityLabel="Emergency contact phone"
@@ -394,8 +395,8 @@ export default function SettingsScreen() {
               disabled={busy}
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
             >
-              <View style={[styles.rowIcon, { backgroundColor: COLORS.warningLight }]}>
-                <Icon name="refresh" size={16} color={COLORS.warning} strokeWidth={1.9} />
+              <View style={[styles.rowIcon, { backgroundColor: colors.warningLight }]}>
+                <Icon name="refresh" size={16} color={colors.warning} strokeWidth={1.9} />
               </View>
               <View style={{ flex: 1 }}>
                 <Text style={styles.rowTitle}>Erase my data</Text>
@@ -439,10 +440,12 @@ function ToggleRow({
   onChange: (v: boolean) => void;
   disabled?: boolean;
 }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={[styles.row, disabled && { opacity: 0.5 }]}>
       <View style={styles.rowIcon}>
-        <Icon name={icon} size={16} color={COLORS.primary} strokeWidth={1.9} />
+        <Icon name={icon} size={16} color={colors.primary} strokeWidth={1.9} />
       </View>
       <View style={{ flex: 1 }}>
         <Text style={styles.rowTitle}>{title}</Text>
@@ -452,7 +455,7 @@ function ToggleRow({
         value={value}
         onValueChange={onChange}
         disabled={disabled}
-        trackColor={{ false: COLORS.border, true: COLORS.primaryLight }}
+        trackColor={{ false: colors.border, true: colors.primaryLight }}
         thumbColor="#fff"
       />
     </View>
@@ -460,18 +463,22 @@ function ToggleRow({
 }
 
 function LinkRow({ icon, title, onPress }: { icon: IconName; title: string; onPress: () => void }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}>
       <View style={styles.rowIcon}>
-        <Icon name={icon} size={16} color={COLORS.primary} strokeWidth={1.9} />
+        <Icon name={icon} size={16} color={colors.primary} strokeWidth={1.9} />
       </View>
       <Text style={[styles.rowTitle, { flex: 1 }]}>{title}</Text>
-      <Icon name="chevron-right" size={16} color={COLORS.textLight} />
+      <Icon name="chevron-right" size={16} color={colors.textLight} />
     </Pressable>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
 
   accountRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
@@ -479,14 +486,14 @@ const styles = StyleSheet.create({
     width: 40,
     height: 40,
     borderRadius: RADIUS.sm + 2,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  accountName: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  accountEmail: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  accountName: { ...t.h4, color: c.text },
+  accountEmail: { ...t.small, color: c.textMuted, marginTop: 1 },
 
-  settingLabel: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+  settingLabel: { ...t.overline, color: c.textMuted },
 
   row: {
     flexDirection: 'row',
@@ -499,26 +506,28 @@ const styles = StyleSheet.create({
     width: 30,
     height: 30,
     borderRadius: RADIUS.sm,
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  rowTitle: { ...TYPOGRAPHY.bodyMed, color: COLORS.text },
-  rowSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
-  rowValue: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
-  rowAction: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
+  rowTitle: { ...t.bodyMed, color: c.text },
+  rowSub: { ...t.small, color: c.textMuted, marginTop: 1 },
+  rowValue: { ...t.small, color: c.textMuted },
+  rowAction: { ...t.smallMed, color: c.primary },
 
-  note: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: SPACING.sm },
+  note: { ...t.small, color: c.textMuted, marginTop: SPACING.sm },
   pad: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.md - 2 },
   input: {
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     paddingHorizontal: SPACING.md,
     paddingVertical: 14,
     minHeight: 52,
-    ...TYPOGRAPHY.body,
-    color: COLORS.text,
+    ...t.body,
+    color: c.text,
   },
-});
+
+  });
+}

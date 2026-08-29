@@ -1,11 +1,12 @@
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
 import Icon from './Icon';
 import { Sheet, Button } from './ui';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useLogbook } from '../context/LogbookContext';
 import { useApp } from '../context/AppContext';
 import { detectCurrentTrail } from '../services/trailDetection';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 const PRESETS = [3, 5, 10, 25];
 
@@ -23,6 +24,8 @@ export default function CleanupSheet({
   visible: boolean;
   onClose: () => void;
 }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const { addCleanup } = useLogbook();
   const { coords, trails } = useApp();
 
@@ -78,7 +81,7 @@ export default function CleanupSheet({
         </View>
 
         <View style={styles.note}>
-          <Icon name="info" size={15} color={COLORS.textMuted} strokeWidth={1.9} />
+          <Icon name="info" size={15} color={colors.textMuted} strokeWidth={1.9} />
           <Text style={styles.noteText}>
             On your honour, like the weekly challenges. Wash your hands, and never pick up anything
             sharp or a needle — report those to the park instead.
@@ -98,31 +101,35 @@ export default function CleanupSheet({
   );
 }
 
-const styles = StyleSheet.create({
-  label: { ...TYPOGRAPHY.overline, color: COLORS.textMuted },
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
+  label: { ...t.overline, color: c.textMuted },
   presets: { flexDirection: 'row', gap: 8 },
   chip: {
     flex: 1,
     paddingVertical: 12,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     alignItems: 'center',
   },
-  chipOn: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { ...TYPOGRAPHY.h4, color: COLORS.textSecondary },
+  chipOn: { backgroundColor: c.primary, borderColor: c.primary },
+  chipText: { ...t.h4, color: c.textSecondary },
   chipTextOn: { color: '#fff' },
   input: {
-    backgroundColor: COLORS.surfaceSunken,
+    backgroundColor: c.surfaceSunken,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     paddingVertical: 12,
     textAlign: 'center',
-    ...TYPOGRAPHY.h3,
-    color: COLORS.text,
+    ...t.h3,
+    color: c.text,
   },
   note: { flexDirection: 'row', gap: SPACING.sm, alignItems: 'flex-start' },
-  noteText: { ...TYPOGRAPHY.small, color: COLORS.textMuted, flex: 1 },
-});
+  noteText: { ...t.small, color: c.textMuted, flex: 1 },
+
+  });
+}

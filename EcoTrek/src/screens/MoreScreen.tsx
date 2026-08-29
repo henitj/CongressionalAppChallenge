@@ -5,8 +5,8 @@ import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, Divider } from '../components/ui';
-import { ColorPalette, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
-import { useTheme } from '../context/ThemeContext';
+import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
+import { Typography, useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 
 type Row = { icon: IconName; label: string; hint: string; to: string; hideInSimple?: boolean };
@@ -24,6 +24,7 @@ const SECTIONS: Section[] = [
     title: 'You',
     rows: [
       { icon: 'user', label: 'Profile', hint: 'Your photo, level and badges', to: 'Profile' },
+      { icon: 'tree', label: 'Impact', hint: 'Everything you have logged', to: 'Impact' },
       { icon: 'clock', label: 'My walks', hint: 'Every walk you have saved', to: 'History' },
     ],
   },
@@ -46,9 +47,9 @@ const SECTIONS: Section[] = [
 
 export default function MoreScreen() {
   const navigation = useNavigation<any>();
-  const { simpleMode, colors } = useTheme();
+  const { simpleMode, colors, typography } = useTheme();
   const { user } = useAuth();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
   return (
     <Screen>
@@ -90,12 +91,12 @@ export default function MoreScreen() {
   );
 }
 
-function makeStyles(c: ColorPalette) {
+function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
     body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
     section: { gap: SPACING.sm - 2 },
     sectionTitle: {
-      ...TYPOGRAPHY.overline,
+      ...t.overline,
       marginLeft: 4,
       textTransform: 'uppercase',
       letterSpacing: 0.6,
@@ -116,7 +117,7 @@ function makeStyles(c: ColorPalette) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    label: { ...TYPOGRAPHY.h4, color: c.text },
-    hint: { ...TYPOGRAPHY.small, color: c.textMuted, marginTop: 2 },
+    label: { ...t.h4, color: c.text },
+    hint: { ...t.small, color: c.textMuted, marginTop: 2 },
   });
 }

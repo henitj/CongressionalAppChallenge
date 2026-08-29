@@ -18,7 +18,7 @@ import { NavigationContext } from '@react-navigation/native';
 import Icon, { IconName } from './Icon';
 import { useResponsive } from '../hooks/useResponsive';
 import { useTheme } from '../context/ThemeContext';
-import { AVATAR_COLORS, COLORS, RADIUS, SHADOWS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { AVATAR_COLORS, RADIUS, SHADOWS, SPACING } from '../constants/theme';
 
 /* ════════════════════════════════════════════════════════════════════════
    Screen — consistent page shell
@@ -135,13 +135,13 @@ export function SectionHeader({
   onAction?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { colors } = useTheme();
+  const { colors, typography } = useTheme();
   return (
     <View style={[ui.sectionHeader, style]}>
-      <Text style={[ui.sectionTitle, { color: colors.text }]}>{title}</Text>
+      <Text style={[ui.sectionTitle, typography.h3, { color: colors.text }]}>{title}</Text>
       {action ? (
         <Pressable onPress={onAction} hitSlop={8} style={ui.sectionAction}>
-          <Text style={[ui.sectionActionText, { color: colors.primary }]}>{action}</Text>
+          <Text style={[ui.sectionActionText, typography.smallMed, { color: colors.primary }]}>{action}</Text>
           <Icon name="chevron-right" size={14} color={colors.primary} strokeWidth={2.2} />
         </Pressable>
       ) : null}
@@ -178,7 +178,7 @@ export function Button({
   style?: StyleProp<ViewStyle>;
   tone?: string;
 }) {
-  const { colors } = useTheme();
+  const { colors, fontScale } = useTheme();
   const isDisabled = disabled || loading;
 
   const bg =
@@ -206,6 +206,8 @@ export function Button({
       ? { paddingVertical: 18, paddingHorizontal: 24, minHeight: 58 }
       : { paddingVertical: 15, paddingHorizontal: 20, minHeight: 52 };
 
+  const labelSize = size === 'sm' ? 15 : size === 'lg' ? 18 : 16;
+
   return (
     <Pressable
       onPress={onPress}
@@ -214,7 +216,7 @@ export function Button({
         ui.btn,
         pad,
         { backgroundColor: bg },
-        variant === 'secondary' && ui.btnBordered,
+        variant === 'secondary' && [ui.btnBordered, { borderColor: colors.borderStrong }],
         variant !== 'ghost' && variant !== 'secondary' && SHADOWS.sm,
         full && { alignSelf: 'stretch' },
         isDisabled && ui.btnDisabled,
@@ -228,12 +230,7 @@ export function Button({
         <>
           {icon ? <Icon name={icon} size={size === 'sm' ? 15 : 17} color={fg} strokeWidth={2} /> : null}
           <Text
-            style={[
-              ui.btnLabel,
-              { color: fg },
-              size === 'sm' && { fontSize: 15 },
-              size === 'lg' && { fontSize: 18 },
-            ]}
+            style={[ui.btnLabel, { color: fg, fontSize: Math.round(labelSize * fontScale) }]}
           >
             {label}
           </Text>
@@ -263,7 +260,7 @@ export function Pill({
   size?: 'sm' | 'md';
   style?: StyleProp<ViewStyle>;
 }) {
-  const { colors } = useTheme();
+  const { colors, fontScale } = useTheme();
   const map: Record<string, { bg: string; fg: string }> = {
     neutral: { bg: colors.surfaceSunken, fg: colors.textSecondary },
     primary: { bg: colors.primarySurface, fg: colors.primary },
@@ -285,7 +282,9 @@ export function Pill({
       ]}
     >
       {icon ? <Icon name={icon} size={size === 'sm' ? 11 : 13} color={c.fg} strokeWidth={2.2} /> : null}
-      <Text style={[ui.pillText, { color: c.fg }, size === 'sm' && { fontSize: 10.5 }]}>
+      <Text
+        style={[ui.pillText, { color: c.fg, fontSize: Math.round((size === 'sm' ? 10.5 : 11.5) * fontScale) }]}
+      >
         {label}
       </Text>
     </View>
@@ -335,7 +334,7 @@ export function Segmented<T extends string>({
   onChange: (v: T) => void;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { colors } = useTheme();
+  const { colors, fontScale } = useTheme();
   return (
     <View style={[ui.segmented, { backgroundColor: colors.surfaceSunken }, style]}>
       {options.map((o) => {
@@ -356,7 +355,9 @@ export function Segmented<T extends string>({
                 strokeWidth={2}
               />
             ) : null}
-            <Text style={[ui.segmentText, { color: active ? colors.text : colors.textMuted }]}>
+            <Text
+              style={[ui.segmentText, { color: active ? colors.text : colors.textMuted, fontSize: Math.round(13 * fontScale) }]}
+            >
               {o.label}
             </Text>
           </Pressable>
@@ -383,14 +384,16 @@ export function EmptyState({
   action?: string;
   onAction?: () => void;
 }) {
-  const { colors } = useTheme();
+  const { colors, typography } = useTheme();
   return (
     <View style={ui.empty}>
       <View style={[ui.emptyIcon, { backgroundColor: colors.surfaceSunken }]}>
         <Icon name={icon} size={24} color={colors.textLight} strokeWidth={1.7} />
       </View>
-      <Text style={[ui.emptyTitle, { color: colors.textSecondary }]}>{title}</Text>
-      {message ? <Text style={[ui.emptyMessage, { color: colors.textMuted }]}>{message}</Text> : null}
+      <Text style={[ui.emptyTitle, typography.h4, { color: colors.textSecondary }]}>{title}</Text>
+      {message ? (
+        <Text style={[ui.emptyMessage, typography.small, { color: colors.textMuted }]}>{message}</Text>
+      ) : null}
       {action ? (
         <Button label={action} onPress={onAction} variant="secondary" size="sm" style={{ marginTop: SPACING.md }} />
       ) : null}
@@ -489,7 +492,7 @@ export function Sheet({
   subtitle?: string;
   children: React.ReactNode;
 }) {
-  const { colors, reduceMotion } = useTheme();
+  const { colors, typography, reduceMotion } = useTheme();
   return (
     <Modal visible={visible} animationType={reduceMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
       {/* Sheets contain text inputs (club codes, names), so they have to lift
@@ -503,10 +506,17 @@ export function Sheet({
           <View style={[ui.sheetGrabber, { backgroundColor: colors.borderStrong }]} />
           <View style={ui.sheetHeader}>
             <View style={{ flex: 1 }}>
-              <Text style={[ui.sheetTitle, { color: colors.text }]}>{title}</Text>
-              {subtitle ? <Text style={[ui.sheetSubtitle, { color: colors.textMuted }]}>{subtitle}</Text> : null}
+              <Text style={[ui.sheetTitle, typography.h2, { color: colors.text }]}>{title}</Text>
+              {subtitle ? (
+                <Text style={[ui.sheetSubtitle, typography.small, { color: colors.textMuted }]}>{subtitle}</Text>
+              ) : null}
             </View>
-            <Pressable onPress={onClose} hitSlop={10} style={[ui.sheetClose, { backgroundColor: colors.surfaceSunken }]} accessibilityLabel="Close">
+            <Pressable
+              onPress={onClose}
+              hitSlop={10}
+              style={[ui.sheetClose, { backgroundColor: colors.surfaceSunken }]}
+              accessibilityLabel="Close"
+            >
               <Icon name="x" size={18} color={colors.textSecondary} strokeWidth={2.1} />
             </Pressable>
           </View>
@@ -545,7 +555,7 @@ export function Banner({
   right?: React.ReactNode;
   style?: StyleProp<ViewStyle>;
 }) {
-  const { colors } = useTheme();
+  const { colors, typography } = useTheme();
   const map = {
     info: { bg: colors.infoLight, fg: colors.info, border: colors.infoBorder },
     warning: { bg: colors.warningLight, fg: colors.warning, border: colors.warningBorder },
@@ -562,8 +572,10 @@ export function Banner({
         </View>
       ) : null}
       <View style={{ flex: 1 }}>
-        <Text style={[ui.bannerTitle, { color: map.fg }]}>{title}</Text>
-        {message ? <Text style={[ui.bannerMessage, { color: colors.textSecondary }]}>{message}</Text> : null}
+        <Text style={[ui.bannerTitle, typography.h4, { color: map.fg }]}>{title}</Text>
+        {message ? (
+          <Text style={[ui.bannerMessage, typography.small, { color: colors.textSecondary }]}>{message}</Text>
+        ) : null}
       </View>
       {right}
       {onPress ? <Icon name="chevron-right" size={16} color={map.fg} /> : null}
@@ -595,7 +607,7 @@ export function Metric({
   value,
   unit,
   label,
-  color = COLORS.text,
+  color,
   align = 'flex-start',
   size = 'md',
 }: {
@@ -606,38 +618,42 @@ export function Metric({
   align?: 'flex-start' | 'center';
   size?: 'md' | 'lg';
 }) {
+  const { colors, typography } = useTheme();
+  const c = color ?? colors.text;
   return (
     <View style={{ alignItems: align }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 4 }}>
-        <Text style={[size === 'lg' ? TYPOGRAPHY.metricLg : TYPOGRAPHY.metric, { color }]}>
-          {value}
-        </Text>
-        {unit ? <Text style={[TYPOGRAPHY.h4, { color, opacity: 0.55 }]}>{unit}</Text> : null}
+        <Text style={[size === 'lg' ? typography.metricLg : typography.metric, { color: c }]}>{value}</Text>
+        {unit ? <Text style={[typography.h4, { color: c, opacity: 0.55 }]}>{unit}</Text> : null}
       </View>
       {label ? (
-        <Text style={[TYPOGRAPHY.overline, { color: COLORS.textMuted, marginTop: 2 }]}>{label}</Text>
+        <Text style={[typography.overline, { color: colors.textMuted, marginTop: 2 }]}>{label}</Text>
       ) : null}
     </View>
   );
 }
 
+/*
+   Geometry-only styles. Every color in this file is applied by the component
+   (which reads the active palette from the theme), so the static object
+   below must stay color-free — that is what keeps dark and high-contrast
+   from half-working.
+*/
 const ui = StyleSheet.create({
-  screen: { flex: 1, backgroundColor: COLORS.background },
+  screen: { flex: 1 },
   scrollContent: { paddingBottom: 110 },
 
   pressed: { opacity: 0.72 },
 
   card: {
-    backgroundColor: COLORS.surface,
     borderRadius: RADIUS.lg,
     borderWidth: 1,
-    borderColor: COLORS.border,
     ...SHADOWS.sm,
   },
   cardPad: { padding: SPACING.md },
-  cardSunken: { backgroundColor: COLORS.surfaceSunken, borderColor: COLORS.borderLight, shadowOpacity: 0 },
-  cardDark: { backgroundColor: COLORS.primaryDark, borderColor: 'rgba(255,255,255,0.08)' },
-  cardAccent: { backgroundColor: COLORS.accentLight, borderColor: COLORS.warningBorder, shadowOpacity: 0 },
+  cardSunken: { shadowOpacity: 0 },
+  cardDark: { borderColor: 'rgba(255,255,255,0.08)' },
+  cardAccent: { shadowOpacity: 0 },
 
   sectionHeader: {
     flexDirection: 'row',
@@ -645,9 +661,9 @@ const ui = StyleSheet.create({
     justifyContent: 'space-between',
     marginBottom: SPACING.sm + 2,
   },
-  sectionTitle: { ...TYPOGRAPHY.h3, color: COLORS.text },
+  sectionTitle: {},
   sectionAction: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  sectionActionText: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
+  sectionActionText: {},
 
   btn: {
     flexDirection: 'row',
@@ -656,7 +672,7 @@ const ui = StyleSheet.create({
     gap: 7,
     borderRadius: RADIUS.md,
   },
-  btnBordered: { borderWidth: 1, borderColor: COLORS.borderStrong },
+  btnBordered: { borderWidth: 1 },
   btnDisabled: { opacity: 0.45 },
   btnLabel: { fontSize: 16, fontWeight: '700', letterSpacing: -0.1 },
 
@@ -671,10 +687,8 @@ const ui = StyleSheet.create({
   },
   pillText: { fontSize: 11.5, fontWeight: '600', letterSpacing: 0.1 },
 
-
   segmented: {
     flexDirection: 'row',
-    backgroundColor: COLORS.surfaceSunken,
     borderRadius: RADIUS.md,
     padding: 3.5,
     gap: 3,
@@ -689,33 +703,24 @@ const ui = StyleSheet.create({
     minHeight: 48,
     borderRadius: RADIUS.sm + 1,
   },
-  segmentActive: { backgroundColor: COLORS.surface, ...SHADOWS.sm },
-  segmentText: { fontSize: 13, fontWeight: '600', color: COLORS.textMuted },
-  segmentTextActive: { color: COLORS.text },
-
+  segmentActive: { ...SHADOWS.sm },
+  segmentText: { fontSize: 13, fontWeight: '600' },
+  segmentTextActive: {},
 
   empty: { alignItems: 'center', paddingVertical: SPACING.xl, paddingHorizontal: SPACING.lg },
   emptyIcon: {
     width: 52,
     height: 52,
     borderRadius: 26,
-    backgroundColor: COLORS.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
     marginBottom: SPACING.md - 4,
   },
-  emptyTitle: { ...TYPOGRAPHY.h4, color: COLORS.textSecondary, textAlign: 'center' },
-  emptyMessage: {
-    ...TYPOGRAPHY.small,
-    color: COLORS.textMuted,
-    textAlign: 'center',
-    marginTop: 4,
-    maxWidth: 280,
-  },
+  emptyTitle: { textAlign: 'center' },
+  emptyMessage: { textAlign: 'center', marginTop: 4, maxWidth: 280 },
 
-  sheetBackdrop: { flex: 1, backgroundColor: COLORS.overlay, justifyContent: 'flex-end' },
+  sheetBackdrop: { flex: 1, justifyContent: 'flex-end' },
   sheet: {
-    backgroundColor: COLORS.surface,
     borderTopLeftRadius: RADIUS.xxl,
     borderTopRightRadius: RADIUS.xxl,
     paddingHorizontal: SPACING.md + 4,
@@ -726,18 +731,16 @@ const ui = StyleSheet.create({
     width: 38,
     height: 4,
     borderRadius: 2,
-    backgroundColor: COLORS.borderStrong,
     alignSelf: 'center',
     marginBottom: SPACING.md,
   },
   sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: SPACING.md },
-  sheetTitle: { ...TYPOGRAPHY.h2, color: COLORS.text },
-  sheetSubtitle: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 2 },
+  sheetTitle: {},
+  sheetSubtitle: { marginTop: 2 },
   sheetClose: {
     width: 30,
     height: 30,
     borderRadius: 15,
-    backgroundColor: COLORS.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -750,10 +753,10 @@ const ui = StyleSheet.create({
     borderRadius: RADIUS.md,
     borderWidth: 1,
   },
-  bannerTitle: { ...TYPOGRAPHY.h4 },
-  bannerMessage: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, marginTop: 2 },
+  bannerTitle: {},
+  bannerMessage: { marginTop: 2 },
 
-  divider: { height: 1, backgroundColor: COLORS.borderLight },
+  divider: { height: 1 },
 });
 
 export { ui as uiStyles };

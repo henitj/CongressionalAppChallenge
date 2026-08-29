@@ -6,13 +6,14 @@ import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, Pill, EmptyState, Sheet, Button, Banner, Divider } from '../components/ui';
 
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { Trail } from '../constants/austinTrails';
 import { useApp } from '../context/AppContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useActivity } from '../context/ActivityContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useResetOnLeave } from '../hooks/useResetOnLeave';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 type SortKey = 'nearest' | 'shortest' | 'longest' | 'easiest' | 'rating';
 
@@ -37,6 +38,8 @@ const SORTS: { value: SortKey; label: string }[] = [
 const DIFFICULTY_ORDER = { Easy: 0, Moderate: 1, Hard: 2 } as const;
 
 export default function TrailsScreen() {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { trails, trailsLoading, refreshTrails, permission, requestLocation, usingFallbackLocation } =
@@ -129,7 +132,7 @@ export default function TrailsScreen() {
   return (
     <Screen
       refreshControl={
-        <RefreshControl refreshing={trailsLoading} onRefresh={refreshTrails} tintColor={COLORS.textMuted} />
+        <RefreshControl refreshing={trailsLoading} onRefresh={refreshTrails} tintColor={colors.textMuted} />
       }
     >
       <Header
@@ -146,36 +149,36 @@ export default function TrailsScreen() {
           style={({ pressed }) => [styles.askBar, pressed && { opacity: 0.85 }]}
         >
           <View style={styles.askIcon}>
-            <Icon name="help-circle" size={17} color={COLORS.primary} strokeWidth={2} />
+            <Icon name="help-circle" size={17} color={colors.primary} strokeWidth={2} />
           </View>
           <View style={{ flex: 1 }}>
             <Text style={styles.askTitle}>Ask about a trail</Text>
             <Text style={styles.askSub}>Dogs, water, difficulty, what to expect today</Text>
           </View>
-          <Icon name="chevron-right" size={17} color={COLORS.textLight} />
+          <Icon name="chevron-right" size={17} color={colors.textLight} />
         </Pressable>
 
         {/* Search */}
         <View style={styles.searchRow}>
           <View style={styles.search}>
-            <Icon name="search" size={16} color={COLORS.textLight} strokeWidth={2} />
+            <Icon name="search" size={16} color={colors.textLight} strokeWidth={2} />
             <TextInput
               value={query}
               onChangeText={setQuery}
               placeholder="Search trails"
-              placeholderTextColor={COLORS.textLight}
+              placeholderTextColor={colors.textLight}
               style={styles.searchInput}
               autoCorrect={false}
               returnKeyType="search"
             />
             {query.length > 0 ? (
               <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                <Icon name="x" size={15} color={COLORS.textLight} strokeWidth={2.2} />
+                <Icon name="x" size={15} color={colors.textLight} strokeWidth={2.2} />
               </Pressable>
             ) : null}
           </View>
           <Pressable onPress={() => setShowSort(true)} style={styles.sortBtn}>
-            <Icon name="filter" size={16} color={COLORS.textSecondary} strokeWidth={1.9} />
+            <Icon name="filter" size={16} color={colors.textSecondary} strokeWidth={1.9} />
           </Pressable>
         </View>
 
@@ -206,7 +209,7 @@ export default function TrailsScreen() {
                 <Icon
                   name={f.icon}
                   size={13}
-                  color={active ? '#fff' : COLORS.textMuted}
+                  color={active ? '#fff' : colors.textMuted}
                   strokeWidth={2}
                 />
                 <Text style={[styles.chipText, active && styles.chipTextActive]}>{f.label}</Text>
@@ -223,7 +226,7 @@ export default function TrailsScreen() {
             <Text style={styles.sortLabelText}>
               {SORTS.find((s) => s.value === sort)?.label}
             </Text>
-            <Icon name="chevron-down" size={13} color={COLORS.primary} strokeWidth={2.2} />
+            <Icon name="chevron-down" size={13} color={colors.primary} strokeWidth={2.2} />
           </Pressable>
         </View>
 
@@ -246,6 +249,7 @@ export default function TrailsScreen() {
                   trail={t}
                   completed={completedIds.has(t.id)}
                   visited={visitedIds.has(t.id)}
+                  showDistance={!usingFallbackLocation}
                   onPress={() => setSelected(t)}
                   formatDistance={formatDistanceCompact}
                   unit={formatDistanceUnit()}
@@ -268,11 +272,11 @@ export default function TrailsScreen() {
               }}
               style={styles.sortOption}
             >
-              <Text style={[styles.sortOptionText, sort === s.value && { color: COLORS.primary }]}>
+              <Text style={[styles.sortOptionText, sort === s.value && { color: colors.primary }]}>
                 {s.label}
               </Text>
               {sort === s.value ? (
-                <Icon name="check" size={17} color={COLORS.primary} strokeWidth={2.4} />
+                <Icon name="check" size={17} color={colors.primary} strokeWidth={2.4} />
               ) : null}
             </Pressable>
           ))}
@@ -340,7 +344,7 @@ export default function TrailsScreen() {
                 <Text style={styles.detailSection}>Before you go</Text>
                 {selected.safetyTips.map((tip, i) => (
                   <View key={i} style={styles.tipRow}>
-                    <Icon name="alert-circle" size={14} color={COLORS.warning} strokeWidth={2} />
+                    <Icon name="alert-circle" size={14} color={colors.warning} strokeWidth={2} />
                     <Text style={styles.tipText}>{tip}</Text>
                   </View>
                 ))}
@@ -414,6 +418,7 @@ function TrailCard({
   trail,
   completed,
   visited,
+  showDistance,
   onPress,
   formatDistance,
   unit,
@@ -421,10 +426,13 @@ function TrailCard({
   trail: Trail;
   completed: boolean;
   visited: boolean;
+  showDistance: boolean;
   onPress: () => void;
   formatDistance: (m: number) => string;
   unit: string;
 }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const difficultyTone =
     trail.difficulty === 'Easy' ? 'primary' : trail.difficulty === 'Moderate' ? 'warning' : 'danger';
 
@@ -435,7 +443,7 @@ function TrailCard({
           <Icon
             name={completed ? 'check' : trail.type === 'bike' ? 'bike' : trail.type === 'hike' ? 'boot' : 'route'}
             size={17}
-            color={completed ? '#fff' : COLORS.primary}
+            color={completed ? '#fff' : colors.primary}
             strokeWidth={completed ? 2.6 : 1.9}
           />
         </View>
@@ -445,7 +453,7 @@ function TrailCard({
           </Text>
           <Text style={styles.trailArea} numberOfLines={1}>
             {trail.area}
-            {trail.distanceFromUserMi != null
+            {showDistance && trail.distanceFromUserMi != null
               ? ` · ${trail.distanceFromUserMi.toFixed(1)} mi away`
               : ''}
           </Text>
@@ -478,26 +486,30 @@ function TrailCard({
 }
 
 function DetailStat({ icon, value, label }: { icon: IconName; value: string; label: string }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1, gap: 3 }}>
-      <Icon name={icon} size={15} color={COLORS.textMuted} strokeWidth={1.9} />
+      <Icon name={icon} size={15} color={colors.textMuted} strokeWidth={1.9} />
       <Text style={styles.detailStatValue}>{value}</Text>
       <Text style={styles.detailStatLabel}>{label}</Text>
     </View>
   );
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
   body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
-  bannerAction: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
+  bannerAction: { ...t.smallMed, color: c.primary },
 
   askBar: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm + 4,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: COLORS.primaryGlow,
+    borderColor: c.border,
     borderRadius: RADIUS.lg,
     padding: SPACING.md - 2,
   },
@@ -505,12 +517,12 @@ const styles = StyleSheet.create({
     width: 36,
     height: 36,
     borderRadius: RADIUS.sm + 2,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  askTitle: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  askSub: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
+  askTitle: { ...t.h4, color: c.text },
+  askSub: { ...t.small, color: c.textMuted, marginTop: 1 },
 
   searchRow: { flexDirection: 'row', gap: SPACING.sm },
   search: {
@@ -518,21 +530,21 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     borderRadius: RADIUS.md,
     paddingHorizontal: SPACING.md - 4,
     height: 44,
   },
-  searchInput: { flex: 1, ...TYPOGRAPHY.body, color: COLORS.text, paddingVertical: 0 },
+  searchInput: { flex: 1, ...t.body, color: c.text, paddingVertical: 0 },
   sortBtn: {
     width: 44,
     height: 44,
     borderRadius: RADIUS.md,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -545,18 +557,18 @@ const styles = StyleSheet.create({
     paddingVertical: 7,
     paddingHorizontal: 12,
     borderRadius: RADIUS.pill,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
   },
-  chipActive: { backgroundColor: COLORS.primary, borderColor: COLORS.primary },
-  chipText: { ...TYPOGRAPHY.smallMed, color: COLORS.textSecondary },
+  chipActive: { backgroundColor: c.primary, borderColor: c.primary },
+  chipText: { ...t.smallMed, color: c.textSecondary },
   chipTextActive: { color: '#fff' },
 
   resultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  resultCount: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  resultCount: { ...t.small, color: c.textMuted },
   sortLabel: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  sortLabelText: { ...TYPOGRAPHY.smallMed, color: COLORS.primary },
+  sortLabelText: { ...t.smallMed, color: c.primary },
 
   grid: { gap: SPACING.sm },
   gridTablet: { flexDirection: 'row', flexWrap: 'wrap' },
@@ -569,14 +581,14 @@ const styles = StyleSheet.create({
     width: 38,
     height: 38,
     borderRadius: RADIUS.sm + 2,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  trailIconDone: { backgroundColor: COLORS.primary },
-  trailName: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  trailArea: { ...TYPOGRAPHY.small, color: COLORS.textMuted, marginTop: 1 },
-  trailDesc: { ...TYPOGRAPHY.small, color: COLORS.textSecondary },
+  trailIconDone: { backgroundColor: c.primary },
+  trailName: { ...t.h4, color: c.text },
+  trailArea: { ...t.small, color: c.textMuted, marginTop: 1 },
+  trailDesc: { ...t.small, color: c.textSecondary },
   trailTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
 
   sortOption: {
@@ -585,15 +597,17 @@ const styles = StyleSheet.create({
     justifyContent: 'space-between',
     paddingVertical: 14,
   },
-  sortOptionText: { ...TYPOGRAPHY.body, color: COLORS.text },
+  sortOptionText: { ...t.body, color: c.text },
 
   detailStats: { flexDirection: 'row' },
-  detailStatValue: { ...TYPOGRAPHY.h4, color: COLORS.text },
-  detailStatLabel: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textTransform: 'uppercase' },
-  detailDescription: { ...TYPOGRAPHY.body, color: COLORS.textSecondary },
-  detailSection: { ...TYPOGRAPHY.overline, color: COLORS.textMuted, marginBottom: SPACING.sm },
+  detailStatValue: { ...t.h4, color: c.text },
+  detailStatLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
+  detailDescription: { ...t.body, color: c.textSecondary },
+  detailSection: { ...t.overline, color: c.textMuted, marginBottom: SPACING.sm },
   amenities: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tipRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: 7, alignItems: 'flex-start' },
-  tipText: { ...TYPOGRAPHY.small, color: COLORS.textSecondary, flex: 1 },
-  detectionNote: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
-});
+  tipText: { ...t.small, color: c.textSecondary, flex: 1 },
+  detectionNote: { ...t.small, color: c.textMuted },
+
+  });
+}

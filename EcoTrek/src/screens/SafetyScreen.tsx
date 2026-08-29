@@ -5,9 +5,9 @@ import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import ConditionsCard from '../components/ConditionsCard';
 import { Screen, Card, SectionHeader, Divider, Banner, Button } from '../components/ui';
-import { ColorPalette, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
 import { useWeather } from '../context/WeatherContext';
-import { useTheme } from '../context/ThemeContext';
+import { Typography, useTheme } from '../context/ThemeContext';
 
 type Guide = {
   icon: IconName;
@@ -87,8 +87,8 @@ const EMERGENCY = [
 export default function SafetyScreen() {
   const navigation = useNavigation<any>();
   const { report } = useWeather();
-  const { colors } = useTheme();
-  const styles = React.useMemo(() => makeStyles(colors), [colors]);
+  const { colors, typography } = useTheme();
+  const styles = React.useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
   return (
     <Screen>
@@ -172,7 +172,7 @@ export default function SafetyScreen() {
   );
 }
 
-function makeStyles(c: ColorPalette) {
+function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
     body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
 
@@ -185,8 +185,8 @@ function makeStyles(c: ColorPalette) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    callLabel: { ...TYPOGRAPHY.bodyMed, color: c.text },
-    callValue: { ...TYPOGRAPHY.small, color: c.textMuted, marginTop: 1 },
+    callLabel: { ...t.bodyMed, color: c.text },
+    callValue: { ...t.small, color: c.textMuted, marginTop: 1 },
 
     guideHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2, marginBottom: SPACING.sm + 2 },
     guideIcon: {
@@ -197,7 +197,7 @@ function makeStyles(c: ColorPalette) {
       alignItems: 'center',
       justifyContent: 'center',
     },
-    guideTitle: { ...TYPOGRAPHY.h3, color: c.text },
+    guideTitle: { ...t.h3, color: c.text },
     pointRow: { flexDirection: 'row', gap: SPACING.sm + 2, marginBottom: 7, alignItems: 'flex-start' },
     bullet: {
       width: 4,
@@ -206,6 +206,6 @@ function makeStyles(c: ColorPalette) {
       backgroundColor: c.textLight,
       marginTop: 8,
     },
-    pointText: { ...TYPOGRAPHY.small, color: c.textSecondary, flex: 1 },
+    pointText: { ...t.small, color: c.textSecondary, flex: 1 },
   });
 }

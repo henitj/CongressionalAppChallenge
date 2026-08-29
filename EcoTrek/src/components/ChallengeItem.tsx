@@ -1,10 +1,11 @@
-import React from 'react';
+import React, { useMemo } from 'react';
 import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import Icon from './Icon';
 import { Pill, ProgressBar } from './ui';
-import { COLORS, RADIUS, SPACING, TYPOGRAPHY } from '../constants/theme';
+import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { ActiveChallenge } from '../context/ChallengeContext';
 import { CATEGORY_LABEL } from '../constants/challenges';
+import { useTheme, Typography } from '../context/ThemeContext';
 
 /**
  * One weekly challenge.
@@ -24,6 +25,8 @@ export default function ChallengeItem({
   onUndo?: (id: string) => void;
   busy?: boolean;
 }) {
+  const { colors, typography } = useTheme();
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const { completed, kind, target = 1, progress } = challenge;
   const done = completed;
 
@@ -33,7 +36,7 @@ export default function ChallengeItem({
         <Icon
           name={done ? 'check' : challenge.icon}
           size={18}
-          color={done ? '#fff' : COLORS.primary}
+          color={done ? '#fff' : colors.primary}
           strokeWidth={done ? 2.6 : 1.9}
         />
       </View>
@@ -81,9 +84,9 @@ export default function ChallengeItem({
           accessibilityLabel={`Mark ${challenge.title} complete`}
         >
           {busy ? (
-            <ActivityIndicator size="small" color={COLORS.primary} />
+            <ActivityIndicator size="small" color={colors.primary} />
           ) : (
-            <Icon name="circle" size={26} color={COLORS.borderStrong} strokeWidth={1.7} />
+            <Icon name="circle" size={26} color={colors.borderStrong} strokeWidth={1.7} />
           )}
         </Pressable>
       ) : null}
@@ -104,43 +107,45 @@ function formatProgress(progress: number, target: number, metric?: string) {
   return `${p} of ${target} ${unit}`;
 }
 
-const styles = StyleSheet.create({
+function makeStyles(c: ColorPalette, t: Typography) {
+  return StyleSheet.create({
+
   card: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: SPACING.sm + 4,
     padding: SPACING.md - 2,
-    backgroundColor: COLORS.surface,
+    backgroundColor: c.surface,
     borderRadius: RADIUS.md,
     borderWidth: 1,
-    borderColor: COLORS.border,
+    borderColor: c.border,
   },
   cardDone: {
-    backgroundColor: COLORS.primarySurface,
-    borderColor: COLORS.primaryGlow,
+    backgroundColor: c.primarySurface,
+    borderColor: c.primaryGlow,
   },
   icon: {
     width: 38,
     height: 38,
     borderRadius: RADIUS.sm + 2,
-    backgroundColor: COLORS.primarySurface,
+    backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  iconDone: { backgroundColor: COLORS.primary },
+  iconDone: { backgroundColor: c.primary },
   body: { flex: 1, gap: 4 },
   titleRow: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.sm },
-  title: { ...TYPOGRAPHY.h4, color: COLORS.text, flex: 1 },
-  titleDone: { color: COLORS.primary },
+  title: { ...t.h4, color: c.text, flex: 1 },
+  titleDone: { color: c.primary },
   points: {
-    ...TYPOGRAPHY.smallMed,
-    color: COLORS.accentDark,
+    ...t.smallMed,
+    color: c.accentDark,
   },
-  description: { ...TYPOGRAPHY.small, color: COLORS.textMuted },
+  description: { ...t.small, color: c.textMuted },
   progressWrap: { gap: 4, marginTop: 4 },
-  progressText: { ...TYPOGRAPHY.micro, color: COLORS.textMuted },
+  progressText: { ...t.micro, color: c.textMuted },
   metaRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm, marginTop: 3 },
-  undo: { ...TYPOGRAPHY.micro, color: COLORS.textMuted, textDecorationLine: 'underline' },
+  undo: { ...t.micro, color: c.textMuted, textDecorationLine: 'underline' },
   action: {
     width: 48,
     height: 48,
@@ -148,4 +153,6 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignSelf: 'center',
   },
-});
+
+  });
+}

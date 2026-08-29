@@ -23,7 +23,6 @@ import HistoryScreen from '../screens/HistoryScreen';
 import BadgesScreen from '../screens/BadgesScreen';
 
 import Icon, { IconName } from '../components/Icon';
-import { COLORS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 const Tab = createBottomTabNavigator();
@@ -113,9 +112,7 @@ export default function RootNavigator() {
 
 const styles = StyleSheet.create({
   tabBar: {
-    backgroundColor: COLORS.surface,
     borderTopWidth: 1,
-    borderTopColor: COLORS.border,
     height: Platform.OS === 'ios' ? 94 : 78,
     paddingBottom: Platform.OS === 'ios' ? 28 : 12,
     paddingTop: 6,
