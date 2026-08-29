@@ -31,7 +31,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Text size** — Normal, Large, or Extra large. One app-wide scaler applies the size to every screen, so larger text never breaks a layout.
 - **Dark** and **High contrast** themes re-theme the whole app — no screen is left behind.
 - **Less motion** skips fades and slides (and follows the system setting).
-- **Give feedback** — a star-rating popup right after a first finished hike, and a Give Feedback button at the bottom of the Profile page. Ratings post to the team's Google Form (links live in `EcoTrek/src/constants/feedback.ts`).
+- **Give feedback** — a Give Feedback button at the bottom of the Profile page and on the hike summary screen opens the team's Google Form directly. The link is hardcoded in `EcoTrek/src/constants/feedback.ts` — the one place to change it.
 - Large tap targets and plain language throughout ("points," "level," "skip a week," "your progress").
 
 ---

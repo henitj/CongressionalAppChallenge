@@ -1,5 +1,6 @@
 import React from 'react';
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
+import { Linking, Alert } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -190,7 +191,7 @@ describe('stop button, feedback and the removed contacts feature', () => {
     const utils = await mount(ActiveTrackingScreen, /Recording/);
     fireEvent.press(utils.getByLabelText('Stop and save'));
     // A zero-second, zero-mile activity is rejected by design — the summary
-    // must still appear, and a rejected activity must not ask for feedback.
+    // must still appear, and no feedback button is offered for it.
     await waitFor(() => expect(utils.queryByText('This one did not count')).toBeTruthy(), { timeout: 8000 });
     expect(utils.queryByText('Give feedback')).toBeNull();
     expect(utils.queryByText('Done')).toBeTruthy();
@@ -203,34 +204,27 @@ describe('stop button, feedback and the removed contacts feature', () => {
     expect(utils.queryByLabelText('Emergency contact phone')).toBeNull();
   });
 
-  it('Profile ends with a Give Feedback button that opens the star popup', async () => {
+  it('Profile ends with a Give Feedback button that opens the Google Form', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
     const utils = await mount(ProfileScreen, 'Share my progress');
     fireEvent.press(utils.getByText('Give Feedback'));
-    await waitFor(() => expect(utils.queryByText('Submit')).toBeTruthy());
-    expect(utils.getByLabelText('3 stars')).toBeTruthy();
+    expect(openURL).toHaveBeenCalledTimes(1);
+    expect(openURL).toHaveBeenCalledWith('https://forms.gle/E3p559tiqrNMtZDS7');
+    openURL.mockRestore();
   });
 
-  it('picking stars and submitting thanks the hiker', async () => {
+  it('a failed open shows a friendly alert instead of crashing', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('no browser'));
+    const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
     const utils = await mount(ProfileScreen, 'Share my progress');
     fireEvent.press(utils.getByText('Give Feedback'));
-    await waitFor(() => expect(utils.queryByText('Submit')).toBeTruthy());
-    // Submit is disabled until a star is picked.
-    fireEvent.press(utils.getByText('Submit'));
-    expect(utils.queryByText('Thank you!')).toBeNull();
-    fireEvent.press(utils.getByLabelText('4 stars'));
-    fireEvent.press(utils.getByText('Submit'));
-    await waitFor(() => expect(utils.queryByText('Thank you!')).toBeTruthy(), { timeout: 4000 });
-  });
-
-  it('closing the feedback popup works without submitting', async () => {
-    const utils = await mount(ProfileScreen, 'Share my progress');
+    await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
+    expect(alert.mock.calls[0][0]).toBe('One moment');
+    // The button still works afterwards — the failure did not break anything.
     fireEvent.press(utils.getByText('Give Feedback'));
-    await waitFor(() => expect(utils.queryByText('Not now')).toBeTruthy());
-    fireEvent.press(utils.getByText('Not now'));
-    await waitFor(() => expect(utils.queryByText('Not now')).toBeNull());
-    // It can be reopened from the same screen.
-    fireEvent.press(utils.getByText('Give Feedback'));
-    await waitFor(() => expect(utils.queryByText('Not now')).toBeTruthy());
+    expect(openURL).toHaveBeenCalledTimes(2);
+    openURL.mockRestore();
+    alert.mockRestore();
   });
 });
 

@@ -18,7 +18,7 @@ import { useProfile } from '../context/ProfileContext';
 import { fullNameOf } from '../services/displayName';
 import { chooseAvatarAction, pickAndStoreAvatarPhoto } from '../services/avatar';
 import ShareCard from '../components/ShareCard';
-import FeedbackSheet from '../components/FeedbackSheet';
+import { openFeedbackForm } from '../constants/feedback';
 import { useTheme, Typography } from '../context/ThemeContext';
 
 export default function ProfileScreen() {
@@ -38,7 +38,6 @@ export default function ProfileScreen() {
   const [showWeightEditor, setShowWeightEditor] = useState(false);
   const [newWeight, setNewWeight] = useState('');
   const [showShare, setShowShare] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
   const [showNameEditor, setShowNameEditor] = useState(false);
   const [editFirst, setEditFirst] = useState('');
   const [editLast, setEditLast] = useState('');
@@ -362,9 +361,9 @@ export default function ProfileScreen() {
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
 
-        {/* Give feedback — always the last thing on the page. Posts a star
-            rating (and anything else) to the team's Google Form. Links live
-            in src/constants/feedback.ts. */}
+        {/* Give feedback — always the last thing on the page. Opens the
+            team's Google Form directly. The link lives in
+            src/constants/feedback.ts and nowhere else. */}
         <View style={styles.feedbackWrap}>
           <Button
             label="Give Feedback"
@@ -372,15 +371,10 @@ export default function ProfileScreen() {
             variant="secondary"
             size="lg"
             full
-            onPress={() => setShowFeedback(true)}
+            onPress={openFeedbackForm}
           />
         </View>
       </View>
-
-      <FeedbackSheet
-        visible={showFeedback}
-        onClose={() => setShowFeedback(false)}
-      />
 
       {/* Badge detail */}
       <Sheet

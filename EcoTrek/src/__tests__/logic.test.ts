@@ -43,7 +43,7 @@ import {
 import { computeRecords, RecordActivity } from '../services/records';
 import { buildRecap, lastWeekStart, RecapActivity } from '../services/recap';
 import { buildVerdict, buildShortNote, LEVEL_META, Advisory, SafetyLevel } from '../services/weather';
-import { buildFeedbackBody, isFeedbackConfigured } from '../constants/feedback';
+import { FEEDBACK_FORM_URL } from '../constants/feedback';
 
 let passed = 0;
 const results: string[] = [];
@@ -756,18 +756,11 @@ test('level labels are friendly, not alarm-level', () => {
 
 /* ── Feedback (Google Form) ─────────────────────────────────────────────── */
 
-test('feedback helpers report that links are not pasted in yet', () => {
-  // Until the team fills in src/constants/feedback.ts, this must be false —
-  // and everything must keep working without it (no broken links, no crash).
-  assert.equal(isFeedbackConfigured(), false);
-});
-
-test('the rating body is a Google-Forms-shaped form body', () => {
-  const body = buildFeedbackBody(5);
-  // entry.<id>=<rating> — exactly what a Google Form expects to receive.
-  assert.match(body, /^entry\.[^=&]+=\d+$/);
-  assert.ok(body.endsWith('=5'));
-  assert.equal(buildFeedbackBody(1).slice(-2), '=1');
+test('the feedback form link is hardcoded to the team Google Form', () => {
+  // One constant, used everywhere. If the form ever moves, this is the line
+  // that changes — no user ever sees or types a link.
+  assert.equal(FEEDBACK_FORM_URL, 'https://forms.gle/E3p559tiqrNMtZDS7');
+  assert.match(FEEDBACK_FORM_URL, /^https:\/\//);
 });
 
 /* ── Report ───────────────────────────────────────────────────────────────── */

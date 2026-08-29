@@ -5,13 +5,10 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import LiveMap from '../components/LiveMap';
 import Icon, { IconName } from '../components/Icon';
-import FeedbackSheet from '../components/FeedbackSheet';
 import { Button } from '../components/ui';
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
-import { FEEDBACK_PROMPT_KEY } from '../constants/feedback';
-import { useAuth } from '../context/AuthContext';
-import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { openFeedbackForm } from '../constants/feedback';
 import {
   Coord,
   getCurrentPosition,
@@ -39,7 +36,6 @@ export default function ActiveTrackingScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const mode: Mode = route.params?.mode ?? 'hike';
-  const { user } = useAuth();
   const { formatDistance, formatDistanceUnit, formatTemp } = useSettings();
   const { trails } = useApp();
   const { profile } = useProfile();
@@ -59,7 +55,6 @@ export default function ActiveTrackingScreen() {
   const [result, setResult] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [showRest, setShowRest] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
 
   const subRef = useRef<Subscription | null>(null);
   const lastRef = useRef<Coord | undefined>(undefined);
@@ -214,23 +209,6 @@ export default function ActiveTrackingScreen() {
     }
   }, [addActivity, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss, totalActivities]);
 
-  // The moment a first hike/ride is finished is the best time to ask for a
-  // rating — so we do, exactly once per person, and never nag again.
-  useEffect(() => {
-    if (!result || result.rejected) return;
-    let cancelled = false;
-    (async () => {
-      const key = keyFor(user?.id, FEEDBACK_PROMPT_KEY);
-      const alreadyAsked = await loadJSON<boolean>(key, false);
-      if (cancelled || alreadyAsked) return;
-      await saveJSON(key, true);
-      if (!cancelled) setShowFeedback(true);
-    })();
-    return () => {
-      cancelled = true;
-    };
-  }, [result, user?.id]);
-
   const handleDiscard = () => {
     Alert.alert('Discard this activity?', 'Your progress will not be saved.', [
       { text: 'Keep going', style: 'cancel' },
@@ -305,7 +283,7 @@ export default function ActiveTrackingScreen() {
                   variant="secondary"
                   size="lg"
                   full
-                  onPress={() => setShowFeedback(true)}
+                  onPress={openFeedbackForm}
                   style={{ marginBottom: SPACING.sm }}
                 />
               ) : null}
@@ -317,14 +295,6 @@ export default function ActiveTrackingScreen() {
               />
             </View>
           </View>
-
-          {/* One-time rating ask after a first finished hike/ride. */}
-          <FeedbackSheet
-            visible={showFeedback}
-            onClose={() => setShowFeedback(false)}
-            title={result.kind === 'bike' ? 'How was your ride?' : 'How was your hike?'}
-            subtitle="Give EcoTrek a rating — it goes straight to the team."
-          />
         </SafeAreaView>
       </View>
     );

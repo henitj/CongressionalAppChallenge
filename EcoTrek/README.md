@@ -115,7 +115,7 @@ src/services/avatar.ts             profile photo: pick/take, compress, store
 ## Accessibility notes
 
 - Settings text size multiplies the whole type ramp (see above).
-- Give feedback: a star popup after a first hike and a button at the bottom of Profile; posts to the Google Form configured in `src/constants/feedback.ts`.
+- Give feedback: the button at the bottom of Profile (and on the hike summary) opens the team's Google Form; the link is hardcoded in `src/constants/feedback.ts`.
 - Tap targets meet the 52 pt minimum; icons always ship with labels.
 
 ---
