@@ -492,9 +492,9 @@ export function Sheet({
   subtitle?: string;
   children: React.ReactNode;
 }) {
-  const { colors, typography, reduceMotion } = useTheme();
+  const { colors, typography } = useTheme();
   return (
-    <Modal visible={visible} animationType={reduceMotion ? 'none' : 'slide'} transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
       {/* Sheets contain text inputs (club codes, names), so they have to lift
           clear of the keyboard rather than sitting behind it. */}
       <KeyboardAvoidingView
@@ -674,7 +674,7 @@ const ui = StyleSheet.create({
   },
   btnBordered: { borderWidth: 1 },
   btnDisabled: { opacity: 0.45 },
-  btnLabel: { fontSize: 16, fontWeight: '700', letterSpacing: -0.1 },
+  btnLabel: { fontSize: 16, fontWeight: '700', letterSpacing: -0.1, flexShrink: 1 },
 
   pill: {
     flexDirection: 'row',
@@ -698,10 +698,12 @@ const ui = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 5,
+    gap: 4,
     paddingVertical: 12,
+    paddingHorizontal: 4,
     minHeight: 48,
     borderRadius: RADIUS.sm + 1,
+    minWidth: 0,
   },
   segmentActive: { ...SHADOWS.sm },
   segmentText: { fontSize: 13, fontWeight: '600' },

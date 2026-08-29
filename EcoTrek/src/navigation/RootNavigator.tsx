@@ -83,14 +83,13 @@ function Tabs() {
 }
 
 export default function RootNavigator() {
-  const { reduceMotion } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: reduceMotion ? 'none' : 'default' }}>
+    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'default' }}>
       <Stack.Screen name="Tabs" component={Tabs} />
       <Stack.Screen
         name="ActiveTracking"
         component={ActiveTrackingScreen}
-        options={{ gestureEnabled: false, animation: reduceMotion ? 'none' : 'slide_from_bottom' }}
+        options={{ gestureEnabled: false, animation: 'slide_from_bottom' }}
       />
       <Stack.Screen name="Trails" component={TrailsScreen} />
       <Stack.Screen name="Clubs" component={LeaderboardScreen} />

@@ -43,6 +43,7 @@ import {
 import { computeRecords, RecordActivity } from '../services/records';
 import { buildRecap, lastWeekStart, RecapActivity } from '../services/recap';
 import { buildVerdict, buildShortNote, LEVEL_META, Advisory, SafetyLevel } from '../services/weather';
+import { paletteFor, skyPhaseForHour } from '../constants/theme';
 
 let passed = 0;
 const results: string[] = [];

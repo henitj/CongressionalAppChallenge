@@ -187,7 +187,11 @@ describe('screens that do not need the provider stack', () => {
         }}
       >
         <AuthProvider>
-          <SignInScreen />
+          <SettingsProvider>
+            <ThemeProvider>
+              <SignInScreen />
+            </ThemeProvider>
+          </SettingsProvider>
         </AuthProvider>
       </SafeAreaProvider>
     );

@@ -30,7 +30,7 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
   const authParts = authName.split(/\s+/).filter(Boolean);
   const hasSignedInName = authParts.length > 0;
 
-  const [step, setStep] = useState<Step>(hasSignedInName ? 'body' : 'name');
+  const [step, setStep] = useState<Step>('name');
   const [firstName, setFirstName] = useState(authParts[0] ?? '');
   const [lastName, setLastName] = useState(authParts.slice(1).join(' '));
   const [age, setAge] = useState('');
@@ -66,15 +66,18 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
 
   const skipSetup = async () => {
     const first = firstName.trim() || (user?.name ?? '').trim().split(/\s+/)[0] || 'Friend';
+    const last = lastName.trim();
     const totalInches = (parseInt(heightFt, 10) || 0) * 12 + (parseInt(heightIn, 10) || 0);
     await setProfile({
       firstName: first,
-      lastName: lastName.trim(),
+      lastName: last,
       age: parseInt(age, 10) || 0,
       heightInches: totalInches,
       weightPounds: parseInt(weight, 10) || 0,
       stepLengthInches: parseInt(stepLength, 10) || 0,
     });
+    const full = `${first} ${last}`.trim();
+    if (full) await updateUser({ name: full });
     onDone();
   };
 
