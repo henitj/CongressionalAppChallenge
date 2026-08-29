@@ -126,12 +126,12 @@ function Gate() {
 
   if (loading) {
     return (
-      <View style={{ ...styles.loading, backgroundColor: colors.primaryDark }}>
-        <View style={styles.mark}>
-          <Icon name="tree" size={30} color={colors.primaryGlow} strokeWidth={1.9} />
+      <View style={{ ...styles.loading, backgroundColor: colors.background }}>
+        <View style={[styles.mark, { backgroundColor: colors.primarySurface }]}>
+          <Icon name="tree" size={30} color={colors.primary} strokeWidth={1.9} />
         </View>
-        <Text style={styles.appName}>{APP_NAME}</Text>
-        <ActivityIndicator size="small" color={colors.primaryGlow} style={{ marginTop: 18 }} />
+        <Text style={[styles.appName, { color: colors.text }]}>{APP_NAME}</Text>
+        <ActivityIndicator size="small" color={colors.primary} style={{ marginTop: 18 }} />
       </View>
     );
   }

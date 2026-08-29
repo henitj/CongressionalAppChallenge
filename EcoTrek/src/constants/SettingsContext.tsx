@@ -11,8 +11,6 @@ type Stored = {
   tempUnit: TempUnit;
   appearance: Appearance;
   textSize: TextSize;
-  simpleMode: boolean;
-  reduceMotion: boolean;
 };
 
 const DEFAULTS: Stored = {
@@ -20,17 +18,18 @@ const DEFAULTS: Stored = {
   tempUnit: 'F',
   appearance: 'light',
   textSize: 'default',
-  simpleMode: false,
-  reduceMotion: false,
 };
+
+function normalizeAppearance(raw: unknown): Appearance {
+  if (raw === 'dark' || raw === 'sky') return raw;
+  return 'light';
+}
 
 type SettingsState = Stored & {
   setUnits: (u: Units) => Promise<void>;
   setTempUnit: (t: TempUnit) => Promise<void>;
   setAppearance: (a: Appearance) => Promise<void>;
   setTextSize: (s: TextSize) => Promise<void>;
-  setSimpleMode: (v: boolean) => Promise<void>;
-  setReduceMotion: (v: boolean) => Promise<void>;
   formatDistance: (miles: number) => string;
   formatDistanceCompact: (miles: number) => string;
   formatDistanceUnit: () => string;
@@ -49,7 +48,13 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       if (!raw) return;
       try {
         const parsed = JSON.parse(raw);
-        setState({ ...DEFAULTS, ...parsed });
+        setState({
+          units: parsed.units === 'metric' ? 'metric' : 'imperial',
+          tempUnit: parsed.tempUnit === 'C' ? 'C' : 'F',
+          appearance: normalizeAppearance(parsed.appearance),
+          textSize:
+            parsed.textSize === 'large' || parsed.textSize === 'xlarge' ? parsed.textSize : 'default',
+        });
       } catch {
         /* keep defaults */
       }
@@ -61,10 +66,7 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
     await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(next));
   }, []);
 
-  const setUnits = useCallback(
-    async (units: Units) => persist({ ...state, units }),
-    [state, persist]
-  );
+  const setUnits = useCallback(async (units: Units) => persist({ ...state, units }), [state, persist]);
   const setTempUnit = useCallback(
     async (tempUnit: TempUnit) => persist({ ...state, tempUnit }),
     [state, persist]
@@ -75,14 +77,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   );
   const setTextSize = useCallback(
     async (textSize: TextSize) => persist({ ...state, textSize }),
-    [state, persist]
-  );
-  const setSimpleMode = useCallback(
-    async (simpleMode: boolean) => persist({ ...state, simpleMode }),
-    [state, persist]
-  );
-  const setReduceMotion = useCallback(
-    async (reduceMotion: boolean) => persist({ ...state, reduceMotion }),
     [state, persist]
   );
 
@@ -121,8 +115,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setTempUnit,
       setAppearance,
       setTextSize,
-      setSimpleMode,
-      setReduceMotion,
       formatDistance,
       formatDistanceCompact,
       formatDistanceUnit,
@@ -135,8 +127,6 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setTempUnit,
       setAppearance,
       setTextSize,
-      setSimpleMode,
-      setReduceMotion,
       formatDistance,
       formatDistanceCompact,
       formatDistanceUnit,

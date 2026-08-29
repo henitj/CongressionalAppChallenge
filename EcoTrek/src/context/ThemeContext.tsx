@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useMemo, useState } from 'react';
-import { AccessibilityInfo, StatusBar } from 'react-native';
+import { StatusBar } from 'react-native';
 
 import {
   Appearance,
@@ -7,6 +7,7 @@ import {
   PALETTES,
   TYPOGRAPHY,
   fontScaleFor,
+  paletteFor,
 } from '../constants/theme';
 import { useSettings } from '../constants/SettingsContext';
 
@@ -14,10 +15,7 @@ type ThemeValue = {
   colors: ColorPalette;
   appearance: Appearance;
   fontScale: number;
-  /** TYPOGRAPHY with every font size and line height scaled by fontScale. */
   typography: typeof TYPOGRAPHY;
-  simpleMode: boolean;
-  reduceMotion: boolean;
 };
 
 const FALLBACK: ThemeValue = {
@@ -25,45 +23,36 @@ const FALLBACK: ThemeValue = {
   appearance: 'light',
   fontScale: 1,
   typography: TYPOGRAPHY,
-  simpleMode: false,
-  reduceMotion: false,
 };
 
 const ThemeContext = createContext<ThemeValue>(FALLBACK);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { appearance, textSize, simpleMode, reduceMotion: preferReduce } = useSettings();
-  const [systemReduce, setSystemReduce] = useState(false);
+  const { appearance, textSize } = useSettings();
+  const [hour, setHour] = useState(() => new Date().getHours());
 
   useEffect(() => {
-    let mounted = true;
-    AccessibilityInfo.isReduceMotionEnabled()
-      .then((v) => {
-        if (mounted) setSystemReduce(v);
-      })
-      .catch(() => {});
-    const sub = AccessibilityInfo.addEventListener?.('reduceMotionChanged', setSystemReduce);
-    return () => {
-      mounted = false;
-      sub?.remove?.();
-    };
+    const tick = () => setHour(new Date().getHours());
+    const id = setInterval(tick, 60_000);
+    return () => clearInterval(id);
   }, []);
 
   const value = useMemo<ThemeValue>(() => {
-    const scale = fontScaleFor(textSize, simpleMode);
+    const scale = fontScaleFor(textSize);
+    const colors = paletteFor(appearance, hour);
     return {
-      colors: PALETTES[appearance] ?? PALETTES.light,
+      colors,
       appearance,
       fontScale: scale,
       typography: scaleTypography(TYPOGRAPHY, scale),
-      simpleMode,
-      reduceMotion: preferReduce || systemReduce,
     };
-  }, [appearance, textSize, simpleMode, preferReduce, systemReduce]);
+  }, [appearance, textSize, hour]);
+
+  const darkBar = appearance === 'dark';
 
   return (
     <ThemeContext.Provider value={value}>
-      <StatusBar barStyle={appearance === 'dark' ? 'light-content' : 'dark-content'} />
+      <StatusBar barStyle={darkBar ? 'light-content' : 'dark-content'} />
       {children}
     </ThemeContext.Provider>
   );
@@ -73,20 +62,12 @@ export function useTheme() {
   return useContext(ThemeContext);
 }
 
-/** The type ramp as currently scaled — handy in style-builder signatures. */
 export type Typography = typeof TYPOGRAPHY;
 
 export function scaled(size: number, scale: number) {
   return Math.round(size * scale);
 }
 
-/**
- * Scale every font size and line height in the type ramp. Centralising this
- * is what makes the text-size setting actually work: screens read
- * `typography` from the theme, so "large" grows the whole app uniformly
- * instead of a handful of hand-picked labels while everything else stays
- * fixed (which is what used to break the layout).
- */
 export function scaleTypography(t: typeof TYPOGRAPHY, scale: number): typeof TYPOGRAPHY {
   if (scale === 1) return t;
   const out = {} as Record<string, { fontSize?: number; lineHeight?: number } & object>;

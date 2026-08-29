@@ -25,8 +25,6 @@ export default function SignInScreen() {
   const [showGoogle, setShowGoogle] = useState(false);
   const [busy, setBusy] = useState(false);
 
-  // The web demo cannot round-trip a real OAuth redirect, so there Google
-  // sign-in goes through the local account sheet. Native uses the real flow.
   const useLocalGoogle = Platform.OS === 'web';
 
   const handleGoogle = async () => {
@@ -60,13 +58,12 @@ export default function SignInScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          {/* Mark */}
           <View style={styles.mark}>
-            <Icon name="tree" size={30} color={colors.primaryGlow} strokeWidth={1.9} />
+            <Icon name="tree" size={30} color={colors.primary} strokeWidth={1.9} />
           </View>
 
-          <Text style={[styles.title, typography.display]}>{APP_NAME}</Text>
-          <Text style={[styles.tagline, typography.body]}>
+          <Text style={styles.title}>{APP_NAME}</Text>
+          <Text style={styles.tagline}>
             Every mile you move under your own power grows your forest.
           </Text>
 
@@ -74,27 +71,25 @@ export default function SignInScreen() {
             {FEATURES.map((f) => (
               <View key={f.title} style={styles.feature}>
                 <View style={styles.featureIcon}>
-                  <Icon name={f.icon} size={17} color={colors.primaryGlow} strokeWidth={1.9} />
+                  <Icon name={f.icon} size={17} color={colors.primary} strokeWidth={1.9} />
                 </View>
-                <Text style={[styles.featureText, typography.bodyMed]}>{f.title}</Text>
+                <Text style={styles.featureText}>{f.title}</Text>
               </View>
             ))}
           </View>
 
           <View style={{ flex: 1 }} />
 
-          {/* Actions */}
           <View style={{ gap: SPACING.sm + 2 }}>
             {error ? (
               <View style={styles.errorBox}>
-                <Icon name="alert-circle" size={15} color={colors.dangerLight} strokeWidth={2} />
-                <Text style={[styles.errorText, typography.small]}>{error}</Text>
+                <Icon name="alert-circle" size={15} color={colors.danger} strokeWidth={2} />
+                <Text style={styles.errorText}>{error}</Text>
               </View>
             ) : null}
 
             <Button
               label="Continue with Google"
-              variant="secondary"
               size="lg"
               full
               loading={busy && !useLocalGoogle}
@@ -103,19 +98,15 @@ export default function SignInScreen() {
 
             <Button
               label="Continue as guest"
-              variant="ghost"
-              tone="rgba(255,255,255,0.85)"
+              variant="secondary"
               size="lg"
               full
               onPress={() => setShowGuest(true)}
             />
 
-            <Text style={[styles.legal, typography.small]}>
+            <Text style={styles.legal}>
               By continuing you agree to our{' '}
-              <Text
-                style={styles.legalLink}
-                onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}
-              >
+              <Text style={styles.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
                 privacy policy
               </Text>
               . EcoTrek uses your location only while you are recording an activity.
@@ -136,11 +127,11 @@ export default function SignInScreen() {
       >
         <View style={{ gap: SPACING.md }}>
           <View style={{ gap: 6 }}>
-            <Text style={[styles.fieldLabel, typography.overline]}>What should we call you?</Text>
+            <Text style={styles.fieldLabel}>What should we call you?</Text>
             <TextInput
               value={guestName}
               onChangeText={setGuestName}
-              placeholder="Guest Trekker"
+              placeholder="Your first name"
               placeholderTextColor={colors.textLight}
               maxLength={30}
               style={styles.input}
@@ -148,7 +139,7 @@ export default function SignInScreen() {
               onSubmitEditing={handleGuest}
             />
           </View>
-          <Text style={[styles.guestNote, typography.small]}>
+          <Text style={styles.guestNote}>
             You can start now and switch to Google later. Your walks on this phone will come with
             you.
           </Text>
@@ -161,7 +152,7 @@ export default function SignInScreen() {
 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
-    root: { flex: 1, backgroundColor: c.primaryDark },
+    root: { flex: 1, backgroundColor: c.background },
     scroll: {
       flexGrow: 1,
       paddingHorizontal: SPACING.lg,
@@ -173,13 +164,13 @@ function makeStyles(c: ColorPalette, t: Typography) {
       width: 62,
       height: 62,
       borderRadius: RADIUS.xl,
-      backgroundColor: 'rgba(255,255,255,0.09)',
+      backgroundColor: c.primarySurface,
       alignItems: 'center',
       justifyContent: 'center',
       marginBottom: SPACING.lg,
     },
-    title: { color: '#fff' },
-    tagline: { color: 'rgba(255,255,255,0.68)', marginTop: SPACING.sm, maxWidth: 320 },
+    title: { ...t.display, color: c.text },
+    tagline: { ...t.body, color: c.textSecondary, marginTop: SPACING.sm, maxWidth: 320 },
 
     features: { marginTop: SPACING.xl, gap: SPACING.md + 2 },
     feature: { flexDirection: 'row', gap: SPACING.md - 2, alignItems: 'center' },
@@ -187,23 +178,23 @@ function makeStyles(c: ColorPalette, t: Typography) {
       width: 36,
       height: 36,
       borderRadius: RADIUS.sm + 2,
-      backgroundColor: 'rgba(255,255,255,0.08)',
+      backgroundColor: c.primarySurface,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    featureText: { color: 'rgba(255,255,255,0.85)', flex: 1 },
+    featureText: { ...t.bodyMed, color: c.text, flex: 1 },
 
     errorBox: {
       flexDirection: 'row',
       alignItems: 'center',
       gap: SPACING.sm,
-      backgroundColor: 'rgba(192,57,43,0.25)',
+      backgroundColor: c.dangerLight,
       borderRadius: RADIUS.md,
       padding: SPACING.sm + 4,
     },
-    errorText: { color: c.dangerLight, flex: 1 },
+    errorText: { ...t.small, color: c.danger, flex: 1 },
 
-    fieldLabel: { color: c.textMuted },
+    fieldLabel: { ...t.overline, color: c.textMuted },
     input: {
       backgroundColor: c.surfaceSunken,
       borderRadius: RADIUS.md,
@@ -214,14 +205,15 @@ function makeStyles(c: ColorPalette, t: Typography) {
       ...t.body,
       color: c.text,
     },
-    guestNote: { color: c.textMuted },
+    guestNote: { ...t.small, color: c.textMuted },
 
     legal: {
-      color: 'rgba(255,255,255,0.4)',
+      ...t.small,
+      color: c.textMuted,
       textAlign: 'center',
       marginTop: SPACING.sm,
       lineHeight: 18,
     },
-    legalLink: { color: 'rgba(255,255,255,0.75)', textDecorationLine: 'underline' },
+    legalLink: { color: c.primary, textDecorationLine: 'underline' },
   });
 }

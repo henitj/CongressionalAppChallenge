@@ -38,7 +38,7 @@ export default function ActiveTrackingScreen() {
   const { formatDistance, formatDistanceUnit, formatTemp } = useSettings();
   const { trails } = useApp();
   const { profile } = useProfile();
-  const { addActivity } = useActivity();
+  const { addActivity, totalActivities } = useActivity();
 
   const [path, setPath] = useState<Coord[]>([]);
   const [current, setCurrent] = useState<Coord | undefined>();
@@ -50,6 +50,7 @@ export default function ActiveTrackingScreen() {
   const [elevationGain, setElevationGain] = useState(0);
   const [elevationLoss, setElevationLoss] = useState(0);
   const [speedWarnings, setSpeedWarnings] = useState(0);
+  const [warningToast, setWarningToast] = useState<string | null>(null);
   const [showSpeedAlert, setShowSpeedAlert] = useState(false);
   const [isBackgrounded, setIsBackgrounded] = useState(false);
   const [result, setResult] = useState<any>(null);
@@ -62,6 +63,8 @@ export default function ActiveTrackingScreen() {
   pausedRef.current = paused;
   const pausedTotalRef = useRef(0);
   const pausedAtRef = useRef<number | null>(null);
+  const overLimitRef = useRef(false);
+  const toastTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const nearbyTrail: Trail | null = useMemo(
     () => detectCurrentTrail(current, trails.length ? trails : undefined),
@@ -77,6 +80,17 @@ export default function ActiveTrackingScreen() {
   useEffect(() => {
     if (!paused && elapsed >= 25 * 60 && !showRest) setShowRest(true);
   }, [elapsed, paused, showRest]);
+
+  const call911 = () => {
+    Alert.alert(
+      'Call 911?',
+      'This will start an emergency call. Only continue if you need help right now.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        { text: 'Call 911', style: 'destructive', onPress: () => Linking.openURL('tel:911') },
+      ]
+    );
+  };
 
   const textContact = () => {
     const phone = (profile.emergencyPhone ?? '').replace(/[^\d+]/g, '');
@@ -210,13 +224,15 @@ export default function ActiveTrackingScreen() {
         rejected: res.rejected,
         rejectionReason: res.rejectionReason,
         durationSec: elapsed,
+        activityNumber: totalActivities + 1,
+        kind: mode,
       });
     } catch (e: any) {
       Alert.alert('Could not save', e?.message ?? 'Something went wrong saving that activity.');
     } finally {
       setSaving(false);
     }
-  }, [addActivity, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss]);
+  }, [addActivity, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss, totalActivities]);
 
   const handleDiscard = () => {
     Alert.alert('Discard this activity?', 'Your progress will not be saved.', [
@@ -245,7 +261,9 @@ export default function ActiveTrackingScreen() {
               strokeWidth={1.5}
             />
             <Text style={styles.resultTitle}>
-              {result.rejected ? 'This one did not count' : mode === 'bike' ? 'Nice ride!' : 'Nice walk!'}
+              {result.rejected
+                ? 'This one did not count'
+                : celebrationTitle(result.activityNumber, result.kind)}
             </Text>
             
             {result.rejected ? (
@@ -259,7 +277,9 @@ export default function ActiveTrackingScreen() {
                   : 'It did not look like a walk or ride, so it was not counted.'}
               </Text>
             ) : (
-              <Text style={styles.resultSubtitle}>Great work out there.</Text>
+              <Text style={styles.resultSubtitle}>
+                {celebrationBody(result.activityNumber, result.kind)}
+              </Text>
             )}
 
             <View style={styles.resultStats}>
@@ -335,18 +355,28 @@ export default function ActiveTrackingScreen() {
 
         <View style={styles.helpRow}>
           <Pressable
-            onPress={() => Linking.openURL('tel:911')}
-            style={styles.helpBtn}
+            onPress={call911}
+            style={styles.helpIconBtn}
             accessibilityLabel="Call 911"
           >
-            <Icon name="alert-triangle" size={16} color={colors.danger} strokeWidth={2} />
-            <Text style={styles.helpDanger}>Call 911</Text>
+            <Icon name="alert-triangle" size={18} color={colors.danger} strokeWidth={2} />
           </Pressable>
-          <Pressable onPress={textContact} style={styles.helpBtn} accessibilityLabel="Text my contact">
-            <Icon name="users" size={16} color={colors.primary} strokeWidth={2} />
-            <Text style={styles.helpSafe}>Text my contact</Text>
+          <Pressable
+            onPress={textContact}
+            style={styles.helpIconBtn}
+            accessibilityLabel="Text my contact"
+          >
+            <Icon name="users" size={18} color={colors.primary} strokeWidth={2} />
           </Pressable>
+          <View style={{ flex: 1 }} />
         </View>
+
+        {warningToast ? (
+          <View style={styles.warningBanner}>
+            <Icon name="alert-triangle" size={16} color={colors.warning} strokeWidth={2} />
+            <Text style={styles.warningText}>{warningToast}</Text>
+          </View>
+        ) : null}
 
         {showRest ? (
           <View style={styles.restBanner}>
@@ -400,18 +430,7 @@ export default function ActiveTrackingScreen() {
             <StatBox icon="trending-up" value={`${Math.round(elevationLoss)}`} label="Loss (ft)" iconColor={colors.textMuted} />
             <StatBox icon="zap" value={String(calories)} label="Calories" />
             <StatBox icon="tree" value={String(trees)} label="Trees" />
-            <StatBox icon="alert-circle" value={`${speedWarnings}/3`} label="Warnings" iconColor={speedWarnings > 0 ? colors.warning : colors.textMuted} />
           </View>
-
-          {/* Speed warnings banner */}
-          {speedWarnings > 0 && speedWarnings < 3 ? (
-            <View style={styles.warningBanner}>
-              <Icon name="alert-triangle" size={16} color={colors.warning} strokeWidth={2} />
-              <Text style={styles.warningText}>
-                Speed warning {speedWarnings}/3 — {speedWarnings === 1 ? 'One more and we will flag this activity.' : 'One more and this activity may not count.'}
-              </Text>
-            </View>
-          ) : null}
 
           {/* Speed alert modal — 3 strikes */}
           {showSpeedAlert ? (
@@ -471,6 +490,37 @@ function StatBox({ icon, value, label, iconColor }: { icon: IconName; value: str
       <Text style={styles.statBoxLabel}>{label}</Text>
     </View>
   );
+}
+
+function ordinal(n: number) {
+  const v = n % 100;
+  if (v >= 11 && v <= 13) return `${n}th`;
+  switch (n % 10) {
+    case 1:
+      return `${n}st`;
+    case 2:
+      return `${n}nd`;
+    case 3:
+      return `${n}rd`;
+    default:
+      return `${n}th`;
+  }
+}
+
+function celebrationTitle(n: number, kind: Mode) {
+  const word = kind === 'bike' ? 'ride' : 'hike';
+  if (n === 1) return `Congratulations on your first ${word}!`;
+  if (n === 100) return `Congratulations on your 100th ${word}!`;
+  if (n === 1000) return `Congratulations on your 1,000th ${word}!`;
+  if (n > 1 && n % 100 === 0) return `Congratulations on your ${ordinal(n)} ${word}!`;
+  return `Congratulations on your ${word}!`;
+}
+
+function celebrationBody(n: number, kind: Mode) {
+  const word = kind === 'bike' ? 'ride' : 'hike';
+  if (n === 1) return 'You finished your first one. That is the hardest.';
+  if (n === 100 || n === 1000) return `That is ${ordinal(n)} ${word} in the book. Incredible.`;
+  return 'Nice work out there.';
 }
 
 function formatTime(sec: number) {
@@ -642,19 +692,14 @@ function makeStyles(c: ColorPalette, t: Typography) {
   alertButtons: { flexDirection: 'row', gap: SPACING.sm, width: '100%' },
 
   helpRow: { flexDirection: 'row', gap: SPACING.sm, paddingHorizontal: SPACING.md, marginTop: SPACING.sm },
-  helpBtn: {
-    flex: 1,
-    flexDirection: 'row',
+  helpIconBtn: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
-    gap: 8,
-    backgroundColor: c.surface,
-    borderRadius: RADIUS.md,
-    paddingVertical: 14,
-    minHeight: 52,
   },
-  helpDanger: { ...t.smallMed, color: c.danger },
-  helpSafe: { ...t.smallMed, color: c.primary },
   restBanner: {
     flexDirection: 'row',
     alignItems: 'center',

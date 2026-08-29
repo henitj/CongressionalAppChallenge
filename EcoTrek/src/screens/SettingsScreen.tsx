@@ -32,10 +32,6 @@ export default function SettingsScreen() {
     setAppearance,
     textSize,
     setTextSize,
-    simpleMode,
-    setSimpleMode,
-    reduceMotion,
-    setReduceMotion,
   } = useSettings();
   const { profile, setProfile } = useProfile();
   const [emName, setEmName] = useState(profile.emergencyName ?? '');
@@ -164,24 +160,7 @@ export default function SettingsScreen() {
         {/* Easy to use */}
         <View>
           <SectionHeader title="Easy to use" />
-          <Card padded={false}>
-            <ToggleRow
-              icon="user"
-              title="Simple mode"
-              subtitle="Bigger type. Clubs and weekly goals stay hidden."
-              value={simpleMode}
-              onChange={setSimpleMode}
-            />
-            <Divider style={{ marginLeft: 58 }} />
-            <ToggleRow
-              icon="activity"
-              title="Less motion"
-              subtitle="Skip fades and slides"
-              value={reduceMotion}
-              onChange={setReduceMotion}
-            />
-          </Card>
-          <Card style={{ marginTop: SPACING.sm, gap: SPACING.md - 2 }}>
+          <Card style={{ gap: SPACING.md - 2 }}>
             <View>
               <Text style={styles.settingLabel}>Text size</Text>
               <Segmented
@@ -201,12 +180,16 @@ export default function SettingsScreen() {
                 options={[
                   { value: 'light', label: 'Light' },
                   { value: 'dark', label: 'Dark' },
-                  { value: 'highContrast', label: 'Contrast' },
+                  { value: 'sky', label: 'Sky' },
                 ]}
                 value={appearance}
                 onChange={(v) => setAppearance(v as any)}
                 style={{ marginTop: 6 }}
               />
+              <Text style={styles.note}>
+                Sky follows daytime only: sunrise in the morning, bright afternoon, sunset in the evening.
+                At night it stays light.
+              </Text>
             </View>
           </Card>
         </View>

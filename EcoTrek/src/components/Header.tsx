@@ -89,7 +89,11 @@ export default function Header({
               hitSlop={8}
               accessibilityLabel="Open profile"
             >
-              <Avatar name={user?.name} uri={profile.avatarUri ?? user?.picture} size={44} />
+              <Avatar
+                name={`${profile.firstName} ${profile.lastName}`.trim() || user?.name}
+                uri={profile.avatarUri ?? user?.picture}
+                size={44}
+              />
             </Pressable>
           ) : null}
         </View>

@@ -182,12 +182,95 @@ export const LEVELS = [
   { name: 'Trail legend', min: 50000 },
 ];
 
-export type Appearance = 'light' | 'dark' | 'highContrast';
+export type Appearance = 'light' | 'dark' | 'sky';
 export type TextSize = 'default' | 'large' | 'xlarge';
+export type SkyPhase = 'sunrise' | 'afternoon' | 'sunset' | 'night';
 
 export type ColorPalette = typeof COLORS;
 
-export const PALETTES: Record<Appearance, ColorPalette> = {
+export function skyPhaseForHour(hour: number): SkyPhase {
+  if (hour < 5 || hour >= 20) return 'night';
+  if (hour < 9) return 'sunrise';
+  if (hour < 16) return 'afternoon';
+  return 'sunset';
+}
+
+/** Sky look only applies in daytime. At night it falls back to light. */
+export function paletteFor(appearance: Appearance, hour = new Date().getHours()): ColorPalette {
+  if (appearance === 'dark') return PALETTES.dark;
+  if (appearance !== 'sky') return PALETTES.light;
+  const phase = skyPhaseForHour(hour);
+  if (phase === 'night') return PALETTES.light;
+  return SKY_PALETTES[phase];
+}
+
+const SKY_PALETTES: Record<Exclude<SkyPhase, 'night'>, ColorPalette> = {
+  sunrise: {
+    ...COLORS,
+    primary: '#C45C2A',
+    primaryDark: '#7A3318',
+    primaryMid: '#D4683A',
+    primaryLight: '#E8943A',
+    primaryGlow: '#F3C08A',
+    primarySurface: '#FFE8D6',
+    accent: '#E07040',
+    accentLight: '#FFE4D4',
+    accentDark: '#B84A22',
+    background: '#FFF4EB',
+    backgroundDark: '#F8E6D8',
+    surface: '#FFFBF7',
+    surfaceElevated: '#FFFFFF',
+    surfaceSunken: '#F8EDE4',
+    text: '#3A2418',
+    textSecondary: '#5C3D2A',
+    textMuted: '#8A6754',
+    border: '#E8D2C2',
+    borderLight: '#F3E6DC',
+    borderStrong: '#D4B8A4',
+  },
+  afternoon: {
+    ...COLORS,
+    primary: '#1A7A5A',
+    primaryDark: '#0D3D2D',
+    primaryLight: '#2B9A6E',
+    primaryGlow: '#7DD4AD',
+    primarySurface: '#E3F4FF',
+    accent: '#2B6CB0',
+    accentLight: '#D6EAF8',
+    accentDark: '#1A4A7A',
+    background: '#F3FAFF',
+    backgroundDark: '#E4F1F8',
+    surface: '#FFFFFF',
+    surfaceSunken: '#EAF3F8',
+    border: '#D0E0EA',
+    borderLight: '#E4EEF4',
+    borderStrong: '#B7CCD8',
+  },
+  sunset: {
+    ...COLORS,
+    primary: '#B84A2A',
+    primaryDark: '#5A2218',
+    primaryMid: '#C45C2A',
+    primaryLight: '#E07040',
+    primaryGlow: '#F0A070',
+    primarySurface: '#FFE0D0',
+    accent: '#E8943A',
+    accentLight: '#FFE8D0',
+    accentDark: '#C45C2A',
+    background: '#FFF0E8',
+    backgroundDark: '#F4DCD0',
+    surface: '#FFF8F4',
+    surfaceSunken: '#F8E4D8',
+    text: '#3A1E18',
+    textSecondary: '#5C3228',
+    textMuted: '#8A5848',
+    border: '#E8C8B8',
+    borderLight: '#F4E0D6',
+    borderStrong: '#D4A890',
+  },
+};
+
+export const PALETTES: Record<'light' | 'dark', ColorPalette> = {
   light: { ...COLORS },
   dark: {
     ...COLORS,
@@ -227,46 +310,8 @@ export const PALETTES: Record<Appearance, ColorPalette> = {
     warningBorder: '#5A4520',
     dangerBorder: '#5A2A2A',
   },
-  highContrast: {
-    ...COLORS,
-    primary: '#005C3A',
-    primaryDark: '#00281A',
-    primaryMid: '#005C3A',
-    primaryLight: '#00784C',
-    primaryGlow: '#005C3A',
-    primarySurface: '#E3F5EC',
-    accent: '#8A4B00',
-    accentLight: '#FFF4D6',
-    accentDark: '#8A4B00',
-    background: '#FFFFFF',
-    backgroundDark: '#F4F4F4',
-    surface: '#FFFFFF',
-    surfaceElevated: '#FFFFFF',
-    surfaceSunken: '#F4F4F4',
-    text: '#000000',
-    textSecondary: '#000000',
-    textMuted: '#1A1A1A',
-    textLight: '#333333',
-    textInverse: '#FFFFFF',
-    border: '#000000',
-    borderLight: '#333333',
-    borderStrong: '#000000',
-    danger: '#9B0000',
-    dangerLight: '#FFE8E8',
-    warning: '#8A4B00',
-    warningLight: '#FFF4D6',
-    success: '#005C3A',
-    successLight: '#E3F5EC',
-    info: '#003A8A',
-    infoLight: '#E8F1FF',
-    successBorder: '#000000',
-    infoBorder: '#000000',
-    warningBorder: '#000000',
-    dangerBorder: '#000000',
-  },
 };
 
-export function fontScaleFor(size: TextSize, simpleMode: boolean) {
-  const base = size === 'xlarge' ? 1.32 : size === 'large' ? 1.16 : 1;
-  return simpleMode ? base + 0.06 : base;
+export function fontScaleFor(size: TextSize) {
+  return size === 'xlarge' ? 1.32 : size === 'large' ? 1.16 : 1;
 }

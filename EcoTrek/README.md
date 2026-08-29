@@ -21,9 +21,8 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Guest → Google** later: walks already on the phone are copied over when you
   sign in with Google.
 - **First run, once per account:** sign in → **Get Started** (your name is
-  pre-filled from your sign-in name; height/weight are optional) → a four-page
-  introduction with dots, Next, and Skip → home. Returning users go straight to
-  home — the intro and setup are never shown again.
+  pre-filled from your sign-in name; height/weight are optional) → home.
+  Returning users go straight to home.
 - **Your name is always yours.** Tap your name on the profile (pencil icon) to
   edit it any time; it updates the home screen and the share card.
 
@@ -40,9 +39,8 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 | **My walks** | This week's miles plus every saved walk. Recap and records are one tap away. |
 | **Background recording** | Keeps measuring if you lock the phone. Android shows "EcoTrek is recording." Stops on Finish. |
 | **Weather** | One tiny box on Home: temperature, condition, and a single friendly line. We are not a weather app. Full detail is one tap away. |
-| **Safety** | Call 911 and Text my contact on the live screen. Sit-down reminder after 25 minutes. |
-| **Simple mode** | Bigger text. Clubs and weekly goals stay out of the way. |
-| **Text size / look** | Normal, Large, Extra large. Light, Dark, High contrast. Less motion. |
+| **Safety** | Call 911 (with a confirm step) and a contact icon on the live screen. Sit-down reminder after 25 minutes. |
+| **Text size / look** | Normal, Large, Extra large. Light, Dark, or Sky (sunrise / afternoon / sunset in daytime only). |
 | **Your photo** | Tap the avatar on your profile to pick or take your own picture. It becomes your profile logo everywhere. |
 | **Share card** | A real picture — your photo plus your stats — sent through the system share sheet. If a device can't make a picture, it falls back to sharing the stats as text, and the card is always on screen to show someone directly. |
 | **Trails** | 14 Austin trails, offline. Cards show area, distance (when location is on), easy/medium/hard, dogs, water, bathrooms. "Ask about a trail" goes straight to the assistant. |
@@ -90,8 +88,8 @@ src/screens/MoreScreen.tsx         You / Explore / App sections
 src/screens/ProfileScreen.tsx      photo + editable name, level, weight, club, streak, badges
 src/screens/HistoryScreen.tsx      My walks (this week + list)
 src/screens/ActiveTrackingScreen.tsx  live GPS, 911, rest reminder
-src/constants/SettingsContext.tsx  units, simple mode, text size, theme
-src/context/ThemeContext.tsx       light / dark / high contrast + scaled typography
+src/constants/SettingsContext.tsx  units, text size, theme
+src/context/ThemeContext.tsx       light / dark / sky + scaled typography
 src/services/location.ts           foreground watch + background task
 src/services/locationTask.ts       TaskManager definition
 src/services/storage.ts            per-user keys + guest → Google copy
@@ -105,8 +103,8 @@ src/services/avatar.ts             profile photo: pick/take, compress, store
 ## Theming and text size
 
 - Every screen reads its colors and typography from `useTheme()`. Switching
-  Light / Dark / High contrast re-themes the whole app — no screen is left
-  behind, and nothing is hard-coded per screen.
+  Light / Dark / Sky re-themes the whole app — no screen is left
+  behind, and nothing is hard-coded per screen. Sky only tints during the day.
 - The app owns text sizing: OS font scaling is turned off and the Settings
   text size (Normal / Large / Extra large) scales the entire type ramp through
   `ThemeContext` in one place. One scaler, so larger text can't blow up a layout.
@@ -117,8 +115,6 @@ src/services/avatar.ts             profile photo: pick/take, compress, store
 ## Accessibility notes
 
 - Settings text size multiplies the whole type ramp (see above).
-- Simple mode adds a little more scale and hides clubs/goals in More.
-- Reduce motion skips stack animations and the sign-in fade.
 - Emergency contact is stored on the profile and used from a live walk.
 - Tap targets meet the 52 pt minimum; icons always ship with labels.
 

@@ -9,7 +9,7 @@ import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
 import { Typography, useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 
-type Row = { icon: IconName; label: string; hint: string; to: string; hideInSimple?: boolean };
+type Row = { icon: IconName; label: string; hint: string; to: string };
 type Section = { title: string; rows: Row[] };
 
 /**
@@ -32,22 +32,22 @@ const SECTIONS: Section[] = [
     title: 'Explore',
     rows: [
       { icon: 'map', label: 'Trails', hint: 'Austin walks and rides', to: 'Trails' },
-      { icon: 'users', label: 'Clubs', hint: 'Walk with friends', to: 'Clubs', hideInSimple: true },
-      { icon: 'target', label: 'Weekly goals', hint: 'Five small things this week', to: 'Challenges', hideInSimple: true },
+      { icon: 'users', label: 'Clubs', hint: 'Walk with friends', to: 'Clubs' },
+      { icon: 'target', label: 'Weekly goals', hint: 'Five small things this week', to: 'Challenges' },
     ],
   },
   {
     title: 'App',
     rows: [
       { icon: 'shield', label: 'Safety', hint: 'What to do if you need help', to: 'Safety' },
-      { icon: 'sliders', label: 'Settings', hint: 'Text size, simple mode, units', to: 'Settings' },
+      { icon: 'sliders', label: 'Settings', hint: 'Text size, look, units', to: 'Settings' },
     ],
   },
 ];
 
 export default function MoreScreen() {
   const navigation = useNavigation<any>();
-  const { simpleMode, colors, typography } = useTheme();
+  const { colors, typography } = useTheme();
   const { user } = useAuth();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
@@ -56,7 +56,7 @@ export default function MoreScreen() {
       <Header title="More" subtitle={user?.name ? `Signed in as ${user.name}` : undefined} hideAvatar />
       <View style={styles.body}>
         {SECTIONS.map((section) => {
-          const rows = section.rows.filter((r) => !(simpleMode && r.hideInSimple));
+          const rows = section.rows;
           if (rows.length === 0) return null;
           return (
             <View key={section.title} style={styles.section}>
