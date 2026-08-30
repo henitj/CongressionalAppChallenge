@@ -146,7 +146,7 @@ export default function HomeScreen() {
           </View>
         </View>
 
-        <Card tone="sunken">
+        <Card>
             <View style={styles.panelHead}>
               <View style={styles.panelIcon}>
                 <Icon name={myClub ? 'users' : 'target'} size={18} color={colors.primary} strokeWidth={1.9} />
@@ -220,7 +220,7 @@ export default function HomeScreen() {
               </View>
             </Card>
           ) : (
-            <Card tone="sunken">
+            <Card>
               <Text style={styles.emptyTitle}>You have not walked yet</Text>
               <Text style={styles.emptyText}>
                 Tap Start when you are ready. Even one short walk is enough to begin.

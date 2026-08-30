@@ -450,7 +450,7 @@ export default function ActiveTrackingScreen() {
           {/* Finish button */}
           <View style={styles.finishRow}>
             <Button
-              label={mode === 'bike' ? 'Finish ride' : 'Finish walk'}
+              label={mode === 'bike' ? 'Stop and save ride' : 'Stop and save walk'}
               icon="stop"
               size="lg"
               full

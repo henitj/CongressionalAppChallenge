@@ -70,9 +70,11 @@ export function Screen({
     <View style={[ui.screen, { backgroundColor: colors.background }, style]}>
       <ScrollView
         ref={scrollRef}
-        contentContainerStyle={[ui.scrollContent, contentStyle]}
+        style={{ flex: 1 }}
+        contentContainerStyle={[ui.scrollContent, ui.scrollContentGrow, contentStyle]}
         showsVerticalScrollIndicator={false}
         refreshControl={refreshControl}
+        nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
       >
@@ -642,6 +644,9 @@ export function Metric({
 const ui = StyleSheet.create({
   screen: { flex: 1 },
   scrollContent: { paddingBottom: 110 },
+  // Give short pages a full viewport while still allowing long pages to grow
+  // and scroll on web and native.
+  scrollContentGrow: { flexGrow: 1 },
 
   pressed: { opacity: 0.72 },
 
