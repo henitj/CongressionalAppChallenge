@@ -1,23 +1,23 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 1024 1024">
-  <rect width="1024" height="1024" fill="#F4F1E6"/>
+  <rect width="1024" height="1024" fill="#0D3D2D"/>
+  <rect x="112" y="112" width="800" height="800" rx="216" fill="#1A7A5A"/>
 
-  <!-- A simple trail leading through green hills toward a new day. -->
-  <circle cx="704" cy="302" r="92" fill="#E8943A"/>
+  <!-- A compact E with an outgoing trail arrow: EcoTrek in one mark. -->
   <path
-    d="M 86 706 L 318 430 L 456 566 L 624 330 L 938 706 Z"
-    fill="#7DD4AD"
-  />
-  <path
-    d="M 72 744 C 216 644 332 620 464 668 C 600 718 700 616 952 548 L 952 906 L 72 906 Z"
-    fill="#1A7A5A"
-  />
-  <path
-    d="M 454 880 C 502 804 580 766 558 696 C 536 628 432 615 480 552 C 510 512 556 470 612 414"
+    d="M 700 270 H 352 V 754 H 700 M 352 512 H 610"
     fill="none"
     stroke="#FFF8E5"
-    stroke-width="72"
+    stroke-width="82"
     stroke-linecap="round"
     stroke-linejoin="round"
   />
-  <circle cx="454" cy="880" r="20" fill="#E8943A"/>
+  <path
+    d="M 610 512 H 756 M 756 512 L 692 448 M 756 512 L 692 576"
+    fill="none"
+    stroke="#E8943A"
+    stroke-width="30"
+    stroke-linecap="round"
+    stroke-linejoin="round"
+  />
+  <circle cx="756" cy="512" r="15" fill="#E8943A"/>
 </svg>

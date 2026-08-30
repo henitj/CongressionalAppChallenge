@@ -1,12 +1,11 @@
 <svg xmlns="http://www.w3.org/2000/svg" width="704" height="1520" viewBox="0 0 704 1520">
-  <rect width="704" height="1520" fill="#F4F1E6"/>
+  <rect width="704" height="1520" fill="#0D3D2D"/>
   <g transform="translate(172 470) scale(.352)" fill="none">
-    <circle cx="704" cy="302" r="92" fill="#E8943A"/>
-    <path d="M 86 706 L 318 430 L 456 566 L 624 330 L 938 706 Z" fill="#7DD4AD"/>
-    <path d="M 72 744 C 216 644 332 620 464 668 C 600 718 700 616 952 548 L 952 906 L 72 906 Z" fill="#1A7A5A"/>
-    <path d="M 454 880 C 502 804 580 766 558 696 C 536 628 432 615 480 552 C 510 512 556 470 612 414" stroke="#FFF8E5" stroke-width="72" stroke-linecap="round" stroke-linejoin="round"/>
-    <circle cx="454" cy="880" r="20" fill="#E8943A"/>
+    <rect x="112" y="112" width="800" height="800" rx="216" fill="#1A7A5A"/>
+    <path d="M 700 270 H 352 V 754 H 700 M 352 512 H 610" stroke="#FFF8E5" stroke-width="82" stroke-linecap="round" stroke-linejoin="round"/>
+    <path d="M 610 512 H 756 M 756 512 L 692 448 M 756 512 L 692 576" stroke="#E8943A" stroke-width="30" stroke-linecap="round" stroke-linejoin="round"/>
+    <circle cx="756" cy="512" r="15" fill="#E8943A"/>
   </g>
-  <text x="352" y="950" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="74" font-weight="700" fill="#0D3D2D">EcoTrek</text>
-  <text x="352" y="1008" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="22" font-weight="600" letter-spacing="5" fill="#1A7A5A">WALK  •  HIKE  •  RIDE</text>
+  <text x="352" y="950" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="74" font-weight="700" fill="#FFF8E5">Eco<tspan fill="#E8943A">Trek</tspan></text>
+  <text x="352" y="1008" text-anchor="middle" font-family="DejaVu Sans, sans-serif" font-size="22" font-weight="600" letter-spacing="5" fill="#7DD4AD">WALK  •  HIKE  •  RIDE</text>
 </svg>
