@@ -1,7 +1,10 @@
 import React from 'react';
 import { Image, ImageStyle, StyleProp } from 'react-native';
 
-const LOGO = require('../../assets/logo.png');
+// Use the finished circular badge rather than the old stretched ribbon mark.
+// The asset has a transparent surround, so it stays crisp on light and dark
+// surfaces alike.
+const LOGO = require('../../assets/logo-polished.png');
 
 /**
  * The EcoTrek mark — a deep-forest-green circular emblem with a cream
@@ -9,8 +12,8 @@ const LOGO = require('../../assets/logo.png');
  * two cream pine trees at the base. This is the app's face: it greets
  * people on the intro and sign-in screens, matching the installed app icon.
  *
- * The source file (assets/logo.png) is square with the brand background
- * baked in, so we round the corners here and it sits cleanly on any surface.
+ * The source file is a square circular badge with a transparent surround,
+ * so it sits cleanly on any surface.
  */
 export default function Logo({ size = 72, style }: { size?: number; style?: StyleProp<ImageStyle> }) {
   return (

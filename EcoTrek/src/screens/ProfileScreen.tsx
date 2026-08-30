@@ -186,7 +186,6 @@ export default function ProfileScreen() {
           streak={currentStreak}
           level={level}
           trails={uniqueTrailsCompleted}
-          avatarUri={avatarUri}
         />
 
         {/* Weight tracking */}
