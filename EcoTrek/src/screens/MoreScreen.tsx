@@ -8,6 +8,7 @@ import { Screen, Card, Divider } from '../components/ui';
 import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
 import { Typography, useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
+import { useSettings } from '../constants/SettingsContext';
 
 type Row = { icon: IconName; label: string; hint: string; to: string };
 type Section = { title: string; rows: Row[] };
@@ -49,6 +50,7 @@ export default function MoreScreen() {
   const navigation = useNavigation<any>();
   const { colors, typography } = useTheme();
   const { user } = useAuth();
+  const { simpleMode } = useSettings();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
   return (
@@ -56,7 +58,11 @@ export default function MoreScreen() {
       <Header title="More" subtitle={user?.name ? `Signed in as ${user.name}` : undefined} hideAvatar />
       <View style={styles.body}>
         {SECTIONS.map((section) => {
-          const rows = section.rows;
+          // Simple mode keeps the app to the essentials: clubs and weekly
+          // goals are hidden, everything else stays.
+          const rows = simpleMode
+            ? section.rows.filter((row) => row.to !== 'Clubs' && row.to !== 'Challenges')
+            : section.rows;
           if (rows.length === 0) return null;
           return (
             <View key={section.title} style={styles.section}>

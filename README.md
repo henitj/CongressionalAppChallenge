@@ -20,7 +20,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Simple mode, large text, dark and high-contrast looks** — in Settings.
 - **Google sign-in works for both signing in and signing up** — one tap, seamless. On the web demo a built-in account sheet stands in for the Google popup. Guest needs no account at all, and a guest's data is copied when you later sign in with Google.
 - **First run, once per account** — Get Started (your name is pre-filled) → a four-page intro you can skip → home. You never do it again. Your name stays editable on your profile.
-- **Share a picture of your progress** — your photo plus your stats, sent through the system share sheet.
+- **Share your progress** — a readable summary sheet with your name, level, miles, trees, streak and trails, ready to show someone.
 - **Trees and points** are a fun way to see effort. No real trees are planted.
 
 ---

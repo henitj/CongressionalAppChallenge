@@ -5,12 +5,17 @@ import { Appearance, TextSize } from './theme';
 
 type Units = 'imperial' | 'metric';
 type TempUnit = 'F' | 'C';
+export type MotionPref = 'system' | 'on' | 'off';
 
 type Stored = {
   units: Units;
   tempUnit: TempUnit;
   appearance: Appearance;
   textSize: TextSize;
+  /** Simple mode: fewer choices in More, larger text everywhere. */
+  simpleMode: boolean;
+  /** Less motion: 'system' follows the OS reduce-motion setting. */
+  reduceMotion: MotionPref;
 };
 
 const DEFAULTS: Stored = {
@@ -18,6 +23,8 @@ const DEFAULTS: Stored = {
   tempUnit: 'F',
   appearance: 'light',
   textSize: 'default',
+  simpleMode: false,
+  reduceMotion: 'system',
 };
 
 function normalizeAppearance(raw: unknown): Appearance {
@@ -30,6 +37,8 @@ type SettingsState = Stored & {
   setTempUnit: (t: TempUnit) => Promise<void>;
   setAppearance: (a: Appearance) => Promise<void>;
   setTextSize: (s: TextSize) => Promise<void>;
+  setSimpleMode: (v: boolean) => Promise<void>;
+  setReduceMotion: (v: MotionPref) => Promise<void>;
   formatDistance: (miles: number) => string;
   formatDistanceCompact: (miles: number) => string;
   formatDistanceUnit: () => string;
@@ -54,6 +63,11 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
           appearance: normalizeAppearance(parsed.appearance),
           textSize:
             parsed.textSize === 'large' || parsed.textSize === 'xlarge' ? parsed.textSize : 'default',
+          simpleMode: parsed.simpleMode === true,
+          reduceMotion:
+            parsed.reduceMotion === 'on' || parsed.reduceMotion === 'off'
+              ? parsed.reduceMotion
+              : 'system',
         });
       } catch {
         /* keep defaults */
@@ -77,6 +91,14 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
   );
   const setTextSize = useCallback(
     async (textSize: TextSize) => persist({ ...state, textSize }),
+    [state, persist]
+  );
+  const setSimpleMode = useCallback(
+    async (simpleMode: boolean) => persist({ ...state, simpleMode }),
+    [state, persist]
+  );
+  const setReduceMotion = useCallback(
+    async (reduceMotion: MotionPref) => persist({ ...state, reduceMotion }),
     [state, persist]
   );
 
@@ -115,6 +137,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setTempUnit,
       setAppearance,
       setTextSize,
+      setSimpleMode,
+      setReduceMotion,
       formatDistance,
       formatDistanceCompact,
       formatDistanceUnit,

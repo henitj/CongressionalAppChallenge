@@ -50,6 +50,7 @@ function TabItem({ icon, label, focused }: { icon: IconName; label: string; focu
           { color: focused ? colors.primary : colors.textMuted, fontSize: Math.round(12 * fontScale) },
         ]}
         numberOfLines={1}
+        accessibilityLabel={label}
       >
         {label}
       </Text>
@@ -83,13 +84,19 @@ function Tabs() {
 }
 
 export default function RootNavigator() {
+  const { motionEnabled } = useTheme();
   return (
-    <Stack.Navigator screenOptions={{ headerShown: false, animation: 'default' }}>
+    <Stack.Navigator
+      screenOptions={{ headerShown: false, animation: motionEnabled ? 'default' : 'none' }}
+    >
       <Stack.Screen name="Tabs" component={Tabs} />
       <Stack.Screen
         name="ActiveTracking"
         component={ActiveTrackingScreen}
-        options={{ gestureEnabled: false, animation: 'slide_from_bottom' }}
+        options={{
+          gestureEnabled: false,
+          animation: motionEnabled ? 'slide_from_bottom' : 'none',
+        }}
       />
       <Stack.Screen name="Trails" component={TrailsScreen} />
       <Stack.Screen name="Clubs" component={LeaderboardScreen} />
