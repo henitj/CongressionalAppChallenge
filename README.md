@@ -40,7 +40,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 
 | Layer | Technology |
 |-------|-----------|
-| App | React Native + Expo SDK 54 |
+| App | React Native + Expo SDK 57 |
 | Language | TypeScript |
 | Navigation | React Navigation (3 tabs + stack) |
 | State | React Context |

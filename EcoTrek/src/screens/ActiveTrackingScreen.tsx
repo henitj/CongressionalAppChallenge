@@ -673,7 +673,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
   statBoxLabel: { ...t.micro, color: c.textMuted },
 
   alertOverlay: {
-    ...StyleSheet.absoluteFillObject,
+    ...StyleSheet.absoluteFill,
     backgroundColor: 'rgba(0,0,0,0.6)',
     justifyContent: 'center',
     alignItems: 'center',

@@ -171,11 +171,11 @@ describe('review fixes', () => {
     expect(getByLabelText('Add your photo')).toBeTruthy();
   });
 
-  it('Share opens a picture card you can send as an image', async () => {
+  it('Share opens the readable progress sheet', async () => {
     const utils = await mount(ProfileScreen, 'Share my progress');
     fireEvent.press(utils.getByText('Share my progress'));
-    await waitFor(() => expect(utils.queryByText('Share as picture')).toBeTruthy(), { timeout: 4000 });
-    expect(utils.queryByText(/this is the picture you share/i)).toBeTruthy();
+    await waitFor(() => expect(utils.queryByText('Share your progress')).toBeTruthy(), { timeout: 4000 });
+    expect(utils.queryByText(/a quick look at your ecotrek progress/i)).toBeTruthy();
   });
 });
 
