@@ -51,20 +51,25 @@ This is where most first submissions break.
 
 ## 4. Neon database (optional for launch, needed for shared clubs)
 
-Without it the app works fully — clubs just live on one device.
+Without it the app works fully — clubs just live on one device. Full
+step-by-step guide with screenshots-level detail: **`docs/NEON_SETUP.md`**.
 
 - [ ] **[you]** Create a Neon project at https://neon.com and copy the **pooled**
       connection string.
-- [ ] **[you]** `cd server && cp .env.example .env`, paste `DATABASE_URL` and
-      `GOOGLE_CLIENT_IDS`.
-- [ ] **[you]** `npm install && npm run migrate` — creates every table and seeds
-      badges, trails and a sample challenge.
+- [ ] **[you]** `cd server && cp .env.example .env`, paste `DATABASE_URL` (and
+      `GOOGLE_CLIENT_IDS` when you switch sign-in on).
+- [ ] **[you]** `npm install && npm run migrate && npm run check` — migrate
+      creates every table; check proves the connection and says exactly what is
+      wrong if it is not.
 - [ ] **[you]** Deploy `server/` anywhere that runs Node (Render and Railway
-      both have free tiers). Set the same two env vars there.
+      both have free tiers). Set the same env vars there.
 - [ ] **[you]** Put the deployed URL in the app's `.env` as
       `EXPO_PUBLIC_API_URL`. That single line flips the whole app from
-      on-device to cloud. No other change.
+      on-device to cloud. No other change. With the line left empty the app
+      stays local-first and nothing breaks.
 - [ ] **[done]** Schema, migration script, API and client adapter all written.
+- [ ] **[done]** `.env` is loaded automatically by the server; `npm run check`
+      validates the link end to end.
 
 ## 5. Android map key (hard blocker for a usable build)
 
@@ -140,7 +145,7 @@ eas submit --platform android
 
 ## 9. Timing
 
-Today is **16 August 2026**. The Congressional App Challenge closes in
+Today is **5 September 2026**. The Congressional App Challenge closes in
 **late October**.
 
 - First Play review commonly takes **3–7 days**, occasionally longer for a brand
@@ -157,7 +162,12 @@ Today is **16 August 2026**. The Congressional App Challenge closes in
 | Was a problem | Now |
 |---|---|
 | `assets/icon.png`, `splash.png`, `favicon.png` missing — EAS build fails | Generated, plus adaptive and notification icons |
-| `ACCESS_BACKGROUND_LOCATION` declared with no background task | Removed and explicitly blocked; Play scrutinises this heavily |
+| `ACCESS_BACKGROUND_LOCATION` declared with no background task | Removed from `android.permissions` AND hard-blocked with `tools:node=\"remove\"` in the manifest, so no library can re-add it; Play scrutinises this heavily |
+| Legacy permissions (`RECORD_AUDIO`, `SYSTEM_ALERT_WINDOW`, `READ/WRITE_EXTERNAL_STORAGE`) leaked into the manifest from the template | All four blocked via `android.blockedPermissions`; final manifest carries only the six permissions the app actually uses |
+| A render error in any screen took the whole app down | Root `ErrorBoundary` shows a calm retry screen; fallback is self-contained (no theme/context) so it renders even when providers crash |
+| Corrupted stored data (truncated JSON, wrong-shape payloads, `null`) crashed `ChallengeContext`, `ProfileContext`, `StreakContext`, `ActivityContext`, `ClubContext`, `EcoPointsContext` | Every storage load is shape-validated (`isArray`/`isObject`) and contexts normalize hostile-but-valid data; covered by a 17-test resilience suite |
+| The API process died on bad sockets or unexpected errors | `clientError` handler, `uncaughtException`/`unhandledRejection` guards, graceful SIGTERM/SIGINT shutdown |
+| `server/.env` was never loaded — pasting the Neon URL did nothing | Zero-dependency env loader; `npm run check` validates the Neon link end to end |
 | Firebase imported but not installed — Clubs tab crashed | Firebase gone entirely; clubs are local-first with an API adapter |
 | Public Firebase "playground" database, open read/write to the world | Deleted |
 | Groq API key bundled into the client | Client-side call removed; belongs behind the API |

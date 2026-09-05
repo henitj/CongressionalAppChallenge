@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { IconName } from '../components/Icon';
 import { LEVELS } from './theme';
 import { useAuth } from '../context/AuthContext';
-import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { isArray, keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 
 export type EcoAction =
@@ -196,8 +196,8 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
     setLoaded(false);
     (async () => {
       const [h, b] = await Promise.all([
-        loadJSON<PointEvent[]>(histKey, []),
-        loadJSON<Badge[]>(badgeKey, DEFAULT_BADGES),
+        loadJSON<PointEvent[]>(histKey, [], isArray),
+        loadJSON<Badge[]>(badgeKey, DEFAULT_BADGES, isArray),
       ]);
       if (cancelled) return;
 

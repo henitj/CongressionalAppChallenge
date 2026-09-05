@@ -3,12 +3,14 @@
   "version": "1.0.0",
   "private": true,
   "type": "module",
-  "description": "EcoTrek API — the thin layer between the app and Neon Postgres.",
+  "description": "EcoTrek API \u2014 the thin layer between the app and Neon Postgres.",
   "main": "index.js",
   "scripts": {
     "start": "node index.js",
     "dev": "node --watch index.js",
-    "migrate": "node migrate.js"
+    "migrate": "node migrate.js",
+    "check": "node check.js",
+    "pentest": "node pen-test.mjs"
   },
   "engines": {
     "node": ">=20"

@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { loadJSON, saveJSON } from '../services/storage';
+import { isArray, loadJSON, saveJSON } from '../services/storage';
 import { weekKey } from '../services/dates';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 
@@ -257,7 +257,7 @@ export function ClubProvider({
           return;
         }
       }
-      const local = await loadJSON<Club[]>(CLUBS_KEY, []);
+      const local = await loadJSON<Club[]>(CLUBS_KEY, [], isArray);
       setClubs(local.map(withDefaults));
     } finally {
       setSyncing(false);

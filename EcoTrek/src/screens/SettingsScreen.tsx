@@ -31,6 +31,10 @@ export default function SettingsScreen() {
     setAppearance,
     textSize,
     setTextSize,
+    simpleMode,
+    setSimpleMode,
+    reduceMotion,
+    setReduceMotion,
   } = useSettings();
   const [showGoogleSheet, setShowGoogleSheet] = useState(false);
   const { user, signOut, signInWithGoogle } = useAuth();
@@ -169,6 +173,37 @@ export default function SettingsScreen() {
                 onChange={(v) => setTextSize(v as any)}
                 style={{ marginTop: 6 }}
               />
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>Simple mode</Text>
+              <Segmented
+                options={[
+                  { value: 'off', label: 'Off' },
+                  { value: 'on', label: 'On' },
+                ]}
+                value={simpleMode ? 'on' : 'off'}
+                onChange={(v) => setSimpleMode(v === 'on')}
+                style={{ marginTop: 6 }}
+              />
+              <Text style={styles.settingHint}>
+                Fewer choices in More, larger text everywhere.
+              </Text>
+            </View>
+            <View>
+              <Text style={styles.settingLabel}>Less motion</Text>
+              <Segmented
+                options={[
+                  { value: 'system', label: 'System' },
+                  { value: 'on', label: 'On' },
+                  { value: 'off', label: 'Off' },
+                ]}
+                value={reduceMotion}
+                onChange={(v) => setReduceMotion(v as any)}
+                style={{ marginTop: 6 }}
+              />
+              <Text style={styles.settingHint}>
+                On skips fades and slides between screens.
+              </Text>
             </View>
             <View>
               <Text style={styles.settingLabel}>Look</Text>
@@ -456,6 +491,11 @@ function makeStyles(c: ColorPalette, t: Typography) {
   accountEmail: { ...t.small, color: c.textMuted, marginTop: 1 },
 
   settingLabel: { ...t.overline, color: c.textMuted },
+  settingHint: {
+    color: c.textMuted,
+    ...t.micro,
+    marginTop: 6,
+  },
 
   row: {
     flexDirection: 'row',

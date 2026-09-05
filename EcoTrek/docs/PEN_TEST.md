@@ -142,6 +142,50 @@ open-redirect or scheme-injection surface.
   stack traces (details go to server logs only).
 - **Request routing:** unknown routes → 404; OPTIONS preflight → 204.
 
+---
+
+# Round 2 — runnable attack suite (2026-09-05)
+
+Round 1 was a manual audit. Round 2 turned the methodology into **a permanent,
+runnable attack suite**: `server/pen-test.mjs` (`npm run pentest`, ~50 attacks,
+exit code 0 = every attack survived). It boots the real API and attacks it
+live, calls every route handler directly against a recording stub database so
+the exact values reaching SQL can be inspected, attacks the token verifier,
+and statically scans the client for XSS/injection primitives.
+
+## New findings (all fixed in this round)
+
+| # | Finding | Severity | Fix |
+|---|---------|----------|-----|
+| R2-1 | `POST /api/activities` accepted a 1 MB `id`, `grant.species`, garbage timestamps and hostile path coordinates — all reachable SQL and would 500 or store absurd rows | Medium | `id` capped 200, `grant.species` capped 60, timestamps clamped to `[0, 2100]`, every path coordinate sanitized to finite numbers-or-null (`sanitizePath`) |
+| R2-2 | `POST /api/streak/check-in` forwarded unclamped `longestStreak` / `lastBonusStreak` (1e308 accepted) and hostile `days` shapes into `unnest` array casts | Medium | streaks clamped `0..3650`; `days` must be a plain object; day keys validated `YYYY-MM-DD`; per-entry numbers clamped |
+| R2-3 | `POST /api/points` forwarded a garbage `timestamp` to `to_timestamp()` and an uncapped `id` idempotency key | Low | timestamps clamped; idempotency key capped 120 |
+| R2-4 | `POST /api/challenges/:id/complete` and clubs `contribute` forwarded uncapped slugs/weekIds (1 MB accepted) | Low | capped 120 / 40 |
+| R2-5 | `POST /api/assistant` forwarded a 1.5 MB prompt to the paid upstream API (cost-abuse vector) | Medium | question capped 500 chars; context JSON capped 20k chars |
+| R2-6 | Client: `ActivityDetailScreen` mounted with hostile `activityId` params (object / number / 1 MB string) | Info | screen handles all gracefully ("Activity not found"); pinned by tests |
+
+## Verified clean again (round 2)
+
+- No SQL injection anywhere: every injection probe travels as a **bound
+  parameter** and never appears in SQL text (asserted for every route).
+- No IDOR: club PATCH / lock / delete by a non-owner all 403 (asserted).
+- Member cap cannot be lowered below the roster (asserted).
+- Auth boundary: anonymous → null, wrong scheme → null, expired → null,
+  foreign-audience token → null, network failure → null, valid token → profile
+  with audience checked (all asserted).
+- Live process hardening: garbage request lines, malformed percent-encoding,
+  hostile Host headers, 3 MB bodies, 100k-deep JSON and a 260-request flood —
+  the server answers correctly through all of it and is still healthy after.
+
+## Re-run
+
+```bash
+cd EcoTrek/server
+npm run pentest
+```
+
+---
+
 ## How to re-run the live tests
 
 ```bash

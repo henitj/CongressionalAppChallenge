@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useAuth } from './AuthContext';
 import { useStreak } from './StreakContext';
 import { useChallenges } from './ChallengeContext';
-import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { isObject, keyFor, loadJSON, saveJSON } from '../services/storage';
 import {
   cancelAll,
   hasPermission,
@@ -65,7 +65,7 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
   useEffect(() => {
     let cancelled = false;
     (async () => {
-      const stored = await loadJSON<NotificationPrefs>(storeKey, DEFAULTS);
+      const stored = await loadJSON<NotificationPrefs>(storeKey, DEFAULTS, isObject);
       const granted = await hasPermission();
       if (cancelled) return;
       setPrefs({ ...DEFAULTS, ...stored });

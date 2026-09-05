@@ -20,7 +20,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Simple mode, large text, dark and high-contrast looks** — in Settings.
 - **Google sign-in works for both signing in and signing up** — one tap, seamless. On the web demo a built-in account sheet stands in for the Google popup. Guest needs no account at all, and a guest's data is copied when you later sign in with Google.
 - **First run, once per account** — Get Started (your name is pre-filled) → a four-page intro you can skip → home. You never do it again. Your name stays editable on your profile.
-- **Share a picture of your progress** — your photo plus your stats, sent through the system share sheet.
+- **Share your progress** — a readable summary sheet with your name, level, miles, trees, streak and trails, ready to show someone.
 - **Trees and points** are a fun way to see effort. No real trees are planted.
 
 ---
@@ -40,7 +40,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 
 | Layer | Technology |
 |-------|-----------|
-| App | React Native + Expo SDK 54 |
+| App | React Native + Expo SDK 57 |
 | Language | TypeScript |
 | Navigation | React Navigation (3 tabs + stack) |
 | State | React Context |
@@ -64,6 +64,18 @@ npx expo start
 Scan the QR code with Expo Go, or press `w` for web.
 
 Copy `.env.example` to `.env` if you want Google sign-in or a backend. The app works offline with an empty `.env`.
+
+### Link your Neon database (5 minutes)
+
+The backend in `EcoTrek/server/` is already written for [Neon](https://neon.com) Postgres. Three commands after pasting your connection string:
+
+```bash
+cd EcoTrek/server
+cp .env.example .env    # paste your Neon POOLED connection string as DATABASE_URL
+npm install && npm run migrate && npm run check   # creates tables, then proves the link
+```
+
+`npm run check` tells you exactly what is wrong if anything is missing. Full walkthrough: **`EcoTrek/docs/NEON_SETUP.md`**.
 
 ```bash
 npm test          # logic + render tests

@@ -8,7 +8,7 @@ import { useStreak } from './StreakContext';
 import { useClub } from '../constants/ClubContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useProfile, estimateCalories, estimateElevation } from './ProfileContext';
-import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { isArray, keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 
 export type ActivityType = 'hike' | 'bike';
@@ -105,7 +105,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     setLoading(true);
     (async () => {
-      const local = await loadJSON<Activity[]>(storeKey, []);
+      const local = await loadJSON<Activity[]>(storeKey, [], isArray);
       if (cancelled) return;
       setHistory(local);
       setLoading(false);

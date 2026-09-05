@@ -10,12 +10,15 @@ import {
   paletteFor,
 } from '../constants/theme';
 import { useSettings } from '../constants/SettingsContext';
+import { AccessibilityInfo } from 'react-native';
 
 type ThemeValue = {
   colors: ColorPalette;
   appearance: Appearance;
   fontScale: number;
   typography: typeof TYPOGRAPHY;
+  /** True when screen transitions should be skipped. */
+  motionEnabled: boolean;
 };
 
 const FALLBACK: ThemeValue = {
@@ -23,13 +26,23 @@ const FALLBACK: ThemeValue = {
   appearance: 'light',
   fontScale: 1,
   typography: TYPOGRAPHY,
+  motionEnabled: true,
 };
 
 const ThemeContext = createContext<ThemeValue>(FALLBACK);
 
 export function ThemeProvider({ children }: { children: React.ReactNode }) {
-  const { appearance, textSize } = useSettings();
+  const { appearance, textSize, simpleMode, reduceMotion } = useSettings();
   const [hour, setHour] = useState(() => new Date().getHours());
+  const [systemReduceMotion, setSystemReduceMotion] = useState(false);
+
+  // 'system' follows the OS reduce-motion setting, live.
+  useEffect(() => {
+    if (reduceMotion !== 'system') return;
+    AccessibilityInfo.isReduceMotionEnabled().then(setSystemReduceMotion).catch(() => {});
+    const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setSystemReduceMotion);
+    return () => sub.remove();
+  }, [reduceMotion]);
 
   useEffect(() => {
     const tick = () => setHour(new Date().getHours());
@@ -38,15 +51,19 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   const value = useMemo<ThemeValue>(() => {
-    const scale = fontScaleFor(textSize);
+    // Simple mode bumps the whole type ramp a step, on top of the chosen size.
+    const scale = fontScaleFor(textSize) * (simpleMode ? 1.12 : 1);
     const colors = paletteFor(appearance, hour);
+    const motionEnabled =
+      reduceMotion === 'on' ? false : reduceMotion === 'off' ? true : !systemReduceMotion;
     return {
       colors,
       appearance,
+      motionEnabled,
       fontScale: scale,
       typography: scaleTypography(TYPOGRAPHY, scale),
     };
-  }, [appearance, textSize, hour]);
+  }, [appearance, textSize, hour, simpleMode, reduceMotion, systemReduceMotion]);
 
   const darkBar = appearance === 'dark';
 

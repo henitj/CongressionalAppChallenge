@@ -1,11 +1,6 @@
 import { Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import {
-  documentDirectory,
-  copyAsync,
-  deleteAsync,
-  getInfoAsync,
-} from 'expo-file-system/legacy';
+import { File, Paths } from 'expo-file-system';
 
 /**
  * Profile photo (the "profile logo").
@@ -14,22 +9,24 @@ import {
  * on native, and stored inside the app's document directory so it survives
  * app restarts. On web there is no stable file store, so the compressed
  * image is stored as a data URI instead.
+ *
+ * Uses the SDK 55+ curated file-system API (File / Paths). The old
+ * `expo-file-system/legacy` module was removed in SDK 55.
  */
 
 const BASE64_PREFIX = 'data:image/jpeg;base64,';
 
-function avatarPath(timestamp: number) {
-  const dir = documentDirectory;
-  if (!dir) return null;
-  return `${dir}avatar-${timestamp}.jpg`;
+function avatarFile(timestamp: number): File | null {
+  if (Platform.OS === 'web') return null;
+  return new File(Paths.document, `avatar-${timestamp}.jpg`);
 }
 
 /** Only we ever delete files that live in our own avatar spot. */
 async function removeStoredAvatar(uri: string | null | undefined) {
-  if (!uri || !documentDirectory || !uri.startsWith(documentDirectory)) return;
+  if (!uri || Platform.OS === 'web' || !uri.startsWith(Paths.document.uri)) return;
   try {
-    const info = await getInfoAsync(uri);
-    if (info.exists) await deleteAsync(uri, { idempotent: true });
+    const file = new File(uri);
+    if (file.exists) file.delete();
   } catch {
     /* already gone — fine */
   }
@@ -76,11 +73,12 @@ export async function pickAndStoreAvatarPhoto(
       return null;
     }
 
-    const dest = avatarPath(Date.now());
+    const dest = avatarFile(Date.now());
     if (!dest) return null;
-    await copyAsync({ from: asset.uri, to: dest });
+    const picked = new File(asset.uri);
+    await picked.copy(dest, { overwrite: true });
     await removeStoredAvatar(previousUri);
-    return dest;
+    return dest.uri;
   } catch (e) {
     console.warn('[avatar] could not store photo', e);
     return null;

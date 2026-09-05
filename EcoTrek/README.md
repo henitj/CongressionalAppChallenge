@@ -2,7 +2,7 @@
 
 **Tap Start. Walk. We count the miles.**
 
-A React Native app (Expo SDK 54) for Austin walkers, hikers, and cyclists. One codebase for iOS, Android, and web.
+A React Native app (Expo SDK 57) for Austin walkers, hikers, and cyclists. One codebase for iOS, Android, and web.
 
 Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Averineni and Basil Vinesh.
 

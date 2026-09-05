@@ -16,14 +16,30 @@ export function keyFor(userId: string | null | undefined, name: string) {
   return `${PREFIX}/${userId ?? 'anon'}/${name}`;
 }
 
-export async function loadJSON<T>(key: string, fallback: T): Promise<T> {
+export async function loadJSON<T>(
+  key: string,
+  fallback: T,
+  validate?: (value: unknown) => boolean
+): Promise<T> {
   try {
     const raw = await AsyncStorage.getItem(key);
     if (!raw) return fallback;
-    return JSON.parse(raw) as T;
+    const parsed = JSON.parse(raw);
+    // A stored value of the wrong shape (truncated write, schema drift, a
+    // hand-edited store) must fall back to defaults, never flow into the app.
+    if (validate && !validate(parsed)) return fallback;
+    return parsed as T;
   } catch {
     return fallback;
   }
+}
+
+/** Validator for array-valued keys: anything but an array falls back. */
+export const isArray = Array.isArray;
+
+/** Validator for object-valued keys: null and arrays fall back. */
+export function isObject(value: unknown): boolean {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
 export async function saveJSON(key: string, value: unknown): Promise<void> {

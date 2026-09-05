@@ -3,11 +3,12 @@ import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
-import { Screen, Card, Segmented, EmptyState, Pill, Divider, Banner } from '../components/ui';
+import { Screen, Card, Segmented, EmptyState, Pill, Divider, Banner, Button } from '../components/ui';
 import { RADIUS, SPACING, TREE_RULES, ColorPalette } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
+import CleanupSheet from '../components/CleanupSheet';
 import { TREES_DISCLAIMER } from '../services/trees';
 import { computeRecords } from '../services/records';
 import { useLogbook } from '../context/LogbookContext';
@@ -24,6 +25,7 @@ export default function ImpactScreen() {
     useActivity();
   const { history: pointHistory, totalPoints } = useEcoPoints();
   const { cleanupCount, litterCollected } = useLogbook();
+  const [showCleanup, setShowCleanup] = useState(false);
   const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
   const [tab, setTab] = useState<Tab>(route.params?.tab ?? 'activities');
 
@@ -224,14 +226,14 @@ export default function ImpactScreen() {
 
         {/* ── Records ─────────────────────────────────────────────────────── */}
         {tab === 'records' ? (
-          records.length === 0 ? (
-            <EmptyState
-              icon="award"
-              title="No records yet"
-              message="Log an activity and your first personal bests appear here."
-            />
-          ) : (
-            <>
+          <>
+            {records.length === 0 ? (
+              <EmptyState
+                icon="award"
+                title="No records yet"
+                message="Log an activity and your first personal bests appear here."
+              />
+            ) : (
               <Card padded={false}>
                 {records.map((r, i) => (
                   <View key={r.id}>
@@ -265,16 +267,24 @@ export default function ImpactScreen() {
                   </View>
                 ))}
               </Card>
+            )}
 
-              <Card>
-                <Text style={styles.sectionLabel}>Field log</Text>
-                <View style={styles.fieldStats}>
-                  <FieldStat value={String(cleanupCount)} label="Cleanups" />
-                  <FieldStat value={String(litterCollected)} label="Litter picked up" />
-                </View>
-              </Card>
-            </>
-          )
+            {/* The field log is always shown on this tab — a brand new account
+                must still be able to log its very first cleanup. */}
+            <Card>
+              <Text style={styles.sectionLabel}>Field log</Text>
+              <View style={styles.fieldStats}>
+                <FieldStat value={String(cleanupCount)} label="Cleanups" />
+                <FieldStat value={String(litterCollected)} label="Litter picked up" />
+              </View>
+              <Button
+                label="Log a cleanup"
+                onPress={() => setShowCleanup(true)}
+                variant="secondary"
+                style={{ marginTop: SPACING.md }}
+              />
+            </Card>
+          </>
         ) : null}
 
         {/* ── Points ──────────────────────────────────────────────────────── */}
@@ -324,7 +334,8 @@ export default function ImpactScreen() {
           </>
         ) : null}
       </View>
-    </Screen>
+          <CleanupSheet visible={showCleanup} onClose={() => setShowCleanup(false)} />
+      </Screen>
   );
 }
 

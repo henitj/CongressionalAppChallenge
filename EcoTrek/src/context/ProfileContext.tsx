@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { isObject, keyFor, loadJSON, saveJSON } from '../services/storage';
 
 /**
  * User profile data collected during onboarding.
@@ -62,13 +62,21 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     setLoading(true);
     (async () => {
-      const stored = await loadJSON<UserProfile>(storeKey, EMPTY_PROFILE);
+      const stored = await loadJSON<UserProfile>(storeKey, EMPTY_PROFILE, isObject);
       if (!cancelled) {
         // Older builds stored an emergency contact. That feature is gone, so
         // its fields are scrubbed the first time an old profile is read.
-        const clean = { ...stored } as UserProfile & { emergencyName?: string; emergencyPhone?: string };
+        const clean = {
+          ...EMPTY_PROFILE,
+          ...stored,
+        } as UserProfile & { emergencyName?: string; emergencyPhone?: string };
         delete clean.emergencyName;
         delete clean.emergencyPhone;
+        // Hostile-but-valid stored data must never reach the UI: firstName is
+        // read as a string everywhere, weightHistory as an array.
+        if (typeof clean.firstName !== 'string') clean.firstName = '';
+        if (typeof clean.lastName !== 'string') clean.lastName = '';
+        if (!Array.isArray(clean.weightHistory)) clean.weightHistory = [];
         setProfileState(clean);
         setLoading(false);
       }

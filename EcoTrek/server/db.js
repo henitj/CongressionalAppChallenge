@@ -1,3 +1,4 @@
+import './env.js';
 import { neon } from '@neondatabase/serverless';
 import { OAuth2Client } from 'google-auth-library';
 

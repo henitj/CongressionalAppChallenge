@@ -7,10 +7,10 @@ import { Image, ImageStyle, StyleProp } from 'react-native';
 const LOGO = require('../../assets/logo-polished.png');
 
 /**
- * The EcoTrek mark — a deep-forest-green circular emblem with a cream
- * winding trail that flows up into a fresh leaf, a warm orange sun, and
- * two cream pine trees at the base. This is the app's face: it greets
- * people on the intro and sign-in screens, matching the installed app icon.
+ * The EcoTrek mark — a circular emblem on a fresh spring-green to emerald
+ * gradient, with a trail of cream footprints that become living leaves as
+ * they climb. This is the app's face: it greets people on the intro and
+ * sign-in screens, matching the installed app icon.
  *
  * The source file is a square circular badge with a transparent surround,
  * so it sits cleanly on any surface.

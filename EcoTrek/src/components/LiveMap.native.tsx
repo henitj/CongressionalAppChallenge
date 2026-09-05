@@ -54,7 +54,7 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
         ref={(r) => {
           mapRef.current = r;
         }}
-        style={StyleSheet.absoluteFillObject}
+        style={StyleSheet.absoluteFill}
         // Android has no map without Google. iOS uses Apple Maps, which needs
         // no API key at all — forcing Google there would demand a second key
         // for no visible benefit.

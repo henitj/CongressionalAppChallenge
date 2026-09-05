@@ -171,6 +171,43 @@ const server = createServer(async (req, res) => {
   }
 });
 
+/* ── The server must stay up no matter what ──────────────────────────────── */
+
+// A client that disconnects mid-handshake would otherwise emit an error event
+// nobody handled. Respond with a bare 400 and move on.
+server.on('clientError', (err, socket) => {
+  try {
+    if (socket.writable) {
+      socket.end('HTTP/1.1 400 Bad Request\r\n\r\n');
+    } else {
+      socket.destroy();
+    }
+  } catch {
+    try { socket.destroy(); } catch { /* nothing left to do */ }
+  }
+});
+
+// One bad request must never take the whole API down. Log it, keep serving.
+process.on('uncaughtException', (err) => {
+  console.error('[fatal] uncaught exception (server kept alive):', err);
+});
+process.on('unhandledRejection', (reason) => {
+  console.error('[fatal] unhandled rejection (server kept alive):', reason);
+});
+
+// Stop cleanly on shutdown signals so in-flight requests finish.
+let shuttingDown = false;
+function shutdown(signal) {
+  if (shuttingDown) return;
+  shuttingDown = true;
+  console.log(`\n${signal} received — closing server…`);
+  server.close(() => process.exit(0));
+  // If something hangs, exit anyway. Neon connections do not need ceremony.
+  setTimeout(() => process.exit(0), 5000).unref();
+}
+process.on('SIGTERM', () => shutdown('SIGTERM'));
+process.on('SIGINT', () => shutdown('SIGINT'));
+
 server.listen(PORT, '0.0.0.0', () => {
   console.log(`EcoTrek API listening on http://0.0.0.0:${PORT}`);
 });

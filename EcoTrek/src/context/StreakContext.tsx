@@ -2,7 +2,7 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useR
 import { AppState } from 'react-native';
 import { useAuth } from './AuthContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
-import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { isObject, keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 
 /**
@@ -182,7 +182,7 @@ export function StreakProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     setLoaded(false);
     (async () => {
-      const stored = await loadJSON<Stored>(storeKey, EMPTY);
+      const stored = await loadJSON<Stored>(storeKey, EMPTY, isObject);
       if (cancelled) return;
       setState({ ...EMPTY, ...stored, weeks: stored.weeks ?? {}, freezes: stored.freezes ?? [] });
       setLoaded(true);
