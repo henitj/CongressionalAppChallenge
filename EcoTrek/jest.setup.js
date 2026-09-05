@@ -91,6 +91,15 @@ global.fetch = jest.fn(async () => ({
 // Quieten the act() noise from providers that load asynchronously.
 jest.spyOn(console, 'error').mockImplementation((msg, ...rest) => {
   if (typeof msg === 'string' && msg.includes('not wrapped in act')) return;
+  // React's own error-boundary reporting (the boundary tests exercise it).
+  if (typeof msg === 'string' && msg.startsWith('[ErrorBoundary]')) return;
+  if (
+    typeof msg === 'string' &&
+    (msg.includes('The above error occurred') ||
+      msg.includes('There was an error while simultaneous rendering') ||
+      msg.includes('error and its stack trace'))
+  )
+    return;
   // Any other console.error in a render test is a genuine problem.
   throw new Error(`console.error during render: ${msg} ${rest.join(' ')}`);
 });

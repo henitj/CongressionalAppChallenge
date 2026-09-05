@@ -12,6 +12,7 @@ import {
 import {
   dayKey,
   keyFor,
+  isObject,
   loadJSON,
   saveJSON,
   weekEnd,
@@ -81,6 +82,11 @@ const emptyStored = (weekId: string): Stored => ({
   history: {},
 });
 
+/** Anything but a plain object falls back to an empty record of that shape. */
+function asRecord<T extends object>(value: unknown): T {
+  return value && typeof value === 'object' && !Array.isArray(value) ? (value as T) : ({} as T);
+}
+
 /** Files the outgoing week away before its completions are cleared. */
 function archiveWeek(prev: Stored, templates: { id: string; points: number }[]): Stored['history'] {
   const ids = Object.keys(prev.completed);
@@ -116,12 +122,21 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
     setLoaded(false);
     (async () => {
       const current = weekKey();
-      const stored = await loadJSON<Stored>(storeKey, emptyStored(current));
+      const raw = await loadJSON<Stored>(storeKey, emptyStored(current), isObject);
       if (cancelled) return;
+
+      // Hostile-but-valid stored data must never reach the UI: weekId must be
+      // a string, and completed and history are always read as records.
+      const stored: Stored = {
+        ...raw,
+        weekId: typeof raw.weekId === 'string' ? raw.weekId : current,
+        completed: asRecord<Stored['completed']>(raw.completed),
+        history: asRecord<Stored['history']>(raw.history),
+      };
 
       const rolled =
         stored.weekId === current
-          ? { ...stored, history: stored.history ?? {} }
+          ? stored
           : {
               ...stored,
               weekId: current,

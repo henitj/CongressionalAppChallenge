@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useClub } from '../constants/ClubContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useAuth } from '../context/AuthContext';
-import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { isObject, keyFor, loadJSON, saveJSON } from '../services/storage';
 
 /**
  * Pays out the club weekly goal bonus, exactly once per goal.
@@ -42,7 +42,7 @@ export function useClubGoalRewards(): { clubGoalsMet: number } {
     let cancelled = false;
     loaded.current = false;
     (async () => {
-      const stored = await loadJSON<Stored>(storeKey, EMPTY);
+      const stored = await loadJSON<Stored>(storeKey, EMPTY, isObject);
       if (cancelled) return;
       setState({
         rewarded: Array.isArray(stored.rewarded) ? stored.rewarded : [],

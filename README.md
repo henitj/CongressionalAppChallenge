@@ -65,6 +65,18 @@ Scan the QR code with Expo Go, or press `w` for web.
 
 Copy `.env.example` to `.env` if you want Google sign-in or a backend. The app works offline with an empty `.env`.
 
+### Link your Neon database (5 minutes)
+
+The backend in `EcoTrek/server/` is already written for [Neon](https://neon.com) Postgres. Three commands after pasting your connection string:
+
+```bash
+cd EcoTrek/server
+cp .env.example .env    # paste your Neon POOLED connection string as DATABASE_URL
+npm install && npm run migrate && npm run check   # creates tables, then proves the link
+```
+
+`npm run check` tells you exactly what is wrong if anything is missing. Full walkthrough: **`EcoTrek/docs/NEON_SETUP.md`**.
+
 ```bash
 npm test          # logic + render tests
 npm run verify    # strict typecheck + both suites

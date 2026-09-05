@@ -10,6 +10,7 @@ import { NavigationContainer } from '@react-navigation/native';
 import RootNavigator from './src/navigation/RootNavigator';
 import SignInScreen from './src/screens/SignInScreen';
 import OnboardingGate from './src/components/OnboardingGate';
+import ErrorBoundary from './src/components/ErrorBoundary';
 import Icon from './src/components/Icon';
 import { APP_NAME } from './src/constants/appInfo';
 
@@ -188,7 +189,9 @@ export default function App() {
           <AuthProvider>
             <AppProvider>
               <ThemedStatusBar />
-              <Gate />
+              <ErrorBoundary>
+                <Gate />
+              </ErrorBoundary>
             </AppProvider>
           </AuthProvider>
         </ThemeProvider>

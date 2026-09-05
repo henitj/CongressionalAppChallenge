@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { useAuth } from './AuthContext';
-import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { isArray, keyFor, loadJSON, saveJSON } from '../services/storage';
 
 /**
  * Logbook context — simplified to just cleanup tracking.
@@ -31,7 +31,7 @@ export function LogbookProvider({ children }: { children: React.ReactNode }) {
 
   useEffect(() => {
     (async () => {
-      const stored = await loadJSON<CleanupRecord[]>(storeKey, []);
+      const stored = await loadJSON<CleanupRecord[]>(storeKey, [], isArray);
       setCleanups(stored);
     })();
   }, [storeKey]);

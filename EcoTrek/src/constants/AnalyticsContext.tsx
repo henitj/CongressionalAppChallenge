@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useAuth } from '../context/AuthContext';
-import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { isObject, keyFor, loadJSON, saveJSON } from '../services/storage';
 
 /**
  * Lightweight, on-device usage analytics.
@@ -92,7 +92,7 @@ export function AnalyticsProvider({ children }: { children: React.ReactNode }) {
         if (cancelled) return;
         setDeviceId(id);
 
-        const stored = await loadJSON<Stored>(storeKey, EMPTY);
+        const stored = await loadJSON<Stored>(storeKey, EMPTY, isObject);
         if (cancelled) return;
 
         const now = Date.now();
