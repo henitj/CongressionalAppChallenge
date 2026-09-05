@@ -35,6 +35,39 @@ function capString(v, max) {
   return String(v ?? '').slice(0, max);
 }
 
+/**
+ * Sanitizes a client-supplied epoch-milliseconds timestamp. A crafted value
+ * ('garbage', 1e308, NaN) would otherwise reach to_timestamp() and turn into
+ * a Postgres error (500) or an absurd stored date.
+ */
+const MAX_MS = 4_102_444_800_000; // 2100-01-01
+
+function clampTimestamp(v, fallback = Date.now()) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return fallback;
+  return Math.min(MAX_MS, Math.max(0, n));
+}
+
+/**
+ * Sanitizes a GPS point: only finite numbers survive, everything else
+ * becomes null. Path entries arrive from the network and are stored as
+ * jsonb AND feed numeric columns, so each field is checked individually.
+ */
+function sanitizePath(path) {
+  if (!Array.isArray(path)) return [];
+  return path.slice(0, 2000).map((p) => {
+    if (!p || typeof p !== 'object') return null;
+    const lat = Number(p.latitude);
+    const lng = Number(p.longitude);
+    return {
+      latitude: Number.isFinite(lat) ? lat : null,
+      longitude: Number.isFinite(lng) ? lng : null,
+      ...(p.timestamp != null ? { timestamp: clampTimestamp(p.timestamp, null) } : {}),
+      ...(Number.isFinite(Number(p.accuracy)) ? { accuracy: Number(p.accuracy) } : {}),
+    };
+  });
+}
+
 /* ── Mappers: database row → the shape the app already uses ───────────────── */
 
 function toActivity(r) {
@@ -199,7 +232,12 @@ export const routes = [
       const durationSec = clampNumber(a.durationSec, 0, 172_800);
       const trees = clampNumber(a.trees ?? 0, 0, 10_000);
       const points = clampNumber(a.points ?? 0, 0, 10_000);
-      const path = Array.isArray(a.path) ? a.path.slice(0, 2000) : [];
+      const path = sanitizePath(a.path);
+      const startedAt = clampTimestamp(a.startedAt);
+      const endedAt = clampTimestamp(a.endedAt, startedAt + 1000);
+      const coverage =
+        a.coveragePercent == null ? null : clampNumber(a.coveragePercent, 0, 100);
+      const grantSpecies = a.grant?.species == null ? null : capString(a.grant.species, 60);
 
       const rows = await sql`
         INSERT INTO activities (
@@ -208,14 +246,14 @@ export const routes = [
           trail_slug, trail_name, trail_completed, coverage_pct, grant_species,
           start_lat, start_lng, end_lat, end_lng
         ) VALUES (
-          ${user.id}, ${a.id}, ${a.type},
-          to_timestamp(${a.startedAt} / 1000.0), to_timestamp(${a.endedAt} / 1000.0),
+          ${user.id}, ${capString(a.id, 200)}, ${a.type},
+          to_timestamp(${startedAt} / 1000.0), to_timestamp(${endedAt} / 1000.0),
           ${durationSec}, ${miles},
           ${trees}, ${points},
           ${JSON.stringify(path)}::jsonb, 'gps', ${a.valid !== false},
           ${capString(a.flagReason, 60) || null}, ${capString(a.trailId, 60) || null},
           ${capString(a.trailName, 120) || null},
-          ${!!a.trailCompleted}, ${a.coveragePercent ?? null}, ${a.grant?.species ?? null},
+          ${!!a.trailCompleted}, ${coverage}, ${grantSpecies},
           ${path[0]?.latitude ?? null}, ${path[0]?.longitude ?? null},
           ${path.at(-1)?.latitude ?? null}, ${path.at(-1)?.longitude ?? null}
         )
@@ -262,10 +300,11 @@ export const routes = [
       const points = clampNumber(e.points, 0, 1000);
       const label = capString(e.label ?? e.action, 120);
       const action = capString(e.action, 60);
+      const at = clampTimestamp(e.timestamp);
       const rows = await sql`
         INSERT INTO point_events (user_id, action, points, label, idempotency_key, created_at)
-        VALUES (${user.id}, ${action}, ${points}, ${label}, ${e.id ?? null},
-                to_timestamp(${e.timestamp ?? Date.now()} / 1000.0))
+        VALUES (${user.id}, ${action}, ${points}, ${label}, ${e.id == null ? null : capString(e.id, 120)},
+                to_timestamp(${at} / 1000.0))
         ON CONFLICT (user_id, idempotency_key) DO NOTHING
         RETURNING *`;
       return rows[0] ? toPointEvent(rows[0]) : { ok: true, duplicate: true };
@@ -301,12 +340,19 @@ export const routes = [
     method: 'POST',
     path: '/api/streak/check-in',
     handler: async ({ user, body, sql }) => {
-      const { days = {}, longestStreak = 0, lastBonusStreak = 0 } = body;
+      // A hand-crafted body must not poison shared-visible streak numbers or
+      // send hostile shapes into the array casts below.
+      const days = body.days && typeof body.days === 'object' && !Array.isArray(body.days)
+        ? body.days
+        : {};
+      const longestStreak = clampNumber(body.longestStreak ?? 0, 0, 3650);
+      const lastBonusStreak = clampNumber(body.lastBonusStreak ?? 0, 0, 3650);
 
       // Only the recent window is written; the client keeps the full history.
       // These go up as ONE statement — a row-at-a-time loop meant up to 60
       // HTTP round trips on every single check-in.
       const entries = Object.entries(days)
+        .filter(([d]) => typeof d === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(d))
         .sort(([a], [b]) => (a < b ? -1 : 1))
         .slice(-60);
 
@@ -317,9 +363,9 @@ export const routes = [
           FROM unnest(
             ${entries.map(([d]) => d)}::date[],
             ${entries.map(([, r]) => !!r.opened)}::boolean[],
-            ${entries.map(([, r]) => r.activities ?? 0)}::int[],
-            ${entries.map(([, r]) => r.miles ?? 0)}::numeric[],
-            ${entries.map(([, r]) => r.trees ?? 0)}::int[]
+            ${entries.map(([, r]) => clampNumber(r?.activities ?? 0, 0, 1000))}::int[],
+            ${entries.map(([, r]) => clampNumber(r?.miles ?? 0, 0, 500))}::numeric[],
+            ${entries.map(([, r]) => clampNumber(r?.trees ?? 0, 0, 10_000))}::int[]
           ) AS s(d, o, a, m, t)
           ON CONFLICT (user_id, day) DO UPDATE
             SET opened_app = daily_streaks.opened_app OR EXCLUDED.opened_app,
@@ -373,12 +419,12 @@ export const routes = [
     method: 'POST',
     path: '/api/challenges/:id/complete',
     handler: async ({ user, params, body, sql }) => {
-      const { weekId } = body;
+      const weekId = capString(body.weekId, 40);
       const points = clampNumber(body.points ?? 0, 0, 200);
       if (!weekId) throw fail(400, 'week_required');
       await sql`
         INSERT INTO user_challenges (user_id, challenge_slug, week_id, points, is_complete, completed_at, progress)
-        VALUES (${user.id}, ${params.id}, ${weekId}, ${points}, TRUE, now(), 100)
+        VALUES (${user.id}, ${capString(params.id, 120)}, ${weekId}, ${points}, TRUE, now(), 100)
         ON CONFLICT (user_id, challenge_slug, week_id) DO UPDATE
           SET is_complete = TRUE, completed_at = now(), points = EXCLUDED.points`;
       return { ok: true };
@@ -548,7 +594,7 @@ export const routes = [
       const trees = clampNumber(body.trees ?? 0, 0, 1_000);
       const miles = clampNumber(body.miles ?? 0, 0, 500);
       const activities = clampNumber(body.activities ?? 0, 0, 50);
-      const { weekId = null } = body;
+      const weekId = body.weekId == null ? null : capString(body.weekId, 40);
 
       await sql`
         UPDATE club_members
@@ -700,8 +746,16 @@ export const routes = [
       // assistant and simply keeps using it.
       if (!key) throw fail(501, 'assistant_not_configured');
 
-      const { question, context } = body;
+      const question = capString(body.question, 500);
       if (!question) throw fail(400, 'question_required');
+      // The context JSON is embedded in the upstream prompt, so an oversized
+      // payload would turn one tap into a billed 1.5 MB call. 20k chars is
+      // far above anything the app itself sends.
+      let context = body.context;
+      if (context != null) {
+        const text = JSON.stringify(context);
+        if (text.length > 20_000) context = { note: 'context omitted (too large)' };
+      }
 
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
         method: 'POST',

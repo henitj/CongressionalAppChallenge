@@ -25,6 +25,7 @@ import { ProfileProvider } from '../context/ProfileContext';
 import HomeScreen from '../screens/HomeScreen';
 import MoreScreen from '../screens/MoreScreen';
 import TrackScreen from '../screens/TrackScreen';
+import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 
 import ErrorBoundary from '../components/ErrorBoundary';
 
@@ -207,6 +208,43 @@ describe('storage validators', () => {
     expect(isObject({ a: 1 })).toBe(true);
     expect(isObject([1])).toBe(false);
     expect(isObject(null)).toBe(false);
+  });
+});
+
+/** A screen driven by navigation params, fed hostile param objects. */
+describe('hostile navigation parameters never crash the detail screen', () => {
+  function mountWithParams(params: Record<string, unknown>) {
+    return render(
+      <Providers>
+        <Stack.Navigator screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Target" component={ActivityDetailScreen} initialParams={params} />
+        </Stack.Navigator>
+      </Providers>
+    );
+  }
+
+  it('object where an id string belongs', async () => {
+    const utils = mountWithParams({ activityId: { evil: 'yes' } });
+    await waitFor(
+      () => expect(utils.queryByText(/Activity not found|No activity/i)).toBeTruthy(),
+      { timeout: 8000 }
+    );
+  });
+
+  it('number where an id string belongs', async () => {
+    const utils = mountWithParams({ activityId: 12_345 });
+    await waitFor(
+      () => expect(utils.queryByText(/Activity not found|No activity/i)).toBeTruthy(),
+      { timeout: 8000 }
+    );
+  });
+
+  it('a one-megabyte id string', async () => {
+    const utils = mountWithParams({ activityId: 'A'.repeat(1_000_000) });
+    await waitFor(
+      () => expect(utils.queryByText(/Activity not found|No activity/i)).toBeTruthy(),
+      { timeout: 8000 }
+    );
   });
 });
 
