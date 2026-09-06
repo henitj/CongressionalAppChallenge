@@ -32,7 +32,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 
 | | |
 |---|---|
-| **One place to start** | The Start tab: Walk/Bike, one large Start button, and a two-line explanation. Home stays a dashboard — no second start button to wonder which to press. |
+| **One place to start** | The Start tab is a full screen: a drawn trail scene (it changes when you pick Bike), Walk/Bike, and one large Start button. No scrolling, no paragraph. Home stays a dashboard — no second start button to wonder which to press. |
 | **Home** | Greeting, one tiny weather box, a compact "This week" card (distance, trees, streak), and your last walk. That's it. |
 | **Three tabs** | Home · Start · More. More is grouped into You / Explore / App so it reads as sections, not a dump. |
 | **Back button** | Every screen you open has a chevron at the top-left that takes you back. No dead ends. |
@@ -40,6 +40,9 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 | **Background recording** | Keeps measuring if you lock the phone. Android shows "EcoTrek is recording." Stops on Finish. |
 | **Weather** | One tiny box on Home: temperature, condition, and a single friendly line. We are not a weather app. Full detail is one tap away. |
 | **Safety** | A big one-tap Stop button at the top of the live screen, plus Call 911 (with a confirm step). Sit-down reminder after 25 minutes. |
+| **Live map** | Real map tiles: Apple Maps on iOS, Google on Android, OpenStreetMap through Leaflet on web (bundled, not fetched from a CDN). If tiles cannot be reached, the screen draws the route it has recorded instead of a grey box. |
+| **Trash pickup** | After a walk of ten minutes or more, EcoTrek asks how many pieces of litter you picked up. Answering adds bonus points, credits the extra minutes, and counts toward your Impact and badges. "None this time" is one tap. |
+| **Simple mode** | Bigger text and bigger buttons everywhere, clubs and weekly goals hidden from Home and More, and three big numbers on the live walk screen instead of eight. |
 | **Text size / look** | Normal, Large, Extra large. Light, Dark, or Sky (sunrise / afternoon / sunset in daytime only). |
 | **Your photo** | Tap the avatar on your profile to pick or take your own picture. It becomes your profile logo everywhere. |
 | **Share card** | A real picture — your photo plus your stats — sent through the system share sheet. If a device can't make a picture, it falls back to sharing the stats as text, and the card is always on screen to show someone directly. |
@@ -87,7 +90,11 @@ src/screens/TrackScreen.tsx        Start tab: Walk/Bike + one big Start button
 src/screens/MoreScreen.tsx         You / Explore / App sections
 src/screens/ProfileScreen.tsx      photo + editable name, level, weight, club, streak, badges
 src/screens/HistoryScreen.tsx      My walks (this week + list)
-src/screens/ActiveTrackingScreen.tsx  live GPS, 911, rest reminder
+src/screens/ActiveTrackingScreen.tsx  live GPS, 911, rest reminder, post-walk trash question
+src/components/LiveMap.web.tsx     web map: bundled Leaflet + OpenStreetMap tiles
+src/components/RouteSketch.tsx     drawn route, used when map tiles are unreachable
+src/components/TrailScene.tsx      the Start tab illustration (SVG, re-themes itself)
+src/services/cleanup.ts            when to ask about litter, and what it is worth
 src/constants/SettingsContext.tsx  units, text size, theme
 src/context/ThemeContext.tsx       light / dark / sky + scaled typography
 src/services/location.ts           foreground watch + background task

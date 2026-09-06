@@ -186,7 +186,9 @@ export default function SettingsScreen() {
                 style={{ marginTop: 6 }}
               />
               <Text style={styles.settingHint}>
-                Fewer choices in More, larger text everywhere.
+                Bigger text and bigger buttons everywhere. Home and More keep the
+                essentials, and the live walk screen shows three big numbers
+                instead of eight.
               </Text>
             </View>
             <View>

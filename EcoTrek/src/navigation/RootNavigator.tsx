@@ -37,10 +37,10 @@ const TABS: { name: string; icon: IconName; label: string }[] = [
 function TabItem({ icon, label, focused }: { icon: IconName; label: string; focused: boolean }) {
   const { colors, fontScale } = useTheme();
   return (
-    <View style={styles.tabItem}>
+    <View style={[styles.tabItem, { width: Math.round(72 * Math.max(1, fontScale)) }]}>
       <Icon
         name={icon}
-        size={24}
+        size={Math.round(24 * Math.max(1, fontScale))}
         color={focused ? colors.primary : colors.textMuted}
         strokeWidth={focused ? 2.2 : 1.8}
       />
@@ -59,7 +59,10 @@ function TabItem({ icon, label, focused }: { icon: IconName; label: string; focu
 }
 
 function Tabs() {
-  const { colors } = useTheme();
+  const { colors, fontScale } = useTheme();
+  // Large text and Simple mode grow the tab labels, so the bar has to grow
+  // with them — otherwise the words are clipped by the bar's fixed height.
+  const barHeight = Math.round((Platform.OS === 'ios' ? 94 : 78) + (fontScale - 1) * 34);
   return (
     <Tab.Navigator
       screenOptions={({ route }) => {
@@ -68,7 +71,10 @@ function Tabs() {
           headerShown: false,
           unmountOnBlur: true,
           tabBarShowLabel: false,
-          tabBarStyle: [styles.tabBar, { backgroundColor: colors.surface, borderTopColor: colors.border }],
+          tabBarStyle: [
+            styles.tabBar,
+            { backgroundColor: colors.surface, borderTopColor: colors.border, height: barHeight },
+          ],
           tabBarItemStyle: { paddingTop: 6 },
           tabBarIcon: ({ focused }) => (
             <TabItem icon={tab?.icon ?? 'circle'} label={tab?.label ?? route.name} focused={focused} />

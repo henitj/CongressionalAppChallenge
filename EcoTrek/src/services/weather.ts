@@ -130,6 +130,11 @@ const WMO: Record<number, { label: string; icon: string }> = {
   99: { label: 'Severe thunderstorm', icon: 'cloud-lightning' },
 };
 
+/** Icon name for a WMO code — used by the hourly strip on the Weather screen. */
+export function iconForCode(code: number, isDay = true) {
+  return describeCode(code, isDay).icon;
+}
+
 function describeCode(code: number, isDay: boolean) {
   const found = WMO[code] ?? { label: 'Unknown', icon: 'cloud' };
   if (found.icon === 'sun' && !isDay) return { ...found, icon: 'moon' };

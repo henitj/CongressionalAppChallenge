@@ -1,4 +1,4 @@
-import React, { useMemo, useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
 import Icon from './Icon';
 import { Sheet, Button } from './ui';
@@ -16,13 +16,27 @@ const PRESETS = [3, 5, 10, 25];
  * Deliberately the smallest possible feature: how many pieces, tap done. It is
  * self-reported, the same as the manual weekly challenges — the goal is to
  * nudge someone into bending down on the way past, not to audit them.
+ *
+ * It is used in two places: the Impact screen (log one any time) and the end
+ * of a walk that lasted ten minutes or more, where `allowNone` adds a
+ * "None today" answer so the question is never a dead end.
  */
 export default function CleanupSheet({
   visible,
   onClose,
+  title = 'Log a cleanup',
+  subtitle,
+  allowNone = false,
+  onLogged,
 }: {
   visible: boolean;
   onClose: () => void;
+  title?: string;
+  subtitle?: string;
+  /** Shows a "None today" answer — used for the post-walk question. */
+  allowNone?: boolean;
+  /** Called with the count after it is saved, so the caller can add rewards. */
+  onLogged?: (pieces: number) => void | Promise<void>;
 }) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
@@ -31,6 +45,11 @@ export default function CleanupSheet({
 
   const [pieces, setPieces] = useState(5);
   const [saving, setSaving] = useState(false);
+
+  // Every time the question comes back it should start fresh.
+  useEffect(() => {
+    if (visible) setPieces(5);
+  }, [visible]);
 
   const trail = detectCurrentTrail(
     coords ? { ...coords, timestamp: Date.now() } : undefined,
@@ -42,6 +61,7 @@ export default function CleanupSheet({
     setSaving(true);
     try {
       await addCleanup(pieces);
+      await onLogged?.(pieces);
       setPieces(5);
       onClose();
     } finally {
@@ -53,8 +73,8 @@ export default function CleanupSheet({
     <Sheet
       visible={visible}
       onClose={onClose}
-      title="Log a cleanup"
-      subtitle={trail ? `On the ${trail.name}` : 'Every piece counts'}
+      title={title}
+      subtitle={subtitle ?? (trail ? `On the ${trail.name}` : 'Every piece counts')}
     >
       <View style={{ gap: SPACING.md }}>
         <View style={{ gap: 8 }}>
@@ -64,6 +84,8 @@ export default function CleanupSheet({
               <Pressable
                 key={n}
                 onPress={() => setPieces(n)}
+                accessibilityRole="button"
+                accessibilityLabel={`${n} pieces`}
                 style={[styles.chip, pieces === n && styles.chipOn]}
               >
                 <Text style={[styles.chipText, pieces === n && styles.chipTextOn]}>{n}</Text>
@@ -96,6 +118,10 @@ export default function CleanupSheet({
           disabled={pieces < 1}
           onPress={submit}
         />
+
+        {allowNone ? (
+          <Button label="None this time" variant="ghost" full disabled={saving} onPress={onClose} />
+        ) : null}
       </View>
     </Sheet>
   );

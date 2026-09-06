@@ -27,7 +27,7 @@ export default function HomeScreen() {
   const { currentStreak } = useStreak();
   const { challenges, completedCount, totalCount, timeLeftLabel } = useChallenges();
   const { myClub, activeGoal } = useClub();
-  const { formatDistance, formatDistanceUnit } = useSettings();
+  const { formatDistance, formatDistanceUnit, simpleMode } = useSettings();
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
@@ -109,11 +109,24 @@ export default function HomeScreen() {
           <View style={styles.momentumRow}>
             <MiniInfo value={String(week.count)} label="Activities" />
             <MiniInfo value={String(week.trees)} label="Trees" />
-            <MiniInfo value={`${completedCount}/${totalCount}`} label="Challenges" />
+            <MiniInfo
+              value={
+                simpleMode
+                  ? `${formatDistance(week.miles)} ${formatDistanceUnit()}`
+                  : `${completedCount}/${totalCount}`
+              }
+              label={simpleMode ? 'This week' : 'Challenges'}
+            />
           </View>
 
-          <ProgressBar percent={challengePercent} style={{ marginTop: SPACING.sm + 2 }} />
-          <Text style={styles.helperText}>{challengeMessage}</Text>
+          {/* Simple mode hides weekly challenges everywhere, so the progress
+              bar for them would be a bar for something you cannot open. */}
+          {!simpleMode ? (
+            <>
+              <ProgressBar percent={challengePercent} style={{ marginTop: SPACING.sm + 2 }} />
+              <Text style={styles.helperText}>{challengeMessage}</Text>
+            </>
+          ) : null}
         </Card>
 
         <View>
@@ -137,55 +150,60 @@ export default function HomeScreen() {
               hint="Browse Austin routes"
               onPress={() => navigation.navigate('Trails')}
             />
-            <QuickAction
-              icon="target"
-              title="Weekly goals"
-              hint="See this week’s challenges"
-              onPress={() => navigation.navigate('Challenges')}
-            />
+            {!simpleMode ? (
+              <QuickAction
+                icon="target"
+                title="Weekly goals"
+                hint="See this week’s challenges"
+                onPress={() => navigation.navigate('Challenges')}
+              />
+            ) : null}
           </View>
         </View>
 
-        <Card>
-            <View style={styles.panelHead}>
-              <View style={styles.panelIcon}>
-                <Icon name={myClub ? 'users' : 'target'} size={18} color={colors.primary} strokeWidth={1.9} />
+        {/* Clubs and challenges are hidden in Simple mode, so this card is too. */}
+        {!simpleMode ? (
+          <Card>
+              <View style={styles.panelHead}>
+                <View style={styles.panelIcon}>
+                  <Icon name={myClub ? 'users' : 'target'} size={18} color={colors.primary} strokeWidth={1.9} />
+                </View>
+                <View style={{ flex: 1, minWidth: 0 }}>
+                  <Text style={styles.panelEyebrow}>{myClub ? 'Club update' : 'Keep going'}</Text>
+                  <Text style={styles.panelTitle} numberOfLines={1}>
+                    {myClub ? myClub.name : 'Pick a goal for the week'}
+                  </Text>
+                </View>
               </View>
-              <View style={{ flex: 1, minWidth: 0 }}>
-                <Text style={styles.panelEyebrow}>{myClub ? 'Club update' : 'Keep going'}</Text>
-                <Text style={styles.panelTitle} numberOfLines={1}>
-                  {myClub ? myClub.name : 'Pick a goal for the week'}
-                </Text>
-              </View>
-            </View>
 
-            <Text style={styles.helperText}>{myClub ? clubMessage : challengeMessage}</Text>
+              <Text style={styles.helperText}>{myClub ? clubMessage : challengeMessage}</Text>
 
-            {myClub && activeGoal ? (
-              <ProgressBar
-                percent={(activeGoal.progress / activeGoal.target) * 100}
-                color={activeGoal.metAt ? colors.primary : colors.accent}
-                style={{ marginTop: SPACING.sm + 2 }}
-              />
-            ) : null}
-
-            <View style={styles.inlineButtons}>
-              <Button
-                label={myClub ? 'Open club' : 'Open challenges'}
-                variant="ghost"
-                iconRight="arrow-right"
-                onPress={() => navigation.navigate(myClub ? 'Clubs' : 'Challenges')}
-              />
-              {!myClub ? (
-                <Button
-                  label="Browse clubs"
-                  variant="secondary"
-                  size="sm"
-                  onPress={() => navigation.navigate('Clubs')}
+              {myClub && activeGoal ? (
+                <ProgressBar
+                  percent={(activeGoal.progress / activeGoal.target) * 100}
+                  color={activeGoal.metAt ? colors.primary : colors.accent}
+                  style={{ marginTop: SPACING.sm + 2 }}
                 />
               ) : null}
-            </View>
-          </Card>
+
+              <View style={styles.inlineButtons}>
+                <Button
+                  label={myClub ? 'Open club' : 'Open challenges'}
+                  variant="ghost"
+                  iconRight="arrow-right"
+                  onPress={() => navigation.navigate(myClub ? 'Clubs' : 'Challenges')}
+                />
+                {!myClub ? (
+                  <Button
+                    label="Browse clubs"
+                    variant="secondary"
+                    size="sm"
+                    onPress={() => navigation.navigate('Clubs')}
+                  />
+                ) : null}
+              </View>
+            </Card>
+        ) : null}
 
         <View>
           <SectionHeader title="Your last walk" action="See all" onAction={() => navigation.navigate('History')} />
