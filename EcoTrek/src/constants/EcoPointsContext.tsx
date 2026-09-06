@@ -4,6 +4,7 @@ import { LEVELS } from './theme';
 import { useAuth } from '../context/AuthContext';
 import { isArray, keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
+import { CLEANUP_BASE_POINTS } from '../services/cleanup';
 
 export type EcoAction =
   | 'hike_mile'
@@ -97,7 +98,7 @@ export const POINT_VALUES: Record<EcoAction, number> = {
   tree_earned: 8,
   species_logged: 4,
   trail_completed: 25,
-  cleanup: 15,
+  cleanup: CLEANUP_BASE_POINTS,
   challenge_completed: 25,
   club_joined: 5,
   club_goal: 20,

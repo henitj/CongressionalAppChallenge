@@ -31,6 +31,12 @@ import {
 } from '../services/streaks';
 import { answerQuestion, AssistantContext, resolveTrail } from '../services/assistant';
 import {
+  CLEANUP_PROMPT_SEC,
+  cleanupBonusPoints,
+  cleanupBonusSeconds,
+  shouldAskCleanup,
+} from '../services/cleanup';
+import {
   rarityLabel,
   SPECIES,
   SPECIES_BY_ID,
@@ -761,6 +767,32 @@ test('the feedback form link is hardcoded to the team Google Form', () => {
   // that changes — no user ever sees or types a link.
   assert.equal(FEEDBACK_FORM_URL, 'https://forms.gle/E3p559tiqrNMtZDS7');
   assert.match(FEEDBACK_FORM_URL, /^https:\/\//);
+});
+
+/* ── Post-walk cleanup ────────────────────────────────────────────────────── */
+
+test('the trash question waits for a ten minute walk', () => {
+  assert.equal(CLEANUP_PROMPT_SEC, 600);
+  assert.equal(shouldAskCleanup(599, false), false);
+  assert.equal(shouldAskCleanup(600, false), true);
+  assert.equal(shouldAskCleanup(3600, false), true);
+  // Never after a walk that did not count.
+  assert.equal(shouldAskCleanup(3600, true), false);
+});
+
+test('cleanup points reward the bend, then stop rewarding exaggeration', () => {
+  assert.equal(cleanupBonusPoints(0), 0);
+  assert.equal(cleanupBonusPoints(-4), 0);
+  assert.equal(cleanupBonusPoints(1), 17);
+  assert.equal(cleanupBonusPoints(5), 25);
+  // Capped, so typing 999 is not a shortcut to a level up.
+  assert.equal(cleanupBonusPoints(999), 60);
+});
+
+test('cleanup time credited back is small and capped', () => {
+  assert.equal(cleanupBonusSeconds(0), 0);
+  assert.equal(cleanupBonusSeconds(3), 60);
+  assert.equal(cleanupBonusSeconds(999), 600);
 });
 
 /* ── Report ───────────────────────────────────────────────────────────────── */

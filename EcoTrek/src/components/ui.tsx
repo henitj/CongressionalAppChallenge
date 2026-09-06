@@ -201,14 +201,24 @@ export function Button({
       ? tone ?? colors.primary
       : '#fff';
 
-  const pad =
+  // Bigger text needs a bigger box around it. Without this, Large / Extra
+  // large / Simple mode grew the label inside a button that stayed the same
+  // height, and the words wrapped or clipped.
+  const grow = Math.max(1, fontScale);
+  const base =
     size === 'sm'
       ? { paddingVertical: 12, paddingHorizontal: 16, minHeight: 44 }
       : size === 'lg'
       ? { paddingVertical: 18, paddingHorizontal: 24, minHeight: 58 }
       : { paddingVertical: 15, paddingHorizontal: 20, minHeight: 52 };
+  const pad = {
+    paddingVertical: Math.round(base.paddingVertical * grow),
+    paddingHorizontal: base.paddingHorizontal,
+    minHeight: Math.round(base.minHeight * grow),
+  };
 
   const labelSize = size === 'sm' ? 15 : size === 'lg' ? 18 : 16;
+  const iconSize = Math.round((size === 'sm' ? 15 : 17) * grow);
 
   return (
     <Pressable
@@ -230,15 +240,13 @@ export function Button({
         <ActivityIndicator size="small" color={fg} />
       ) : (
         <>
-          {icon ? <Icon name={icon} size={size === 'sm' ? 15 : 17} color={fg} strokeWidth={2} /> : null}
+          {icon ? <Icon name={icon} size={iconSize} color={fg} strokeWidth={2} /> : null}
           <Text
             style={[ui.btnLabel, { color: fg, fontSize: Math.round(labelSize * fontScale) }]}
           >
             {label}
           </Text>
-          {iconRight ? (
-            <Icon name={iconRight} size={size === 'sm' ? 15 : 17} color={fg} strokeWidth={2} />
-          ) : null}
+          {iconRight ? <Icon name={iconRight} size={iconSize} color={fg} strokeWidth={2} /> : null}
         </>
       )}
     </Pressable>
@@ -280,6 +288,7 @@ export function Pill({
         ui.pill,
         { backgroundColor: c.bg },
         size === 'sm' && { paddingVertical: 3, paddingHorizontal: 8 },
+        fontScale > 1 && { paddingVertical: Math.round(5 * fontScale) },
         style,
       ]}
     >
@@ -345,14 +354,21 @@ export function Segmented<T extends string>({
           <Pressable
             key={o.value}
             onPress={() => onChange(o.value)}
-            style={[ui.segment, active && [ui.segmentActive, { backgroundColor: colors.surface }]]}
+            style={[
+              ui.segment,
+              {
+                minHeight: Math.round(48 * Math.max(1, fontScale)),
+                paddingVertical: Math.round(12 * Math.max(1, fontScale)),
+              },
+              active && [ui.segmentActive, { backgroundColor: colors.surface }],
+            ]}
             accessibilityRole="button"
             accessibilityState={{ selected: active }}
           >
             {o.icon ? (
               <Icon
                 name={o.icon}
-                size={14}
+                size={Math.round(14 * Math.max(1, fontScale))}
                 color={active ? colors.primary : colors.textMuted}
                 strokeWidth={2}
               />

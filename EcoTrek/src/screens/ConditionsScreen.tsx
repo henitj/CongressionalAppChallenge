@@ -1,5 +1,5 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, ActivityIndicator, RefreshControl } from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, RefreshControl, ScrollView } from 'react-native';
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, Pill, Banner, EmptyState, Divider } from '../components/ui';
@@ -7,7 +7,7 @@ import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
 import { useWeather } from '../context/WeatherContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useApp } from '../context/AppContext';
-import { LEVEL_META, SafetyLevel } from '../services/weather';
+import { iconForCode, LEVEL_META, SafetyLevel } from '../services/weather';
 import { Typography, useTheme } from '../context/ThemeContext';
 
 const TONE_MAP: Record<SafetyLevel, 'success' | 'info' | 'warning' | 'danger'> = {
@@ -199,27 +199,60 @@ export default function ConditionsScreen() {
         {report.hourly.length > 0 ? (
           <View>
             <Text style={[styles.sectionTitle, typography.h3, { color: colors.text }]}>Next 12 hours</Text>
-            <Card padded={false} style={{ paddingVertical: SPACING.md - 2 }}>
-              <View style={styles.hourlyRow}>
-                {report.hourly.map((h) => (
-                  <View key={h.time} style={styles.hourCol}>
-                    <Text style={[styles.hourLabel, typography.micro, { color: colors.textMuted }]}>
-                      {formatHour(h.hour)}
-                    </Text>
-                    <Text style={[styles.hourTemp, typography.smallMed, { color: colors.text }]}>
-                      {Math.round(h.temp)}°
-                    </Text>
-                    <View
-                      style={[
-                        styles.rainBar,
-                        { height: Math.max(3, (h.precipChance / 100) * 34) },
-                        h.precipChance >= 50 ? { backgroundColor: colors.info } : { backgroundColor: colors.infoLight },
-                      ]}
-                    />
-                    <Text style={[styles.hourRain, { color: colors.textLight }]}>{h.precipChance}%</Text>
-                  </View>
-                ))}
-              </View>
+            <Card padded={false} style={styles.hourlyCard}>
+              {/* A horizontal strip, not twelve columns crushed into the
+                  width of a phone. Each hour keeps a fixed width so the
+                  numbers stay readable at any text size. */}
+              <ScrollView
+                horizontal
+                showsHorizontalScrollIndicator={false}
+                contentContainerStyle={styles.hourlyRow}
+              >
+                {report.hourly.map((h, i) => {
+                  const wet = h.precipChance >= 40;
+                  return (
+                    <View key={h.time} style={styles.hourCol}>
+                      <Text style={[styles.hourLabel, typography.micro, { color: i === 0 ? colors.text : colors.textMuted }]}>
+                        {i === 0 ? 'Now' : formatHour(h.hour)}
+                      </Text>
+                      <Icon
+                        name={iconForCode(h.code, h.hour >= 7 && h.hour <= 19) as IconName}
+                        size={20}
+                        color={wet ? colors.info : colors.textSecondary}
+                        strokeWidth={1.8}
+                      />
+                      <Text style={[styles.hourTemp, typography.h4, { color: colors.text }]}>
+                        {Math.round(h.temp)}°
+                      </Text>
+                      {/* Rain chance: a bar in a fixed-height track, so every
+                          column lines up instead of floating at its own level. */}
+                      <View style={[styles.rainTrack, { backgroundColor: colors.surfaceSunken }]}>
+                        <View
+                          style={[
+                            styles.rainFill,
+                            {
+                              height: `${Math.max(4, h.precipChance)}%`,
+                              backgroundColor: wet ? colors.info : colors.infoBorder,
+                            },
+                          ]}
+                        />
+                      </View>
+                      <Text
+                        style={[
+                          styles.hourRain,
+                          typography.micro,
+                          { color: wet ? colors.info : colors.textLight },
+                        ]}
+                      >
+                        {h.precipChance}%
+                      </Text>
+                    </View>
+                  );
+                })}
+              </ScrollView>
+              <Text style={[styles.hourlyFootnote, typography.micro, { color: colors.textLight }]}>
+                Temperature and chance of rain, hour by hour
+              </Text>
             </Card>
           </View>
         ) : null}
@@ -322,15 +355,29 @@ function makeStyles() {
     advisoryTitle: {},
     advisoryDetail: { marginTop: 2 },
 
-    hourlyRow: { flexDirection: 'row', justifyContent: 'space-around', alignItems: 'flex-end' },
-    hourCol: { alignItems: 'center', gap: 4, flex: 1 },
+    hourlyCard: { paddingVertical: SPACING.md - 2 },
+    hourlyRow: { paddingHorizontal: SPACING.sm + 2, gap: SPACING.xs },
+    hourCol: {
+      width: 58,
+      alignItems: 'center',
+      gap: 6,
+      paddingVertical: SPACING.xs,
+    },
     hourLabel: {},
     hourTemp: {},
-    rainBar: {
-      width: 5,
+    rainTrack: {
+      width: 6,
+      height: 40,
       borderRadius: 3,
+      overflow: 'hidden',
+      justifyContent: 'flex-end',
     },
-    hourRain: { fontSize: 9, fontWeight: '600' },
+    rainFill: { width: '100%', borderRadius: 3 },
+    hourRain: {},
+    hourlyFootnote: {
+      marginTop: SPACING.sm,
+      paddingHorizontal: SPACING.md - 2,
+    },
 
     sourceTitle: { marginBottom: 4 },
     sourceText: {},

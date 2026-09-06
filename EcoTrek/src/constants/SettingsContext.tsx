@@ -12,7 +12,7 @@ type Stored = {
   tempUnit: TempUnit;
   appearance: Appearance;
   textSize: TextSize;
-  /** Simple mode: fewer choices in More, larger text everywhere. */
+  /** Simple mode: bigger text, bigger buttons, and only the essential screens. */
   simpleMode: boolean;
   /** Less motion: 'system' follows the OS reduce-motion setting. */
   reduceMotion: MotionPref;
@@ -151,6 +151,8 @@ export function SettingsProvider({ children }: { children: React.ReactNode }) {
       setTempUnit,
       setAppearance,
       setTextSize,
+      setSimpleMode,
+      setReduceMotion,
       formatDistance,
       formatDistanceCompact,
       formatDistanceUnit,

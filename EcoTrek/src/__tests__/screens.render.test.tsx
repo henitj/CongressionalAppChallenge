@@ -42,6 +42,7 @@ import SetupScreen from '../screens/SetupScreen';
 import BadgesScreen from '../screens/BadgesScreen';
 import MoreScreen from '../screens/MoreScreen';
 import ActiveTrackingScreen from '../screens/ActiveTrackingScreen';
+import CleanupSheet from '../components/CleanupSheet';
 
 /**
  * Render smoke tests.
@@ -176,6 +177,41 @@ describe('review fixes', () => {
     fireEvent.press(utils.getByText('Share my progress'));
     await waitFor(() => expect(utils.queryByText('Share your progress')).toBeTruthy(), { timeout: 4000 });
     expect(utils.queryByText(/a quick look at your ecotrek progress/i)).toBeTruthy();
+  });
+});
+
+describe('the trash question at the end of a walk', () => {
+  function PostWalkQuestion({ onLogged }: { onLogged?: (n: number) => void }) {
+    return (
+      <CleanupSheet
+        visible
+        onClose={() => {}}
+        title="Did you pick up any trash?"
+        subtitle="Nice walk — every piece counts for extra points"
+        allowNone
+        onLogged={onLogged}
+      />
+    );
+  }
+
+  it('asks the question and offers an honest way out', async () => {
+    const utils = await mount(PostWalkQuestion, 'Did you pick up any trash?');
+    expect(utils.queryByText('How many pieces did you pick up?')).toBeTruthy();
+    expect(utils.queryByText('None this time')).toBeTruthy();
+    // Presets are there so nobody has to type on a phone after a walk.
+    expect(utils.getByLabelText('10 pieces')).toBeTruthy();
+  });
+
+  it('logging pieces hands the count back so points can be awarded', async () => {
+    const logged: number[] = [];
+    const Screen = () => <PostWalkQuestion onLogged={(n) => logged.push(n)} />;
+    const utils = await mount(Screen, 'Did you pick up any trash?');
+
+    fireEvent.press(utils.getByLabelText('10 pieces'));
+    await waitFor(() => expect(utils.queryByText('Log 10 pieces')).toBeTruthy());
+    fireEvent.press(utils.getByText('Log 10 pieces'));
+
+    await waitFor(() => expect(logged).toEqual([10]));
   });
 });
 

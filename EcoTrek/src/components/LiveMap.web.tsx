@@ -1,7 +1,12 @@
-import React, { useEffect, useRef } from 'react';
-import { View } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { View, Text, StyleSheet } from 'react-native';
+import L from 'leaflet';
+import 'leaflet/dist/leaflet.css';
+
+import Icon from './Icon';
+import RouteSketch from './RouteSketch';
 import { Coord } from '../services/location';
-import { RADIUS } from '../constants/theme';
+import { RADIUS, SPACING } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
 type Props = {
@@ -11,136 +16,163 @@ type Props = {
   follow?: boolean;
 };
 
+const AUSTIN: [number, number] = [30.2672, -97.7431];
+
 /**
- * Web implementation – real OpenStreetMap tiles via Leaflet (loaded from CDN).
- * No bundler config needed; we inject the script/css once and talk to the
- * global window.L object.
+ * Web implementation — real OpenStreetMap tiles through Leaflet.
+ *
+ * Leaflet (and its stylesheet) is bundled with the app rather than pulled from
+ * a CDN at runtime: a CDN <script> tag is the single most common reason this
+ * map used to come up blank — one blocked request and there is no map at all,
+ * and the stylesheet arriving after the script left tiles stacked in a corner.
+ *
+ * If map tiles themselves cannot be reached (no connection, blocked network),
+ * we do not show an empty grey box either — RouteSketch draws the recorded
+ * route so the screen still tells you something true.
  */
-
-function loadLeaflet(): Promise<any> {
-  return new Promise((resolve, reject) => {
-    if (typeof window === 'undefined') {
-      reject(new Error('Not in a browser'));
-      return;
-    }
-    if ((window as any).L) {
-      resolve((window as any).L);
-      return;
-    }
-    const css = document.createElement('link');
-    css.rel = 'stylesheet';
-    css.href = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.css';
-    document.head.appendChild(css);
-
-    const script = document.createElement('script');
-    script.src = 'https://unpkg.com/leaflet@1.9.4/dist/leaflet.js';
-    script.async = true;
-    script.onload = () => resolve((window as any).L);
-    script.onerror = () => reject(new Error('Failed to load Leaflet'));
-    document.head.appendChild(script);
-  });
-}
-
 export default function LiveMap({ path, current, height = 260, follow = true }: Props) {
-  const { colors } = useTheme();
+  const { colors, typography } = useTheme();
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<any>(null);
-  const polylineRef = useRef<any>(null);
-  const markerRef = useRef<any>(null);
-  const startMarkerRef = useRef<any>(null);
-  const accuracyCircleRef = useRef<any>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const polylineRef = useRef<L.Polyline | null>(null);
+  const markerRef = useRef<L.Marker | null>(null);
+  const startMarkerRef = useRef<L.Marker | null>(null);
+  const accuracyCircleRef = useRef<L.Circle | null>(null);
+  const tileErrorsRef = useRef(0);
 
-  // Initial map setup
+  const [status, setStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
+
+  // ── Create the map once ────────────────────────────────────────────────
   useEffect(() => {
-    let cancelled = false;
-    loadLeaflet()
-      .then((L) => {
-        if (cancelled || !containerRef.current || mapRef.current) return;
+    const el = containerRef.current;
+    if (!el || mapRef.current) return;
 
-        const initial = current
-          ? [current.latitude, current.longitude]
-          : path[0]
-          ? [path[0].latitude, path[0].longitude]
-          : [30.2672, -97.7431]; // Austin
+    let map: L.Map;
+    try {
+      const initial: [number, number] = current
+        ? [current.latitude, current.longitude]
+        : path[0]
+        ? [path[0].latitude, path[0].longitude]
+        : AUSTIN;
 
-        const map = L.map(containerRef.current, {
-          center: initial,
-          zoom: 16,
-          zoomControl: true,
-          attributionControl: true,
-        });
-        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-          attribution: '&copy; OpenStreetMap contributors',
-          maxZoom: 19,
-        }).addTo(map);
+      map = L.map(el, {
+        center: initial,
+        zoom: 16,
+        zoomControl: true,
+        attributionControl: true,
+      });
 
-        polylineRef.current = L.polyline([], {
-          color: '#003D28',
-          weight: 8,
-          opacity: 0.9,
-          lineCap: 'round',
-          lineJoin: 'round',
-        }).addTo(map);
+      const tiles = L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap',
+        maxZoom: 19,
+        crossOrigin: true,
+      });
 
-        // Pulsing "you are here" marker using a divIcon
-        const youIcon = L.divIcon({
-          className: 'ecotrek-you-icon',
-          html: `
-            <div style="position:relative;width:36px;height:36px;">
-              <div style="position:absolute;inset:0;border-radius:50%;background:#FFD000;border:4px solid #111;box-shadow:0 2px 8px rgba(0,0,0,0.45);"></div>
-            </div>
-          `,
-          iconSize: [36, 36],
-          iconAnchor: [18, 18],
-        });
-        markerRef.current = L.marker(initial, { icon: youIcon }).addTo(map);
+      tiles.on('load', () => {
+        tileErrorsRef.current = 0;
+        setStatus('ready');
+      });
+      tiles.on('tileload', () => {
+        tileErrorsRef.current = 0;
+        setStatus('ready');
+      });
+      // A handful of failures in a row means the tile server is unreachable.
+      tiles.on('tileerror', () => {
+        tileErrorsRef.current += 1;
+        if (tileErrorsRef.current >= 3) setStatus('unavailable');
+      });
+      tiles.addTo(map);
 
-        mapRef.current = map;
+      polylineRef.current = L.polyline([], {
+        color: '#003D28',
+        weight: 7,
+        opacity: 0.95,
+        lineCap: 'round',
+        lineJoin: 'round',
+      }).addTo(map);
 
-        // Force a resize after mount in case container size finalized later
-        setTimeout(() => map.invalidateSize(), 100);
-      })
-      .catch((e) => console.warn('[map] Leaflet failed to load', e));
+      const youIcon = L.divIcon({
+        className: 'ecotrek-you-icon',
+        html:
+          '<div style="width:22px;height:22px;border-radius:50%;background:#FFD000;' +
+          'border:4px solid #10281F;box-shadow:0 2px 8px rgba(0,0,0,0.45);"></div>',
+        iconSize: [22, 22],
+        iconAnchor: [11, 11],
+      });
+      markerRef.current = L.marker(initial, { icon: youIcon, keyboard: false }).addTo(map);
 
-    return () => {
-      cancelled = true;
-      if (mapRef.current) {
-        mapRef.current.remove();
-        mapRef.current = null;
+      mapRef.current = map;
+
+      // The panel around the map animates in, so the container is often still
+      // the wrong size on the first frame. Re-measure once it settles, and
+      // again whenever it actually changes size.
+      const invalidate = () => map.invalidateSize();
+      const t1 = setTimeout(invalidate, 60);
+      const t2 = setTimeout(invalidate, 400);
+      // If not a single tile has arrived after ten seconds, stop showing a
+      // spinner forever and draw the route instead.
+      const t3 = setTimeout(
+        () => setStatus((prev) => (prev === 'loading' ? 'unavailable' : prev)),
+        10_000
+      );
+
+      let observer: ResizeObserver | undefined;
+      if (typeof ResizeObserver !== 'undefined') {
+        observer = new ResizeObserver(invalidate);
+        observer.observe(el);
       }
-    };
+      window.addEventListener('resize', invalidate);
+
+      return () => {
+        clearTimeout(t1);
+        clearTimeout(t2);
+        clearTimeout(t3);
+        observer?.disconnect();
+        window.removeEventListener('resize', invalidate);
+        map.remove();
+        mapRef.current = null;
+        polylineRef.current = null;
+        markerRef.current = null;
+        startMarkerRef.current = null;
+        accuracyCircleRef.current = null;
+      };
+    } catch (e) {
+      console.warn('[map] could not start Leaflet', e);
+      setStatus('unavailable');
+      return;
+    }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // Update polyline as the path grows
+  // ── Route line + start pin ─────────────────────────────────────────────
   useEffect(() => {
-    if (!mapRef.current || !polylineRef.current) return;
-    const L = (window as any).L;
-    const latlngs = path.map((p) => [p.latitude, p.longitude]);
-    polylineRef.current.setLatLngs(latlngs);
+    const map = mapRef.current;
+    if (!map || !polylineRef.current) return;
+    polylineRef.current.setLatLngs(path.map((p) => [p.latitude, p.longitude] as [number, number]));
 
     if (path.length > 0 && !startMarkerRef.current) {
       const startIcon = L.divIcon({
         className: 'ecotrek-start-icon',
-        html: `<div style="width:14px;height:14px;border-radius:50%;background:#F4A300;border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>`,
+        html:
+          '<div style="width:14px;height:14px;border-radius:50%;background:#F4A300;' +
+          'border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
         iconSize: [14, 14],
         iconAnchor: [7, 7],
       });
-      startMarkerRef.current = L.marker(
-        [path[0].latitude, path[0].longitude],
-        { icon: startIcon }
-      ).addTo(mapRef.current);
+      startMarkerRef.current = L.marker([path[0].latitude, path[0].longitude], {
+        icon: startIcon,
+        keyboard: false,
+      }).addTo(map);
     }
   }, [path]);
 
-  // Update current position marker + follow
+  // ── Follow the walker ──────────────────────────────────────────────────
   useEffect(() => {
-    if (!mapRef.current || !markerRef.current || !current) return;
-    const L = (window as any).L;
-    const ll = [current.latitude, current.longitude];
+    const map = mapRef.current;
+    if (!map || !markerRef.current || !current) return;
+    const ll: [number, number] = [current.latitude, current.longitude];
     markerRef.current.setLatLng(ll);
 
-    // accuracy circle
     if (current.accuracy !== undefined) {
       if (accuracyCircleRef.current) {
         accuracyCircleRef.current.setLatLng(ll);
@@ -153,30 +185,66 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
           fillOpacity: 0.08,
           weight: 1,
           opacity: 0.4,
-        }).addTo(mapRef.current);
+        }).addTo(map);
       }
     }
 
-    if (follow) {
-      mapRef.current.panTo(ll, { animate: true, duration: 0.5 });
-    }
-  }, [current, follow]);
+    if (follow) map.panTo(ll, { animate: true, duration: 0.5 });
+  }, [current, follow, colors.primary]);
+
+  const shellStyle = useMemo(
+    () => ({
+      width: '100%' as const,
+      height,
+      borderRadius: RADIUS.md,
+      overflow: 'hidden' as const,
+      backgroundColor: colors.backgroundDark,
+      borderWidth: 1,
+      borderColor: colors.border,
+    }),
+    [colors.backgroundDark, colors.border, height]
+  );
 
   return (
-    <View
-      style={[
-        {
-          width: '100%',
-          borderRadius: RADIUS.md,
-          overflow: 'hidden',
-          backgroundColor: colors.backgroundDark,
-          borderWidth: 1,
-          borderColor: colors.border,
-        },
-        { height },
-      ]}
-    >
-      <div ref={containerRef} style={{ width: '100%', height: '100%' }} />
+    <View style={shellStyle}>
+      <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#DCE6DF' }} />
+
+      {status !== 'ready' ? (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surfaceSunken }]}>
+          {status === 'unavailable' ? (
+            <>
+              <RouteSketch path={path} current={current} />
+              <View style={[styles.note, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+                <Icon name="globe" size={14} color={colors.textMuted} strokeWidth={2} />
+                <Text style={[typography.micro, { color: colors.textMuted }]}>
+                  Map images unavailable — still recording
+                </Text>
+              </View>
+            </>
+          ) : (
+            <View style={styles.center}>
+              <Icon name="map" size={22} color={colors.textLight} strokeWidth={1.8} />
+              <Text style={[typography.small, { color: colors.textMuted }]}>Loading the map…</Text>
+            </View>
+          )}
+        </View>
+      ) : null}
     </View>
   );
 }
+
+const styles = StyleSheet.create({
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: SPACING.sm },
+  note: {
+    position: 'absolute',
+    left: SPACING.sm,
+    bottom: SPACING.sm,
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingVertical: 5,
+    paddingHorizontal: 9,
+    borderRadius: RADIUS.pill,
+    borderWidth: 1,
+  },
+});

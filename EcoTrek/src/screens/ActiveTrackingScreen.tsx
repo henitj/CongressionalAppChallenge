@@ -1,9 +1,21 @@
 import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, AppState, AppStateStatus, Linking } from 'react-native';
+import {
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Alert,
+  AppState,
+  AppStateStatus,
+  Linking,
+  ScrollView,
+  useWindowDimensions,
+} from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import LiveMap from '../components/LiveMap';
+import CleanupSheet from '../components/CleanupSheet';
 import Icon, { IconName } from '../components/Icon';
 import { Button } from '../components/ui';
 
@@ -19,6 +31,13 @@ import {
 } from '../services/location';
 import { computeTrees, useActivity } from '../context/ActivityContext';
 import { useSettings } from '../constants/SettingsContext';
+import { useEcoPoints } from '../constants/EcoPointsContext';
+import {
+  CLEANUP_PROMPT_SEC,
+  cleanupBonusPoints,
+  cleanupBonusSeconds,
+  shouldAskCleanup,
+} from '../services/cleanup';
 import { useApp } from '../context/AppContext';
 import { detectCurrentTrail } from '../services/trailDetection';
 import { Trail } from '../constants/austinTrails';
@@ -35,11 +54,18 @@ export default function ActiveTrackingScreen() {
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
+  const { height: windowHeight } = useWindowDimensions();
   const mode: Mode = route.params?.mode ?? 'hike';
-  const { formatDistance, formatDistanceUnit, formatTemp } = useSettings();
+  const { formatDistance, formatDistanceUnit, formatTemp, simpleMode } = useSettings();
   const { trails } = useApp();
   const { profile } = useProfile();
+  const { award } = useEcoPoints();
   const { addActivity, totalActivities } = useActivity();
+
+  // The map gets a share of the screen rather than a hard 280px, so short
+  // phones still have room for the stats underneath.
+  const mapHeight = Math.round(Math.min(340, Math.max(200, windowHeight * 0.32)));
+
 
   const [path, setPath] = useState<Coord[]>([]);
   const [current, setCurrent] = useState<Coord | undefined>();
@@ -55,6 +81,7 @@ export default function ActiveTrackingScreen() {
   const [result, setResult] = useState<any>(null);
   const [saving, setSaving] = useState(false);
   const [showRest, setShowRest] = useState(false);
+  const [showCleanup, setShowCleanup] = useState(false);
 
   const subRef = useRef<Subscription | null>(null);
   const lastRef = useRef<Coord | undefined>(undefined);
@@ -201,13 +228,50 @@ export default function ActiveTrackingScreen() {
         durationSec: elapsed,
         activityNumber: totalActivities + 1,
         kind: mode,
+        cleanupPieces: 0,
+        cleanupPoints: 0,
+        cleanupSeconds: 0,
       });
+
+      // The cleanup question, at the one moment it makes sense to ask: the
+      // walk is over, it was long enough to have passed some litter, and it
+      // actually counted.
+      if (shouldAskCleanup(elapsed, res.rejected)) setShowCleanup(true);
     } catch (e: any) {
       Alert.alert('Could not save', e?.message ?? 'Something went wrong saving that activity.');
     } finally {
       setSaving(false);
     }
   }, [addActivity, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss, totalActivities]);
+
+  /**
+   * Answering the cleanup question: the pieces are already logged by the
+   * sheet, so this is the reward half — bonus points, credited minutes, and
+   * a line on the summary so it is visible that it counted.
+   */
+  const handleCleanupLogged = useCallback(
+    async (pieces: number) => {
+      if (pieces <= 0) return;
+      const bonus = cleanupBonusPoints(pieces);
+      const extraSeconds = cleanupBonusSeconds(pieces);
+      await award('cleanup', {
+        points: bonus,
+        label: `Picked up ${pieces} piece${pieces === 1 ? '' : 's'} of litter`,
+      });
+      setResult((prev: any) =>
+        prev
+          ? {
+              ...prev,
+              cleanupPieces: prev.cleanupPieces + pieces,
+              cleanupPoints: prev.cleanupPoints + bonus,
+              cleanupSeconds: prev.cleanupSeconds + extraSeconds,
+              points: prev.points + bonus,
+            }
+          : prev
+      );
+    },
+    [award]
+  );
 
   const handleDiscard = () => {
     Alert.alert('Discard this activity?', 'Your progress will not be saved.', [
@@ -226,75 +290,126 @@ export default function ActiveTrackingScreen() {
   // Show results screen after activity is saved
   if (result) {
     return (
-      <View style={styles.root}>
+      <View style={[styles.root, { backgroundColor: colors.surface }]}>
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
-          <View style={styles.resultContainer}>
-            <Icon
-              name={result.rejected ? 'alert-circle' : 'check-circle'}
-              size={64}
-              color={result.rejected ? colors.warning : colors.primary}
-              strokeWidth={1.5}
-            />
-            <Text style={styles.resultTitle}>
-              {result.rejected
-                ? 'This one did not count'
-                : celebrationTitle(result.activityNumber, result.kind)}
-            </Text>
-            
-            {result.rejected ? (
-              <Text style={styles.resultSubtitle}>
-                {result.rejectionReason === 'too_short'
-                  ? 'That was under a minute, so we did not save the miles.'
-                  : result.rejectionReason === 'speed_too_high'
-                  ? 'The speed was too high for a walk or ride, so it was not counted.'
-                  : result.rejectionReason === 'too_many_strikes'
-                  ? 'There were too many speed warnings, so it was not counted.'
-                  : 'It did not look like a walk or ride, so it was not counted.'}
+          <ScrollView
+            style={{ flex: 1 }}
+            contentContainerStyle={styles.resultScroll}
+            showsVerticalScrollIndicator={false}
+          >
+            <View style={styles.resultContainer}>
+              <Icon
+                name={result.rejected ? 'alert-circle' : 'check-circle'}
+                size={64}
+                color={result.rejected ? colors.warning : colors.primary}
+                strokeWidth={1.5}
+              />
+              <Text style={[styles.resultTitle, { textAlign: 'center' }]}>
+                {result.rejected
+                  ? 'This one did not count'
+                  : celebrationTitle(result.activityNumber, result.kind)}
               </Text>
-            ) : (
-              <Text style={styles.resultSubtitle}>
-                {celebrationBody(result.activityNumber, result.kind)}
-              </Text>
-            )}
 
-            <View style={styles.resultStats}>
-              <ResultStat label="Distance" value={`${formatDistance(result.miles)} ${formatDistanceUnit()}`} />
-              <ResultStat label="Time" value={formatTime(result.durationSec)} />
-              <ResultStat label="Trees" value={String(result.trees)} icon="tree" />
-              <ResultStat label="Points" value={`+${result.points}`} icon="star" />
-              <ResultStat label="Calories" value={String(result.calories)} icon="zap" />
-              <ResultStat label="Elevation" value={`${result.elevationGain} ft`} icon="trending-up" />
-            </View>
-
-            {result.trailCompleted && (
-              <View style={styles.trailCompleteBadge}>
-                <Icon name="flag" size={18} color={colors.primary} strokeWidth={2} />
-                <Text style={styles.trailCompleteText}>
-                  Completed {result.trailName}!
+              {result.rejected ? (
+                <Text style={styles.resultSubtitle}>
+                  {result.rejectionReason === 'too_short'
+                    ? 'That was under a minute, so we did not save the miles.'
+                    : result.rejectionReason === 'speed_too_high'
+                    ? 'The speed was too high for a walk or ride, so it was not counted.'
+                    : result.rejectionReason === 'too_many_strikes'
+                    ? 'There were too many speed warnings, so it was not counted.'
+                    : 'It did not look like a walk or ride, so it was not counted.'}
                 </Text>
-              </View>
-            )}
+              ) : (
+                <Text style={styles.resultSubtitle}>
+                  {celebrationBody(result.activityNumber, result.kind)}
+                </Text>
+              )}
 
-            <View style={styles.resultButtons}>
-              {!result.rejected ? (
+              <View style={styles.resultStats}>
+                <ResultStat label="Distance" value={`${formatDistance(result.miles)} ${formatDistanceUnit()}`} />
+                <ResultStat
+                  label="Time"
+                  value={formatTime(result.durationSec + result.cleanupSeconds)}
+                />
+                <ResultStat label="Trees" value={String(result.trees)} icon="tree" />
+                <ResultStat label="Points" value={`+${result.points}`} icon="star" />
+                {!simpleMode ? (
+                  <>
+                    <ResultStat label="Calories" value={String(result.calories)} icon="zap" />
+                    <ResultStat label="Elevation" value={`${result.elevationGain} ft`} icon="trending-up" />
+                  </>
+                ) : null}
+              </View>
+
+              {result.cleanupPieces > 0 ? (
+                <View style={styles.cleanupSummary}>
+                  <Icon name="trash" size={18} color={colors.primary} strokeWidth={2} />
+                  <Text style={styles.cleanupSummaryText}>
+                    {result.cleanupPieces} piece{result.cleanupPieces === 1 ? '' : 's'} of litter
+                    picked up · +{result.cleanupPoints} points
+                    {result.cleanupSeconds >= 60
+                      ? ` · +${Math.round(result.cleanupSeconds / 60)} min credited`
+                      : ''}
+                  </Text>
+                </View>
+              ) : null}
+
+              {result.trailCompleted && (
+                <View style={styles.trailCompleteBadge}>
+                  <Icon name="flag" size={18} color={colors.primary} strokeWidth={2} />
+                  <Text style={styles.trailCompleteText}>
+                    Completed {result.trailName}!
+                  </Text>
+                </View>
+              )}
+
+              <View style={styles.resultButtons}>
+                {/* Said no first, then remembered the can by the bench. */}
+                {!result.rejected &&
+                result.durationSec >= CLEANUP_PROMPT_SEC &&
+                result.cleanupPieces === 0 ? (
+                  <Button
+                    label="I picked up litter"
+                    icon="trash"
+                    variant="secondary"
+                    size="lg"
+                    full
+                    onPress={() => setShowCleanup(true)}
+                    style={{ marginBottom: SPACING.sm }}
+                  />
+                ) : null}
+                {!result.rejected && !simpleMode ? (
+                  <Button
+                    label="Give feedback"
+                    icon="star"
+                    variant="secondary"
+                    size="lg"
+                    full
+                    onPress={openFeedbackForm}
+                    style={{ marginBottom: SPACING.sm }}
+                  />
+                ) : null}
                 <Button
-                  label="Give feedback"
-                  icon="star"
-                  variant="secondary"
+                  label="Done"
                   size="lg"
                   full
-                  onPress={openFeedbackForm}
-                  style={{ marginBottom: SPACING.sm }}
+                  onPress={() => navigation.goBack()}
                 />
-              ) : null}
-              <Button
-                label="Done"
-                size="lg"
-                full
-                onPress={() => navigation.goBack()}
-              />
+              </View>
             </View>
-          </View>
+          </ScrollView>
+
+          {/* The trash question. Only ever shown after a walk of ten minutes
+              or more, and never blocking: "None this time" closes it. */}
+          <CleanupSheet
+            visible={showCleanup}
+            onClose={() => setShowCleanup(false)}
+            title="Did you pick up any trash?"
+            subtitle={`Nice ${result.kind === 'bike' ? 'ride' : 'walk'} — every piece counts for extra points`}
+            allowNone
+            onLogged={handleCleanupLogged}
+          />
         </SafeAreaView>
       </View>
     );
@@ -337,129 +452,152 @@ export default function ActiveTrackingScreen() {
           </View>
         </View>
 
-        {/* Map — takes up the top half */}
-        <View style={styles.mapContainer}>
-          <LiveMap path={path} current={current} height={280} follow={!paused} />
-          
-          {/* Trail detection overlay */}
-          {nearbyTrail ? (
-            <View style={styles.trailBadge}>
-              <Icon name="map-pin" size={14} color={colors.primary} strokeWidth={2} />
-              <Text style={styles.trailBadgeText} numberOfLines={1}>
-                {nearbyTrail.name}
+        {/* Everything below the top bar scrolls. On a short phone the stats
+            and the Finish button used to run off the bottom of the screen
+            with no way to reach them. */}
+        <ScrollView
+          style={{ flex: 1 }}
+          contentContainerStyle={styles.scrollBody}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={[styles.mapContainer, { height: mapHeight }]}>
+            <LiveMap path={path} current={current} height={mapHeight} follow={!paused} />
+
+            {/* Trail detection overlay */}
+            {nearbyTrail ? (
+              <View style={styles.trailBadge}>
+                <Icon name="map-pin" size={14} color={colors.primary} strokeWidth={2} />
+                <Text style={styles.trailBadgeText} numberOfLines={1}>
+                  {nearbyTrail.name}
+                </Text>
+              </View>
+            ) : null}
+          </View>
+
+          <View style={styles.helpRow}>
+            <Pressable
+              onPress={call911}
+              style={styles.helpIconBtn}
+              accessibilityLabel="Call 911"
+              accessibilityRole="button"
+            >
+              <Icon name="alert-triangle" size={18} color={colors.danger} strokeWidth={2} />
+              <Text style={styles.helpLabel}>Call 911</Text>
+            </Pressable>
+            <View style={{ flex: 1 }} />
+          </View>
+
+          {showRest ? (
+            <View style={styles.restBanner}>
+              <Icon name="clock" size={18} color={colors.accentDark} strokeWidth={2} />
+              <Text style={styles.restText}>
+                You have been out for {Math.floor(elapsed / 60)} minutes
+                {report ? ` · it is ${formatTemp(report.tempF)}` : ''}. Want a sit-down?
               </Text>
+              <Pressable onPress={() => setShowRest(false)} hitSlop={10} accessibilityLabel="Dismiss rest reminder">
+                <Icon name="x" size={16} color={colors.textMuted} />
+              </Pressable>
             </View>
           ) : null}
-        </View>
 
-        <View style={styles.helpRow}>
-          <Pressable
-            onPress={call911}
-            style={styles.helpIconBtn}
-            accessibilityLabel="Call 911"
-          >
-            <Icon name="alert-triangle" size={18} color={colors.danger} strokeWidth={2} />
-          </Pressable>
-          <View style={{ flex: 1 }} />
-        </View>
+          {/* Stats panel */}
+          <View style={styles.statsPanel}>
+            {/* Primary stat: distance */}
+            <View style={styles.primaryRow}>
+              <Text style={styles.distanceValue}>{formatDistance(miles)}</Text>
+              <Text style={styles.distanceUnit}>{formatDistanceUnit()}</Text>
+            </View>
 
-        {showRest ? (
-          <View style={styles.restBanner}>
-            <Icon name="clock" size={18} color={colors.accentDark} strokeWidth={2} />
-            <Text style={styles.restText}>
-              You have been out for {Math.floor(elapsed / 60)} minutes
-              {report ? ` · it is ${formatTemp(report.tempF)}` : ''}. Want a sit-down?
-            </Text>
-            <Pressable onPress={() => setShowRest(false)} hitSlop={10} accessibilityLabel="Dismiss rest reminder">
-              <Icon name="x" size={16} color={colors.textMuted} />
-            </Pressable>
+            {/* Simple mode keeps three numbers that mean something to
+                everyone: how far, how long, how many trees. */}
+            {simpleMode ? (
+              <View style={styles.statsGrid}>
+                <StatBox icon="clock" value={formatTime(elapsed)} label="Time" />
+                <StatBox icon="tree" value={String(trees)} label="Trees" />
+                <StatBox icon="activity" value={avgMph.toFixed(1)} label="Avg mph" />
+              </View>
+            ) : (
+              <>
+                {/* Speed — with warning indicator */}
+                <View style={styles.speedRow}>
+                  <View style={styles.speedBlock}>
+                    <Text style={[
+                      styles.speedValue,
+                      currentMph > speedLimit && styles.speedOverLimit
+                    ]}>
+                      {currentMph.toFixed(1)}
+                    </Text>
+                    <Text style={styles.speedLabel}>mph now</Text>
+                    {currentMph > speedLimit ? (
+                      <View style={styles.speedWarning}>
+                        <Icon name="alert-triangle" size={12} color={colors.danger} strokeWidth={2} />
+                        <Text style={styles.speedWarningText}>Over {speedLimit} mph limit</Text>
+                      </View>
+                    ) : null}
+                  </View>
+                  <View style={styles.speedDivider} />
+                  <View style={styles.speedBlock}>
+                    <Text style={styles.speedValue}>{avgMph.toFixed(1)}</Text>
+                    <Text style={styles.speedLabel}>avg mph</Text>
+                  </View>
+                </View>
+
+                {/* Secondary stats grid */}
+                <View style={styles.statsGrid}>
+                  <StatBox icon="clock" value={formatTime(elapsed)} label="Time" />
+                  <StatBox icon="trending-up" value={`${Math.round(elevationGain)}`} label="Gain (ft)" />
+                  <StatBox icon="trending-up" value={`${Math.round(elevationLoss)}`} label="Loss (ft)" iconColor={colors.textMuted} />
+                  <StatBox icon="zap" value={String(calories)} label="Calories" />
+                  <StatBox icon="tree" value={String(trees)} label="Trees" />
+                </View>
+              </>
+            )}
+
+            {/* Finish button */}
+            <View style={styles.finishRow}>
+              <Button
+                label={mode === 'bike' ? 'Stop and save ride' : 'Stop and save walk'}
+                icon="stop"
+                size="lg"
+                full
+                loading={saving}
+                disabled={saving}
+                onPress={handleFinish}
+              />
+            </View>
           </View>
-        ) : null}
+        </ScrollView>
 
-        {/* Stats panel */}
-        <View style={styles.statsPanel}>
-          {/* Primary stat: distance */}
-          <View style={styles.primaryRow}>
-            <Text style={styles.distanceValue}>{formatDistance(miles)}</Text>
-            <Text style={styles.distanceUnit}>{formatDistanceUnit()}</Text>
-          </View>
-
-          {/* Speed — with warning indicator */}
-          <View style={styles.speedRow}>
-            <View style={styles.speedBlock}>
-              <Text style={[
-                styles.speedValue,
-                currentMph > speedLimit && styles.speedOverLimit
-              ]}>
-                {currentMph.toFixed(1)}
+        {/* Speed alert — 3 strikes. Covers the whole screen so it cannot be
+            scrolled past or missed. */}
+        {showSpeedAlert ? (
+          <View style={styles.alertOverlay}>
+            <View style={styles.alertBox}>
+              <Icon name="alert-circle" size={32} color={colors.danger} strokeWidth={2} />
+              <Text style={styles.alertTitle}>Activity paused</Text>
+              <Text style={styles.alertText}>
+                We detected several moments where your speed exceeded what's expected for{' '}
+                {mode === 'hike' ? 'hiking' : 'biking'}. For fairness, this activity may not be counted toward your totals.
               </Text>
-              <Text style={styles.speedLabel}>mph now</Text>
-              {currentMph > speedLimit ? (
-                <View style={styles.speedWarning}>
-                  <Icon name="alert-triangle" size={12} color={colors.danger} strokeWidth={2} />
-                  <Text style={styles.speedWarningText}>Over {speedLimit} mph limit</Text>
-                </View>
-              ) : null}
-            </View>
-            <View style={styles.speedDivider} />
-            <View style={styles.speedBlock}>
-              <Text style={styles.speedValue}>{avgMph.toFixed(1)}</Text>
-              <Text style={styles.speedLabel}>avg mph</Text>
-            </View>
-          </View>
-
-          {/* Secondary stats grid */}
-          <View style={styles.statsGrid}>
-            <StatBox icon="clock" value={formatTime(elapsed)} label="Time" />
-            <StatBox icon="trending-up" value={`${Math.round(elevationGain)}`} label="Gain (ft)" />
-            <StatBox icon="trending-up" value={`${Math.round(elevationLoss)}`} label="Loss (ft)" iconColor={colors.textMuted} />
-            <StatBox icon="zap" value={String(calories)} label="Calories" />
-            <StatBox icon="tree" value={String(trees)} label="Trees" />
-          </View>
-
-          {/* Speed alert modal — 3 strikes */}
-          {showSpeedAlert ? (
-            <View style={styles.alertOverlay}>
-              <View style={styles.alertBox}>
-                <Icon name="alert-circle" size={32} color={colors.danger} strokeWidth={2} />
-                <Text style={styles.alertTitle}>Activity paused</Text>
-                <Text style={styles.alertText}>
-                  We detected several moments where your speed exceeded what's expected for{' '}
-                  {mode === 'hike' ? 'hiking' : 'biking'}. For fairness, this activity may not be counted toward your totals.
-                </Text>
-                <Text style={styles.alertSubtext}>
-                  Speed limit: {speedLimit} mph for {mode === 'hike' ? 'hiking' : 'biking'}
-                </Text>
-                <View style={styles.alertButtons}>
-                  <Button
-                    label="End activity"
-                    onPress={handleFinish}
-                    style={{ flex: 1 }}
-                  />
-                  <Button
-                    label="Continue"
-                    variant="secondary"
-                    onPress={() => setShowSpeedAlert(false)}
-                    style={{ flex: 1 }}
-                  />
-                </View>
+              <Text style={styles.alertSubtext}>
+                Speed limit: {speedLimit} mph for {mode === 'hike' ? 'hiking' : 'biking'}
+              </Text>
+              <View style={styles.alertButtons}>
+                <Button
+                  label="End activity"
+                  onPress={handleFinish}
+                  style={{ flex: 1 }}
+                />
+                <Button
+                  label="Continue"
+                  variant="secondary"
+                  onPress={() => setShowSpeedAlert(false)}
+                  style={{ flex: 1 }}
+                />
               </View>
             </View>
-          ) : null}
-
-          {/* Finish button */}
-          <View style={styles.finishRow}>
-            <Button
-              label={mode === 'bike' ? 'Stop and save ride' : 'Stop and save walk'}
-              icon="stop"
-              size="lg"
-              full
-              loading={saving}
-              disabled={saving}
-              onPress={handleFinish}
-            />
           </View>
-        </View>
+        ) : null}
       </SafeAreaView>
     </View>
   );
@@ -588,14 +726,17 @@ function makeStyles(c: ColorPalette, t: Typography) {
     elevation: 4,
   },
   stopLabel: {
-    fontSize: 17,
+    ...t.bodyMed,
     fontWeight: '800',
     color: '#fff',
     letterSpacing: 0.2,
   },
 
+  // flexGrow keeps the white stats panel filling the bottom of the screen
+  // when the content is short, and lets it scroll when it is not.
+  scrollBody: { flexGrow: 1 },
+
   mapContainer: {
-    height: 280,
     borderRadius: RADIUS.lg,
     overflow: 'hidden',
     marginHorizontal: SPACING.md,
@@ -618,13 +759,14 @@ function makeStyles(c: ColorPalette, t: Typography) {
   trailBadgeText: { ...t.smallMed, color: c.primary },
 
   statsPanel: {
-    flex: 1,
+    flexGrow: 1,
     backgroundColor: c.surface,
     borderTopLeftRadius: RADIUS.xxl,
     borderTopRightRadius: RADIUS.xxl,
     marginTop: SPACING.md,
     paddingHorizontal: SPACING.lg,
     paddingTop: SPACING.lg,
+    paddingBottom: SPACING.lg,
     gap: SPACING.md,
   },
 
@@ -642,7 +784,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
     gap: SPACING.lg,
   },
   speedBlock: { alignItems: 'center', flex: 1 },
-  speedValue: { fontSize: 32, fontWeight: '700', color: c.text, letterSpacing: -0.3 },
+  speedValue: { ...t.metric, color: c.text },
   speedOverLimit: { color: c.danger },
   speedLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
   speedDivider: { width: 1, height: 40, backgroundColor: c.border },
@@ -652,7 +794,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
     gap: 4,
     marginTop: 4,
   },
-  speedWarningText: { fontSize: 10, color: c.danger, fontWeight: '600' },
+  speedWarningText: { ...t.micro, color: c.danger, fontWeight: '600' },
 
   statsGrid: {
     flexDirection: 'row',
@@ -695,13 +837,15 @@ function makeStyles(c: ColorPalette, t: Typography) {
 
   helpRow: { flexDirection: 'row', gap: SPACING.sm, paddingHorizontal: SPACING.md, marginTop: SPACING.sm },
   helpIconBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
+    minHeight: 44,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.pill,
     backgroundColor: c.surface,
+    flexDirection: 'row',
     alignItems: 'center',
-    justifyContent: 'center',
+    gap: 7,
   },
+  helpLabel: { ...t.smallMed, color: c.danger },
   restBanner: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -715,14 +859,28 @@ function makeStyles(c: ColorPalette, t: Typography) {
   restText: { ...t.small, color: c.text, flex: 1 },
   finishRow: { paddingBottom: SPACING.md },
 
+  resultScroll: {
+    flexGrow: 1,
+    justifyContent: 'center',
+    paddingVertical: SPACING.lg,
+  },
   resultContainer: {
-    flex: 1,
     backgroundColor: c.surface,
     alignItems: 'center',
     justifyContent: 'center',
     paddingHorizontal: SPACING.lg,
     gap: SPACING.lg,
   },
+  cleanupSummary: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: SPACING.sm,
+    backgroundColor: c.primarySurface,
+    paddingVertical: SPACING.sm + 2,
+    paddingHorizontal: SPACING.md,
+    borderRadius: RADIUS.lg,
+  },
+  cleanupSummaryText: { ...t.smallMed, color: c.primary, flex: 1 },
   resultTitle: {
     ...t.h1,
     color: c.text,
