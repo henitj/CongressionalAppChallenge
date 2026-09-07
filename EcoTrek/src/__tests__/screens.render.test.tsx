@@ -186,7 +186,7 @@ describe('the trash question at the end of a walk', () => {
       <CleanupSheet
         visible
         onClose={() => {}}
-        title="Did you pick up any trash?"
+        title="Pieces of trash you picked up"
         subtitle="Nice walk — every piece counts for extra points"
         allowNone
         onLogged={onLogged}
@@ -205,7 +205,7 @@ describe('the trash question at the end of a walk', () => {
   it('logging pieces hands the count back so points can be awarded', async () => {
     const logged: number[] = [];
     const Screen = () => <PostWalkQuestion onLogged={(n) => logged.push(n)} />;
-    const utils = await mount(Screen, 'Did you pick up any trash?');
+    const utils = await mount(Screen, 'Pieces of trash you picked up');
 
     fireEvent.press(utils.getByLabelText('10 pieces'));
     await waitFor(() => expect(utils.queryByText('Log 10 pieces')).toBeTruthy());
@@ -307,7 +307,8 @@ describe('screens that do not need the provider stack', () => {
       </SafeAreaProvider>
     );
     await waitFor(() => expect(queryByText('Skip')).toBeTruthy());
-    expect(queryByText(/What should we call you/i)).toBeTruthy();
+    expect(queryByText(/Your profile/i)).toBeTruthy();
+    expect(queryByText(/First name/i)).toBeTruthy();
   });
 
   it('Onboarding renders and can be skipped', async () => {

@@ -35,6 +35,13 @@ export function cleanupBonusSeconds(pieces: number): number {
 }
 
 /** Should the cleanup question be asked after this activity? */
-export function shouldAskCleanup(durationSec: number, rejected: boolean): boolean {
-  return !rejected && durationSec >= CLEANUP_PROMPT_SEC;
+export function shouldAskCleanup(
+  durationSec: number,
+  rejected: boolean,
+  mode?: 'hike' | 'bike'
+): boolean {
+  if (rejected) return false;
+  // After a ride we always ask — the user wants to log trash they picked up.
+  if (mode === 'bike') return true;
+  return durationSec >= CLEANUP_PROMPT_SEC;
 }
