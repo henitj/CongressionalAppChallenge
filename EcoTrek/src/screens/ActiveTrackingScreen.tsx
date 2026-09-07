@@ -16,6 +16,7 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import LiveMap from '../components/LiveMap';
 import CleanupSheet from '../components/CleanupSheet';
+import Confetti from '../components/Confetti';
 import FeedbackSheet from '../components/FeedbackSheet';
 import Icon, { IconName } from '../components/Icon';
 import { Button } from '../components/ui';
@@ -83,6 +84,7 @@ export default function ActiveTrackingScreen() {
   const [showRest, setShowRest] = useState(false);
   const [showCleanup, setShowCleanup] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [confettiDone, setConfettiDone] = useState(false);
   const pendingFeedback = useRef(false);
 
   const subRef = useRef<Subscription | null>(null);
@@ -205,6 +207,7 @@ export default function ActiveTrackingScreen() {
     subRef.current?.remove();
     subRef.current = null;
     setSaving(true);
+    setConfettiDone(false);
 
     try {
       const res = await addActivity({
@@ -298,8 +301,13 @@ export default function ActiveTrackingScreen() {
 
   // Show results screen after activity is saved
   if (result) {
+    // A mile or more under your own power is worth a celebration. Rejected
+    // activities and sub-mile hops get the quiet summary instead. The
+    // confetti unmounts itself once the burst has finished falling.
+    const celebrate = !result.rejected && result.miles >= 1 && !confettiDone;
     return (
       <View style={[styles.root, { backgroundColor: colors.surface }]}>
+        {celebrate ? <Confetti onFinish={() => setConfettiDone(true)} /> : null}
         <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
           <ScrollView
             style={{ flex: 1 }}

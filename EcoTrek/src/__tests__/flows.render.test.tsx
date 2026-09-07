@@ -5,7 +5,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AppProvider } from '../context/AppContext';
-import { EcoPointsProvider, useEcoPoints } from '../constants/EcoPointsContext';
+import { BADGE_CLAIM_POINTS, EcoPointsProvider, useEcoPoints } from '../constants/EcoPointsContext';
 import { SettingsProvider } from '../constants/SettingsContext';
 import { ClubProvider, useClub } from '../constants/ClubContext';
 import { StreakProvider, useStreak } from '../context/StreakContext';
@@ -398,6 +398,80 @@ describe('weekly challenges', () => {
       },
       { timeout: 5000 }
     );
+  });
+});
+
+describe('badge rewards', () => {
+  it('claiming a newly unlocked badge pays its points exactly once', async () => {
+    await boot();
+
+    await act(async () => {
+      await harness.activity.addActivity(hikeInput());
+    });
+    await waitFor(() => expect(harness.activity.totalActivities).toBe(1));
+
+    // Run the badge engine the same way App.tsx does after state changes.
+    await act(async () => {
+      harness.points.refreshBadges({
+        totalMiles: harness.activity.totalMiles,
+        totalTrees: harness.activity.totalTrees,
+        totalActivities: harness.activity.totalActivities,
+        hikes: 1,
+        rides: 0,
+        currentStreak: 1,
+        longestStreak: 1,
+        totalActiveDays: 1,
+        activeDaysLast30: 1,
+        perfectWeeks: 0,
+        hadComeback: false,
+        trailsCompleted: 0,
+        challengesCompleted: 0,
+        clubsJoined: 0,
+        clubsFounded: 0,
+        speciesLogged: 0,
+        plantsLogged: 0,
+        animalsLogged: 0,
+        cleanups: 0,
+        litterCollected: 0,
+        clubGoalsMet: 0,
+      });
+    });
+
+    await waitFor(() =>
+      expect(harness.points.newBadges.some((b) => b.id === 'first_hike')).toBe(true)
+    );
+
+    const before = harness.points.totalPoints;
+    let awarded = 0;
+    await act(async () => {
+      awarded = await harness.points.claimBadge('first_hike');
+    });
+
+    expect(awarded).toBe(BADGE_CLAIM_POINTS);
+    expect(harness.points.totalPoints).toBe(before + BADGE_CLAIM_POINTS);
+    // The badge is no longer "new" once its reward has been claimed.
+    expect(harness.points.newBadges.some((b) => b.id === 'first_hike')).toBe(false);
+
+    // Claiming again pays nothing — no double dipping.
+    let again = -1;
+    await act(async () => {
+      again = await harness.points.claimBadge('first_hike');
+    });
+    expect(again).toBe(0);
+    expect(harness.points.totalPoints).toBe(before + BADGE_CLAIM_POINTS);
+  });
+
+  it('claiming a locked badge does nothing', async () => {
+    await boot();
+    const before = harness.points.totalPoints;
+
+    let awarded = -1;
+    await act(async () => {
+      awarded = await harness.points.claimBadge('hundred_miles');
+    });
+
+    expect(awarded).toBe(0);
+    expect(harness.points.totalPoints).toBe(before);
   });
 });
 

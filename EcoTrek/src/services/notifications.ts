@@ -13,11 +13,45 @@ import { Platform } from 'react-native';
  * environment where the native module isn't present.
  */
 
+/**
+ * Expo Go removed Android *push* support in SDK 53, and since then merely
+ * importing expo-notifications inside Expo Go on Android THROWS at module
+ * load time (its push-token auto-registration side effect calls
+ * warnOfExpoGoPushUsage, which is a hard error there). That produced an
+ * "Uncaught Error" red box on boot even though we only ever use local
+ * notifications. So in Expo Go on Android we never load the module at all;
+ * reminders simply switch off there (Settings shows them as unsupported).
+ * Development builds and the store app are unaffected and get everything.
+ */
+function inExpoGoOnAndroid(): boolean {
+  if (Platform.OS !== 'android') return false;
+  // Jest mocks expo-notifications and is never "Expo Go".
+  if (process.env.JEST_WORKER_ID !== undefined) return false;
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const expo = require('expo');
+    if (typeof expo.isRunningInExpoGo === 'function') return !!expo.isRunningInExpoGo();
+  } catch {
+    /* fall through to the constants check */
+  }
+  try {
+    // eslint-disable-next-line @typescript-eslint/no-var-requires
+    const Constants = require('expo-constants')?.default;
+    return Constants?.appOwnership === 'expo';
+  } catch {
+    return false;
+  }
+}
+
 let Notifications: any = null;
 let loadFailed = false;
 
 function getModule() {
   if (Notifications || loadFailed) return Notifications;
+  if (inExpoGoOnAndroid()) {
+    loadFailed = true;
+    return null;
+  }
   try {
     // eslint-disable-next-line @typescript-eslint/no-var-requires
     Notifications = require('expo-notifications');

@@ -129,7 +129,7 @@ src/services/avatar.ts             profile photo: pick/take, compress, store
 ## Accessibility notes
 
 - Settings text size multiplies the whole type ramp (see above).
-- Give feedback: after a counted walk a popup asks how it went; the Profile page also has a Give Feedback button. Both open the team's Google Form; the link is hardcoded in `src/constants/feedback.ts`.
+- Give feedback: after a counted walk a popup asks how it went; the More page also has a Give Feedback button right at the bottom. Both open the team's Google Form; the link is hardcoded in `src/constants/feedback.ts`.
 - Tap targets meet the 52 pt minimum; icons always ship with labels.
 
 ---

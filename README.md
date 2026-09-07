@@ -31,7 +31,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Text size** — Normal, Large, or Extra large. One app-wide scaler applies the size to every screen, so larger text never breaks a layout.
 - **Dark** and **High contrast** themes re-theme the whole app — no screen is left behind.
 - **Less motion** skips fades and slides (and follows the system setting).
-- **Give feedback** — after a counted walk a popup asks how it went; there is also a Give Feedback button at the bottom of the Profile page. Both open the team's Google Form. The link is hardcoded in `EcoTrek/src/constants/feedback.ts` — the one place to change it.
+- **Give feedback** — after a counted walk a popup asks how it went; there is also a Give Feedback button right at the bottom of the More page. Both open the team's Google Form. The link is hardcoded in `EcoTrek/src/constants/feedback.ts` — the one place to change it.
 - Large tap targets and plain language throughout ("points," "level," "skip a week," "your progress").
 
 ---

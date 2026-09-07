@@ -4,11 +4,12 @@ import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
-import { Screen, Card, Divider } from '../components/ui';
+import { Screen, Card, Divider, Button } from '../components/ui';
 import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
 import { Typography, useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
 import { useSettings } from '../constants/SettingsContext';
+import { openFeedbackForm } from '../constants/feedback';
 
 type Row = { icon: IconName; label: string; hint: string; to: string };
 type Section = { title: string; rows: Row[] };
@@ -92,6 +93,21 @@ export default function MoreScreen() {
             </View>
           );
         })}
+
+        {/* Give feedback — always the last thing on the page, right under
+            the sections instead of buried in Profile. Opens the team's
+            Google Form directly; the link lives in src/constants/feedback.ts
+            and nowhere else. */}
+        <View style={styles.feedbackWrap}>
+          <Button
+            label="Give Feedback"
+            icon="star"
+            variant="secondary"
+            size="lg"
+            full
+            onPress={openFeedbackForm}
+          />
+        </View>
       </View>
     </Screen>
   );
@@ -125,5 +141,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
     },
     label: { ...t.h4, color: c.text },
     hint: { ...t.small, color: c.textMuted, marginTop: 2 },
+    feedbackWrap: { marginTop: SPACING.xs },
   });
 }

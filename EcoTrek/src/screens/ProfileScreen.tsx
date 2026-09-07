@@ -18,7 +18,6 @@ import { useProfile } from '../context/ProfileContext';
 import { fullNameOf } from '../services/displayName';
 import { chooseAvatarAction, pickAndStoreAvatarPhoto } from '../services/avatar';
 import ShareCard from '../components/ShareCard';
-import { openFeedbackForm } from '../constants/feedback';
 import { useTheme, Typography } from '../context/ThemeContext';
 
 export default function ProfileScreen() {
@@ -28,7 +27,7 @@ export default function ProfileScreen() {
   const { user, signOut, updateUser } = useAuth();
   const { totalMiles, totalTrees, uniqueTrailsCompleted } = useActivity();
   const { currentStreak, longestStreak, totalActiveWeeks, availableFreezes } = useStreak();
-  const { totalPoints, level, progressPercent, nextLevelPoints, badges, unlockedBadges } =
+  const { totalPoints, level, progressPercent, nextLevelPoints, badges, unlockedBadges, newBadges } =
     useEcoPoints();
   const { formatDistanceCompact: formatDistance, formatDistanceUnit } = useSettings();
   const { myClub, myRank, clubsLeading } = useClub();
@@ -326,11 +325,19 @@ export default function ProfileScreen() {
             </View>
             <ProgressBar
               percent={badges.length ? (unlockedBadges.length / badges.length) * 100 : 0}
-              style={{ marginTop: SPACING.sm, marginBottom: SPACING.md }}
+              style={{ marginTop: SPACING.sm, marginBottom: newBadges.length > 0 ? SPACING.sm : SPACING.md }}
               height={10}
             />
+            {newBadges.length > 0 ? (
+              <Text style={styles.badgeNewHint}>
+                {newBadges.length} new badge reward{newBadges.length === 1 ? '' : 's'} to claim —
+                tap See all.
+              </Text>
+            ) : null}
             <View style={styles.badgePreviewRow}>
-              {(unlockedBadges.length ? unlockedBadges : badges).slice(0, 3).map((b) => (
+              {(newBadges.length ? newBadges : unlockedBadges.length ? unlockedBadges : badges)
+                .slice(0, 3)
+                .map((b) => (
                 <Pressable
                   key={b.id}
                   onPress={() => setSelectedBadge(b)}
@@ -359,20 +366,6 @@ export default function ProfileScreen() {
           <Icon name="log-out" size={16} color={colors.textMuted} strokeWidth={1.9} />
           <Text style={styles.signOutText}>Sign out</Text>
         </Pressable>
-
-        {/* Give feedback — always the last thing on the page. Opens the
-            team's Google Form directly. The link lives in
-            src/constants/feedback.ts and nowhere else. */}
-        <View style={styles.feedbackWrap}>
-          <Button
-            label="Give Feedback"
-            icon="star"
-            variant="secondary"
-            size="lg"
-            full
-            onPress={openFeedbackForm}
-          />
-        </View>
       </View>
 
       {/* Badge detail */}
@@ -393,7 +386,28 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={styles.badgeDesc}>{selectedBadge.description}</Text>
-            {selectedBadge.unlocked && selectedBadge.unlockedAt ? (
+            {selectedBadge.unlocked && !selectedBadge.claimedAt ? (
+              <>
+                <Pill
+                  label={
+                    selectedBadge.unlockedAt
+                      ? `Earned ${new Date(selectedBadge.unlockedAt).toLocaleDateString()}`
+                      : 'Earned'
+                  }
+                  tone="primary"
+                  size="sm"
+                />
+                <Button
+                  label="Claim reward on the Badges page"
+                  icon="gift"
+                  variant="secondary"
+                  onPress={() => {
+                    setSelectedBadge(null);
+                    navigation.navigate('Badges');
+                  }}
+                />
+              </>
+            ) : selectedBadge.unlocked && selectedBadge.unlockedAt ? (
               <Pill
                 label={`Earned ${new Date(selectedBadge.unlockedAt).toLocaleDateString()}`}
                 tone="primary"
@@ -657,7 +671,9 @@ function makeStyles(c: ColorPalette, t: Typography) {
     justifyContent: 'center',
     gap: 8,
     padding: 8,
+    overflow: 'hidden',
   },
+  badgeNewHint: { ...t.smallMed, color: c.primary, marginBottom: SPACING.sm },
   badgeUnlocked: { backgroundColor: c.primarySurface, borderColor: c.primaryGlow },
   badgeName: {
     fontSize: 13,
@@ -686,8 +702,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
     padding: SPACING.md - 2,
   },
   signOutText: { ...t.bodyMed, color: c.textMuted },
-
-  feedbackWrap: { marginTop: SPACING.xs },
 
   fieldLabel: { ...t.overline, color: c.textMuted },
   input: {

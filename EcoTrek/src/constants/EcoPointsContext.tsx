@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { IconName } from '../components/Icon';
 import { LEVELS } from './theme';
 import { useAuth } from '../context/AuthContext';
@@ -17,7 +17,8 @@ export type EcoAction =
   | 'club_joined'
   | 'club_goal'
   | 'daily_login'
-  | 'streak_bonus';
+  | 'streak_bonus'
+  | 'badge_claimed';
 
 export type PointEvent = {
   id: string;
@@ -46,7 +47,15 @@ export type Badge = {
   category: BadgeCategory;
   unlocked: boolean;
   unlockedAt?: number;
+  /**
+   * Set when the trekker taps the badge on the Badges page and collects its
+   * point reward. Until then the badge counts as "new" and wears a marker.
+   */
+  claimedAt?: number;
 };
+
+/** Points handed over when a newly unlocked badge is claimed. */
+export const BADGE_CLAIM_POINTS = 20;
 
 /** Stats the badge engine needs but doesn't own. Fed in by other contexts. */
 export type BadgeInputs = {
@@ -88,6 +97,13 @@ type EcoPointsState = {
   /** Back-compat alias used by older screens. */
   addPoints: (action: EcoAction, multiplier?: number) => Promise<number>;
   refreshBadges: (inputs: BadgeInputs) => void;
+  /**
+   * Collects the point reward for a newly unlocked badge. Resolves with the
+   * points awarded (0 if the badge was locked or already claimed).
+   */
+  claimBadge: (badgeId: string) => Promise<number>;
+  /** Unlocked badges whose reward has not been claimed yet. */
+  newBadges: Badge[];
   pointsSince: (timestamp: number) => number;
   resetPoints: () => Promise<void>;
 };
@@ -104,6 +120,7 @@ export const POINT_VALUES: Record<EcoAction, number> = {
   club_goal: 20,
   daily_login: 2,
   streak_bonus: 10,
+  badge_claimed: BADGE_CLAIM_POINTS,
 };
 
 export const ACTION_LABELS: Record<EcoAction, string> = {
@@ -118,6 +135,7 @@ export const ACTION_LABELS: Record<EcoAction, string> = {
   club_goal: 'Club goal met',
   daily_login: 'Daily check-in',
   streak_bonus: 'Streak bonus',
+  badge_claimed: 'Badge unlocked',
 };
 
 function getLevel(points: number) {
@@ -206,7 +224,14 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
       // current catalogue so retired badges (species, etc.) disappear.
       const merged = DEFAULT_BADGES.map((d) => {
         const stored = b.find((x) => x.id === d.id);
-        return stored ? { ...d, unlocked: stored.unlocked, unlockedAt: stored.unlockedAt } : d;
+        return stored
+          ? {
+              ...d,
+              unlocked: stored.unlocked,
+              unlockedAt: stored.unlockedAt,
+              claimedAt: stored.claimedAt,
+            }
+          : d;
       });
 
       setHistory(h);
@@ -330,6 +355,31 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
     [badgeKey, totalPoints]
   );
 
+  // claimBadge reads the current list through a ref so it never works from a
+  // stale snapshot captured when the callback was created.
+  const badgesRef = useRef(badges);
+  badgesRef.current = badges;
+
+  const claimBadge = useCallback(
+    async (badgeId: string): Promise<number> => {
+      const badge = badgesRef.current.find((b) => b.id === badgeId);
+      if (!badge || !badge.unlocked || badge.claimedAt) return 0;
+
+      const pts = await award('badge_claimed', { label: `Badge unlocked: ${badge.name}` });
+
+      setBadges((prev) => {
+        const next = prev.map((b) =>
+          b.id === badgeId && b.unlocked && !b.claimedAt ? { ...b, claimedAt: Date.now() } : b
+        );
+        saveJSON(badgeKey, next);
+        return next;
+      });
+
+      return pts;
+    },
+    [award, badgeKey]
+  );
+
   const pointsSince = useCallback(
     (timestamp: number) =>
       history.reduce((sum, e) => (e.timestamp >= timestamp ? sum + e.points : sum), 0),
@@ -344,6 +394,10 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
 
   const levelInfo = useMemo(() => getLevel(totalPoints), [totalPoints]);
   const unlockedBadges = useMemo(() => badges.filter((b) => b.unlocked), [badges]);
+  const newBadges = useMemo(
+    () => badges.filter((b) => b.unlocked && !b.claimedAt),
+    [badges]
+  );
 
   const value = useMemo<EcoPointsState>(
     () => ({
@@ -351,9 +405,11 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
       history,
       badges,
       unlockedBadges,
+      newBadges,
       award,
       addPoints,
       refreshBadges,
+      claimBadge,
       pointsSince,
       resetPoints,
       ...levelInfo,
@@ -363,9 +419,11 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
       history,
       badges,
       unlockedBadges,
+      newBadges,
       award,
       addPoints,
       refreshBadges,
+      claimBadge,
       pointsSince,
       resetPoints,
       levelInfo,
