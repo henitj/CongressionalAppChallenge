@@ -14,7 +14,7 @@ import assert from 'node:assert/strict';
 import { dayKey, addDays, daysBetween, weekKey, weekStart, weekEnd } from '../services/dates';
 import { challengesForWeek, CHALLENGE_CATALOG, CHALLENGES_PER_WEEK } from '../constants/challenges';
 import { detectTrail, evaluateCompletion, validateActivity } from '../services/trailDetection';
-import { AUSTIN_TRAILS } from '../constants/austinTrails';
+import { AUSTIN_TRAILS, getTrailById } from '../constants/austinTrails';
 import { Coord, haversineMiles, instantMph, smoothDelta } from '../services/geo';
 import { computeTrees, speciesFor, TREES_DISCLAIMER } from '../services/trees';
 import { firstNameOf, fullNameOf } from '../services/displayName';
@@ -951,6 +951,19 @@ test('GPS smoothing drops noise, glitches, and bad accuracy', () => {
 test('assistant starter questions are non-empty', () => {
   assert.ok(STARTER_QUESTIONS.length >= 4);
   for (const q of STARTER_QUESTIONS) assert.ok(q.length > 8);
+});
+
+test('Austin catalogue still has every named trail', () => {
+  const ids = [
+    'lady-bird-lake', 'barton-creek', 'walnut-creek', 'mount-bonnell',
+    'mckinney-falls', 'turkey-creek', 'shoal-creek', 'bull-creek',
+    'southern-walnut', 'river-place', 'violet-crown', 'roy-guerrero',
+    'slaughter-creek', 'brushy-creek',
+  ];
+  assert.equal(AUSTIN_TRAILS.length, 14);
+  for (const id of ids) {
+    assert.equal(getTrailById(id)?.id, id, `missing trail ${id}`);
+  }
 });
 
 console.log('\nEcoTrek logic tests\n');
