@@ -1,11 +1,11 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, TextInput, Linking, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Linking, Platform, ScrollView } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
 import Logo from '../components/Logo';
 import GoogleAccountSheet from '../components/GoogleAccountSheet';
-import { Button, Sheet } from '../components/ui';
+import { Button } from '../components/ui';
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { APP_NAME, PRIVACY_POLICY_URL } from '../constants/appInfo';
@@ -21,8 +21,6 @@ export default function SignInScreen() {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const { signInWithGoogle, signInAsGuest, error } = useAuth();
-  const [showGuest, setShowGuest] = useState(false);
-  const [guestName, setGuestName] = useState('');
   const [showGoogle, setShowGoogle] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -44,8 +42,7 @@ export default function SignInScreen() {
   const handleGuest = async () => {
     setBusy(true);
     try {
-      await signInAsGuest(guestName.trim() || 'Guest Trekker');
-      setShowGuest(false);
+      await signInAsGuest('Guest Trekker');
     } finally {
       setBusy(false);
     }
@@ -100,7 +97,8 @@ export default function SignInScreen() {
               variant="secondary"
               size="lg"
               full
-              onPress={() => setShowGuest(true)}
+              loading={busy}
+              onPress={handleGuest}
             />
 
             <Text style={styles.legal}>
@@ -118,33 +116,6 @@ export default function SignInScreen() {
         <GoogleAccountSheet visible={showGoogle} onClose={() => setShowGoogle(false)} mode="signin" />
       ) : null}
 
-      <Sheet
-        visible={showGuest}
-        onClose={() => setShowGuest(false)}
-        title="Continue as guest"
-        subtitle="Your progress stays on this device only"
-      >
-        <View style={{ gap: SPACING.md }}>
-          <View style={{ gap: 6 }}>
-            <Text style={styles.fieldLabel}>What should we call you?</Text>
-            <TextInput
-              value={guestName}
-              onChangeText={setGuestName}
-              placeholder="Your first name"
-              placeholderTextColor={colors.textLight}
-              maxLength={30}
-              style={styles.input}
-              returnKeyType="done"
-              onSubmitEditing={handleGuest}
-            />
-          </View>
-          <Text style={styles.guestNote}>
-            You can start now and switch to Google later. Your walks on this phone will come with
-            you.
-          </Text>
-          <Button label="Start as guest" full loading={busy} onPress={handleGuest} />
-        </View>
-      </Sheet>
     </View>
   );
 }
@@ -186,19 +157,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
       padding: SPACING.sm + 4,
     },
     errorText: { ...t.small, color: c.danger, flex: 1 },
-
-    fieldLabel: { ...t.overline, color: c.textMuted },
-    input: {
-      backgroundColor: c.surfaceSunken,
-      borderRadius: RADIUS.md,
-      borderWidth: 1,
-      borderColor: c.border,
-      paddingHorizontal: SPACING.md - 2,
-      paddingVertical: 13,
-      ...t.body,
-      color: c.text,
-    },
-    guestNote: { ...t.small, color: c.textMuted },
 
     legal: {
       ...t.small,

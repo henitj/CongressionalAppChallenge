@@ -58,10 +58,10 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 ```bash
 cd EcoTrek
 npm install
-npx expo start
+npx expo start --tunnel
 ```
 
-Scan the QR code with Expo Go, or press `w` for web.
+Scan the QR code with Expo Go (keep Expo Go updated for SDK 57). Use the tunnel so the phone can reach the bundler — localhost in a browser does not mean the phone can load the app. Same Wi‑Fi only: `npm run start:lan`.
 
 Copy `.env.example` to `.env` if you want Google sign-in or a backend. The app works offline with an empty `.env`.
 

@@ -183,20 +183,20 @@ if ((Text as any).defaultProps == null) (Text as any).defaultProps = {};
 
 export default function App() {
   return (
-    <SafeAreaProvider>
-      <SettingsProvider>
-        <ThemeProvider>
-          <AuthProvider>
-            <AppProvider>
-              <ThemedStatusBar />
-              <ErrorBoundary>
+    <ErrorBoundary>
+      <SafeAreaProvider>
+        <SettingsProvider>
+          <ThemeProvider>
+            <AuthProvider>
+              <AppProvider>
+                <ThemedStatusBar />
                 <Gate />
-              </ErrorBoundary>
-            </AppProvider>
-          </AuthProvider>
-        </ThemeProvider>
-      </SettingsProvider>
-    </SafeAreaProvider>
+              </AppProvider>
+            </AuthProvider>
+          </ThemeProvider>
+        </SettingsProvider>
+      </SafeAreaProvider>
+    </ErrorBoundary>
   );
 }
 

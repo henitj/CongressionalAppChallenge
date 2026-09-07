@@ -236,7 +236,7 @@ export default function ActiveTrackingScreen() {
       // The cleanup question, at the one moment it makes sense to ask: the
       // walk is over, it was long enough to have passed some litter, and it
       // actually counted.
-      if (shouldAskCleanup(elapsed, res.rejected)) setShowCleanup(true);
+      if (shouldAskCleanup(elapsed, res.rejected, mode)) setShowCleanup(true);
     } catch (e: any) {
       Alert.alert('Could not save', e?.message ?? 'Something went wrong saving that activity.');
     } finally {
@@ -367,7 +367,7 @@ export default function ActiveTrackingScreen() {
               <View style={styles.resultButtons}>
                 {/* Said no first, then remembered the can by the bench. */}
                 {!result.rejected &&
-                result.durationSec >= CLEANUP_PROMPT_SEC &&
+                (result.kind === 'bike' || result.durationSec >= CLEANUP_PROMPT_SEC) &&
                 result.cleanupPieces === 0 ? (
                   <Button
                     label="I picked up litter"
@@ -405,8 +405,8 @@ export default function ActiveTrackingScreen() {
           <CleanupSheet
             visible={showCleanup}
             onClose={() => setShowCleanup(false)}
-            title="Did you pick up any trash?"
-            subtitle={`Nice ${result.kind === 'bike' ? 'ride' : 'walk'} — every piece counts for extra points`}
+            title="Pieces of trash you picked up"
+            subtitle={`Nice ${result.kind === 'bike' ? 'ride' : 'walk'} — enter a number for extra points`}
             allowNone
             onLogged={handleCleanupLogged}
           />

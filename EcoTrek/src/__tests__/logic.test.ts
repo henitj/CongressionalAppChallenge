@@ -778,6 +778,9 @@ test('the trash question waits for a ten minute walk', () => {
   assert.equal(shouldAskCleanup(3600, false), true);
   // Never after a walk that did not count.
   assert.equal(shouldAskCleanup(3600, true), false);
+  // After a bike ride we always ask, even if it was short.
+  assert.equal(shouldAskCleanup(120, false, 'bike'), true);
+  assert.equal(shouldAskCleanup(120, true, 'bike'), false);
 });
 
 test('cleanup points reward the bend, then stop rewarding exaggeration', () => {

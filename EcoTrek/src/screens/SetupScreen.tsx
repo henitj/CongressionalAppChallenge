@@ -118,8 +118,8 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
                 <View style={styles.iconCircle}>
                   <Icon name="user" size={36} color={colors.primary} strokeWidth={1.8} />
                 </View>
-                <Text style={styles.title}>What should we call you?</Text>
-                <Text style={styles.subtitle}>We use your first name on the home screen.</Text>
+                <Text style={styles.title}>Your profile</Text>
+                <Text style={styles.subtitle}>First name, last name, and age — we use your first name on the home screen.</Text>
 
                 <View style={styles.form}>
                   <FormField

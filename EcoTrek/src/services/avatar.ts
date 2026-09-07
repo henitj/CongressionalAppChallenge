@@ -1,6 +1,5 @@
 import { Alert, Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
-import { File, Paths } from 'expo-file-system';
 
 /**
  * Profile photo (the "profile logo").
@@ -74,8 +73,9 @@ export async function pickAndStoreAvatarPhoto(
     }
 
     const dest = avatarFile(Date.now());
-    if (!dest) return null;
-    const picked = new File(asset.uri);
+    const fs = fsApi();
+    if (!dest || !fs?.File) return asset.uri ?? null;
+    const picked = new fs.File(asset.uri);
     await picked.copy(dest, { overwrite: true });
     await removeStoredAvatar(previousUri);
     return dest.uri;

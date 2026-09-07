@@ -413,22 +413,31 @@ export async function getWeatherReport(
     });
   }
 
-  // 7. Cold
-  if (feelsLikeF <= 15) {
+  // 7. Cold — lower bounds, using the colder of air temp and wind chill
+  const coldF = Math.min(feelsLikeF, tempF);
+  if (coldF <= 15) {
     advisories.push({
       id: 'cold-extreme',
       level: 'danger',
       icon: 'thermometer',
-      title: `Feels like ${Math.round(feelsLikeF)}°F`,
-      detail: 'Exposed skin can freeze in about half an hour out there. Stay in and try again when it warms up.',
+      title: `Feels like ${Math.round(coldF)}°F`,
+      detail: 'Way too cold — exposed skin can freeze in about half an hour. Stay in and try again when it warms up.',
     });
-  } else if (feelsLikeF <= 32) {
+  } else if (coldF <= 32) {
     advisories.push({
       id: 'cold',
       level: 'warning',
       icon: 'thermometer',
-      title: 'Freezing conditions',
-      detail: 'Chilly. Layer up, keep to shorter loops so you stay warm, and cut it short if you stop sweating.',
+      title: `Freezing — ${Math.round(coldF)}°F`,
+      detail: 'Below freezing. Layer up, keep to shorter loops so you stay warm, and cut it short if you start shivering.',
+    });
+  } else if (coldF <= 45) {
+    advisories.push({
+      id: 'cold-mild',
+      level: 'caution',
+      icon: 'thermometer',
+      title: `Chilly — ${Math.round(coldF)}°F`,
+      detail: 'On the cold side. Wear a jacket, and keep moving so you stay warm.',
     });
   }
 
@@ -603,8 +612,9 @@ export function buildShortNote(
     heat: 'A little hot — maybe go in the morning and carry extra water.',
     'heat-high': 'Hot out — go early or late, and carry plenty of water.',
     'heat-extreme': 'Too hot for a walk — early morning only, or rest up.',
-    cold: 'Chilly — layer up and keep it short.',
-    'cold-extreme': 'It will freeze you out there — stay in for today.',
+    'cold-mild': 'Chilly — grab a jacket before you head out.',
+    cold: 'Freezing out — layer up and keep it short.',
+    'cold-extreme': 'Way too cold — stay in for today.',
     wind: 'Breezy — hold onto your hat.',
     'wind-high': 'Gusty — avoid open bridges on a bike.',
     rain: 'Some rain around — take it easy on slick spots.',

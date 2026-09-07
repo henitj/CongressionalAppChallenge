@@ -6,7 +6,6 @@ import Icon from '../components/Icon';
 import TrailScene from '../components/TrailScene';
 import { Screen, Segmented, Banner } from '../components/ui';
 import { ColorPalette, RADIUS, SPACING, TREE_RULES } from '../constants/theme';
-import { useActivity } from '../context/ActivityContext';
 import { useApp } from '../context/AppContext';
 import { useWeather } from '../context/WeatherContext';
 import { useSettings } from '../constants/SettingsContext';
@@ -22,7 +21,6 @@ import { Typography, useTheme } from '../context/ThemeContext';
  * scrolling: pick Walk or Bike, press the big green button, go.
  */
 export default function TrackScreen() {
-  const { totalActivities } = useActivity();
   const { permission } = useApp();
   const { report } = useWeather();
   const { simpleMode } = useSettings();
@@ -98,8 +96,6 @@ export default function TrackScreen() {
           <Text style={styles.permissionNote}>
             Location is off, so we cannot measure distance. Turn it on for EcoTrek in your phone settings.
           </Text>
-        ) : totalActivities === 0 ? (
-          <Text style={styles.permissionNote}>You can lock your phone — we keep measuring.</Text>
         ) : null}
       </View>
     </Screen>
