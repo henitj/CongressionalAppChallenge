@@ -81,11 +81,6 @@
           "photosPermission": "EcoTrek uses your photo library so you can pick a picture of yourself for your profile photo."
         }
       ]
-    ],
-    "extra": {
-      "eas": {
-        "projectId": ""
-      }
-    }
+    ]
   }
 }

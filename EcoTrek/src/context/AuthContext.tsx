@@ -90,14 +90,15 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // expo-auth-session Google provider — wires up PKCE + redirect URIs
   // automatically for iOS, Android, web, and Expo Go.
+  // Empty strings crash expo-auth-session on Expo Go. Only pass real IDs.
+  const googleIds = {
+    ...(GOOGLE_AUTH.expoClientId ? { clientId: GOOGLE_AUTH.expoClientId } : {}),
+    ...(GOOGLE_AUTH.iosClientId ? { iosClientId: GOOGLE_AUTH.iosClientId } : {}),
+    ...(GOOGLE_AUTH.androidClientId ? { androidClientId: GOOGLE_AUTH.androidClientId } : {}),
+    ...(GOOGLE_AUTH.webClientId ? { webClientId: GOOGLE_AUTH.webClientId } : {}),
+  };
   const [, response, promptAsync] = Google.useAuthRequest({
-    clientId: GOOGLE_AUTH.expoClientId,
-    iosClientId: GOOGLE_AUTH.iosClientId,
-    androidClientId: GOOGLE_AUTH.androidClientId,
-    webClientId: GOOGLE_AUTH.webClientId,
-    // `openid` is what makes Google return an ID token alongside the access
-    // token. The API prefers the ID token because it is signed and can be
-    // verified offline.
+    ...googleIds,
     scopes: ['openid', 'profile', 'email'],
   });
 

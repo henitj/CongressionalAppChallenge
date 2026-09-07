@@ -55,11 +55,14 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 
 ```bash
 npm install
-npm start            # then w for web, or scan the QR code
+npm start            # tunnel — scan the QR with Expo Go
+npm run start:lan    # same Wi‑Fi only (no tunnel)
 npm run web          # web only
 npm test
 npm run typecheck
 ```
+
+Expo Go on a phone cannot use `localhost`. If the browser preview works but the phone stays on a loading screen, use `npm start` (tunnel) and update Expo Go to SDK 57.
 
 Copy `.env.example` to `.env` only if you need Google sign-in or `EXPO_PUBLIC_API_URL`. Empty env = full offline app.
 
