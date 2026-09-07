@@ -539,7 +539,9 @@ export default function LeaderboardScreen() {
             ) : (
               <>
                 <View style={styles.rankHeader}>
-                  <Text style={styles.sectionTitle}>Top {LEADERBOARD_SIZE} worldwide</Text>
+                  <Text style={styles.sectionTitle}>
+                    {localOnly ? 'Clubs on this phone' : `Top ${LEADERBOARD_SIZE}`}
+                  </Text>
                   <Text style={styles.rankCount}>
                     {totalClubs} club{totalClubs === 1 ? '' : 's'} competing
                   </Text>

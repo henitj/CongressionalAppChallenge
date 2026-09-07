@@ -43,6 +43,7 @@ import BadgesScreen from '../screens/BadgesScreen';
 import MoreScreen from '../screens/MoreScreen';
 import ActiveTrackingScreen from '../screens/ActiveTrackingScreen';
 import CleanupSheet from '../components/CleanupSheet';
+import FeedbackSheet from '../components/FeedbackSheet';
 
 /**
  * Render smoke tests.
@@ -180,6 +181,28 @@ describe('review fixes', () => {
   });
 });
 
+describe('the post-walk feedback popup', () => {
+  it('asks after a walk and offers an honest way out', async () => {
+    const utils = await mount(
+      () => <FeedbackSheet visible onClose={() => {}} kind="hike" />,
+      'How was that?'
+    );
+    expect(utils.queryByText('Give feedback')).toBeTruthy();
+    expect(utils.queryByText('Not now')).toBeTruthy();
+  });
+
+  it('Give feedback opens the Google Form', async () => {
+    const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
+    const utils = await mount(
+      () => <FeedbackSheet visible onClose={() => {}} kind="hike" />,
+      'How was that?'
+    );
+    fireEvent.press(utils.getByText('Give feedback'));
+    expect(openURL).toHaveBeenCalledWith('https://forms.gle/mt4x5mzAyaG2xFEE6');
+    openURL.mockRestore();
+  });
+});
+
 describe('the trash question at the end of a walk', () => {
   function PostWalkQuestion({ onLogged }: { onLogged?: (n: number) => void }) {
     return (
@@ -195,7 +218,7 @@ describe('the trash question at the end of a walk', () => {
   }
 
   it('asks the question and offers an honest way out', async () => {
-    const utils = await mount(PostWalkQuestion, 'Did you pick up any trash?');
+    const utils = await mount(PostWalkQuestion, 'Pieces of trash you picked up');
     expect(utils.queryByText('How many pieces did you pick up?')).toBeTruthy();
     expect(utils.queryByText('None this time')).toBeTruthy();
     // Presets are there so nobody has to type on a phone after a walk.
@@ -227,9 +250,10 @@ describe('stop button, feedback and the removed contacts feature', () => {
     const utils = await mount(ActiveTrackingScreen, /Recording/);
     fireEvent.press(utils.getByLabelText('Stop and save'));
     // A zero-second, zero-mile activity is rejected by design — the summary
-    // must still appear, and no feedback button is offered for it.
+    // must still appear, and the post-walk feedback popup is not offered.
     await waitFor(() => expect(utils.queryByText('This one did not count')).toBeTruthy(), { timeout: 8000 });
     expect(utils.queryByText('Give feedback')).toBeNull();
+    expect(utils.queryByText('How was that?')).toBeNull();
     expect(utils.queryByText('Done')).toBeTruthy();
   });
 
@@ -245,7 +269,7 @@ describe('stop button, feedback and the removed contacts feature', () => {
     const utils = await mount(ProfileScreen, 'Share my progress');
     fireEvent.press(utils.getByText('Give Feedback'));
     expect(openURL).toHaveBeenCalledTimes(1);
-    expect(openURL).toHaveBeenCalledWith('https://forms.gle/E3p559tiqrNMtZDS7');
+    expect(openURL).toHaveBeenCalledWith('https://forms.gle/mt4x5mzAyaG2xFEE6');
     openURL.mockRestore();
   });
 
@@ -308,7 +332,7 @@ describe('screens that do not need the provider stack', () => {
     );
     await waitFor(() => expect(queryByText('Skip')).toBeTruthy());
     expect(queryByText(/Your profile/i)).toBeTruthy();
-    expect(queryByText(/First name/i)).toBeTruthy();
+    expect(queryByText('First name')).toBeTruthy();
   });
 
   it('Onboarding renders and can be skipped', async () => {

@@ -1,17 +1,29 @@
 import { api, isBackendConfigured, ROUTES } from '../services/api';
+import {
+  fetchOsmTrails,
+  fetchPlace,
+  inServiceBbox,
+  isInServiceArea,
+  isNearAustin,
+  mergeTrailLists,
+  readTrailCache,
+  withDistances,
+  writeTrailCache,
+  type TrailCatalogue,
+  type TrailSource,
+} from '../services/nearbyTrails';
 
 /**
  * Trail catalogue.
  *
- * These 14 Austin-area trails ship inside the app, so Trails works instantly,
- * offline, and with no API key. When you connect the Neon backend, the same
- * function transparently pulls the (larger, editable) server list instead —
- * no screen changes needed.
+ * 14 Austin-area trails ship inside the app so an Austin walker still sees
+ * rich cards offline. Once we have a GPS fix, `fetchNearbyTrails` looks up
+ * real named routes around the phone (OpenStreetMap) so a walker in New York
+ * sees Central Park, not Lady Bird Lake. Service area is the US, Canada and
+ * Mexico — anywhere else we return an empty list rather than Austin's.
  *
- * NOTE: the previous version called the Groq API directly from the phone using
- * EXPO_PUBLIC_GROQ_API_KEY. That key would ship inside the APK where anyone
- * can extract it, so the client-side call has been removed. AI trail
- * suggestions now belong on the server, behind /api/trails.
+ * A language model is not the source of the list — models invent trails.
+ * OSM reports trails that exist, with no API key and no backend required.
  */
 
 export type Trail = {
@@ -469,36 +481,106 @@ export function haversineMiles(
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
+export type { TrailCatalogue, TrailSource };
+
 /**
- * Returns trails sorted by distance from the user.
+ * Returns trails around the user.
  *
- * Uses the server catalogue when EXPO_PUBLIC_API_URL is set, otherwise the
- * bundled list. Never throws and never blocks the UI for long.
+ *   • No GPS yet                 → empty. Ask for location.
+ *   • GPS outside US/CA/MX       → empty. EcoTrek does not cover that country.
+ *   • GPS in Austin              → bundled list plus any extra OSM routes.
+ *   • GPS elsewhere in US/CA/MX  → live OSM lookup for that city.
+ *   • Backend configured         → nearby server rows merged in, never
+ *                                  replacing a live local list with Austin seed.
+ *
+ * Never throws. A failed lookup falls back to cache, then to Austin only
+ * if the phone is actually there.
  */
 export async function fetchNearbyTrails(
   lat?: number,
   lon?: number
-): Promise<Trail[]> {
-  let trails = AUSTIN_TRAILS;
+): Promise<TrailCatalogue> {
+  if (lat == null || lon == null) {
+    return { trails: [], region: null, source: 'need-location' };
+  }
 
+  const cached = readTrailCache(lat, lon);
+  if (cached) return cached;
+
+  const outsideBbox = !inServiceBbox(lat, lon);
+  if (outsideBbox) {
+    const place = await fetchPlace(lat, lon).catch(() => ({
+      name: null,
+      countryCode: null,
+      country: null,
+    }));
+    const catalogue: TrailCatalogue = {
+      trails: [],
+      region: place.country ?? place.name ?? 'Outside the US, Canada, and Mexico',
+      source: 'unsupported',
+    };
+    writeTrailCache(lat, lon, catalogue);
+    return catalogue;
+  }
+
+  const nearAustin = isNearAustin(lat, lon);
+  const [place, osmResult] = await Promise.all([
+    fetchPlace(lat, lon).catch(() => ({ name: null, countryCode: null, country: null })),
+    fetchOsmTrails(lat, lon, nearAustin ? 'Austin' : 'Nearby').catch((e) => {
+      console.warn('[trails] OSM lookup failed', e);
+      return [] as Trail[];
+    }),
+  ]);
+
+  if (!isInServiceArea(lat, lon, place.countryCode)) {
+    const catalogue: TrailCatalogue = {
+      trails: [],
+      region: place.country ?? place.name ?? 'Outside the US, Canada, and Mexico',
+      source: 'unsupported',
+    };
+    writeTrailCache(lat, lon, catalogue);
+    return catalogue;
+  }
+
+  const region = place.name ?? (nearAustin ? 'Austin, TX' : 'Nearby');
+  const live = osmResult.map((t) => (t.area === 'Nearby' && region !== 'Nearby' ? { ...t, area: region } : t));
+
+  let fromServer: Trail[] = [];
   if (isBackendConfigured()) {
-    const q = lat != null && lon != null ? `?lat=${lat}&lon=${lon}` : '';
-    const res = await api.get<Trail[]>(`${ROUTES.trails}${q}`);
-    if (res.ok && Array.isArray(res.data) && res.data.length) {
-      trails = res.data;
+    const res = await api.get<Trail[]>(`${ROUTES.trails}?lat=${lat}&lon=${lon}`);
+    if (res.ok && Array.isArray(res.data)) {
+      // Only keep server rows that are actually near the user. An old API
+      // that ignores lat/lon would otherwise dump Austin onto a NYC phone.
+      fromServer = res.data.filter((t) => {
+        if (t.startLat == null || t.startLng == null) return false;
+        return haversineMiles(lat, lon, t.startLat, t.startLng) <= 40;
+      });
     }
   }
 
-  if (lat == null || lon == null) return trails;
+  let trails = mergeTrailLists(fromServer, live);
 
-  return trails
-    .map((t) => ({
-      ...t,
-      distanceFromUserMi: haversineMiles(lat, lon, t.startLat, t.startLng),
-    }))
-    .sort((a, b) => (a.distanceFromUserMi ?? 0) - (b.distanceFromUserMi ?? 0));
+  if (nearAustin) {
+    trails = mergeTrailLists(withDistances(AUSTIN_TRAILS, lat, lon), trails);
+  }
+
+  trails = withDistances(trails, lat, lon);
+
+  if (trails.length === 0 && nearAustin) {
+    trails = withDistances(AUSTIN_TRAILS, lat, lon);
+  }
+
+  const catalogue: TrailCatalogue = {
+    trails,
+    region,
+    source: live.length || fromServer.length ? 'live' : nearAustin ? 'bundled' : 'live',
+  };
+  // Cache hits and unsupported-region answers. Do not cache an empty live
+  // miss — Overpass blips should not hide a city for half an hour.
+  if (trails.length || catalogue.source === 'bundled') writeTrailCache(lat, lon, catalogue);
+  return catalogue;
 }
 
-export function getTrailById(id: string): Trail | undefined {
-  return AUSTIN_TRAILS.find((t) => t.id === id || t.slug === id);
+export function getTrailById(id: string, catalogue: Trail[] = AUSTIN_TRAILS): Trail | undefined {
+  return catalogue.find((t) => t.id === id || t.slug === id);
 }

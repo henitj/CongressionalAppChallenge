@@ -179,6 +179,18 @@ function generateCode() {
   return out;
 }
 
+/** Same 40-mile nearby window the app uses when merging server trails. */
+function milesBetween(lat1, lon1, lat2, lon2) {
+  const R = 3958.8;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 /* ── Routes ───────────────────────────────────────────────────────────────── */
 
 export const routes = [
@@ -435,7 +447,15 @@ export const routes = [
   {
     method: 'GET',
     path: '/api/clubs',
-    handler: async ({ sql }) => loadClubs(sql),
+    // Only the clubs this user belongs to — never a dump of every club in
+    // the database (that is what /api/leaderboard/clubs is for).
+    handler: async ({ user, sql }) => {
+      const mine = await sql`
+        SELECT club_id FROM club_members
+        WHERE user_id = ${user.id} AND left_at IS NULL`;
+      if (!mine.length) return [];
+      return loadClubs(sql, mine.map((r) => r.club_id));
+    },
   },
   {
     method: 'POST',
@@ -771,7 +791,7 @@ export const routes = [
             {
               role: 'system',
               content:
-                'You are the trail assistant inside EcoTrek, a hiking app for Austin, Texas. ' +
+                'You are the trail assistant inside EcoTrek, a hiking app. ' +
                 'Answer ONLY from the trail data and weather provided. If the data does not ' +
                 'contain the answer, say so plainly rather than guessing — never invent a trail, ' +
                 'a distance, or a rule. Be brief: two or three sentences. Write plainly, no ' +

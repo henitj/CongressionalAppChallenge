@@ -35,19 +35,12 @@ const env = {
   android: process.env.EXPO_PUBLIC_GOOGLE_ANDROID_CLIENT_ID ?? '',
 };
 
-/** Fallbacks kept so the project still builds before you add a .env file. */
-const fallback = {
-  web: '140635508834-8p2onen68nm93bgavok2k5inrb1ffl0h.apps.googleusercontent.com',
-  ios: '140635508834-cdba42jq8ifogv0ac0ps0t5p6s840a7k.apps.googleusercontent.com',
-  android: '',
-};
-
 export const GOOGLE_AUTH = {
   /** Expo Go / proxy flows reuse the web client. */
-  expoClientId: env.web || fallback.web,
-  webClientId: env.web || fallback.web,
-  iosClientId: env.ios || fallback.ios,
-  androidClientId: env.android || fallback.android,
+  expoClientId: env.web,
+  webClientId: env.web,
+  iosClientId: env.ios,
+  androidClientId: env.android,
 };
 
 function looksReal(id: string): boolean {

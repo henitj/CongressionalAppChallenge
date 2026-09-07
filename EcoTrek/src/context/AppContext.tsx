@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Location from 'expo-location';
-import { fetchNearbyTrails, Trail } from '../constants/austinTrails';
+import { fetchNearbyTrails, Trail, type TrailSource } from '../constants/austinTrails';
 
 /**
  * Location + trail catalogue.
@@ -27,6 +27,10 @@ type AppContextType = {
   trails: Trail[];
   trailsLoading: boolean;
   trailsError: string | null;
+  /** City / area the current catalogue was looked up for. */
+  trailsRegion: string | null;
+  /** Why the current list looks the way it does. */
+  trailsSource: TrailSource;
   refreshTrails: () => Promise<void>;
 
   coords: Coords | null;
@@ -45,6 +49,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [trails, setTrails] = useState<Trail[]>([]);
   const [trailsLoading, setTrailsLoading] = useState(true);
   const [trailsError, setTrailsError] = useState<string | null>(null);
+  const [trailsRegion, setTrailsRegion] = useState<string | null>(null);
+  const [trailsSource, setTrailsSource] = useState<TrailSource>('need-location');
 
   const [coords, setCoords] = useState<Coords | null>(null);
   const [permission, setPermission] = useState<PermissionState>('unknown');
@@ -59,7 +65,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTrailsError(null);
     try {
       const data = await fetchNearbyTrails(coords?.latitude, coords?.longitude);
-      setTrails(data);
+      setTrails(data.trails);
+      setTrailsRegion(data.region);
+      setTrailsSource(data.source);
     } catch (e: any) {
       setTrailsError(e?.message ?? 'Could not load trails');
     } finally {
@@ -201,6 +209,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       trails,
       trailsLoading,
       trailsError,
+      trailsRegion,
+      trailsSource,
       refreshTrails,
       coords,
       effectiveCoords: coords ?? DEFAULT_LOCATION,
@@ -209,7 +219,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       locating,
       requestLocation,
     }),
-    [trails, trailsLoading, trailsError, refreshTrails, coords, permission, locating, requestLocation]
+    [trails, trailsLoading, trailsError, trailsRegion, trailsSource, refreshTrails, coords, permission, locating, requestLocation]
   );
 
   return <AppContext.Provider value={value}>{children}</AppContext.Provider>;

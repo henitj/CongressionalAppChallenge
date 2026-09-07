@@ -240,7 +240,7 @@ export function answerQuestion(question: string, ctx: AssistantContext): Assista
 
   if (intent === 'help' || (!q && !trail)) {
     return base(
-      'Ask me anything about the Austin trails in this app. I know distances, difficulty, dogs, water, restrooms, elevation, what grows and lives there, and what the weather is doing right now.\n\nTry naming a trail, or just describe what you want — "somewhere easy I can bring the dog" works fine.',
+      'Ask me anything about the trails in this app. I know distances, difficulty, dogs, water, restrooms, elevation, what grows and lives there, and what the weather is doing right now.\n\nTry naming a trail, or just describe what you want — "somewhere easy I can bring the dog" works fine.',
       ['Which trail is best for beginners?', 'Where can I take my dog?', 'Is it safe to go out right now?']
     );
   }

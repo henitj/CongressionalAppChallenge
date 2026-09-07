@@ -33,8 +33,8 @@ already handled in the code.
 
 This is where most first submissions break.
 
-- [ ] **[you]** Make your own Google Cloud project. The client IDs currently in
-      the code belong to project `140635508834`, which is not yours.
+- [ ] **[you]** Make your own Google Cloud project. Client IDs live only in
+      `.env` — nothing is hardcoded. Copy `.env.example` and paste yours.
 - [ ] **[you]** Configure the OAuth consent screen. External, published. Scopes:
       only `email`, `profile`, `openid` — these are non-sensitive, so you skip
       Google's verification review entirely. Do not add anything else.
@@ -99,9 +99,10 @@ grey rectangle. It is free for mobile map display.
       Weekly challenges, Clubs roster, Profile impact card, Conditions report.
 - [ ] **[you]** Short description, 80 characters max.
 - [ ] **[you]** Full description, 4000 characters max.
-- [ ] **[done]** Give feedback: the button opens the team's Google Form
-      (link hardcoded in `src/constants/feedback.ts`). To point it at a
-      different form, change that one URL — nothing else.
+- [ ] **[done]** Give feedback: a popup after a counted walk, plus a button
+      on Profile, opens the team's Google Form (link hardcoded in
+      `src/constants/feedback.ts`). To point it at a different form, change
+      that one URL — nothing else.
 
 ## 7. Play Console forms
 

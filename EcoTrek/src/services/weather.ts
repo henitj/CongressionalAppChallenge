@@ -517,7 +517,7 @@ export async function getWeatherReport(
       level: 'caution',
       icon: 'moon',
       title: 'Daylight is fading',
-      detail: 'Most Austin trails are unlit after dark. Bring a headlamp or pick a shorter loop.',
+      detail: 'Most trails are unlit after dark. Bring a headlamp or pick a shorter loop.',
     });
   }
 

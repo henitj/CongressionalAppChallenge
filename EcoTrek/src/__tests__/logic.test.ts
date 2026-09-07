@@ -50,6 +50,15 @@ import { computeRecords, RecordActivity } from '../services/records';
 import { buildRecap, lastWeekStart, RecapActivity } from '../services/recap';
 import { buildVerdict, buildShortNote, LEVEL_META, Advisory, SafetyLevel } from '../services/weather';
 import { FEEDBACK_FORM_URL } from '../constants/feedback';
+import {
+  isNearAustin,
+  parseOsmDistanceMiles,
+  trailFromOsmElement,
+  AUSTIN_CENTER,
+  inServiceBbox,
+  isSupportedCountry,
+  isInServiceArea,
+} from '../services/nearbyTrails';
 
 let passed = 0;
 const results: string[] = [];
@@ -765,8 +774,80 @@ test('level labels are friendly, not alarm-level', () => {
 test('the feedback form link is hardcoded to the team Google Form', () => {
   // One constant, used everywhere. If the form ever moves, this is the line
   // that changes — no user ever sees or types a link.
-  assert.equal(FEEDBACK_FORM_URL, 'https://forms.gle/E3p559tiqrNMtZDS7');
+  assert.equal(FEEDBACK_FORM_URL, 'https://forms.gle/mt4x5mzAyaG2xFEE6');
   assert.match(FEEDBACK_FORM_URL, /^https:\/\//);
+});
+
+/* ── Nearby trail lookup (US / Canada / Mexico) ─────────────────────────── */
+
+test('Austin is near Austin, New York is not', () => {
+  assert.equal(isNearAustin(AUSTIN_CENTER.latitude, AUSTIN_CENTER.longitude), true);
+  assert.equal(isNearAustin(40.7128, -74.006), false);
+  assert.equal(isNearAustin(51.5074, -0.1278), false);
+});
+
+test('the service area is the US, Canada and Mexico', () => {
+  assert.equal(inServiceBbox(30.2672, -97.7431), true); // Austin
+  assert.equal(inServiceBbox(40.7128, -74.006), true); // New York
+  assert.equal(inServiceBbox(43.6532, -79.3832), true); // Toronto
+  assert.equal(inServiceBbox(19.4326, -99.1332), true); // Mexico City
+  assert.equal(inServiceBbox(21.3069, -157.8583), true); // Honolulu
+  assert.equal(inServiceBbox(61.2181, -149.9003), true); // Anchorage
+  assert.equal(inServiceBbox(51.5074, -0.1278), false); // London
+  assert.equal(inServiceBbox(-33.8688, 151.2093), false); // Sydney
+  assert.equal(isSupportedCountry('us'), true);
+  assert.equal(isSupportedCountry('CA'), true);
+  assert.equal(isSupportedCountry('mx'), true);
+  assert.equal(isSupportedCountry('gb'), false);
+  // Nominatim country wins over the bbox (Cuba sits near Florida).
+  assert.equal(isInServiceArea(23.1136, -82.3666, 'cu'), false);
+  assert.equal(isInServiceArea(40.7128, -74.006, 'us'), true);
+  // Geocoder down: bbox is enough so NYC is not locked out.
+  assert.equal(isInServiceArea(40.7128, -74.006, null), true);
+});
+
+test('OSM distance tags parse as miles', () => {
+  assert.equal(parseOsmDistanceMiles('10 km'), 6.2);
+  assert.equal(parseOsmDistanceMiles('5 mi'), 5);
+  assert.equal(parseOsmDistanceMiles('1609 m'), 1);
+  assert.equal(parseOsmDistanceMiles(null), null);
+  assert.equal(parseOsmDistanceMiles('nope'), null);
+});
+
+test('an OSM hiking relation becomes a Trail', () => {
+  const trail = trailFromOsmElement(
+    {
+      type: 'relation',
+      id: 42,
+      center: { lat: 40.7829, lon: -73.9654 },
+      tags: {
+        name: 'Central Park Loop',
+        route: 'hiking',
+        distance: '10 km',
+        dog: 'yes',
+      },
+    },
+    40.758, -73.985, 'Manhattan'
+  );
+  assert.ok(trail);
+  assert.equal(trail!.name, 'Central Park Loop');
+  assert.equal(trail!.type, 'hike');
+  assert.equal(trail!.area, 'Manhattan');
+  assert.equal(trail!.petFriendly, true);
+  assert.ok(trail!.id.startsWith('osm-'));
+  assert.ok((trail!.distanceFromUserMi ?? 99) < 5);
+});
+
+test('unnamed OSM elements are skipped', () => {
+  assert.equal(
+    trailFromOsmElement(
+      { type: 'way', id: 1, center: { lat: 40.7, lon: -74 }, tags: {} },
+      40.7,
+      -74,
+      'NYC'
+    ),
+    null
+  );
 });
 
 /* ── Post-walk cleanup ────────────────────────────────────────────────────── */

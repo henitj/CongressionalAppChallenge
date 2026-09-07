@@ -147,7 +147,7 @@ export default function HomeScreen() {
             <QuickAction
               icon="map"
               title="Trails"
-              hint="Browse Austin routes"
+              hint="Walks and rides near you"
               onPress={() => navigation.navigate('Trails')}
             />
             {!simpleMode ? (
