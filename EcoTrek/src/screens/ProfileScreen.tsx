@@ -592,17 +592,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
     marginTop: 2,
   },
 
-  shareBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    backgroundColor: 'rgba(255,255,255,0.11)',
-    paddingVertical: 12,
-    borderRadius: RADIUS.md,
-  },
-  shareBarText: { ...t.smallMed, color: '#fff' },
-
   weightHead: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
   weightTitle: { ...t.h4, color: c.text },
   weightSub: { ...t.small, color: c.textMuted, marginTop: SPACING.sm },

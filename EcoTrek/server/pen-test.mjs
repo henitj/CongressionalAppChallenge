@@ -50,10 +50,6 @@ function expect(cond, message) {
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
 
-/* ════════════════════════════════════════════════════════════════════════════
-   1. LIVE SERVER ATTACKS
-   ════════════════════════════════════════════════════════════════════════ */
-
 async function rawRequest(port, raw) {
   return new Promise((resolve, reject) => {
     const socket = net.connect(port, '127.0.0.1');
@@ -196,10 +192,6 @@ async function rateLimitAttack(port) {
   console.log('└──────────────────────────────────────────────────────────────────┘');
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   2. HANDLER ATTACKS (stub database)
-   ════════════════════════════════════════════════════════════════════════ */
-
 function makeStubSql(options = {}) {
   const calls = [];
   const stub = (strings, ...values) => {
@@ -255,7 +247,6 @@ async function handlerAttacks() {
   const drop = "'; DROP TABLE users; --";
   const huge = 'A'.repeat(1_000_000);
 
-  /* ── activities ── */
   {
     const route = findRoute('POST', '/api/activities');
     const sql = makeStubSql({ rows: [{ client_id: 'x' }] });
@@ -357,7 +348,6 @@ async function handlerAttacks() {
     });
   }
 
-  /* ── streak ── */
   {
     const route = findRoute('POST', '/api/streak/check-in');
     await check('streak: absurd longestStreak is clamped', async () => {
@@ -402,7 +392,6 @@ async function handlerAttacks() {
     });
   }
 
-  /* ── points ── */
   {
     const route = findRoute('POST', '/api/points');
     await check('points: negative and huge points clamped, strings rejected', async () => {
@@ -433,7 +422,6 @@ async function handlerAttacks() {
     });
   }
 
-  /* ── clubs: ownership (IDOR) ── */
   {
     const patchRoute = findRoute('PATCH', '/api/clubs/:id');
     await check('club PATCH by non-owner → 403 (IDOR blocked)', async () => {
@@ -551,7 +539,6 @@ async function handlerAttacks() {
     });
   }
 
-  /* ── challenges ── */
   {
     const route = findRoute('POST', '/api/challenges/:id/complete');
     await check('challenge complete: oversized slug/weekId capped, points clamped', async () => {
@@ -572,7 +559,6 @@ async function handlerAttacks() {
     });
   }
 
-  /* ── assistant ── */
   {
     const route = findRoute('POST', '/api/assistant');
     await check('assistant: 501 when unconfigured (no key leaked)', async () => {
@@ -616,7 +602,6 @@ async function handlerAttacks() {
     });
   }
 
-  /* ── devices ── */
   {
     const route = findRoute('POST', '/api/devices');
     await check('devices: every field capped', async () => {
@@ -635,7 +620,6 @@ async function handlerAttacks() {
     });
   }
 
-  /* ── prototype pollution ── */
   {
     await check('__proto__ pollution payloads are inert', async () => {
       const evil = JSON.parse('{"id":"x","type":"hike","__proto__":{"polluted":"yes"}}');
@@ -648,10 +632,6 @@ async function handlerAttacks() {
 
   console.log('└──────────────────────────────────────────────────────────────────┘');
 }
-
-/* ════════════════════════════════════════════════════════════════════════════
-   3. AUTH BOUNDARY
-   ════════════════════════════════════════════════════════════════════════ */
 
 async function authBoundaryAttacks() {
   console.log('\n┌─ 3. auth boundary ────────────────────────────────────────────────┐');
@@ -734,9 +714,6 @@ async function authBoundaryAttacks() {
   console.log('└──────────────────────────────────────────────────────────────────┘');
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   Static client scan
-   ════════════════════════════════════════════════════════════════════════ */
 
 async function staticClientScan() {
   console.log('\n┌─ 4. client static scan ───────────────────────────────────────────┐');
@@ -768,9 +745,6 @@ async function staticClientScan() {
   console.log('└──────────────────────────────────────────────────────────────────┘');
 }
 
-/* ════════════════════════════════════════════════════════════════════════════
-   Runner
-   ════════════════════════════════════════════════════════════════════════ */
 
 async function bootServer(port) {
   return new Promise((resolve, reject) => {

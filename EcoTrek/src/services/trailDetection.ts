@@ -45,7 +45,6 @@ export type ValidationResult = {
   strikeCount: number;
 };
 
-/* ── 1. Which trail is this? ──────────────────────────────────────────────── */
 
 export function detectTrail(
   path: Coord[],
@@ -85,7 +84,6 @@ export function detectTrail(
   return { trail: best.trail, distanceToTrailheadMi: best.dist, confidence };
 }
 
-/* ── 2. Did they complete it? ─────────────────────────────────────────────── */
 
 export function evaluateCompletion(
   path: Coord[],
@@ -139,7 +137,6 @@ export function evaluateCompletion(
   return { trail, completed: true, coveragePercent, reason: null };
 }
 
-/* ── 3. Is this activity plausible? (anti-cheat with strike system) ────────── */
 
 export function validateActivity(
   path: Coord[],

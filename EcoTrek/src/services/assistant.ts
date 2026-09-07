@@ -40,7 +40,6 @@ export type AssistantAnswer = {
   suggestions: string[];
 };
 
-/* ── Nicknames people actually use ────────────────────────────────────────── */
 
 const ALIASES: Record<string, string[]> = {
   'lady-bird-lake': ['lady bird', 'ladybird', 'butler', 'town lake', 'the loop', 'boardwalk', 'downtown loop'],
@@ -70,7 +69,6 @@ function normalise(s: string): string {
   return s.toLowerCase().replace(/[^a-z0-9\s]/g, ' ').replace(/\s+/g, ' ').trim();
 }
 
-/* ── Which trail is this about? ───────────────────────────────────────────── */
 
 export function resolveTrail(question: string, trails: Trail[]): Trail | null {
   const q = normalise(question);
@@ -109,7 +107,6 @@ function isFollowUp(q: string): boolean {
   return /\b(it|its|it's|there|that one|this one|the same)\b/.test(q);
 }
 
-/* ── Intents ──────────────────────────────────────────────────────────────── */
 
 type Intent =
   | 'dogs' | 'water' | 'restrooms' | 'distance' | 'difficulty' | 'duration'
@@ -147,7 +144,6 @@ function detectIntent(q: string): Intent {
   return 'overview';
 }
 
-/* ── Constraint extraction, for recommendations ───────────────────────────── */
 
 type Constraints = {
   dogs: boolean;
@@ -194,7 +190,6 @@ function extractConstraints(q: string): Constraints {
   };
 }
 
-/* ── Formatting helpers ───────────────────────────────────────────────────── */
 
 /**
  * Formats a distance in the user's chosen units. The catalogue stores miles,
@@ -220,7 +215,6 @@ function yesNo(value: boolean | undefined, yes: string, no: string): string {
   return value ? yes : no;
 }
 
-/* ── The answer engine ────────────────────────────────────────────────────── */
 
 export function answerQuestion(question: string, ctx: AssistantContext): AssistantAnswer {
   const q = normalise(question);
@@ -422,7 +416,6 @@ export function answerQuestion(question: string, ctx: AssistantContext): Assista
   }
 }
 
-/* ── Sub-answers ──────────────────────────────────────────────────────────── */
 
 function weatherAnswer(ctx: AssistantContext, trail: Trail | null): AssistantAnswer {
   const w = ctx.weather;
@@ -535,7 +528,6 @@ function bikeAlternatives(ctx: AssistantContext): string {
   return options.length ? `For riding, try ${options.map((t) => t.name).join(' or ')}.` : '';
 }
 
-/* ── Recommendations ──────────────────────────────────────────────────────── */
 
 function recommend(question: string, ctx: AssistantContext): AssistantAnswer {
   const q = normalise(question);

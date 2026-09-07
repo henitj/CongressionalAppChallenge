@@ -85,7 +85,6 @@ export function NotificationProvider({ children }: { children: React.ReactNode }
     [storeKey]
   );
 
-  /* ── Reschedule whenever anything relevant changes ─────────────────────── */
   useEffect(() => {
     if (!loaded || !supported) return;
     const active = prefs.enabled && permissionGranted;

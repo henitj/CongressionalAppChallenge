@@ -171,7 +171,6 @@ const server = createServer(async (req, res) => {
   }
 });
 
-/* ── The server must stay up no matter what ──────────────────────────────── */
 
 // A client that disconnects mid-handshake would otherwise emit an error event
 // nobody handled. Respond with a bare 400 and move on.

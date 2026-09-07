@@ -206,7 +206,6 @@ export default function LeaderboardScreen() {
           onChange={(v) => setTab(v as Tab)}
         />
 
-        {/* ══ MY CLUB ══════════════════════════════════════════════════════ */}
         {tab === 'my_club' ? (
           myClub ? (
             <>
@@ -516,7 +515,6 @@ export default function LeaderboardScreen() {
           )
         ) : null}
 
-        {/* ══ WORLD TOP 10 ═════════════════════════════════════════════════ */}
         {tab === 'ranking' ? (
           <>
             {localOnly ? (
@@ -620,7 +618,6 @@ export default function LeaderboardScreen() {
         ) : null}
       </View>
 
-      {/* ── Create ────────────────────────────────────────────────────────── */}
       <Sheet
         visible={showCreate}
         onClose={resetSheets}
@@ -674,7 +671,6 @@ export default function LeaderboardScreen() {
         </View>
       </Sheet>
 
-      {/* ── Join ──────────────────────────────────────────────────────────── */}
       <Sheet
         visible={showJoin}
         onClose={resetSheets}
@@ -700,7 +696,6 @@ export default function LeaderboardScreen() {
         </View>
       </Sheet>
 
-      {/* ── Weekly goal ───────────────────────────────────────────────────── */}
       <Sheet
         visible={showGoal}
         onClose={resetSheets}
@@ -767,7 +762,6 @@ export default function LeaderboardScreen() {
         </View>
       </Sheet>
 
-      {/* ── Capacity ──────────────────────────────────────────────────────── */}
       <Sheet
         visible={showCap}
         onClose={resetSheets}
@@ -820,7 +814,6 @@ export default function LeaderboardScreen() {
   );
 }
 
-/* ── Pieces ───────────────────────────────────────────────────────────────── */
 
 function ClubRankRow({
   rank,

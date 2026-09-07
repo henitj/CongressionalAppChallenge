@@ -225,7 +225,6 @@ export function ClubProvider({
     me: ClubRanking | null;
   } | null>(null);
 
-  /* ── Load ──────────────────────────────────────────────────────────────── */
   const refresh = useCallback(async () => {
     setSyncing(true);
     try {
@@ -274,7 +273,6 @@ export function ClubProvider({
     saveJSON(CLUBS_KEY, next);
   }, []);
 
-  /* ── Derived ───────────────────────────────────────────────────────────── */
   const myClub = useMemo(
     () => clubs.find((c) => c.members.some((m) => m.id === userId)) ?? null,
     [clubs, userId]
@@ -300,7 +298,6 @@ export function ClubProvider({
     });
   }, [clubs, userId]);
 
-  /* ── Mutations ─────────────────────────────────────────────────────────── */
 
   const createClub = useCallback<ClubState['createClub']>(
     async ({ name, description, isLocked, maxMembers }) => {
@@ -523,7 +520,6 @@ export function ClubProvider({
     [myClub, userId, clubs, persist]
   );
 
-  /* ── Keep the member's display name in sync with their profile ─────────── */
   useEffect(() => {
     if (!myClub || !user) return;
     const me = myClub.members.find((m) => m.id === user.id);

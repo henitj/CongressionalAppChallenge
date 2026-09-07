@@ -97,7 +97,6 @@ export type WeatherReport = {
   stale: boolean;
 };
 
-/* ── WMO weather code → label + icon ──────────────────────────────────────── */
 
 const WMO: Record<number, { label: string; icon: string }> = {
   0: { label: 'Clear', icon: 'sun' },
@@ -155,7 +154,6 @@ function worst(levels: SafetyLevel[]): SafetyLevel {
   );
 }
 
-/* ── NWS alert classification ─────────────────────────────────────────────── */
 
 /** Events that mean "do not go outside", regardless of stated severity. */
 const DANGER_EVENTS = [
@@ -201,7 +199,6 @@ function classifyAlert(event: string, severity: string): SafetyLevel {
   return 'caution';
 }
 
-/* ── Fetch helpers ────────────────────────────────────────────────────────── */
 
 async function fetchJSON(url: string, headers?: Record<string, string>, timeoutMs = 10000) {
   const controller = new AbortController();
@@ -215,7 +212,6 @@ async function fetchJSON(url: string, headers?: Record<string, string>, timeoutM
   }
 }
 
-/* ── Cache (weather doesn't change every second; be a good API citizen) ────── */
 
 let cache: { key: string; report: WeatherReport } | null = null;
 const CACHE_MS = 10 * 60 * 1000;
@@ -224,7 +220,6 @@ function cacheKey(lat: number, lon: number) {
   return `${lat.toFixed(2)},${lon.toFixed(2)}`;
 }
 
-/* ── Main entry point ─────────────────────────────────────────────────────── */
 
 export async function getWeatherReport(
   lat: number,
@@ -562,7 +557,6 @@ export async function getWeatherReport(
   return report;
 }
 
-/* ── Verdict copy ─────────────────────────────────────────────────────────── */
 
 /**
  * Verdict copy. Deliberately calm and conversational: this is a walk app,
@@ -701,7 +695,6 @@ function cleanText(s: string) {
 const round1 = (n: number) => Math.round(n * 10) / 10;
 const round2 = (n: number) => Math.round(n * 100) / 100;
 
-/* ── UI helpers ───────────────────────────────────────────────────────────── */
 
 export const LEVEL_META: Record<
   SafetyLevel,
