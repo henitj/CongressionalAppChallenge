@@ -30,3 +30,28 @@ export function haversineMiles(
     Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
   return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
 }
+
+/** Miles to add for a new GPS point, or 0 if it is noise / a glitch. */
+export function smoothDelta(prev: Coord | undefined, next: Coord): number {
+  if (!prev) return 0;
+  if (next.accuracy !== undefined && next.accuracy > 50) return 0;
+
+  const dtSec = Math.max(0.1, (next.timestamp - prev.timestamp) / 1000);
+  const miles = haversineMiles(prev, next);
+  const metres = miles * 1609.34;
+
+  if (metres < 2) return 0;
+
+  const mph = miles / (dtSec / 3600);
+  if (mph > 100) return 0;
+
+  return miles;
+}
+
+/** Instant speed in mph between two coordinates. */
+export function instantMph(prev: Coord | undefined, next: Coord): number {
+  if (!prev) return 0;
+  const dtSec = Math.max(0.1, (next.timestamp - prev.timestamp) / 1000);
+  const miles = haversineMiles(prev, next);
+  return miles / (dtSec / 3600);
+}

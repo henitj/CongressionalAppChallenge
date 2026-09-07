@@ -1,4 +1,5 @@
 import { api, isBackendConfigured, ROUTES } from '../services/api';
+import { haversineMiles } from '../services/geo';
 import {
   fetchOsmTrails,
   fetchPlace,
@@ -463,24 +464,6 @@ export const AUSTIN_TRAILS: Trail[] = [
   },
 ];
 
-/* ── Distance helper ──────────────────────────────────────────────────────── */
-
-export function haversineMiles(
-  lat1: number,
-  lon1: number,
-  lat2: number,
-  lon2: number
-): number {
-  const R = 3958.8;
-  const toRad = (d: number) => (d * Math.PI) / 180;
-  const dLat = toRad(lat2 - lat1);
-  const dLon = toRad(lon2 - lon1);
-  const a =
-    Math.sin(dLat / 2) ** 2 +
-    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
-  return 2 * R * Math.asin(Math.sqrt(a));
-}
-
 export type { TrailCatalogue, TrailSource };
 
 /**
@@ -553,7 +536,7 @@ export async function fetchNearbyTrails(
       // that ignores lat/lon would otherwise dump Austin onto a NYC phone.
       fromServer = res.data.filter((t) => {
         if (t.startLat == null || t.startLng == null) return false;
-        return haversineMiles(lat, lon, t.startLat, t.startLng) <= 40;
+        return haversineMiles({ latitude: lat, longitude: lon }, { latitude: t.startLat, longitude: t.startLng }) <= 40;
       });
     }
   }

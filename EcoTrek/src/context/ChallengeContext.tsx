@@ -116,7 +116,6 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
   const [store, setStore] = useState<Stored>(() => emptyStored(weekKey()));
   const [loaded, setLoaded] = useState(false);
 
-  /* ── Load, rolling over if the week changed while the app was closed ────── */
   useEffect(() => {
     let cancelled = false;
     setLoaded(false);
@@ -169,7 +168,6 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
     };
   }, [storeKey]);
 
-  /* ── Roll over live if the app is open across midnight Sunday ──────────── */
   useEffect(() => {
     const t = setInterval(() => {
       const current = weekKey();
@@ -190,7 +188,6 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
     return () => clearInterval(t);
   }, [weekId, storeKey]);
 
-  /* ── This week's measured stats (for auto challenges) ──────────────────── */
   const weekStats = useMemo(() => {
     const since = weekStart().getTime();
     let miles = 0;
@@ -220,7 +217,6 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
 
   const templates = useMemo(() => challengesForWeek(weekId), [weekId]);
 
-  /* ── Build the active list ─────────────────────────────────────────────── */
   const challenges = useMemo<ActiveChallenge[]>(() => {
     return templates.map((t) => {
       let progress = 0;
@@ -246,7 +242,6 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
     });
   }, [templates, weekStats, store.completed]);
 
-  /* ── Award + persist ───────────────────────────────────────────────────── */
   const completeChallenge = useCallback(
     async (id: string) => {
       const t = templates.find((c) => c.id === id);
@@ -301,7 +296,6 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
     [templates, store, storeKey, award, contribute, myClub]
   );
 
-  /* ── Auto-complete measured challenges as soon as they hit target ──────── */
   useEffect(() => {
     if (!loaded) return;
     for (const c of challenges) {
@@ -312,7 +306,6 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
     }
   }, [loaded, challenges, completeChallenge]);
 
-  /* ── Derived ───────────────────────────────────────────────────────────── */
   const endsAt = useMemo(() => weekEnd().getTime(), [weekId]);
 
   const timeLeftLabel = useMemo(() => {

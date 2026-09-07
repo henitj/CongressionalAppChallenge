@@ -59,7 +59,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const coordsRef = useRef<Coords | null>(null);
   coordsRef.current = coords;
 
-  /* ── Trails load immediately; they do not need permission ──────────────── */
   const refreshTrails = useCallback(async () => {
     setTrailsLoading(true);
     setTrailsError(null);
@@ -79,7 +78,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     refreshTrails();
   }, [refreshTrails]);
 
-  /* ── Check (do not request) permission status on mount ─────────────────── */
   useEffect(() => {
     (async () => {
       if (Platform.OS === 'web') {

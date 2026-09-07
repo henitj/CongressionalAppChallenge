@@ -15,7 +15,10 @@ import { dayKey, addDays, daysBetween, weekKey, weekStart, weekEnd } from '../se
 import { challengesForWeek, CHALLENGE_CATALOG, CHALLENGES_PER_WEEK } from '../constants/challenges';
 import { detectTrail, evaluateCompletion, validateActivity } from '../services/trailDetection';
 import { AUSTIN_TRAILS } from '../constants/austinTrails';
-import { Coord } from '../services/geo';
+import { Coord, haversineMiles, instantMph, smoothDelta } from '../services/geo';
+import { computeTrees, speciesFor, TREES_DISCLAIMER } from '../services/trees';
+import { firstNameOf, fullNameOf } from '../services/displayName';
+import { LEVELS, TREE_RULES, fontScaleFor, skyPhaseForHour } from '../constants/theme';
 import {
   activeDaysInLast,
   bonusForStreak,
@@ -29,7 +32,7 @@ import {
   perfectWeeks,
   streakRuns,
 } from '../services/streaks';
-import { answerQuestion, AssistantContext, resolveTrail } from '../services/assistant';
+import { answerQuestion, AssistantContext, resolveTrail, STARTER_QUESTIONS } from '../services/assistant';
 import {
   CLEANUP_PROMPT_SEC,
   cleanupBonusPoints,
@@ -48,7 +51,7 @@ import {
 } from '../constants/species';
 import { computeRecords, RecordActivity } from '../services/records';
 import { buildRecap, lastWeekStart, RecapActivity } from '../services/recap';
-import { buildVerdict, buildShortNote, LEVEL_META, Advisory, SafetyLevel } from '../services/weather';
+import { buildVerdict, buildShortNote, LEVEL_META, Advisory, SafetyLevel, iconForCode } from '../services/weather';
 import { FEEDBACK_FORM_URL } from '../constants/feedback';
 import {
   isNearAustin,
@@ -74,7 +77,6 @@ function test(name: string, fn: () => void) {
   }
 }
 
-/* ── Date helpers ─────────────────────────────────────────────────────────── */
 
 test('dayKey uses the local calendar day, not UTC', () => {
   // 11pm local on the 5th must be the 5th, even though it is the 6th in UTC.
@@ -122,7 +124,6 @@ test('weekKey is stable across a week and changes on Monday', () => {
   assert.notEqual(sun, nextMon, 'the next Monday starts a new week');
 });
 
-/* ── Streak computation (mirrors StreakContext) ───────────────────────────── */
 
 type Days = Record<string, { opened: boolean }>;
 
@@ -168,7 +169,6 @@ test('empty history is a zero streak', () => {
   assert.equal(computeStreak({}, '2026-08-16'), 0);
 });
 
-/* ── Weekly challenges ────────────────────────────────────────────────────── */
 
 test('a week always yields five challenges', () => {
   for (const wk of ['2026-W01', '2026-W34', '2027-W52']) {
@@ -218,7 +218,6 @@ test('catalogue ids are unique', () => {
   assert.equal(new Set(ids).size, ids.length);
 });
 
-/* ── Trail data integrity ─────────────────────────────────────────────────── */
 
 test('every trail has coordinates needed for detection', () => {
   for (const t of AUSTIN_TRAILS) {
@@ -234,7 +233,6 @@ test('trail ids and slugs are unique', () => {
   assert.equal(new Set(AUSTIN_TRAILS.map((t) => t.slug)).size, AUSTIN_TRAILS.length);
 });
 
-/* ── Trail detection ──────────────────────────────────────────────────────── */
 
 const coord = (latitude: number, longitude: number, tOffsetSec = 0): Coord => ({
   latitude,
@@ -285,7 +283,6 @@ test('completion percentage never exceeds 100', () => {
   assert.ok(res.coveragePercent <= 100);
 });
 
-/* ── Anti-cheat ───────────────────────────────────────────────────────────── */
 
 test('a normal hike is valid', () => {
   const path = [coord(30.2603, -97.75, 0), coord(30.2653, -97.75, 1800)];
@@ -321,7 +318,6 @@ test('a GPS teleport is flagged', () => {
   assert.equal(res.flagReason, 'teleport');
 });
 
-/* ── Streak service ───────────────────────────────────────────────────────── */
 
 const dayRec = (activities = 0) => ({ opened: true, activities, miles: activities, trees: 0 });
 
@@ -414,7 +410,6 @@ test('service and inline streak maths agree', () => {
   assert.equal(computeStreakSvc(days, today), 2);
 });
 
-/* ── Assistant ────────────────────────────────────────────────────────────── */
 
 const ctx: AssistantContext = {
   trails: AUSTIN_TRAILS,
@@ -505,7 +500,6 @@ test('assistant never returns an empty answer', () => {
   }
 });
 
-/* ── Species catalogue ────────────────────────────────────────────────────── */
 
 test('catalogue is built from the trail data', () => {
   assert.ok(TOTAL_SPECIES > 50, 'should have a real number of species');
@@ -550,7 +544,6 @@ test('rarity reflects how many trails list it', () => {
   }
 });
 
-/* ── Personal records ─────────────────────────────────────────────────────── */
 
 const fmt = (m: number) => String(Number(m.toFixed(2)));
 
@@ -615,7 +608,6 @@ test('records use the caller\'s unit formatter', () => {
   assert.equal(records.find((r) => r.id === 'longest_distance')?.value, '16.1');
 });
 
-/* ── Weekly recap ─────────────────────────────────────────────────────────── */
 
 const MON = new Date(2026, 7, 10).getTime(); // Monday 10 Aug 2026
 const DAY = 86400000;
@@ -723,7 +715,6 @@ test('lastWeekStart lands on the Monday before this one', () => {
   assert.equal(dayKey(start), '2026-08-03');
 });
 
-/* ── Weather verdict tone ─────────────────────────────────────────────────── */
 // We are not a weather app. The verdict must read as calm advice, never as
 // an alarm. These guard the tone that got called out in review.
 
@@ -769,7 +760,6 @@ test('level labels are friendly, not alarm-level', () => {
   assert.ok(!labels.some((l) => /poor conditions|use caution/i.test(l)));
 });
 
-/* ── Feedback (Google Form) ─────────────────────────────────────────────── */
 
 test('the feedback form link is hardcoded to the team Google Form', () => {
   // One constant, used everywhere. If the form ever moves, this is the line
@@ -778,7 +768,6 @@ test('the feedback form link is hardcoded to the team Google Form', () => {
   assert.match(FEEDBACK_FORM_URL, /^https:\/\//);
 });
 
-/* ── Nearby trail lookup (US / Canada / Mexico) ─────────────────────────── */
 
 test('Austin is near Austin, New York is not', () => {
   assert.equal(isNearAustin(AUSTIN_CENTER.latitude, AUSTIN_CENTER.longitude), true);
@@ -850,7 +839,6 @@ test('unnamed OSM elements are skipped', () => {
   );
 });
 
-/* ── Post-walk cleanup ────────────────────────────────────────────────────── */
 
 test('the trash question waits for a ten minute walk', () => {
   assert.equal(CLEANUP_PROMPT_SEC, 600);
@@ -879,7 +867,91 @@ test('cleanup time credited back is small and capped', () => {
   assert.equal(cleanupBonusSeconds(999), 600);
 });
 
-/* ── Report ───────────────────────────────────────────────────────────────── */
+
+
+test('hike trees are one per mile, bike trees are one per three miles', () => {
+  assert.equal(TREE_RULES.hikeMilesPerTree, 1);
+  assert.equal(TREE_RULES.bikeMilesPerTree, 3);
+  assert.equal(computeTrees('hike', 0.9), 0);
+  assert.equal(computeTrees('hike', 1), 1);
+  assert.equal(computeTrees('hike', 4.9), 4);
+  assert.equal(computeTrees('bike', 2.9), 0);
+  assert.equal(computeTrees('bike', 3), 1);
+  assert.equal(computeTrees('bike', 9), 3);
+});
+
+test('greeting name prefers the profile and never says Guest', () => {
+  assert.equal(firstNameOf('Jane', 'Google Name'), 'Jane');
+  assert.equal(firstNameOf('Jane Marie', 'x'), 'Jane');
+  assert.equal(firstNameOf('', 'Alex Trekker'), 'Alex');
+  assert.equal(firstNameOf('', 'Guest'), 'there');
+  assert.equal(firstNameOf('', ''), 'there');
+  assert.equal(fullNameOf({ firstName: 'Jane', lastName: 'Doe' }, 'Other'), 'Jane Doe');
+  assert.equal(fullNameOf({ firstName: '', lastName: '' }, 'Alex'), 'Alex');
+  assert.equal(fullNameOf(null, 'Guest Trekker'), 'Trekker');
+});
+
+test('haversine is zero for the same point and ~69 miles per degree of latitude', () => {
+  const a = { latitude: 30.2672, longitude: -97.7431 };
+  assert.equal(haversineMiles(a, a), 0);
+  const north = { latitude: 31.2672, longitude: -97.7431 };
+  const d = haversineMiles(a, north);
+  assert.ok(d > 68 && d < 70, `expected ~69 miles, got ${d}`);
+});
+
+test('tree species pick is deterministic', () => {
+  assert.equal(speciesFor('act-1'), speciesFor('act-1'));
+  assert.notEqual(speciesFor('act-1'), speciesFor('act-2'));
+  assert.match(TREES_DISCLAIMER, /not real trees/i);
+});
+
+test('levels are strictly increasing', () => {
+  for (let i = 1; i < LEVELS.length; i++) {
+    assert.ok(LEVELS[i].min > LEVELS[i - 1].min, `${LEVELS[i].name} min not greater`);
+    assert.ok(LEVELS[i].name.length > 0);
+  }
+  assert.equal(LEVELS[0].min, 0);
+});
+
+test('font scale and sky phase helpers', () => {
+  assert.equal(fontScaleFor('default'), 1);
+  assert.equal(fontScaleFor('large'), 1.16);
+  assert.equal(fontScaleFor('xlarge'), 1.32);
+  assert.equal(skyPhaseForHour(3), 'night');
+  assert.equal(skyPhaseForHour(7), 'sunrise');
+  assert.equal(skyPhaseForHour(12), 'afternoon');
+  assert.equal(skyPhaseForHour(18), 'sunset');
+  assert.equal(skyPhaseForHour(21), 'night');
+});
+
+test('weather icons follow WMO codes and flip sun to moon at night', () => {
+  assert.equal(iconForCode(0, true), 'sun');
+  assert.equal(iconForCode(0, false), 'moon');
+  assert.equal(iconForCode(95, true), 'cloud-lightning');
+  assert.equal(iconForCode(999, true), 'cloud');
+});
+
+test('GPS smoothing drops noise, glitches, and bad accuracy', () => {
+  const t = 1_760_000_000_000;
+  const a = { latitude: 30.26, longitude: -97.75, timestamp: t };
+  const near = { latitude: 30.260001, longitude: -97.75, timestamp: t + 1000 };
+  assert.equal(smoothDelta(undefined, a), 0);
+  assert.equal(smoothDelta(a, near), 0, 'sub-2m wander is noise');
+  const far = { latitude: 31.26, longitude: -97.75, timestamp: t + 1000 };
+  assert.equal(smoothDelta(a, far), 0, '100+ mph is a glitch');
+  const ok = { latitude: 30.261, longitude: -97.75, timestamp: t + 30_000 };
+  const delta = smoothDelta(a, ok);
+  assert.ok(delta > 0.05 && delta < 0.2, `unexpected delta ${delta}`);
+  const inaccurate = { ...ok, accuracy: 80 };
+  assert.equal(smoothDelta(a, inaccurate), 0);
+  assert.ok(instantMph(a, ok) > 0);
+  assert.equal(instantMph(undefined, ok), 0);
+});
+
+test('assistant starter questions are non-empty', () => {
+  assert.ok(STARTER_QUESTIONS.length >= 4);
+  for (const q of STARTER_QUESTIONS) assert.ok(q.length > 8);
+});
 
 console.log('\nEcoTrek logic tests\n');
 console.log(results.join('\n'));

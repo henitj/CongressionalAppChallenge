@@ -665,12 +665,12 @@ function formatTime(sec: number) {
 
 function ResultStat({ label, value, icon }: { label: string; value: string; icon?: IconName }) {
   const { colors, typography } = useTheme();
-  const resultStyles = useMemo(() => makeResultStyles(colors, typography), [colors, typography]);
+  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
-    <View style={resultStyles.stat}>
+    <View style={styles.resultStat}>
       {icon && <Icon name={icon} size={20} color={colors.primary} strokeWidth={2} />}
-      <Text style={resultStyles.statValue}>{value}</Text>
-      <Text style={resultStyles.statLabel}>{label}</Text>
+      <Text style={styles.resultStatValue}>{value}</Text>
+      <Text style={styles.resultStatLabel}>{label}</Text>
     </View>
   );
 }
@@ -923,26 +923,9 @@ function makeStyles(c: ColorPalette, t: Typography) {
     width: '100%',
     marginTop: SPACING.md,
   },
-
-  });
-}
-
-function makeResultStyles(c: ColorPalette, t: Typography) {
-  return StyleSheet.create({
-
-  stat: {
-    alignItems: 'center',
-    gap: SPACING.xs,
-    minWidth: 100,
-  },
-  statValue: {
-    ...t.h2,
-    color: c.text,
-  },
-  statLabel: {
-    ...t.small,
-    color: c.textMuted,
-  },
+  resultStat: { alignItems: 'center', gap: SPACING.xs, minWidth: 100 },
+  resultStatValue: { ...t.h2, color: c.text },
+  resultStatLabel: { ...t.small, color: c.textMuted },
 
   });
 }

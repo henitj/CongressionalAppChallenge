@@ -1,7 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import { Coord } from '../services/location';
-import { TREE_RULES } from '../constants/theme';
-import { createGrant, TreeGrant } from '../services/trees';
+import { createGrant, computeTrees, TreeGrant } from '../services/trees';
 import { evaluateCompletion, validateActivity } from '../services/trailDetection';
 import { useAuth } from './AuthContext';
 import { useStreak } from './StreakContext';
@@ -75,10 +74,7 @@ type ContextValue = {
 
 const ActivityContext = createContext<ContextValue | null>(null);
 
-export function computeTrees(type: ActivityType, miles: number): number {
-  const rule = type === 'bike' ? TREE_RULES.bikeMilesPerTree : TREE_RULES.hikeMilesPerTree;
-  return Math.floor(miles / rule);
-}
+export { computeTrees };
 
 /** Keeps stored paths from bloating AsyncStorage on long rides. */
 function thinPath(path: Coord[], maxPoints = 400): Coord[] {

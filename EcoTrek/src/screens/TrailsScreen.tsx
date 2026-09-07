@@ -50,7 +50,6 @@ export default function TrailsScreen() {
     requestLocation,
     usingFallbackLocation,
     trailsRegion,
-    trailsSource,
   } = useApp();
   const { formatDistanceCompact, formatDistanceUnit } = useSettings();
   const { history } = useActivity();
@@ -284,7 +283,6 @@ export default function TrailsScreen() {
         )}
       </View>
 
-      {/* ── Sort sheet ────────────────────────────────────────────────────── */}
       <Sheet visible={showSort} onClose={() => setShowSort(false)} title="Sort by">
         <View style={{ gap: SPACING.xs }}>
           {SORTS.map((s) => (
@@ -307,7 +305,6 @@ export default function TrailsScreen() {
         </View>
       </Sheet>
 
-      {/* ── Trail detail ──────────────────────────────────────────────────── */}
       <Sheet
         visible={!!selected}
         onClose={() => setSelected(null)}

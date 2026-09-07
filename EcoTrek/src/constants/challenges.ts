@@ -43,7 +43,6 @@ export const CATEGORY_LABEL: Record<ChallengeCategory, string> = {
 };
 
 export const CHALLENGE_CATALOG: ChallengeTemplate[] = [
-  /* ── Auto-tracked: measured from your logged activities ─────────────────── */
   {
     id: 'move-2-miles',
     title: 'Cover 2 miles',
@@ -111,7 +110,6 @@ export const CHALLENGE_CATALOG: ChallengeTemplate[] = [
     target: 2,
   },
 
-  /* ── Manual: tap to mark complete ───────────────────────────────────────── */
   {
     id: 'habit-reusable-bottle',
     title: 'Bring a reusable bottle',
@@ -267,7 +265,6 @@ export const CHALLENGE_CATALOG: ChallengeTemplate[] = [
   },
 ];
 
-/* ── Deterministic weekly selection ───────────────────────────────────────── */
 
 /**
  * Simple string hash. Deterministic across devices and app restarts, so

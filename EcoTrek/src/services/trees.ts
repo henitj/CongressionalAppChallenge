@@ -1,3 +1,5 @@
+import { TREE_RULES } from '../constants/theme';
+
 /**
  * Virtual trees.
  *
@@ -46,6 +48,11 @@ export function speciesFor(seed: string | number): string {
   let h = 0;
   for (let i = 0; i < s.length; i++) h = (h * 31 + s.charCodeAt(i)) >>> 0;
   return SPECIES[h % SPECIES.length];
+}
+
+export function computeTrees(type: 'hike' | 'bike', miles: number): number {
+  const rule = type === 'bike' ? TREE_RULES.bikeMilesPerTree : TREE_RULES.hikeMilesPerTree;
+  return Math.floor(miles / rule);
 }
 
 export function createGrant(

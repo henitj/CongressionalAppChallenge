@@ -101,7 +101,6 @@ export default function ImpactScreen() {
           onChange={(v) => setTab(v as Tab)}
         />
 
-        {/* ── Activities ──────────────────────────────────────────────────── */}
         {tab === 'activities' ? (
           history.length === 0 ? (
             <EmptyState
@@ -171,7 +170,6 @@ export default function ImpactScreen() {
           )
         ) : null}
 
-        {/* ── Forest ──────────────────────────────────────────────────────── */}
         {tab === 'forest' ? (
           <>
             <Card>
@@ -224,7 +222,6 @@ export default function ImpactScreen() {
           </>
         ) : null}
 
-        {/* ── Records ─────────────────────────────────────────────────────── */}
         {tab === 'records' ? (
           <>
             {records.length === 0 ? (
@@ -287,7 +284,6 @@ export default function ImpactScreen() {
           </>
         ) : null}
 
-        {/* ── Points ──────────────────────────────────────────────────────── */}
         {tab === 'points' ? (
           <>
             <Card>

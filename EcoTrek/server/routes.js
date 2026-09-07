@@ -68,7 +68,6 @@ function sanitizePath(path) {
   });
 }
 
-/* ── Mappers: database row → the shape the app already uses ───────────────── */
 
 function toActivity(r) {
   return {
@@ -191,10 +190,8 @@ function milesBetween(lat1, lon1, lat2, lon2) {
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-/* ── Routes ───────────────────────────────────────────────────────────────── */
 
 export const routes = [
-  /* ── Identity ──────────────────────────────────────────────────────────── */
   {
     method: 'GET',
     path: '/api/me',
@@ -218,7 +215,6 @@ export const routes = [
     handler: async ({ user }) => ({ id: user.id, name: user.display_name }),
   },
 
-  /* ── Activities ────────────────────────────────────────────────────────── */
   {
     method: 'GET',
     path: '/api/activities',
@@ -290,7 +286,6 @@ export const routes = [
     },
   },
 
-  /* ── Points ────────────────────────────────────────────────────────────── */
   {
     method: 'GET',
     path: '/api/points',
@@ -323,7 +318,6 @@ export const routes = [
     },
   },
 
-  /* ── Streak ────────────────────────────────────────────────────────────── */
   {
     method: 'GET',
     path: '/api/streak',
@@ -397,7 +391,6 @@ export const routes = [
     },
   },
 
-  /* ── Challenges ────────────────────────────────────────────────────────── */
   {
     method: 'GET',
     path: '/api/challenges',
@@ -443,7 +436,6 @@ export const routes = [
     },
   },
 
-  /* ── Clubs ─────────────────────────────────────────────────────────────── */
   {
     method: 'GET',
     path: '/api/clubs',
@@ -659,7 +651,6 @@ export const routes = [
     },
   },
 
-  /* ── Leaderboards ──────────────────────────────────────────────────────── */
   {
     method: 'GET',
     path: '/api/leaderboard/clubs',
@@ -718,7 +709,6 @@ export const routes = [
     handler: async ({ sql }) => sql`SELECT * FROM global_user_leaderboard LIMIT 100`,
   },
 
-  /* ── Trails (public) ───────────────────────────────────────────────────── */
   {
     method: 'GET',
     path: '/api/trails',
@@ -756,7 +746,6 @@ export const routes = [
     },
   },
 
-  /* ── Trail assistant (optional AI upgrade) ─────────────────────────────── */
   {
     method: 'POST',
     path: '/api/assistant',
@@ -814,7 +803,6 @@ export const routes = [
     },
   },
 
-  /* ── Devices (push tokens) ─────────────────────────────────────────────── */
   {
     method: 'POST',
     path: '/api/devices',

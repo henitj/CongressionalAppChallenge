@@ -20,9 +20,6 @@ import { useResponsive } from '../hooks/useResponsive';
 import { useTheme } from '../context/ThemeContext';
 import { AVATAR_COLORS, RADIUS, SHADOWS, SPACING } from '../constants/theme';
 
-/* ════════════════════════════════════════════════════════════════════════
-   Screen — consistent page shell
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function Screen({
   children,
@@ -84,9 +81,6 @@ export function Screen({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Card
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function Card({
   children,
@@ -122,9 +116,6 @@ export function Card({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Section header
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function SectionHeader({
   title,
@@ -151,9 +142,6 @@ export function SectionHeader({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Button
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function Button({
   label,
@@ -253,9 +241,6 @@ export function Button({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Pill / tag
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function Pill({
   label,
@@ -302,9 +287,6 @@ export function Pill({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Progress bar
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function ProgressBar({
   percent,
@@ -330,9 +312,6 @@ export function ProgressBar({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Segmented control
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function Segmented<T extends string>({
   options,
@@ -385,9 +364,6 @@ export function Segmented<T extends string>({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Empty state
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function EmptyState({
   icon = 'info',
@@ -419,9 +395,6 @@ export function EmptyState({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Avatar
-   ════════════════════════════════════════════════════════════════════════ */
 
 /**
  * Deterministic avatar colours. The same name always gets the same shade, so
@@ -493,9 +466,6 @@ export function Avatar({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Bottom sheet modal
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function Sheet({
   visible,
@@ -552,9 +522,6 @@ export function Sheet({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Banner (used for weather warnings, notices)
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function Banner({
   tone = 'info',
@@ -608,18 +575,12 @@ export function Banner({
   );
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Divider
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function Divider({ style }: { style?: StyleProp<ViewStyle> }) {
   const { colors } = useTheme();
   return <View style={[ui.divider, { backgroundColor: colors.borderLight }, style]} />;
 }
 
-/* ════════════════════════════════════════════════════════════════════════
-   Metric — big number with label
-   ════════════════════════════════════════════════════════════════════════ */
 
 export function Metric({
   value,

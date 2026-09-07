@@ -125,7 +125,6 @@ export function bonusForStreak(streak: number): number {
   return 10 * Math.floor(streak / 7);
 }
 
-/* ── Milestones, shown on the Streak screen ───────────────────────────────── */
 
 export type Milestone = { days: number; name: string; badgeId: string };
 

@@ -51,7 +51,6 @@ export const IDENTIFIERS = {
   recap: 'weekly-recap',
 };
 
-/* ── Permissions ──────────────────────────────────────────────────────────── */
 
 export async function requestPermission(): Promise<boolean> {
   const N = getModule();
@@ -94,7 +93,6 @@ export async function hasPermission(): Promise<boolean> {
   }
 }
 
-/* ── Scheduling ───────────────────────────────────────────────────────────── */
 
 async function cancel(identifier: string) {
   const N = getModule();

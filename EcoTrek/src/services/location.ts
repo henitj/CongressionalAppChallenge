@@ -1,10 +1,10 @@
 import { Platform } from 'react-native';
 
-import { Coord, haversineMiles } from './geo';
+import { Coord, haversineMiles, instantMph, smoothDelta } from './geo';
 import { addLocationListener, emitLocation, LOCATION_TASK } from './locationTask';
 
 export type { Coord };
-export { haversineMiles };
+export { haversineMiles, instantMph, smoothDelta };
 
 export type Subscription = { remove: () => void };
 
@@ -228,38 +228,4 @@ export async function startTracking(
     opts.onError?.(new Error(e?.message ?? 'Could not start location tracking'));
     return NO_OP_SUBSCRIPTION;
   }
-}
-
-/**
- * Smooths a new coordinate against the previous one and returns the miles to
- * add. Returns 0 when the point should be discarded:
- *   - accuracy worse than 50 m
- *   - movement under 2 m, which is a stationary phone's GPS wandering
- *   - implied speed over 100 mph, which is a GPS glitch, not a person
- */
-export function smoothDelta(prev: Coord | undefined, next: Coord): number {
-  if (!prev) return 0;
-  if (next.accuracy !== undefined && next.accuracy > 50) return 0;
-
-  const dtSec = Math.max(0.1, (next.timestamp - prev.timestamp) / 1000);
-  const miles = haversineMiles(prev, next);
-  const metres = miles * 1609.34;
-
-  if (metres < 2) return 0;
-
-  const mph = miles / (dtSec / 3600);
-  if (mph > 100) return 0;
-
-  return miles;
-}
-
-/**
- * Compute instant speed in mph between two coordinates.
- * Returns 0 if the time delta is too small or the distance is noise.
- */
-export function instantMph(prev: Coord | undefined, next: Coord): number {
-  if (!prev) return 0;
-  const dtSec = Math.max(0.1, (next.timestamp - prev.timestamp) / 1000);
-  const miles = haversineMiles(prev, next);
-  return miles / (dtSec / 3600);
 }
