@@ -2,7 +2,12 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as WebBrowser from 'expo-web-browser';
 import * as Google from 'expo-auth-session/providers/google';
-import { GOOGLE_AUTH, isGoogleConfigured } from '../constants/authConfig';
+import {
+  GOOGLE_AUTH,
+  GOOGLE_PLACEHOLDER_CLIENT_ID,
+  isGoogleConfigured,
+  looksReal,
+} from '../constants/authConfig';
 import { setAuthTokenProvider } from '../services/api';
 import { copyUserData } from '../services/storage';
 
@@ -90,17 +95,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   // expo-auth-session Google provider — wires up PKCE + redirect URIs
   // automatically for iOS, Android, web, and Expo Go.
-  // Empty strings crash expo-auth-session on Expo Go. Only pass real IDs.
-  const googleIds = {
-    ...(GOOGLE_AUTH.expoClientId ? { clientId: GOOGLE_AUTH.expoClientId } : {}),
-    ...(GOOGLE_AUTH.iosClientId ? { iosClientId: GOOGLE_AUTH.iosClientId } : {}),
-    ...(GOOGLE_AUTH.androidClientId ? { androidClientId: GOOGLE_AUTH.androidClientId } : {}),
-    ...(GOOGLE_AUTH.webClientId ? { webClientId: GOOGLE_AUTH.webClientId } : {}),
-  };
-  const [, response, promptAsync] = Google.useAuthRequest({
-    ...googleIds,
-    scopes: ['openid', 'profile', 'email'],
-  });
+  // expo-auth-session throws *during render* if the client ID for the current
+  // platform is undefined, and hooks cannot be skipped — so with an empty .env
+  // the whole app died behind the error boundary before anyone could even hit
+  // "Continue as guest". Every slot is therefore always filled: real IDs when
+  // configured, an inert placeholder otherwise. Nothing is ever sent to Google
+  // with the placeholder because signInWithGoogle bails on !googleConfigured.
+  const googleConfig = useMemo(() => {
+    const pick = (id: string, fallback: string) =>
+      looksReal(id) ? id : fallback;
+    const web = pick(GOOGLE_AUTH.webClientId, GOOGLE_PLACEHOLDER_CLIENT_ID);
+    return {
+      clientId: pick(GOOGLE_AUTH.expoClientId, web),
+      webClientId: web,
+      iosClientId: pick(GOOGLE_AUTH.iosClientId, web),
+      androidClientId: pick(GOOGLE_AUTH.androidClientId, web),
+      scopes: ['openid', 'profile', 'email'],
+    };
+  }, []);
+
+  const [, response, promptAsync] = Google.useAuthRequest(googleConfig);
 
   // Load any persisted session on cold start
   useEffect(() => {
