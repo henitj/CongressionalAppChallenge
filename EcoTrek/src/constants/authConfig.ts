@@ -43,7 +43,18 @@ export const GOOGLE_AUTH = {
   androidClientId: env.android,
 };
 
-function looksReal(id: string): boolean {
+/**
+ * expo-auth-session throws during render if the client ID for the current
+ * platform is `undefined` ("Client Id property `androidClientId` must be
+ * defined..."). Hooks cannot be called conditionally, so when a real ID is
+ * absent we hand the hook this inert placeholder instead. It never reaches
+ * Google: `signInWithGoogle` checks `isGoogleConfigured()` first and shows a
+ * setup message rather than starting a flow.
+ */
+export const GOOGLE_PLACEHOLDER_CLIENT_ID =
+  'unconfigured.apps.googleusercontent.com';
+
+export function looksReal(id: string): boolean {
   return id.length > 0 && !id.startsWith('YOUR_') && id.endsWith('.apps.googleusercontent.com');
 }
 
