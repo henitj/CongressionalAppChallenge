@@ -99,9 +99,10 @@ grey rectangle. It is free for mobile map display.
       Weekly challenges, Clubs roster, Profile impact card, Conditions report.
 - [ ] **[you]** Short description, 80 characters max.
 - [ ] **[you]** Full description, 4000 characters max.
-- [ ] **[done]** Give feedback: the button opens the team's Google Form
-      (link hardcoded in `src/constants/feedback.ts`). To point it at a
-      different form, change that one URL — nothing else.
+- [ ] **[done]** Give feedback: a popup after a counted walk, plus a button
+      on Profile, opens the team's Google Form (link hardcoded in
+      `src/constants/feedback.ts`). To point it at a different form, change
+      that one URL — nothing else.
 
 ## 7. Play Console forms
 

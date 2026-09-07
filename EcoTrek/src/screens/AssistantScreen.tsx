@@ -187,7 +187,7 @@ export default function AssistantScreen() {
 
   return (
     <View style={styles.root}>
-      <Header title="Trail assistant" subtitle="Ask about any Austin trail" back />
+      <Header title="Trail assistant" subtitle="Ask about trails near you" back />
 
       <KeyboardAvoidingView
         style={{ flex: 1 }}

@@ -11,6 +11,7 @@ import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
 import { useSettings } from '../constants/SettingsContext';
 import { getTrailById } from '../constants/austinTrails';
+import { useApp } from '../context/AppContext';
 import { FLAG_MESSAGES } from '../services/trailDetection';
 import { shareText } from '../services/share';
 import { useTheme, Typography } from '../context/ThemeContext';
@@ -27,6 +28,7 @@ export default function ActivityDetailScreen() {
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
   const { history, deleteActivity } = useActivity();
+  const { trails } = useApp();
   const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
 
   const activityId: string | undefined = route.params?.activityId;
@@ -35,7 +37,10 @@ export default function ActivityDetailScreen() {
     [history, activityId]
   );
 
-  const trail = activity?.trailId ? getTrailById(activity.trailId) : undefined;
+  const trail = activity?.trailId
+    ? getTrailById(activity.trailId, trails) ?? getTrailById(activity.trailId)
+    : undefined;
+  const trailName = trail?.name ?? activity?.trailName;
 
   /**
    * Per-mile splits, derived from the stored path. The path is thinned to 400
@@ -123,8 +128,8 @@ export default function ActivityDetailScreen() {
 
   const share = () => {
     shareText(
-      `${activity.type === 'bike' ? 'I rode' : 'I walked'} ${formatDistanceCompact(activity.miles)} ` +
-        `${formatDistanceUnit()}${trail ? ` on the ${trail.name}` : ''} in ${formatDuration(activity.durationSec)}` +
+        `${activity.type === 'bike' ? 'I rode' : 'I walked'} ${formatDistanceCompact(activity.miles)} ` +
+        `${formatDistanceUnit()}${trailName ? ` on the ${trailName}` : ''} in ${formatDuration(activity.durationSec)}` +
         `${activity.trees > 0 ? `, and earned ${activity.trees} tree${activity.trees === 1 ? '' : 's'}` : ''}. ` +
         `Tracked with EcoTrek.`
     );
@@ -189,16 +194,18 @@ export default function ActivityDetailScreen() {
         </Card>
 
         {/* Trail + tags */}
-        {trail || activity.points > 0 ? (
+        {trailName || activity.points > 0 ? (
           <Card>
-            {trail ? (
+            {trailName ? (
               <>
                 <Text style={styles.sectionLabel}>Trail</Text>
-                <Text style={styles.trailName}>{trail.name}</Text>
+                <Text style={styles.trailName}>{trailName}</Text>
+                {trail ? (
                 <Text style={styles.trailMeta}>
                   {trail.area} · {formatDistanceCompact(trail.distanceMiles)} {formatDistanceUnit()} ·{' '}
                   {trail.difficulty}
                 </Text>
+                ) : null}
                 {activity.coveragePercent != null ? (
                   <Text style={styles.coverage}>
                     You covered about {Math.round(activity.coveragePercent)}% of its length.

@@ -32,7 +32,7 @@ const SECTIONS: Section[] = [
   {
     title: 'Explore',
     rows: [
-      { icon: 'map', label: 'Trails', hint: 'Austin walks and rides', to: 'Trails' },
+      { icon: 'map', label: 'Trails', hint: 'Walks and rides near you', to: 'Trails' },
       { icon: 'users', label: 'Clubs', hint: 'Walk with friends', to: 'Clubs' },
       { icon: 'target', label: 'Weekly goals', hint: 'Five small things this week', to: 'Challenges' },
     ],

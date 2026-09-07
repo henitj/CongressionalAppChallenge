@@ -2,7 +2,7 @@
 
 **Tap Start. Walk. We count the miles.**
 
-A React Native app (Expo SDK 57) for Austin walkers, hikers, and cyclists. One codebase for iOS, Android, and web.
+A React Native app (Expo SDK 57) for walkers, hikers, and cyclists. Trails are looked up around the phone, so a walker in New York sees their local routes rather than Austin's. One codebase for iOS, Android, and web.
 
 Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Averineni and Basil Vinesh.
 
@@ -46,7 +46,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 | **Text size / look** | Normal, Large, Extra large. Light, Dark, or Sky (sunrise / afternoon / sunset in daytime only). |
 | **Your photo** | Tap the avatar on your profile to pick or take your own picture. It becomes your profile logo everywhere. |
 | **Share card** | A real picture — your photo plus your stats — sent through the system share sheet. If a device can't make a picture, it falls back to sharing the stats as text, and the card is always on screen to show someone directly. |
-| **Trails** | 14 Austin trails, offline. Cards show area, distance (when location is on), easy/medium/hard, dogs, water, bathrooms. "Ask about a trail" goes straight to the assistant. |
+| **Trails** | Named walks and rides near you, looked up from OpenStreetMap. Austin's 14 trails ship offline as the sample when location is off. Cards show area, distance, easy/medium/hard, dogs, water, bathrooms. "Ask about a trail" goes straight to the assistant. |
 | **Trees** | Symbolic only. 1 per mile walked, 1 per 3 miles biked. |
 
 ---
@@ -125,7 +125,7 @@ src/services/avatar.ts             profile photo: pick/take, compress, store
 ## Accessibility notes
 
 - Settings text size multiplies the whole type ramp (see above).
-- Give feedback: the button at the bottom of Profile (and on the hike summary) opens the team's Google Form; the link is hardcoded in `src/constants/feedback.ts`.
+- Give feedback: after a counted walk a popup asks how it went; the Profile page also has a Give Feedback button. Both open the team's Google Form; the link is hardcoded in `src/constants/feedback.ts`.
 - Tap targets meet the 52 pt minimum; icons always ship with labels.
 
 ---

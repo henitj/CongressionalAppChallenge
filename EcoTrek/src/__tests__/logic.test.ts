@@ -50,6 +50,12 @@ import { computeRecords, RecordActivity } from '../services/records';
 import { buildRecap, lastWeekStart, RecapActivity } from '../services/recap';
 import { buildVerdict, buildShortNote, LEVEL_META, Advisory, SafetyLevel } from '../services/weather';
 import { FEEDBACK_FORM_URL } from '../constants/feedback';
+import {
+  isNearAustin,
+  parseOsmDistanceMiles,
+  trailFromOsmElement,
+  AUSTIN_CENTER,
+} from '../services/nearbyTrails';
 
 let passed = 0;
 const results: string[] = [];
@@ -765,8 +771,60 @@ test('level labels are friendly, not alarm-level', () => {
 test('the feedback form link is hardcoded to the team Google Form', () => {
   // One constant, used everywhere. If the form ever moves, this is the line
   // that changes — no user ever sees or types a link.
-  assert.equal(FEEDBACK_FORM_URL, 'https://forms.gle/E3p559tiqrNMtZDS7');
+  assert.equal(FEEDBACK_FORM_URL, 'https://forms.gle/mt4x5mzAyaG2xFEE6');
   assert.match(FEEDBACK_FORM_URL, /^https:\/\//);
+});
+
+/* ── Worldwide trail lookup ──────────────────────────────────────────────── */
+
+test('Austin is near Austin, New York is not', () => {
+  assert.equal(isNearAustin(AUSTIN_CENTER.latitude, AUSTIN_CENTER.longitude), true);
+  assert.equal(isNearAustin(40.7128, -74.006), false);
+  assert.equal(isNearAustin(51.5074, -0.1278), false);
+});
+
+test('OSM distance tags parse as miles', () => {
+  assert.equal(parseOsmDistanceMiles('10 km'), 6.2);
+  assert.equal(parseOsmDistanceMiles('5 mi'), 5);
+  assert.equal(parseOsmDistanceMiles('1609 m'), 1);
+  assert.equal(parseOsmDistanceMiles(null), null);
+  assert.equal(parseOsmDistanceMiles('nope'), null);
+});
+
+test('an OSM hiking relation becomes a Trail', () => {
+  const trail = trailFromOsmElement(
+    {
+      type: 'relation',
+      id: 42,
+      center: { lat: 40.7829, lon: -73.9654 },
+      tags: {
+        name: 'Central Park Loop',
+        route: 'hiking',
+        distance: '10 km',
+        dog: 'yes',
+      },
+    },
+    40.758, -73.985, 'Manhattan'
+  );
+  assert.ok(trail);
+  assert.equal(trail!.name, 'Central Park Loop');
+  assert.equal(trail!.type, 'hike');
+  assert.equal(trail!.area, 'Manhattan');
+  assert.equal(trail!.petFriendly, true);
+  assert.ok(trail!.id.startsWith('osm-'));
+  assert.ok((trail!.distanceFromUserMi ?? 99) < 5);
+});
+
+test('unnamed OSM elements are skipped', () => {
+  assert.equal(
+    trailFromOsmElement(
+      { type: 'way', id: 1, center: { lat: 40.7, lon: -74 }, tags: {} },
+      40.7,
+      -74,
+      'NYC'
+    ),
+    null
+  );
 });
 
 /* ── Post-walk cleanup ────────────────────────────────────────────────────── */

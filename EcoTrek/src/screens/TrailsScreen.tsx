@@ -42,7 +42,7 @@ export default function TrailsScreen() {
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { trails, trailsLoading, refreshTrails, permission, requestLocation, usingFallbackLocation } =
+  const { trails, trailsLoading, refreshTrails, permission, requestLocation, usingFallbackLocation, trailsRegion } =
     useApp();
   const { formatDistanceCompact, formatDistanceUnit } = useSettings();
   const { history } = useActivity();
@@ -137,7 +137,11 @@ export default function TrailsScreen() {
     >
       <Header
         title="Trails"
-        subtitle={`${completedCount} of ${trails.length} completed`}
+        subtitle={
+          trailsRegion
+            ? `${trailsRegion} · ${completedCount} of ${trails.length} completed`
+            : `${completedCount} of ${trails.length} completed`
+        }
         back
         actions={[{ icon: 'shield', onPress: () => navigation.navigate('Safety'), label: 'Safety' }]}
       />
@@ -186,8 +190,8 @@ export default function TrailsScreen() {
           <Banner
             tone="neutral"
             icon="map-pin"
-            title="Sorted for central Austin"
-            message="Turn on location to sort by how close each trail is to you."
+            title="See trails near you"
+            message="Turn on location and we will look up walks and rides around you — wherever you are."
             right={
               <Pressable onPress={() => requestLocation()} hitSlop={8}>
                 <Text style={styles.bannerAction}>Enable</Text>
@@ -230,7 +234,19 @@ export default function TrailsScreen() {
           </Pressable>
         </View>
 
-        {filtered.length === 0 ? (
+        {trails.length === 0 && !trailsLoading ? (
+          <EmptyState
+            icon="map-pin"
+            title={usingFallbackLocation ? 'See trails near you' : 'No trails nearby'}
+            message={
+              usingFallbackLocation
+                ? 'Turn on location and we will look up walks and rides around you.'
+                : 'We could not find named trails in this area. Pull to refresh, or try again in a moment.'
+            }
+            action={usingFallbackLocation ? 'Enable location' : 'Try again'}
+            onAction={() => (usingFallbackLocation ? requestLocation() : refreshTrails())}
+          />
+        ) : filtered.length === 0 ? (
           <EmptyState
             icon="map"
             title="No trails match"

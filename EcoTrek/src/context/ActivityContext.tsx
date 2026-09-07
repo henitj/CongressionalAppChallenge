@@ -8,6 +8,7 @@ import { useStreak } from './StreakContext';
 import { useClub } from '../constants/ClubContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
 import { useProfile, estimateCalories, estimateElevation } from './ProfileContext';
+import { useApp } from './AppContext';
 import { isArray, keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 
@@ -94,6 +95,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
   const { recordActivity } = useStreak();
   const { contribute, myClub } = useClub();
   const { profile } = useProfile();
+  const { trails } = useApp();
 
   const userId = user?.id ?? null;
   const storeKey = keyFor(userId, 'activities');
@@ -145,7 +147,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
       const validation = validateActivity(path, input.miles, input.durationSec, input.type);
 
       // 2. Trail detection + completion
-      const completion = evaluateCompletion(path, input.miles);
+      const completion = evaluateCompletion(path, input.miles, trails.length ? trails : undefined);
 
       // 3. Elevation estimate
       const elevation = estimateElevation(path);
@@ -221,7 +223,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         rejectionReason: validation.flagReason,
       };
     },
-    [persist, award, recordActivity, contribute, myClub, userId, profile]
+    [persist, award, recordActivity, contribute, myClub, userId, profile, trails]
   );
 
   const deleteActivity = useCallback(

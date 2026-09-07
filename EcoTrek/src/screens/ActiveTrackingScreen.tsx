@@ -16,11 +16,11 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 
 import LiveMap from '../components/LiveMap';
 import CleanupSheet from '../components/CleanupSheet';
+import FeedbackSheet from '../components/FeedbackSheet';
 import Icon, { IconName } from '../components/Icon';
 import { Button } from '../components/ui';
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
-import { openFeedbackForm } from '../constants/feedback';
 import {
   Coord,
   getCurrentPosition,
@@ -82,6 +82,8 @@ export default function ActiveTrackingScreen() {
   const [saving, setSaving] = useState(false);
   const [showRest, setShowRest] = useState(false);
   const [showCleanup, setShowCleanup] = useState(false);
+  const [showFeedback, setShowFeedback] = useState(false);
+  const pendingFeedback = useRef(false);
 
   const subRef = useRef<Subscription | null>(null);
   const lastRef = useRef<Coord | undefined>(undefined);
@@ -235,14 +237,21 @@ export default function ActiveTrackingScreen() {
 
       // The cleanup question, at the one moment it makes sense to ask: the
       // walk is over, it was long enough to have passed some litter, and it
-      // actually counted.
-      if (shouldAskCleanup(elapsed, res.rejected, mode)) setShowCleanup(true);
+      // actually counted. Feedback comes after that, as a popup — not a
+      // button buried on the summary.
+      if (!res.rejected && !simpleMode) pendingFeedback.current = true;
+      if (shouldAskCleanup(elapsed, res.rejected, mode)) {
+        setShowCleanup(true);
+      } else if (pendingFeedback.current) {
+        pendingFeedback.current = false;
+        setShowFeedback(true);
+      }
     } catch (e: any) {
       Alert.alert('Could not save', e?.message ?? 'Something went wrong saving that activity.');
     } finally {
       setSaving(false);
     }
-  }, [addActivity, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss, totalActivities]);
+  }, [addActivity, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss, totalActivities, simpleMode]);
 
   /**
    * Answering the cleanup question: the pieces are already logged by the
@@ -379,17 +388,6 @@ export default function ActiveTrackingScreen() {
                     style={{ marginBottom: SPACING.sm }}
                   />
                 ) : null}
-                {!result.rejected && !simpleMode ? (
-                  <Button
-                    label="Give feedback"
-                    icon="star"
-                    variant="secondary"
-                    size="lg"
-                    full
-                    onPress={openFeedbackForm}
-                    style={{ marginBottom: SPACING.sm }}
-                  />
-                ) : null}
                 <Button
                   label="Done"
                   size="lg"
@@ -404,11 +402,22 @@ export default function ActiveTrackingScreen() {
               or more, and never blocking: "None this time" closes it. */}
           <CleanupSheet
             visible={showCleanup}
-            onClose={() => setShowCleanup(false)}
+            onClose={() => {
+              setShowCleanup(false);
+              if (pendingFeedback.current) {
+                pendingFeedback.current = false;
+                setShowFeedback(true);
+              }
+            }}
             title="Pieces of trash you picked up"
             subtitle={`Nice ${result.kind === 'bike' ? 'ride' : 'walk'} — enter a number for extra points`}
             allowNone
             onLogged={handleCleanupLogged}
+          />
+          <FeedbackSheet
+            visible={showFeedback}
+            onClose={() => setShowFeedback(false)}
+            kind={result.kind}
           />
         </SafeAreaView>
       </View>

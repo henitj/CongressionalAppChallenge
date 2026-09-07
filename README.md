@@ -2,7 +2,7 @@
 
 **Tap Start. Walk. We count the miles.**
 
-EcoTrek is a React Native (Expo) app for walkers, hikers, and cyclists in Austin, Texas. It measures how far you go, shows today's weather, and keeps a simple record of your walks. It is built so older adults and people with disabilities can use it without extra help — large type, plain words, and a short path to Start.
+EcoTrek is a React Native (Expo) app for walkers, hikers, and cyclists. It measures how far you go, shows today's weather, and keeps a simple record of your walks. Trails are looked up around the phone, so someone in New York sees their local walks rather than Austin's. It is built so older adults and people with disabilities can use it without extra help — large type, plain words, and a short path to Start.
 
 Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Averineni and Basil Vinesh.
 
@@ -15,7 +15,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Weather on Home** — one tiny box: temperature, condition, and a single friendly line. Full detail is one tap away.
 - **Three tabs only** — Home, Start, and More. Profile, walks, impact, trails, clubs, safety, and settings live under More.
 - **My walks** — this week's miles plus every walk you have saved, in one place.
-- **Austin trails** — 14 trails with area, distance, easy / medium / hard, dogs, water, and bathrooms. Works offline.
+- **Trails near you** — named walks and rides around the phone (OpenStreetMap), with Austin's 14 trails as the offline sample. Area, distance, easy / medium / hard, dogs, water, and bathrooms.
 - **Safety on the trail** — a big one-tap Stop button always at the top of the live tracking screen, plus Call 911 (with a confirm step). A sit-down reminder after 25 minutes.
 - **Simple mode, large text, dark and high-contrast looks** — in Settings.
 - **Google sign-in works for both signing in and signing up** — one tap, seamless. On the web demo a built-in account sheet stands in for the Google popup. Guest needs no account at all, and a guest's data is copied when you later sign in with Google.
@@ -31,7 +31,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Text size** — Normal, Large, or Extra large. One app-wide scaler applies the size to every screen, so larger text never breaks a layout.
 - **Dark** and **High contrast** themes re-theme the whole app — no screen is left behind.
 - **Less motion** skips fades and slides (and follows the system setting).
-- **Give feedback** — a Give Feedback button at the bottom of the Profile page and on the hike summary screen opens the team's Google Form directly. The link is hardcoded in `EcoTrek/src/constants/feedback.ts` — the one place to change it.
+- **Give feedback** — after a counted walk a popup asks how it went; there is also a Give Feedback button at the bottom of the Profile page. Both open the team's Google Form. The link is hardcoded in `EcoTrek/src/constants/feedback.ts` — the one place to change it.
 - Large tap targets and plain language throughout ("points," "level," "skip a week," "your progress").
 
 ---

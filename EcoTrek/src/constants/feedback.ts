@@ -10,11 +10,11 @@
  * (react-native is required lazily so this file can also be imported by the
  * plain-Node logic tests, which never call the helper below.)
  */
-export const FEEDBACK_FORM_URL = 'https://forms.gle/E3p559tiqrNMtZDS7';
+export const FEEDBACK_FORM_URL = 'https://forms.gle/mt4x5mzAyaG2xFEE6';
 
 /**
  * Opens the feedback form. Used by the Give Feedback button at the bottom of
- * the Profile page and the button on the hike summary screen. Clean and
+ * the Profile page and the popup that appears after a counted walk. Clean and
  * quiet: straight to the form, and if the device cannot open it (no browser,
  * rare), a short friendly message instead of a crash.
  */

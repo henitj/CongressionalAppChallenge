@@ -771,7 +771,7 @@ export const routes = [
             {
               role: 'system',
               content:
-                'You are the trail assistant inside EcoTrek, a hiking app for Austin, Texas. ' +
+                'You are the trail assistant inside EcoTrek, a hiking app. ' +
                 'Answer ONLY from the trail data and weather provided. If the data does not ' +
                 'contain the answer, say so plainly rather than guessing — never invent a trail, ' +
                 'a distance, or a rule. Be brief: two or three sentences. Write plainly, no ' +
@@ -781,6 +781,37 @@ export const routes = [
             {
               role: 'user',
               content: `Trail and conditions data:\n${JSON.stringify(context ?? {})}\n\nQuestion: ${question}`,
+            },
+          ],
+        }),
+      });
+
+      if (!res.ok) throw fail(502, 'assistant_upstream_error');
+      const data = await res.json();
+      const text = data?.choices?.[0]?.message?.content?.trim();
+      if (!text) throw fail(502, 'assistant_empty_response');
+      return { text };
+    },
+  },
+
+  /* ── Devices (push tokens) ─────────────────────────────────────────────── */
+  {
+    method: 'POST',
+    path: '/api/devices',
+    handler: async ({ user, body, sql }) => {
+      await sql`
+        INSERT INTO devices (user_id, device_id, platform, app_version, expo_push_token)
+        VALUES (${user.id}, ${capString(body.deviceId, 120)}, ${capString(body.platform, 20) || null},
+                ${capString(body.appVersion, 20) || null}, ${capString(body.expoPushToken, 160) || null})
+        ON CONFLICT (user_id, device_id) DO UPDATE
+          SET expo_push_token = EXCLUDED.expo_push_token,
+              app_version = EXCLUDED.app_version,
+              last_seen_at = now()`;
+      return { ok: true };
+    },
+  },
+];
+\n\nQuestion: ${question}`,
             },
           ],
         }),
