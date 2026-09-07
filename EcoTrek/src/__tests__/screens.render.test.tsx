@@ -181,6 +181,37 @@ describe('review fixes', () => {
   });
 });
 
+describe('the badge reward celebration', () => {
+  it('a new badge wears a NEW mark and pays points with a celebration when claimed', async () => {
+    // Seed one unlocked, unclaimed badge for the test user.
+    await AsyncStorage.setItem(
+      '@ecotrek/test-user/badges',
+      JSON.stringify([{ id: 'first_hike', unlocked: true, unlockedAt: Date.now() }])
+    );
+
+    const utils = await mount(BadgesScreen, /of .* badges earned/);
+    expect(utils.getByText(/new badge to claim/)).toBeTruthy();
+
+    const tile = utils.getByLabelText(/First Steps\. New/);
+    fireEvent.press(tile);
+    await waitFor(() => expect(utils.queryByText('Claim +20 EcoPoints')).toBeTruthy(), {
+      timeout: 4000,
+    });
+
+    fireEvent.press(utils.getByText('Claim +20 EcoPoints'));
+    await waitFor(() => expect(utils.queryByText('Badge unlocked!')).toBeTruthy(), {
+      timeout: 4000,
+    });
+    expect(utils.queryByText('+20 EcoPoints')).toBeTruthy();
+
+    // Tap the celebration away so the auto-dismiss timer is cleaned up.
+    fireEvent.press(utils.getByLabelText('Dismiss celebration'));
+    await waitFor(() => expect(utils.queryByText('Badge unlocked!')).toBeNull(), {
+      timeout: 4000,
+    });
+  });
+});
+
 describe('the post-walk feedback popup', () => {
   it('asks after a walk and offers an honest way out', async () => {
     const utils = await mount(
@@ -264,19 +295,24 @@ describe('stop button, feedback and the removed contacts feature', () => {
     expect(utils.queryByLabelText('Emergency contact phone')).toBeNull();
   });
 
-  it('Profile ends with a Give Feedback button that opens the Google Form', async () => {
+  it('More ends with a Give Feedback button that opens the Google Form', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockResolvedValue(undefined);
-    const utils = await mount(ProfileScreen, 'Share my progress');
+    const utils = await mount(MoreScreen, 'My walks');
     fireEvent.press(utils.getByText('Give Feedback'));
     expect(openURL).toHaveBeenCalledTimes(1);
     expect(openURL).toHaveBeenCalledWith('https://forms.gle/mt4x5mzAyaG2xFEE6');
     openURL.mockRestore();
   });
 
+  it('Give Feedback no longer lives on the Profile page', async () => {
+    const utils = await mount(ProfileScreen, 'Share my progress');
+    expect(utils.queryByText('Give Feedback')).toBeNull();
+  });
+
   it('a failed open shows a friendly alert instead of crashing', async () => {
     const openURL = jest.spyOn(Linking, 'openURL').mockRejectedValue(new Error('no browser'));
     const alert = jest.spyOn(Alert, 'alert').mockImplementation(() => {});
-    const utils = await mount(ProfileScreen, 'Share my progress');
+    const utils = await mount(MoreScreen, 'My walks');
     fireEvent.press(utils.getByText('Give Feedback'));
     await waitFor(() => expect(alert).toHaveBeenCalledTimes(1));
     expect(alert.mock.calls[0][0]).toBe('One moment');

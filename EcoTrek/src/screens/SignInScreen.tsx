@@ -1,5 +1,5 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Linking, Platform, ScrollView } from 'react-native';
+import { View, Text, StyleSheet, Linking, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
@@ -23,6 +23,13 @@ export default function SignInScreen() {
   const { signInWithGoogle, signInAsGuest, error } = useAuth();
   const [showGoogle, setShowGoogle] = useState(false);
   const [busy, setBusy] = useState(false);
+
+  // The gap above the sign-in buttons scales with the screen instead of
+  // collapsing: on a small phone the buttons used to slam right up against
+  // the feature list, and on a tall phone they floated with no breathing
+  // room either. 5% of the screen height, with a floor so it never touches.
+  const { height: windowHeight } = useWindowDimensions();
+  const buttonGap = Math.max(SPACING.lg, Math.round(windowHeight * 0.05));
 
   const useLocalGoogle = Platform.OS === 'web';
 
@@ -74,7 +81,7 @@ export default function SignInScreen() {
             ))}
           </View>
 
-          <View style={{ flex: 1 }} />
+          <View style={{ flex: 1, minHeight: buttonGap }} />
 
           <View style={{ gap: SPACING.sm + 2 }}>
             {error ? (

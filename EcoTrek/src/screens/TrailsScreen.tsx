@@ -50,6 +50,7 @@ export default function TrailsScreen() {
     requestLocation,
     usingFallbackLocation,
     trailsRegion,
+    locating,
   } = useApp();
   const { formatDistanceCompact, formatDistanceUnit } = useSettings();
   const { history } = useActivity();
@@ -241,7 +242,17 @@ export default function TrailsScreen() {
           </Pressable>
         </View>
 
-        {trails.length === 0 && !trailsLoading ? (
+        {trails.length === 0 && (trailsLoading || locating) ? (
+          <EmptyState
+            icon={locating && usingFallbackLocation ? 'map-pin' : 'map'}
+            title={locating && usingFallbackLocation ? 'Finding your location' : 'Looking for trails'}
+            message={
+              locating && usingFallbackLocation
+                ? 'Hang tight — once we know where you are, we will look up walks and rides around you.'
+                : 'Checking OpenStreetMap around you. This can take a few seconds on a slow connection.'
+            }
+          />
+        ) : trails.length === 0 ? (
           <EmptyState
             icon="map-pin"
             title={usingFallbackLocation ? 'See trails near you' : 'No trails nearby'}

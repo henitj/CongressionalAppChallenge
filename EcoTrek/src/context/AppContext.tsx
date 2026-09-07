@@ -59,6 +59,35 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const coordsRef = useRef<Coords | null>(null);
   coordsRef.current = coords;
 
+  /**
+   * A single shared GPS fix. The first caller starts it, everyone else
+   * reuses the same promise, and — crucially — the fix is NOT thrown away
+   * when a caller stops waiting. A cold GPS can take longer than the 4s we
+   * are willing to block on it; before, the slow fix was discarded and the
+   * Trails page needed a second tap to finally load. Now the fix still lands
+   * in state whenever it arrives, and anything watching updates on its own.
+   */
+  const positionFix = useRef<Promise<Coords | null> | null>(null);
+  const getPositionFix = useCallback((): Promise<Coords | null> => {
+    if (!positionFix.current) {
+      positionFix.current = Location.getCurrentPositionAsync({
+        accuracy: Location.Accuracy.Balanced,
+      })
+        .then((pos) => ({
+          latitude: pos.coords.latitude,
+          longitude: pos.coords.longitude,
+        }))
+        .catch((e) => {
+          console.warn('[location] fix failed', e);
+          return null;
+        })
+        .finally(() => {
+          positionFix.current = null;
+        });
+    }
+    return positionFix.current;
+  }, []);
+
   const refreshTrails = useCallback(async () => {
     setTrailsLoading(true);
     setTrailsError(null);
@@ -177,16 +206,22 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             /* ignore */
           }
 
+          const fix = getPositionFix();
           const pos = await Promise.race([
-            Location.getCurrentPositionAsync({
-              accuracy: Location.Accuracy.Balanced,
-            }),
+            fix,
             new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
           ]);
-          if (!pos) return coordsRef.current;
-          const c = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
-          setCoords(c);
-          return c;
+          if (pos) {
+            setCoords(pos);
+            return pos;
+          }
+          // The fix is still working. Keep listening instead of discarding
+          // it: when it lands, coordinates update on their own and the
+          // trails list / weather pick them up — no second tap needed.
+          fix.then((c) => {
+            if (c) setCoords(c);
+          });
+          return coordsRef.current;
         } catch (e) {
           console.warn('[location] failed', e);
           return coordsRef.current;
