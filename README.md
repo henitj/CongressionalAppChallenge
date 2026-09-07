@@ -2,7 +2,7 @@
 
 **Tap Start. Walk. We count the miles.**
 
-EcoTrek is a React Native (Expo) app for walkers, hikers, and cyclists. It measures how far you go, shows today's weather, and keeps a simple record of your walks. Trails are looked up around the phone, so someone in New York sees their local walks rather than Austin's. It is built so older adults and people with disabilities can use it without extra help — large type, plain words, and a short path to Start.
+EcoTrek is a React Native (Expo) app for walkers, hikers, and cyclists. It measures how far you go, shows today's weather, and keeps a simple record of your walks. Trails are looked up around the phone in the United States, Canada, and Mexico, so someone in New York sees their local walks rather than Austin's. It is built so older adults and people with disabilities can use it without extra help — large type, plain words, and a short path to Start.
 
 Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Averineni and Basil Vinesh.
 
@@ -15,7 +15,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 - **Weather on Home** — one tiny box: temperature, condition, and a single friendly line. Full detail is one tap away.
 - **Three tabs only** — Home, Start, and More. Profile, walks, impact, trails, clubs, safety, and settings live under More.
 - **My walks** — this week's miles plus every walk you have saved, in one place.
-- **Trails near you** — named walks and rides around the phone (OpenStreetMap), with Austin's 14 trails as the offline sample. Area, distance, easy / medium / hard, dogs, water, and bathrooms.
+- **Trails near you** — named walks and rides around the phone (OpenStreetMap) in the US, Canada, and Mexico. Austin's 14 trails ship as richer cards when you are actually in Austin. Area, distance, easy / medium / hard, dogs, water, and bathrooms.
 - **Safety on the trail** — a big one-tap Stop button always at the top of the live tracking screen, plus Call 911 (with a confirm step). A sit-down reminder after 25 minutes.
 - **Simple mode, large text, dark and high-contrast looks** — in Settings.
 - **Google sign-in works for both signing in and signing up** — one tap, seamless. On the web demo a built-in account sheet stands in for the Google popup. Guest needs no account at all, and a guest's data is copied when you later sign in with Google.

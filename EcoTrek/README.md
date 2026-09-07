@@ -2,7 +2,7 @@
 
 **Tap Start. Walk. We count the miles.**
 
-A React Native app (Expo SDK 57) for walkers, hikers, and cyclists. Trails are looked up around the phone, so a walker in New York sees their local routes rather than Austin's. One codebase for iOS, Android, and web.
+A React Native app (Expo SDK 57) for walkers, hikers, and cyclists. Trails are looked up around the phone in the United States, Canada, and Mexico, so a walker in New York sees their local routes rather than Austin's. One codebase for iOS, Android, and web.
 
 Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Averineni and Basil Vinesh.
 
@@ -46,7 +46,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 | **Text size / look** | Normal, Large, Extra large. Light, Dark, or Sky (sunrise / afternoon / sunset in daytime only). |
 | **Your photo** | Tap the avatar on your profile to pick or take your own picture. It becomes your profile logo everywhere. |
 | **Share card** | A real picture — your photo plus your stats — sent through the system share sheet. If a device can't make a picture, it falls back to sharing the stats as text, and the card is always on screen to show someone directly. |
-| **Trails** | Named walks and rides near you, looked up from OpenStreetMap. Austin's 14 trails ship offline as the sample when location is off. Cards show area, distance, easy/medium/hard, dogs, water, bathrooms. "Ask about a trail" goes straight to the assistant. |
+| **Trails** | Named walks and rides near you in the US, Canada, and Mexico, looked up from OpenStreetMap using live GPS. Austin's 14 trails ship as richer cards when you are actually in Austin. Cards show area, distance, easy/medium/hard, dogs, water, bathrooms. "Ask about a trail" goes straight to the assistant. |
 | **Trees** | Symbolic only. 1 per mile walked, 1 per 3 miles biked. |
 
 ---
@@ -65,6 +65,10 @@ npm run typecheck
 Expo Go on a phone cannot use `localhost`. If the browser preview works but the phone stays on a loading screen, use `npm start` (tunnel) and update Expo Go to SDK 57.
 
 Copy `.env.example` to `.env` only if you need Google sign-in or `EXPO_PUBLIC_API_URL`. Empty env = full offline app.
+
+Google sign-in: paste the three client IDs into `.env`. Full walkthrough: `docs/GOOGLE_OAUTH_SETUP.md`.
+
+Neon (shared clubs / leaderboards): `cd server && cp .env.example .env`, paste the pooled connection string from [neon.com](https://neon.com), then `npm install && npm run migrate && npm run check`. Full walkthrough: `docs/NEON_SETUP.md`.
 
 ---
 

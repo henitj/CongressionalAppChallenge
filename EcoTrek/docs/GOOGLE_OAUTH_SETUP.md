@@ -8,8 +8,8 @@ You do **not** edit any source file — every value goes in `.env`.
 
 ## 1. Create your own Cloud project
 
-The client IDs currently checked into the repo belong to project
-`140635508834`, which is not yours. Make your own.
+There are no client IDs in the source. Copy `.env.example` to `.env` and
+paste yours. Make your own Cloud project:
 
 1. https://console.cloud.google.com/projectcreate
 2. Name it `EcoTrek`.
@@ -114,8 +114,9 @@ If you build for iOS, `app.json` needs the reversed iOS client ID:
 ]
 ```
 
-`iosUrlScheme()` in `src/constants/authConfig.ts` builds that string for you if
-you want to check it.
+The reversed client ID is `com.googleusercontent.apps.` plus the iOS client ID
+with `.apps.googleusercontent.com` stripped off. `app.config.js` adds it
+automatically from `EXPO_PUBLIC_GOOGLE_IOS_CLIENT_ID`.
 
 ## 6. Backend
 

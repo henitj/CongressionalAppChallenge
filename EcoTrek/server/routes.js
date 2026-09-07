@@ -179,6 +179,18 @@ function generateCode() {
   return out;
 }
 
+/** Same 40-mile nearby window the app uses when merging server trails. */
+function milesBetween(lat1, lon1, lat2, lon2) {
+  const R = 3958.8;
+  const toRad = (d) => (d * Math.PI) / 180;
+  const dLat = toRad(lat2 - lat1);
+  const dLon = toRad(lon2 - lon1);
+  const a =
+    Math.sin(dLat / 2) ** 2 +
+    Math.cos(toRad(lat1)) * Math.cos(toRad(lat2)) * Math.sin(dLon / 2) ** 2;
+  return 2 * R * Math.asin(Math.sqrt(a));
+}
+
 /* ── Routes ───────────────────────────────────────────────────────────────── */
 
 export const routes = [
@@ -435,7 +447,15 @@ export const routes = [
   {
     method: 'GET',
     path: '/api/clubs',
-    handler: async ({ sql }) => loadClubs(sql),
+    // Only the clubs this user belongs to — never a dump of every club in
+    // the database (that is what /api/leaderboard/clubs is for).
+    handler: async ({ user, sql }) => {
+      const mine = await sql`
+        SELECT club_id FROM club_members
+        WHERE user_id = ${user.id} AND left_at IS NULL`;
+      if (!mine.length) return [];
+      return loadClubs(sql, mine.map((r) => r.club_id));
+    },
   },
   {
     method: 'POST',
@@ -781,37 +801,6 @@ export const routes = [
             {
               role: 'user',
               content: `Trail and conditions data:\n${JSON.stringify(context ?? {})}\n\nQuestion: ${question}`,
-            },
-          ],
-        }),
-      });
-
-      if (!res.ok) throw fail(502, 'assistant_upstream_error');
-      const data = await res.json();
-      const text = data?.choices?.[0]?.message?.content?.trim();
-      if (!text) throw fail(502, 'assistant_empty_response');
-      return { text };
-    },
-  },
-
-  /* ── Devices (push tokens) ─────────────────────────────────────────────── */
-  {
-    method: 'POST',
-    path: '/api/devices',
-    handler: async ({ user, body, sql }) => {
-      await sql`
-        INSERT INTO devices (user_id, device_id, platform, app_version, expo_push_token)
-        VALUES (${user.id}, ${capString(body.deviceId, 120)}, ${capString(body.platform, 20) || null},
-                ${capString(body.appVersion, 20) || null}, ${capString(body.expoPushToken, 160) || null})
-        ON CONFLICT (user_id, device_id) DO UPDATE
-          SET expo_push_token = EXCLUDED.expo_push_token,
-              app_version = EXCLUDED.app_version,
-              last_seen_at = now()`;
-      return { ok: true };
-    },
-  },
-];
-\n\nQuestion: ${question}`,
             },
           ],
         }),

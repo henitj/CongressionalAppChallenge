@@ -2,16 +2,19 @@ import type { Trail } from '../constants/austinTrails';
 import { haversineMiles } from './geo';
 
 /**
- * Live trail lookup.
+ * Live trail lookup for the US, Canada and Mexico.
  *
  * EcoTrek used to ship a fixed Austin catalogue. That meant a walker in
  * New York opened Trails and saw Lady Bird Lake. This module looks up real
  * named hiking routes, parks and cycleways around the phone, using
- * OpenStreetMap (no API key, works worldwide, works without our backend).
+ * OpenStreetMap (no API key, works without our backend).
  *
- * Austin's bundled list is still used when:
- *   • we have no location yet (offline / permission off), or
- *   • the phone is actually in the Austin area (the bundled cards are richer).
+ * Service area is the United States, Canada and Mexico. Anywhere else we
+ * return an empty list instead of inventing or shipping Austin trails.
+ *
+ * Austin's bundled list is still used when the phone is actually in the
+ * Austin area (the bundled cards are richer). Without a GPS fix we wait —
+ * we do not pretend the user is in Texas.
  *
  * A language model is deliberately not the source of the catalogue — models
  * invent trails. OSM reports trails that exist.
@@ -21,6 +24,43 @@ export const AUSTIN_CENTER = { latitude: 30.2672, longitude: -97.7431 };
 
 /** Inside this radius we treat the user as an Austin walker. */
 export const AUSTIN_RADIUS_MI = 40;
+
+/** ISO country codes EcoTrek serves. Puerto Rico counts as the US. */
+export const SERVICE_COUNTRY_CODES = ['us', 'ca', 'mx', 'pr'] as const;
+
+export type PlaceInfo = {
+  name: string | null;
+  countryCode: string | null;
+  country: string | null;
+};
+
+export function isSupportedCountry(code: string | null | undefined): boolean {
+  if (!code) return false;
+  return (SERVICE_COUNTRY_CODES as readonly string[]).includes(code.toLowerCase());
+}
+
+/**
+ * Cheap reject for points that are clearly not in North America, so we do
+ * not spend an Overpass round-trip on London or Tokyo. Hawaii, Alaska,
+ * Puerto Rico, northern Canada and southern Mexico are included.
+ */
+export function inServiceBbox(lat: number, lon: number): boolean {
+  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
+  if (lat >= 18.5 && lat <= 22.6 && lon >= -160.6 && lon <= -154.4) return true; // Hawaii
+  if (lat >= 51 && lat <= 72 && lon >= -170 && lon <= -129) return true; // Alaska
+  if (lat >= 14.5 && lat <= 83.5 && lon >= -141 && lon <= -52) return true; // CONUS + Canada + Mexico + PR
+  return false;
+}
+
+/**
+ * Nominatim country_code wins when we have it (drops Cuba, Greenland, etc.
+ * that sit near the bbox). If the geocoder is down we fall back to the bbox
+ * so a New Yorker is not locked out of trails because OSM reverse failed.
+ */
+export function isInServiceArea(lat: number, lon: number, countryCode?: string | null): boolean {
+  if (countryCode) return isSupportedCountry(countryCode);
+  return inServiceBbox(lat, lon);
+}
 
 const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
@@ -46,10 +86,12 @@ type OsmElement = {
   tags?: Record<string, string>;
 };
 
+export type TrailSource = 'bundled' | 'live' | 'unsupported' | 'need-location';
+
 export type TrailCatalogue = {
   trails: Trail[];
   region: string | null;
-  source: 'bundled' | 'live';
+  source: TrailSource;
 };
 
 type CacheEntry = { key: string; at: number; catalogue: TrailCatalogue };
@@ -261,19 +303,30 @@ export function mergeTrailLists(primary: Trail[], extra: Trail[]): Trail[] {
   return [...byId.values()];
 }
 
-export async function fetchPlaceName(lat: number, lon: number): Promise<string | null> {
+export async function fetchPlace(lat: number, lon: number): Promise<PlaceInfo> {
+  const empty: PlaceInfo = { name: null, countryCode: null, country: null };
   try {
     const url =
       `${NOMINATIM_URL}?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}` +
       `&format=json&zoom=10&addressdetails=1`;
     const data = await fetchJSON(url, 6000);
     const a = data?.address ?? {};
-    const name =
+    const nameRaw =
       a.city || a.town || a.village || a.municipality || a.suburb || a.county || a.state || null;
-    return typeof name === 'string' && name.trim() ? name.trim() : null;
+    const name = typeof nameRaw === 'string' && nameRaw.trim() ? nameRaw.trim() : null;
+    const countryCode =
+      typeof a.country_code === 'string' && a.country_code.trim()
+        ? a.country_code.trim().toLowerCase()
+        : null;
+    const country = typeof a.country === 'string' && a.country.trim() ? a.country.trim() : null;
+    return { name, countryCode, country };
   } catch {
-    return null;
+    return empty;
   }
+}
+
+export async function fetchPlaceName(lat: number, lon: number): Promise<string | null> {
+  return (await fetchPlace(lat, lon)).name;
 }
 
 function overpassQuery(lat: number, lon: number): string {

@@ -1,22 +1,26 @@
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 import {
   fetchOsmTrails,
-  fetchPlaceName,
+  fetchPlace,
+  inServiceBbox,
+  isInServiceArea,
   isNearAustin,
   mergeTrailLists,
   readTrailCache,
   withDistances,
   writeTrailCache,
   type TrailCatalogue,
+  type TrailSource,
 } from '../services/nearbyTrails';
 
 /**
  * Trail catalogue.
  *
- * 14 Austin-area trails ship inside the app so Trails still works instantly
- * and offline. Once we have a GPS fix, `fetchNearbyTrails` looks up real
- * named routes around the phone (OpenStreetMap) so a walker in New York sees
- * Central Park, not Lady Bird Lake.
+ * 14 Austin-area trails ship inside the app so an Austin walker still sees
+ * rich cards offline. Once we have a GPS fix, `fetchNearbyTrails` looks up
+ * real named routes around the phone (OpenStreetMap) so a walker in New York
+ * sees Central Park, not Lady Bird Lake. Service area is the US, Canada and
+ * Mexico — anywhere else we return an empty list rather than Austin's.
  *
  * A language model is not the source of the list — models invent trails.
  * OSM reports trails that exist, with no API key and no backend required.
@@ -477,16 +481,17 @@ export function haversineMiles(
   return 2 * R * Math.asin(Math.sqrt(a));
 }
 
-export type { TrailCatalogue };
+export type { TrailCatalogue, TrailSource };
 
 /**
  * Returns trails around the user.
  *
- *   • No GPS yet            → bundled Austin list (offline sample).
- *   • GPS in Austin         → bundled list plus any extra OSM routes.
- *   • GPS anywhere else     → live OSM lookup for that city.
- *   • Backend configured    → nearby server rows merged in, never replacing
- *                             a live local list with Austin-only seed data.
+ *   • No GPS yet                 → empty. Ask for location.
+ *   • GPS outside US/CA/MX       → empty. EcoTrek does not cover that country.
+ *   • GPS in Austin              → bundled list plus any extra OSM routes.
+ *   • GPS elsewhere in US/CA/MX  → live OSM lookup for that city.
+ *   • Backend configured         → nearby server rows merged in, never
+ *                                  replacing a live local list with Austin seed.
  *
  * Never throws. A failed lookup falls back to cache, then to Austin only
  * if the phone is actually there.
@@ -496,21 +501,48 @@ export async function fetchNearbyTrails(
   lon?: number
 ): Promise<TrailCatalogue> {
   if (lat == null || lon == null) {
-    return { trails: AUSTIN_TRAILS, region: 'Austin, TX', source: 'bundled' };
+    return { trails: [], region: null, source: 'need-location' };
   }
 
   const cached = readTrailCache(lat, lon);
   if (cached) return cached;
 
+  const outsideBbox = !inServiceBbox(lat, lon);
+  if (outsideBbox) {
+    const place = await fetchPlace(lat, lon).catch(() => ({
+      name: null,
+      countryCode: null,
+      country: null,
+    }));
+    const catalogue: TrailCatalogue = {
+      trails: [],
+      region: place.country ?? place.name ?? 'Outside the US, Canada, and Mexico',
+      source: 'unsupported',
+    };
+    writeTrailCache(lat, lon, catalogue);
+    return catalogue;
+  }
+
   const nearAustin = isNearAustin(lat, lon);
   const [place, osmResult] = await Promise.all([
-    fetchPlaceName(lat, lon).catch(() => null),
+    fetchPlace(lat, lon).catch(() => ({ name: null, countryCode: null, country: null })),
     fetchOsmTrails(lat, lon, nearAustin ? 'Austin' : 'Nearby').catch((e) => {
       console.warn('[trails] OSM lookup failed', e);
       return [] as Trail[];
     }),
   ]);
-  const region = place ?? (nearAustin ? 'Austin, TX' : 'Nearby');
+
+  if (!isInServiceArea(lat, lon, place.countryCode)) {
+    const catalogue: TrailCatalogue = {
+      trails: [],
+      region: place.country ?? place.name ?? 'Outside the US, Canada, and Mexico',
+      source: 'unsupported',
+    };
+    writeTrailCache(lat, lon, catalogue);
+    return catalogue;
+  }
+
+  const region = place.name ?? (nearAustin ? 'Austin, TX' : 'Nearby');
   const live = osmResult.map((t) => (t.area === 'Nearby' && region !== 'Nearby' ? { ...t, area: region } : t));
 
   let fromServer: Trail[] = [];
@@ -543,7 +575,9 @@ export async function fetchNearbyTrails(
     region,
     source: live.length || fromServer.length ? 'live' : nearAustin ? 'bundled' : 'live',
   };
-  if (trails.length) writeTrailCache(lat, lon, catalogue);
+  // Cache hits and unsupported-region answers. Do not cache an empty live
+  // miss — Overpass blips should not hide a city for half an hour.
+  if (trails.length || catalogue.source === 'bundled') writeTrailCache(lat, lon, catalogue);
   return catalogue;
 }
 

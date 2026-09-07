@@ -55,6 +55,9 @@ import {
   parseOsmDistanceMiles,
   trailFromOsmElement,
   AUSTIN_CENTER,
+  inServiceBbox,
+  isSupportedCountry,
+  isInServiceArea,
 } from '../services/nearbyTrails';
 
 let passed = 0;
@@ -775,12 +778,32 @@ test('the feedback form link is hardcoded to the team Google Form', () => {
   assert.match(FEEDBACK_FORM_URL, /^https:\/\//);
 });
 
-/* ── Worldwide trail lookup ──────────────────────────────────────────────── */
+/* ── Nearby trail lookup (US / Canada / Mexico) ─────────────────────────── */
 
 test('Austin is near Austin, New York is not', () => {
   assert.equal(isNearAustin(AUSTIN_CENTER.latitude, AUSTIN_CENTER.longitude), true);
   assert.equal(isNearAustin(40.7128, -74.006), false);
   assert.equal(isNearAustin(51.5074, -0.1278), false);
+});
+
+test('the service area is the US, Canada and Mexico', () => {
+  assert.equal(inServiceBbox(30.2672, -97.7431), true); // Austin
+  assert.equal(inServiceBbox(40.7128, -74.006), true); // New York
+  assert.equal(inServiceBbox(43.6532, -79.3832), true); // Toronto
+  assert.equal(inServiceBbox(19.4326, -99.1332), true); // Mexico City
+  assert.equal(inServiceBbox(21.3069, -157.8583), true); // Honolulu
+  assert.equal(inServiceBbox(61.2181, -149.9003), true); // Anchorage
+  assert.equal(inServiceBbox(51.5074, -0.1278), false); // London
+  assert.equal(inServiceBbox(-33.8688, 151.2093), false); // Sydney
+  assert.equal(isSupportedCountry('us'), true);
+  assert.equal(isSupportedCountry('CA'), true);
+  assert.equal(isSupportedCountry('mx'), true);
+  assert.equal(isSupportedCountry('gb'), false);
+  // Nominatim country wins over the bbox (Cuba sits near Florida).
+  assert.equal(isInServiceArea(23.1136, -82.3666, 'cu'), false);
+  assert.equal(isInServiceArea(40.7128, -74.006, 'us'), true);
+  // Geocoder down: bbox is enough so NYC is not locked out.
+  assert.equal(isInServiceArea(40.7128, -74.006, null), true);
 });
 
 test('OSM distance tags parse as miles', () => {

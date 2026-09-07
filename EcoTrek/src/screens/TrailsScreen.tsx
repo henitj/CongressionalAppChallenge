@@ -42,8 +42,16 @@ export default function TrailsScreen() {
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { trails, trailsLoading, refreshTrails, permission, requestLocation, usingFallbackLocation, trailsRegion } =
-    useApp();
+  const {
+    trails,
+    trailsLoading,
+    refreshTrails,
+    permission,
+    requestLocation,
+    usingFallbackLocation,
+    trailsRegion,
+    trailsSource,
+  } = useApp();
   const { formatDistanceCompact, formatDistanceUnit } = useSettings();
   const { history } = useActivity();
   const { isTablet } = useResponsive();
@@ -191,7 +199,7 @@ export default function TrailsScreen() {
             tone="neutral"
             icon="map-pin"
             title="See trails near you"
-            message="Turn on location and we will look up walks and rides around you — wherever you are."
+            message="Turn on location and we will look up walks and rides around you in the US, Canada, and Mexico."
             right={
               <Pressable onPress={() => requestLocation()} hitSlop={8}>
                 <Text style={styles.bannerAction}>Enable</Text>

@@ -179,7 +179,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     if (user?.provider === 'guest') guestToMigrate.current = user.id;
     if (!googleConfigured) {
       setError(
-        'Google OAuth is not configured. Add your client IDs to src/constants/authConfig.ts.'
+        'Google sign-in is not set up yet. Copy EcoTrek/.env.example to .env and paste your Google client IDs. Guest still works.'
       );
       return;
     }

@@ -17,8 +17,10 @@ const TABLES = [
   'clubs',
   'club_members',
   'activities',
-  'cleanups',
-  'points_ledger',
+  'point_events',
+  'trails',
+  'daily_streaks',
+  'badges',
 ];
 
 function problemsFor(url) {
