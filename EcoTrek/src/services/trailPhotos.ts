@@ -210,6 +210,23 @@ export function getTrailPhotos(trail: Trail): Promise<TrailPhotoSet> {
   const cached = photoSetCache.get(trail.id);
   if (cached) return cached;
 
+  // A configured API can supply an approved/admin-curated set from
+  // `trail_photos`. Use it first so a database editor can replace a bad
+  // Commons result without shipping a new app build.
+  const approved = Array.isArray(trail.photos)
+    ? trail.photos.filter((photo) => photo && /^https?:\/\//i.test(photo.url))
+    : [];
+  if (approved.length > 0) {
+    const set: TrailPhotoSet = {
+      scenery: approved.filter((photo) => photo.kind === 'scenery'),
+      path: approved.filter((photo) => photo.kind === 'path'),
+      all: approved,
+    };
+    const promise = Promise.resolve(set);
+    photoSetCache.set(trail.id, promise);
+    return promise;
+  }
+
   const promise = (async (): Promise<TrailPhotoSet> => {
     const [near, named] = await Promise.all([
       geosearchPhotos(trail.startLat, trail.startLng, 3000, 20, 900),
@@ -274,6 +291,10 @@ export function getTrailCover(trail: Trail): Promise<string | null> {
 
   const promise = throttled(async () => {
     if (trail.imageUrl) return trail.imageUrl;
+    const approved = Array.isArray(trail.photos)
+      ? trail.photos.find((photo) => /^https?:\/\//i.test(photo.url))
+      : null;
+    if (approved) return approved.thumbUrl || approved.url;
     const [named, nearby] = await Promise.all([
       trail.name.length >= 6 ? searchPhotosByName(trail.name, 6, 640) : Promise.resolve([]),
       geosearchPhotos(trail.startLat, trail.startLng, 1500, 6, 640),

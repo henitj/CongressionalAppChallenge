@@ -88,7 +88,7 @@ POST someone else's id and write to their account.
 | DELETE | `/api/clubs/:id` | owner only, soft delete |
 | POST | `/api/clubs/:id/contribute` | adds points/trees/miles |
 | GET | `/api/leaderboard/clubs` · `/users` | |
-| GET | `/api/trails` | public |
+| GET | `/api/trails` | public; includes active approved `trail_photos` metadata |
 | POST | `/api/devices` | push token registration |
 
 Paths are defined once in `routes.js` and mirrored in the app at

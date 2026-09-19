@@ -754,6 +754,13 @@ export const routes = [
     public: true,
     handler: async ({ sql }) => {
       const rows = await sql`SELECT * FROM trails WHERE is_active ORDER BY name`;
+      const photos = rows.length
+        ? await sql`
+            SELECT trail_id, image_url, thumb_url, title, kind
+            FROM trail_photos
+            WHERE is_active AND trail_id = ANY(${rows.map((t) => t.id)})
+            ORDER BY created_at ASC`
+        : [];
       return rows.map((t) => ({
         id: t.slug,
         slug: t.slug,
@@ -765,6 +772,14 @@ export const routes = [
         description: t.description,
         safetyTips: t.safety_tips ?? [],
         imageUrl: t.image_url ?? undefined,
+        photos: photos
+          .filter((p) => p.trail_id === t.id)
+          .map((p) => ({
+            url: p.image_url,
+            thumbUrl: p.thumb_url ?? p.image_url,
+            title: p.title ?? t.name,
+            kind: p.kind,
+          })),
         rating: t.rating == null ? undefined : Number(t.rating),
         petFriendly: t.pet_friendly,
         familyFriendly: t.family_friendly,

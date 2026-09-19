@@ -72,8 +72,9 @@ those rows reviewable and never let AI invent coordinates or photos that are pre
 
 One row per approved photo. Store the URL and attribution, never image bytes in Postgres.
 The current offline client uses Wikimedia Commons directly (`source='commons'`); an admin can
-copy an approved URL into this table later without changing the app. `thumb_url` keeps list
-cards fast, and `is_active=false` removes a bad or outdated image without deleting history.
+copy an approved URL into this table later without changing the app; `/api/trails` sends active
+rows to the detail sheet before the app falls back to Commons. `thumb_url` keeps list cards fast,
+and `is_active=false` removes a bad or outdated image without deleting history.
 
 ## 5. `cleanup_records`
 

@@ -168,6 +168,7 @@ CREATE TABLE IF NOT EXISTS trail_photos (
   thumb_url      TEXT,
   title          TEXT,
   attribution    TEXT,
+  kind           TEXT NOT NULL DEFAULT 'scenery' CHECK (kind IN ('scenery','path')),
   source         TEXT NOT NULL DEFAULT 'commons' CHECK (source IN ('commons','admin','user')),
   is_active      BOOLEAN NOT NULL DEFAULT TRUE,
   created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
