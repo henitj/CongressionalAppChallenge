@@ -110,7 +110,7 @@ export function ProfileProvider({ children }: { children: React.ReactNode }) {
       } else {
         history.push({ date: todayTs, weight });
       }
-      const next = { ...prev, weightPounds: weight, weightHistory: history.slice(-90) };
+      const next = { ...prev, weightPounds: weight, weightHistory: history };
       saveJSON(storeKey, next);
       return next;
     });

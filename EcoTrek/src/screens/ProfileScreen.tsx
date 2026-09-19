@@ -2,6 +2,7 @@ import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable, Alert, TextInput } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
+import Confetti from '../components/Confetti';
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import StreakStrip from '../components/StreakStrip';
@@ -11,9 +12,8 @@ import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useActivity } from '../context/ActivityContext';
 import { useStreak } from '../context/StreakContext';
-import { useEcoPoints, Badge } from '../constants/EcoPointsContext';
+import { useEcoPoints, Badge, BADGE_CLAIM_POINTS } from '../constants/EcoPointsContext';
 import { useSettings } from '../constants/SettingsContext';
-import { useClub, sortedMembers } from '../constants/ClubContext';
 import { useProfile } from '../context/ProfileContext';
 import { fullNameOf } from '../services/displayName';
 import { chooseAvatarAction, pickAndStoreAvatarPhoto } from '../services/avatar';
@@ -27,12 +27,13 @@ export default function ProfileScreen() {
   const { user, signOut, updateUser } = useAuth();
   const { totalMiles, totalTrees, uniqueTrailsCompleted } = useActivity();
   const { currentStreak, longestStreak, totalActiveWeeks, availableFreezes } = useStreak();
-  const { totalPoints, level, progressPercent, nextLevelPoints, badges, unlockedBadges, newBadges } =
+  const { totalPoints, level, progressPercent, nextLevelPoints, badges, unlockedBadges, newBadges, claimBadge } =
     useEcoPoints();
   const { formatDistanceCompact: formatDistance, formatDistanceUnit } = useSettings();
-  const { myClub, myRank, clubsLeading } = useClub();
   const { profile, setProfile, updateWeight, setAvatar } = useProfile();
 
+  const [claimedPoints, setClaimedPoints] = useState(0);
+  const [claiming, setClaiming] = useState(false);
   const [selectedBadge, setSelectedBadge] = useState<Badge | null>(null);
   const [showWeightEditor, setShowWeightEditor] = useState(false);
   const [newWeight, setNewWeight] = useState('');
@@ -41,11 +42,6 @@ export default function ProfileScreen() {
   const [editFirst, setEditFirst] = useState('');
   const [editLast, setEditLast] = useState('');
   const displayName = fullNameOf(profile, user?.name);
-
-  const memberSince = useMemo(() => {
-    const ts = myClub?.members.find((m) => m.id === user?.id)?.joinedAt;
-    return ts ? new Date(ts) : null;
-  }, [myClub, user?.id]);
 
   const shareImpact = () => setShowShare(true);
 
@@ -135,10 +131,10 @@ export default function ProfileScreen() {
               </View>
               <View style={styles.levelRow}>
                 <Icon name="award" size={13} color={colors.primaryGlow} strokeWidth={2} />
-                <Text style={styles.impactLevel}>{level}</Text>
+                <Text style={styles.impactLevel} numberOfLines={1}>{level}</Text>
               </View>
               {profile.age > 0 ? (
-                <Text style={styles.profileMeta}>
+                <Text style={styles.profileMeta} numberOfLines={2}>
                   {profile.age} yrs · {Math.floor(profile.heightInches / 12)}'{profile.heightInches % 12}" · {profile.weightPounds} lbs
                 </Text>
               ) : null}
@@ -147,8 +143,8 @@ export default function ProfileScreen() {
 
           <View style={styles.levelProgress}>
             <View style={styles.levelProgressLabels}>
-              <Text style={styles.levelProgressText}>{totalPoints.toLocaleString()} pts</Text>
-              <Text style={styles.levelProgressText}>{nextLevelPoints.toLocaleString()}</Text>
+              <Text style={styles.levelProgressText} numberOfLines={1}>{totalPoints.toLocaleString()} pts</Text>
+              <Text style={styles.levelProgressText} numberOfLines={1}>{nextLevelPoints.toLocaleString()}</Text>
             </View>
             <ProgressBar
               percent={progressPercent}
@@ -231,58 +227,6 @@ export default function ProfileScreen() {
           </Card>
         ) : null}
 
-        {/* Clubs */}
-        {clubsLeading.length > 0 ? (
-          <View>
-            <SectionHeader title="Leading" />
-            <View style={{ gap: SPACING.sm }}>
-              {clubsLeading.map((c) => {
-                const members = sortedMembers(c);
-                const me = members[0];
-                const second = members[1];
-                const lead = second ? me.points - second.points : me.points;
-                return (
-                  <Card key={c.id} style={styles.leadCard} onPress={() => navigation.navigate('Clubs')}>
-                    <View style={styles.crownWrap}>
-                      <Icon name="crown" size={18} color={colors.accentDark} strokeWidth={2} />
-                    </View>
-                    <View style={{ flex: 1 }}>
-                      <Text style={styles.leadTitle} numberOfLines={1}>
-                        #1 in {c.name}
-                      </Text>
-                      <Text style={styles.leadSub}>
-                        {me.points.toLocaleString()} pts
-                        {second ? ` · ${lead.toLocaleString()} ahead of second` : ' · unopposed so far'}
-                      </Text>
-                    </View>
-                    <Icon name="chevron-right" size={17} color={colors.textLight} />
-                  </Card>
-                );
-              })}
-            </View>
-          </View>
-        ) : myClub ? (
-          <Card onPress={() => navigation.navigate('Clubs')}>
-            <View style={styles.clubRow}>
-              <View style={styles.clubIcon}>
-                <Icon name="users" size={17} color={colors.primary} strokeWidth={1.9} />
-              </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.clubName} numberOfLines={1}>
-                  {myClub.name}
-                </Text>
-                <Text style={styles.clubMeta}>
-                  Ranked #{myRank} of {myClub.members.length}
-                  {memberSince
-                    ? ` · since ${memberSince.toLocaleDateString(undefined, { month: 'short', year: 'numeric' })}`
-                    : ''}
-                </Text>
-              </View>
-              <Icon name="chevron-right" size={17} color={colors.textLight} />
-            </View>
-          </Card>
-        ) : null}
-
         {/* Streak */}
         <View>
           <SectionHeader
@@ -331,7 +275,7 @@ export default function ProfileScreen() {
             {newBadges.length > 0 ? (
               <Text style={styles.badgeNewHint}>
                 {newBadges.length} new badge reward{newBadges.length === 1 ? '' : 's'} to claim —
-                tap See all.
+                tap a badge to collect it.
               </Text>
             ) : null}
             <View style={styles.badgePreviewRow}>
@@ -340,7 +284,7 @@ export default function ProfileScreen() {
                 .map((b) => (
                 <Pressable
                   key={b.id}
-                  onPress={() => setSelectedBadge(b)}
+                  onPress={() => { setClaimedPoints(0); setSelectedBadge(b); }}
                   style={[styles.badgePreview, b.unlocked && styles.badgeUnlocked]}
                   accessibilityLabel={b.name}
                 >
@@ -386,7 +330,13 @@ export default function ProfileScreen() {
               />
             </View>
             <Text style={styles.badgeDesc}>{selectedBadge.description}</Text>
-            {selectedBadge.unlocked && !selectedBadge.claimedAt ? (
+            {claimedPoints > 0 ? (
+              <View style={{ alignItems: 'center', gap: SPACING.md, width: '100%' }}>
+                <Confetti />
+                <Text accessibilityLiveRegion="polite" style={styles.badgeNewHint}>+{claimedPoints} EcoPoints claimed!</Text>
+                <Button label="Done" full onPress={() => setSelectedBadge(null)} />
+              </View>
+            ) : selectedBadge.unlocked && !selectedBadge.claimedAt ? (
               <>
                 <Pill
                   label={
@@ -398,12 +348,16 @@ export default function ProfileScreen() {
                   size="sm"
                 />
                 <Button
-                  label="Claim reward on the Badges page"
+                  label={`Claim +${BADGE_CLAIM_POINTS} EcoPoints`}
+                  loading={claiming}
+                  disabled={claiming}
                   icon="gift"
                   variant="secondary"
-                  onPress={() => {
-                    setSelectedBadge(null);
-                    navigation.navigate('Badges');
+                  onPress={async () => {
+                    if (claiming) return;
+                    setClaiming(true);
+                    try { setClaimedPoints(await claimBadge(selectedBadge.id)); }
+                    finally { setClaiming(false); }
                   }}
                 />
               </>
@@ -523,12 +477,12 @@ function ImpactStat({ value, unit, label }: { value: string; unit?: string; labe
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
-    <View style={{ flex: 1 }}>
+    <View style={{ flexBasis: '45%', flexGrow: 1, minWidth: 0 }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
-        <Text style={styles.impactStatValue}>{value}</Text>
-        {unit ? <Text style={styles.impactStatUnit}>{unit}</Text> : null}
+        <Text style={styles.impactStatValue} numberOfLines={1}>{value}</Text>
+        {unit ? <Text style={styles.impactStatUnit} numberOfLines={1}>{unit}</Text> : null}
       </View>
-      <Text style={styles.impactStatLabel}>{label}</Text>
+      <Text style={styles.impactStatLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -537,10 +491,10 @@ function StreakStat({ value, label, icon, highlight }: { value: number; label: s
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
-    <View style={{ flex: 1, gap: 3 }}>
+    <View style={{ flexBasis: '45%', flexGrow: 1, gap: 3, minWidth: 0 }}>
       <Icon name={icon} size={15} color={highlight ? colors.accent : colors.textMuted} strokeWidth={2} />
-      <Text style={styles.streakStatValue}>{value}</Text>
-      <Text style={styles.streakStatLabel}>{label}</Text>
+      <Text style={styles.streakStatValue} numberOfLines={1}>{value}</Text>
+      <Text style={styles.streakStatLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -564,9 +518,9 @@ function LegendItem({ color, border, label }: { color: string; border?: string; 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
 
-  body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
+  body: { paddingHorizontal: SPACING.md, gap: SPACING.lg },
 
-  impactCard: { padding: SPACING.md + 2, gap: SPACING.md },
+  impactCard: { padding: SPACING.md + 4, gap: SPACING.md },
   impactHeader: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md - 2 },
   avatarWrap: { position: 'relative' },
   avatarChip: {
@@ -582,9 +536,9 @@ function makeStyles(c: ColorPalette, t: Typography) {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  impactName: { ...t.h1, color: '#fff' },
+  impactName: { flexShrink: 1, ...t.h1, color: '#fff' },
   levelRow: { flexDirection: 'row', alignItems: 'center', gap: 5, marginTop: 3 },
-  impactLevel: { ...t.smallMed, color: c.primaryGlow },
+  impactLevel: { flexShrink: 1, ...t.smallMed, color: c.primaryGlow },
   profileMeta: { ...t.micro, color: 'rgba(255,255,255,0.45)', marginTop: 4 },
 
   levelProgress: { gap: 5 },
@@ -592,7 +546,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
   levelProgressText: { ...t.micro, color: 'rgba(255,255,255,0.55)' },
 
   impactStats: {
-    flexDirection: 'row',
+    flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md,
     paddingTop: SPACING.md - 4,
     borderTopWidth: 1,
     borderTopColor: 'rgba(255,255,255,0.1)',
@@ -622,31 +576,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
   graphLabels: { flexDirection: 'row', justifyContent: 'space-between', marginTop: 4 },
   graphLabel: { ...t.micro, color: c.textMuted },
 
-  leadCard: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
-  crownWrap: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.md,
-    backgroundColor: c.accentLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  leadTitle: { ...t.h4, color: c.text },
-  leadSub: { ...t.small, color: c.textMuted, marginTop: 1 },
-
-  clubRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
-  clubIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.md,
-    backgroundColor: c.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  clubName: { ...t.h4, color: c.text },
-  clubMeta: { ...t.small, color: c.textMuted, marginTop: 1 },
-
-  streakStats: { flexDirection: 'row' },
+  streakStats: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
   streakStatValue: { ...t.h1, color: c.text },
   streakStatLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
   streakCaption: { ...t.overline, color: c.textMuted },
@@ -662,10 +592,9 @@ function makeStyles(c: ColorPalette, t: Typography) {
   badgePreviewRow: { flexDirection: 'row', gap: SPACING.sm },
   badgePreview: {
     flex: 1,
-    aspectRatio: 1,
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
-    borderColor: c.border,
+    minHeight: 112,
+    borderRadius: RADIUS.xl,
+    borderWidth: 0,
     backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
@@ -674,7 +603,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
     overflow: 'hidden',
   },
   badgeNewHint: { ...t.smallMed, color: c.primary, marginBottom: SPACING.sm },
-  badgeUnlocked: { backgroundColor: c.primarySurface, borderColor: c.primaryGlow },
+  badgeUnlocked: { backgroundColor: c.primarySurface, borderColor: 'transparent' },
   badgeName: {
     fontSize: 13,
     fontWeight: '700',
@@ -686,7 +615,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
   badgeLarge: {
     width: 88,
     height: 88,
-    borderRadius: RADIUS.xl,
+    borderRadius: RADIUS.xxl,
     backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',

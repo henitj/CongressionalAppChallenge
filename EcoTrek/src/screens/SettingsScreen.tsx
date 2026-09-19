@@ -31,13 +31,9 @@ export default function SettingsScreen() {
     setAppearance,
     textSize,
     setTextSize,
-    simpleMode,
-    setSimpleMode,
-    reduceMotion,
-    setReduceMotion,
   } = useSettings();
   const [showGoogleSheet, setShowGoogleSheet] = useState(false);
-  const { user, signOut, signInWithGoogle } = useAuth();
+  const { user, signOut, signInWithGoogle, googleConfigured } = useAuth();
   const { resetPoints } = useEcoPoints();
   const { clearHistory } = useActivity();
   const { permission, requestLocation } = useApp();
@@ -71,7 +67,7 @@ export default function SettingsScreen() {
   };
 
   const handleGoogleUpgrade = async () => {
-    if (Platform.OS === 'web') {
+    if (Platform.OS === 'web' && !googleConfigured) {
       setShowGoogleSheet(true);
       return;
     }
@@ -91,6 +87,7 @@ export default function SettingsScreen() {
             setBusy(true);
             await Promise.all([resetPoints(), clearHistory()]);
             await clearUserData(user?.id);
+            await signOut();
             setBusy(false);
             Alert.alert('Done', 'Your data has been erased from this device.');
           },
@@ -102,7 +99,7 @@ export default function SettingsScreen() {
   const confirmDeleteAccount = () => {
     Alert.alert(
       'Delete your account?',
-      'This erases everything on this device and signs you out. If you signed in with Google, EcoTrek stops storing anything about you.',
+      'This removes this account’s local data and signs you out. It does not delete your Google account or any data previously sent to a configured EcoTrek server.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -130,9 +127,11 @@ export default function SettingsScreen() {
               <View style={styles.accountIcon}>
                 <Icon name="user" size={18} color={colors.primary} strokeWidth={1.9} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.accountName}>{user?.name ?? 'Trekker'}</Text>
-                <Text style={styles.accountEmail}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.accountName} numberOfLines={1}>
+                  {user?.name ?? 'Trekker'}
+                </Text>
+                <Text style={styles.accountEmail} numberOfLines={1}>
                   {user?.provider === 'guest' ? 'Guest account' : user?.email}
                 </Text>
               </View>
@@ -142,12 +141,12 @@ export default function SettingsScreen() {
                 <Banner
                   tone="neutral"
                   icon="info"
-                  title="Save your walks"
-                  message="Sign in with Google and we will keep the walks you already logged on this phone."
+                  title="Your progress is saved locally"
+                  message="Signing in identifies you. It does not enable Google Drive backup."
                   style={{ marginTop: SPACING.md - 2 }}
                 />
                 <Button
-                  label="Save with Google"
+                  label="Use Google"
                   full
                   style={{ marginTop: SPACING.sm }}
                   onPress={handleGoogleUpgrade}
@@ -160,7 +159,7 @@ export default function SettingsScreen() {
         {/* Easy to use */}
         <View>
           <SectionHeader title="Easy to use" />
-          <Card style={{ gap: SPACING.md - 2 }}>
+          <Card style={{ gap: SPACING.md }}>
             <View>
               <Text style={styles.settingLabel}>Text size</Text>
               <Segmented
@@ -171,40 +170,10 @@ export default function SettingsScreen() {
                 ]}
                 value={textSize}
                 onChange={(v) => setTextSize(v as any)}
-                style={{ marginTop: 6 }}
-              />
-            </View>
-            <View>
-              <Text style={styles.settingLabel}>Simple mode</Text>
-              <Segmented
-                options={[
-                  { value: 'off', label: 'Off' },
-                  { value: 'on', label: 'On' },
-                ]}
-                value={simpleMode ? 'on' : 'off'}
-                onChange={(v) => setSimpleMode(v === 'on')}
-                style={{ marginTop: 6 }}
+                style={{ marginTop: 8 }}
               />
               <Text style={styles.settingHint}>
-                Bigger text and bigger buttons everywhere. Home and More keep the
-                essentials, and the live walk screen shows three big numbers
-                instead of eight.
-              </Text>
-            </View>
-            <View>
-              <Text style={styles.settingLabel}>Less motion</Text>
-              <Segmented
-                options={[
-                  { value: 'system', label: 'System' },
-                  { value: 'on', label: 'On' },
-                  { value: 'off', label: 'Off' },
-                ]}
-                value={reduceMotion}
-                onChange={(v) => setReduceMotion(v as any)}
-                style={{ marginTop: 6 }}
-              />
-              <Text style={styles.settingHint}>
-                On skips fades and slides between screens.
+                Bigger text across the whole app, including buttons and numbers.
               </Text>
             </View>
             <View>
@@ -217,7 +186,7 @@ export default function SettingsScreen() {
                 ]}
                 value={appearance}
                 onChange={(v) => setAppearance(v as any)}
-                style={{ marginTop: 6 }}
+                style={{ marginTop: 8 }}
               />
               <Text style={styles.note}>
                 Sky follows daytime only: sunrise in the morning, bright afternoon, sunset in the evening.
@@ -230,7 +199,7 @@ export default function SettingsScreen() {
         {/* Units */}
         <View>
           <SectionHeader title="Units" />
-          <Card style={{ gap: SPACING.md - 2 }}>
+          <Card style={{ gap: SPACING.md }}>
             <View>
               <Text style={styles.settingLabel}>Distance</Text>
               <Segmented
@@ -240,7 +209,7 @@ export default function SettingsScreen() {
                 ]}
                 value={units}
                 onChange={(v) => setUnits(v as any)}
-                style={{ marginTop: 6 }}
+                style={{ marginTop: 8 }}
               />
             </View>
             <View>
@@ -252,7 +221,7 @@ export default function SettingsScreen() {
                 ]}
                 value={tempUnit}
                 onChange={(v) => setTempUnit(v as any)}
-                style={{ marginTop: 6 }}
+                style={{ marginTop: 8 }}
               />
             </View>
           </Card>
@@ -324,9 +293,11 @@ export default function SettingsScreen() {
               <View style={styles.rowIcon}>
                 <Icon name="map-pin" size={16} color={colors.primary} strokeWidth={1.9} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>Location</Text>
-                <Text style={styles.rowSub}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.rowTitle} numberOfLines={1}>
+                  Location
+                </Text>
+                <Text style={styles.rowSub} numberOfLines={2}>
                   {permission === 'granted'
                     ? 'Granted — used only while you are tracking'
                     : 'Off — distance tracking will not work'}
@@ -359,8 +330,8 @@ export default function SettingsScreen() {
               <View style={styles.rowIcon}>
                 <Icon name="info" size={16} color={colors.textMuted} strokeWidth={1.9} />
               </View>
-              <Text style={[styles.rowTitle, { flex: 1 }]}>Version</Text>
-              <Text style={styles.rowValue}>
+              <Text style={[styles.rowTitle, { flex: 1 }]} numberOfLines={1}>Version</Text>
+              <Text style={styles.rowValue} numberOfLines={1}>
                 {APP_VERSION}
                 {isBackendConfigured() ? ' · cloud' : ' · on-device'}
               </Text>
@@ -380,6 +351,7 @@ export default function SettingsScreen() {
         {/* Data */}
         <View>
           <SectionHeader title="Your data" />
+          <Text style={styles.note}>Height, weight, age, step length, walks, rides, streaks and rewards are saved on this device for your account. Signing out keeps them. Clearing app or browser storage removes local data. Google Drive backup is not enabled.</Text>
           <Card padded={false}>
             <Pressable
               onPress={confirmReset}
@@ -389,9 +361,9 @@ export default function SettingsScreen() {
               <View style={[styles.rowIcon, { backgroundColor: colors.warningLight }]}>
                 <Icon name="refresh" size={16} color={colors.warning} strokeWidth={1.9} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={styles.rowTitle}>Erase my data</Text>
-                <Text style={styles.rowSub}>Clears activities, points, badges and streaks</Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.rowTitle} numberOfLines={1}>Erase my data</Text>
+                <Text style={styles.rowSub} numberOfLines={1}>Clears activities, points, badges and streaks</Text>
               </View>
             </Pressable>
             <Divider style={{ marginLeft: 58 }} />
@@ -402,9 +374,9 @@ export default function SettingsScreen() {
               <View style={[styles.rowIcon, { backgroundColor: colors.dangerLight }]}>
                 <Icon name="trash" size={16} color={colors.danger} strokeWidth={1.9} />
               </View>
-              <View style={{ flex: 1 }}>
-                <Text style={[styles.rowTitle, { color: colors.danger }]}>Delete account</Text>
-                <Text style={styles.rowSub}>Erases everything and signs you out</Text>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={[styles.rowTitle, { color: colors.danger }]} numberOfLines={1}>Delete account</Text>
+                <Text style={styles.rowSub} numberOfLines={1}>Erases everything and signs you out</Text>
               </View>
             </Pressable>
           </Card>
@@ -446,9 +418,9 @@ function ToggleRow({
       <View style={styles.rowIcon}>
         <Icon name={icon} size={16} color={colors.primary} strokeWidth={1.9} />
       </View>
-      <View style={{ flex: 1 }}>
-        <Text style={styles.rowTitle}>{title}</Text>
-        {subtitle ? <Text style={styles.rowSub}>{subtitle}</Text> : null}
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.rowTitle} numberOfLines={1}>{title}</Text>
+        {subtitle ? <Text style={styles.rowSub} numberOfLines={2}>{subtitle}</Text> : null}
       </View>
       <Switch
         value={value}
@@ -469,7 +441,7 @@ function LinkRow({ icon, title, onPress }: { icon: IconName; title: string; onPr
       <View style={styles.rowIcon}>
         <Icon name={icon} size={16} color={colors.primary} strokeWidth={1.9} />
       </View>
-      <Text style={[styles.rowTitle, { flex: 1 }]}>{title}</Text>
+      <Text style={[styles.rowTitle, { flex: 1 }]} numberOfLines={1}>{title}</Text>
       <Icon name="chevron-right" size={16} color={colors.textLight} />
     </Pressable>
   );
@@ -478,13 +450,13 @@ function LinkRow({ icon, title, onPress }: { icon: IconName; title: string; onPr
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
 
-  body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
+  body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 4 },
 
   accountRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
   accountIcon: {
     width: 40,
     height: 40,
-    borderRadius: RADIUS.sm + 2,
+    borderRadius: RADIUS.lg,
     backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -495,21 +467,21 @@ function makeStyles(c: ColorPalette, t: Typography) {
   settingLabel: { ...t.overline, color: c.textMuted },
   settingHint: {
     color: c.textMuted,
-    ...t.micro,
-    marginTop: 6,
+    ...t.small,
+    marginTop: 8,
   },
 
   row: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm + 4,
-    paddingVertical: 13,
+    paddingVertical: 14,
     paddingHorizontal: SPACING.md - 2,
   },
   rowIcon: {
-    width: 30,
-    height: 30,
-    borderRadius: RADIUS.sm,
+    width: 32,
+    height: 32,
+    borderRadius: RADIUS.md,
     backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
@@ -519,7 +491,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
   rowValue: { ...t.small, color: c.textMuted },
   rowAction: { ...t.smallMed, color: c.primary },
 
-  note: { ...t.small, color: c.textMuted, marginTop: SPACING.sm },
+  note: { ...t.small, color: c.textMuted, marginTop: SPACING.sm + 2, paddingHorizontal: 4 },
   pad: { paddingHorizontal: SPACING.md, paddingVertical: SPACING.md - 2 },
 
   });

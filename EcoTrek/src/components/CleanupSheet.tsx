@@ -81,7 +81,7 @@ export default function CleanupSheet({
       <View style={{ gap: SPACING.md }}>
         <View style={{ gap: 8 }}>
           <Text style={styles.label}>How many pieces did you pick up?</Text>
-          <Text style={styles.policy}>Honesty policy · enter 0 to 99. More pieces earn more points for your club.</Text>
+          <Text style={styles.policy}>Honesty policy · enter 0 to 99. More pieces earn more points.</Text>
           <View style={styles.presets}>
             {PRESETS.map((n) => (
               <Pressable

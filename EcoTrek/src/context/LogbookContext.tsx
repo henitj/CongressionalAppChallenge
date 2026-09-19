@@ -42,7 +42,7 @@ export function LogbookProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled && remote.ok && Array.isArray(remote.data)) {
           const byId = new Map<string, CleanupRecord>();
           [...remote.data, ...stored].forEach((record) => byId.set(record.id, record));
-          const merged = [...byId.values()].sort((a, b) => b.date - a.date).slice(0, 500);
+          const merged = [...byId.values()].sort((a, b) => b.date - a.date);
           setCleanups(merged);
           saveJSON(storeKey, merged);
         }
@@ -64,7 +64,7 @@ export function LogbookProvider({ children }: { children: React.ReactNode }) {
         notes,
       };
       setCleanups((prev) => {
-        const next = [record, ...prev].slice(0, 500);
+        const next = [record, ...prev];
         saveJSON(storeKey, next);
         return next;
       });

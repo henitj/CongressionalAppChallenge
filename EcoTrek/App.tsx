@@ -1,6 +1,6 @@
 import './src/services/locationTask';
 
-import React, { useCallback, useEffect } from 'react';
+import React, { useCallback, useEffect, useMemo } from 'react';
 import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from './src/context/ThemeContext';
@@ -27,7 +27,9 @@ import { NotificationProvider, useNotifications } from './src/context/Notificati
 import { WeatherProvider } from './src/context/WeatherContext';
 import { AnalyticsProvider } from './src/constants/AnalyticsContext';
 import { ProfileProvider } from './src/context/ProfileContext';
-import { LogbookProvider } from './src/context/LogbookContext';
+import { LogbookProvider, useLogbook } from './src/context/LogbookContext';
+import { dayKey } from './src/services/dates';
+import { activeDaysInLast, perfectWeeks, hasComeback, DayMap } from './src/services/streaks';
 import { useClubGoalRewards } from './src/hooks/useClubGoalRewards';
 
 /**
@@ -48,13 +50,22 @@ import { useClubGoalRewards } from './src/hooks/useClubGoalRewards';
 
 function ProgressSync() {
   const { refreshBadges } = useEcoPoints();
-  const { totalMiles, totalTrees, totalActivities, hikes, rides, uniqueTrailsCompleted } =
+  const { history, totalMiles, totalTrees, totalActivities, hikes, rides, uniqueTrailsCompleted } =
     useActivity();
   const {
     currentStreak,
     longestStreak,
-    totalActiveWeeks,
   } = useStreak();
+  const { cleanups } = useLogbook();
+  const days = useMemo(() => {
+    const out: DayMap = {};
+    for (const a of history.filter((activity) => activity.valid)) {
+      const key = dayKey(a.startedAt), old = out[key];
+      out[key] = { opened: true, activities: (old?.activities ?? 0) + 1,
+        miles: (old?.miles ?? 0) + a.miles, trees: (old?.trees ?? 0) + a.trees };
+    }
+    return out;
+  }, [history]);
   const { lifetimeCompleted } = useChallenges();
   const { myClub, myMember } = useClub();
   const { clubGoalsMet } = useClubGoalRewards();
@@ -68,10 +79,10 @@ function ProgressSync() {
       rides,
       currentStreak,
       longestStreak,
-      totalActiveDays: totalActiveWeeks,
-      activeDaysLast30: 0,
-      perfectWeeks: 0,
-      hadComeback: false,
+      totalActiveDays: Object.keys(days).length,
+      activeDaysLast30: activeDaysInLast(days, 30),
+      perfectWeeks: perfectWeeks(days),
+      hadComeback: hasComeback(days),
       trailsCompleted: uniqueTrailsCompleted,
       challengesCompleted: lifetimeCompleted,
       clubsJoined: myClub ? 1 : 0,
@@ -79,12 +90,14 @@ function ProgressSync() {
       speciesLogged: 0,
       plantsLogged: 0,
       animalsLogged: 0,
-      cleanups: 0,
-      litterCollected: 0,
+      cleanups: cleanups.length,
+      litterCollected: cleanups.reduce((sum, entry) => sum + entry.litterCount, 0),
       clubGoalsMet,
     });
   }, [
     refreshBadges,
+    days,
+    cleanups,
     totalMiles,
     totalTrees,
     totalActivities,
@@ -92,7 +105,6 @@ function ProgressSync() {
     rides,
     currentStreak,
     longestStreak,
-    totalActiveWeeks,
     uniqueTrailsCompleted,
     lifetimeCompleted,
     myClub,
@@ -118,7 +130,7 @@ function ClubLayer({ children }: { children: React.ReactNode }) {
     award('club_joined');
   }, [award]);
 
-  return <ClubProvider onJoined={handleJoined}>{children}</ClubProvider>;
+  return <ClubProvider enabled={false} onJoined={handleJoined}>{children}</ClubProvider>;
 }
 
 function Gate() {

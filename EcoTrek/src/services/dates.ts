@@ -32,12 +32,12 @@ export function addDays(key: string, n: number): string {
 
 /** ISO-style Monday-based week id, e.g. "2026-W34". */
 export function weekKey(d: Date = new Date()): string {
-  const date = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-  const dayNum = (date.getDay() + 6) % 7; // Mon = 0
-  date.setDate(date.getDate() - dayNum + 3); // nearest Thursday
-  const firstThursday = new Date(date.getFullYear(), 0, 4);
-  const week = 1 + Math.round((date.getTime() - firstThursday.getTime()) / (7 * 86400000));
-  return `${date.getFullYear()}-W${String(week).padStart(2, '0')}`;
+  // Convert local calendar components to UTC for DST-independent ISO arithmetic.
+  const date = new Date(Date.UTC(d.getFullYear(), d.getMonth(), d.getDate()));
+  date.setUTCDate(date.getUTCDate() + 4 - (date.getUTCDay() || 7));
+  const yearStart = new Date(Date.UTC(date.getUTCFullYear(), 0, 1));
+  const week = Math.ceil(((date.getTime() - yearStart.getTime()) / 86400000 + 1) / 7);
+  return `${date.getUTCFullYear()}-W${String(week).padStart(2, '0')}`;
 }
 
 /** Monday 00:00 of the week containing `d`. */

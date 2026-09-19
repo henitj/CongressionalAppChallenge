@@ -109,11 +109,11 @@ function ActivityHistoryCard({
             strokeWidth={2}
           />
         </View>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.cardTitle}>
+        <View style={{ flex: 1, minWidth: 0 }}>
+          <Text style={styles.cardTitle} numberOfLines={1}>
             {activity.trailName ?? (activity.type === 'bike' ? 'Bike ride' : 'Walk')}
           </Text>
-          <Text style={styles.cardDate}>
+          <Text style={styles.cardDate} numberOfLines={1}>
             {dateStr} at {timeStr}
           </Text>
         </View>
@@ -175,8 +175,8 @@ function StatBlock({ value, label }: { value: string; label: string }) {
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.statBlock}>
-      <Text style={styles.statValue}>{value}</Text>
-      <Text style={styles.statLabel}>{label}</Text>
+      <Text style={styles.statValue} numberOfLines={1}>{value}</Text>
+      <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -187,7 +187,7 @@ function DetailItem({ icon, label }: { icon: any; label: string }) {
   return (
     <View style={styles.detailItem}>
       <Icon name={icon} size={13} color={colors.textMuted} strokeWidth={2} />
-      <Text style={styles.detailLabel}>{label}</Text>
+      <Text style={styles.detailLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
 }

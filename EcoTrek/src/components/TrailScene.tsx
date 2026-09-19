@@ -13,19 +13,7 @@ import Svg, {
 
 import { useTheme } from '../context/ThemeContext';
 
-/**
- * The illustration on the Start tab.
- *
- * Walk: a dirt trail through trees with a person walking.
- * Bike: the same kind of trail, with a person actually riding.
- *
- * The scene is laid out on a landscape viewBox (320x230) and anchored to the
- * BOTTOM with preserveAspectRatio="xMidYMax slice". The hero container on the
- * Start tab is wide and fairly short, and a tall viewBox used to scale up
- * until the walker was chopped off at the knees. Now the ground always sits
- * on the container's bottom edge — extra space crops harmless sky off the
- * top, and the person on the trail stays fully visible on every screen size.
- */
+/** Full scene is fitted without cropping the walker or bicycle. */
 export default function TrailScene({
   mode = 'hike',
   style,
@@ -47,11 +35,12 @@ export default function TrailScene({
   const treeDark = night ? '#0C2016' : colors.primaryDark;
   const treeLight = night ? '#173125' : colors.primary;
   const packColor = colors.accent;
+  const skinColor = '#F1C49A';
   const rock = night ? '#2C3A34' : '#C4B89A';
 
   return (
     <View style={[{ width: '100%', flex: 1, minHeight: 150 }, style]} pointerEvents="none">
-      <Svg width="100%" height="100%" viewBox="0 0 320 230" preserveAspectRatio="xMidYMax slice">
+      <Svg width="100%" height="100%" viewBox="0 0 320 230" preserveAspectRatio="xMidYMid meet">
         <Defs>
           <LinearGradient id="ecotrek-sky" x1="0" y1="0" x2="0" y2="1">
             <Stop offset="0" stopColor={skyTop} />
@@ -123,41 +112,59 @@ export default function TrailScene({
           <Tree x={104} y={280} scale={0.62} dark={treeDark} light={treeLight} />
           <Tree x={192} y={268} scale={0.45} dark={treeDark} light={treeLight} />
 
-          {mode === 'bike' ? (
-            <G>
-              <Circle cx="136" cy="352" r="14" fill="none" stroke={treeDark} strokeWidth="3.8" />
-              <Circle cx="136" cy="352" r="3" fill={treeDark} />
-              <Circle cx="178" cy="352" r="14" fill="none" stroke={treeDark} strokeWidth="3.8" />
-              <Circle cx="178" cy="352" r="3" fill={treeDark} />
-              <Path
-                d="M136 352 L154 330 L178 352 M154 330 L148 352 M154 330 L168 322"
-                stroke={treeDark}
-                strokeWidth="3.5"
-                fill="none"
-                strokeLinecap="round"
-                strokeLinejoin="round"
-              />
-              <Path d="M147 314 Q156 306 166 314 L168 332 Q156 338 146 332 Z" fill={treeDark} />
-              <Circle cx="156" cy="300" r="8.5" fill={treeDark} />
-              <Path d="M150 318 q-8 10 -2 16" stroke={treeDark} strokeWidth="4.2" fill="none" strokeLinecap="round" />
-              <Path d="M164 318 q10 8 6 16" stroke={treeDark} strokeWidth="4.2" fill="none" strokeLinecap="round" />
-              <Rect x="150" y="314" width="13" height="13" rx="4" fill={packColor} />
-            </G>
-          ) : (
-            <G>
-              <Circle cx="158" cy="292" r="8" fill={treeDark} />
-              <Path d="M149 306 Q158 300 167 306 L169 330 Q158 336 147 330 Z" fill={treeDark} />
-              <Path d="M165 308 q12 4 10 18" stroke={treeDark} strokeWidth="4.6" strokeLinecap="round" fill="none" />
-              <Path d="M151 308 q-10 8 -6 16" stroke={treeDark} strokeWidth="4.6" strokeLinecap="round" fill="none" />
-              {/* Stride: one foot forward, one back */}
-              <Path d="M150 332 l-10 22" stroke={treeDark} strokeWidth="5.6" strokeLinecap="round" fill="none" />
-              <Path d="M164 332 l12 18" stroke={treeDark} strokeWidth="5.6" strokeLinecap="round" fill="none" />
-              <Rect x="152" y="308" width="12" height="14" rx="4" fill={packColor} />
-            </G>
-          )}
+          {mode === 'bike' ? <Biker dark={treeDark} pack={packColor} skin={skinColor} /> : <Walker dark={treeDark} pack={packColor} skin={skinColor} />}
         </G>
       </Svg>
     </View>
+  );
+}
+
+/**
+ * Hiker mid-stride. The walker was redrawn with two distinct legs that swing
+ * opposite directions — one bent forward, one trailing back — and a clear
+ * torso, head, and a small backpack. The whole figure now reads as a person
+ * on a trail, not an abstract shape.
+ */
+function Walker({ dark, pack, skin }: { dark: string; pack: string; skin: string }) {
+  return (
+    <G strokeLinecap="round" strokeLinejoin="round">
+      <Ellipse cx="157" cy="356" rx="28" ry="3" fill={dark} opacity={0.12} />
+      {/* Rear leg bends at the knee; front leg reaches into the next step. */}
+      <Path d="M152 326 L148 341 L135 352 L130 352" stroke="#60766B" strokeWidth="5.5" fill="none" />
+      <Path d="M158 327 L170 339 L176 352 L184 352" stroke={dark} strokeWidth="5.5" fill="none" />
+      <Rect x="143" y="303" width="12" height="20" rx="4" fill={pack} />
+      <Path d="M155 301 Q161 300 165 305 L160 330 L150 327 Z" fill={dark} />
+      <Path d="M158 307 L169 318 L180 315" stroke={skin} strokeWidth="4" fill="none" />
+      <Path d="M152 308 L142 319 L139 331" stroke={dark} strokeWidth="4" fill="none" />
+      <Path d="M161 298 L159 304" stroke={skin} strokeWidth="4" />
+      <Circle cx="163" cy="292" r="7.5" fill={skin} />
+      <Path d="M155 291 Q156 281 165 284 Q171 286 171 291 L175 292 Z" fill={dark} />
+    </G>
+  );
+}
+
+/** Side-view bicycle with two frame triangles and feet on opposite pedals. */
+function Biker({ dark, pack, skin }: { dark: string; pack: string; skin: string }) {
+  return (
+    <G strokeLinecap="round" strokeLinejoin="round">
+      <Ellipse cx="160" cy="373" rx="45" ry="4" fill={dark} opacity={0.12} />
+      <Circle cx="131" cy="353" r="18" stroke={dark} strokeWidth="3" fill="none" />
+      <Circle cx="187" cy="353" r="18" stroke={dark} strokeWidth="3" fill="none" />
+      <Path d="M131 353 L146 327 L157 353 Z M146 327 L177 327 L157 353 M177 320 L187 353"
+        stroke={pack} strokeWidth="3.2" fill="none" />
+      <Path d="M146 327 L143 320 M138 320 L150 320 M177 327 L175 315 L184 315"
+        stroke={dark} strokeWidth="3" fill="none" />
+      <Path d="M145 320 L138 339 L151 348" stroke="#60766B" strokeWidth="5" fill="none" />
+      <Path d="M143 320 L157 300 L167 306 L151 324 Z" fill={dark} />
+      <Path d="M160 305 L174 318 L180 315" stroke={skin} strokeWidth="4" fill="none" />
+      <Path d="M150 322 L167 333 L163 358" stroke={dark} strokeWidth="5" fill="none" />
+      <Path d="M158 358 L168 358 M146 348 L156 348" stroke={dark} strokeWidth="3" fill="none" />
+      <Path d="M151 348 L163 358" stroke={pack} strokeWidth="2" />
+      <Circle cx="169" cy="292" r="7" fill={skin} />
+      <Path d="M162 292 Q162 281 171 284 Q179 286 177 293 Z" fill={pack} />
+      <Path d="M166 298 L162 305" stroke={skin} strokeWidth="4" />
+      <Path d="M146 305 L152 297 Q155 295 158 299 L154 309 Z" fill={pack} />
+    </G>
   );
 }
 

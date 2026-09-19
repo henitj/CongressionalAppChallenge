@@ -7,14 +7,12 @@ import Icon, { IconName } from '../components/Icon';
 import AssistantFab from '../components/AssistantFab';
 import ConditionsCard from '../components/ConditionsCard';
 import StreakStrip from '../components/StreakStrip';
-import { Screen, Card, Button, Pill, ProgressBar, SectionHeader } from '../components/ui';
+import { Screen, Card, Button, SectionHeader } from '../components/ui';
 import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { useActivity } from '../context/ActivityContext';
 import { useStreak } from '../context/StreakContext';
 import { useProfile } from '../context/ProfileContext';
-import { useChallenges } from '../context/ChallengeContext';
-import { useClub } from '../constants/ClubContext';
 import { useSettings } from '../constants/SettingsContext';
 import { weekStart } from '../services/dates';
 import { firstNameOf } from '../services/displayName';
@@ -26,9 +24,7 @@ export default function HomeScreen() {
   const { profile } = useProfile();
   const { history } = useActivity();
   const { currentStreak } = useStreak();
-  const { challenges, completedCount, totalCount, timeLeftLabel } = useChallenges();
-  const { myClub, activeGoal } = useClub();
-  const { formatDistance, formatDistanceUnit, simpleMode } = useSettings();
+  const { formatDistance, formatDistanceUnit } = useSettings();
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
@@ -49,25 +45,6 @@ export default function HomeScreen() {
   }, []);
 
   const last = history[0];
-  const nextChallenge = useMemo(
-    () => challenges.find((challenge) => !challenge.completed) ?? null,
-    [challenges]
-  );
-  const challengePercent = totalCount > 0 ? (completedCount / totalCount) * 100 : 0;
-
-  const challengeMessage = nextChallenge
-    ? nextChallenge.kind === 'auto'
-      ? `${nextChallenge.title} · ${Math.min(nextChallenge.progress, nextChallenge.target ?? 1)} of ${nextChallenge.target ?? 1}`
-      : nextChallenge.title
-    : 'All five challenges are done for the week';
-
-  const clubMessage = myClub
-    ? activeGoal
-      ? activeGoal.metAt
-        ? `${myClub.name} already hit this week's goal.`
-        : `${myClub.name} is chasing ${activeGoal.target} ${goalLabel(activeGoal.metric)}.`
-      : `${myClub.name} is ready for more miles this week.`
-    : 'Walk solo or join a club later — your progress still counts.';
 
   return (
     <View style={{ flex: 1 }}>
@@ -92,43 +69,32 @@ export default function HomeScreen() {
 
         <ConditionsCard />
 
-        <Card>
+        <Card onPress={() => navigation.navigate('Streak')}>
           <View style={styles.panelHead}>
             <View style={styles.panelIcon}>
               <Icon name="flame" size={18} color={colors.primary} strokeWidth={1.9} />
             </View>
             <View style={{ flex: 1, minWidth: 0 }}>
-              <Text style={styles.panelEyebrow}>Weekly momentum</Text>
+              <Text style={styles.panelEyebrow} numberOfLines={1}>Weekly streak</Text>
               <Text style={styles.panelTitle} numberOfLines={1}>
-                {currentStreak} week streak
+                {currentStreak} week{currentStreak === 1 ? '' : 's'}
               </Text>
             </View>
-            <Pill label={timeLeftLabel} tone="neutral" size="sm" icon="clock" />
+            <Icon name="chevron-right" size={18} color={colors.primary} />
           </View>
 
-          <StreakStrip compact style={{ marginTop: SPACING.sm + 2 }} />
+          <StreakStrip compact style={{ marginTop: SPACING.md }} />
 
           <View style={styles.momentumRow}>
             <MiniInfo value={String(week.count)} label="Activities" />
             <MiniInfo value={String(week.trees)} label="Trees" />
             <MiniInfo
-              value={
-                simpleMode
-                  ? `${formatDistance(week.miles)} ${formatDistanceUnit()}`
-                  : `${completedCount}/${totalCount}`
-              }
-              label={simpleMode ? 'This week' : 'Challenges'}
+              value={`${formatDistance(week.miles)} ${formatDistanceUnit()}`}
+              label="This week"
             />
           </View>
 
-          {/* Simple mode hides weekly challenges everywhere, so the progress
-              bar for them would be a bar for something you cannot open. */}
-          {!simpleMode ? (
-            <>
-              <ProgressBar percent={challengePercent} style={{ marginTop: SPACING.sm + 2 }} />
-              <Text style={styles.helperText}>{challengeMessage}</Text>
-            </>
-          ) : null}
+
         </Card>
 
         <View>
@@ -152,60 +118,14 @@ export default function HomeScreen() {
               hint="Walks and rides near you"
               onPress={() => navigation.navigate('Trails')}
             />
-            {!simpleMode ? (
-              <QuickAction
-                icon="target"
-                title="Weekly goals"
-                hint="See this week’s challenges"
-                onPress={() => navigation.navigate('Challenges')}
-              />
-            ) : null}
+            <QuickAction
+              icon="target"
+              title="Weekly goals"
+              hint="See this week’s challenges"
+              onPress={() => navigation.navigate('Challenges')}
+            />
           </View>
         </View>
-
-        {/* Clubs and challenges are hidden in Simple mode, so this card is too. */}
-        {!simpleMode ? (
-          <Card>
-              <View style={styles.panelHead}>
-                <View style={styles.panelIcon}>
-                  <Icon name={myClub ? 'users' : 'target'} size={18} color={colors.primary} strokeWidth={1.9} />
-                </View>
-                <View style={{ flex: 1, minWidth: 0 }}>
-                  <Text style={styles.panelEyebrow}>{myClub ? 'Club update' : 'Keep going'}</Text>
-                  <Text style={styles.panelTitle} numberOfLines={1}>
-                    {myClub ? myClub.name : 'Pick a goal for the week'}
-                  </Text>
-                </View>
-              </View>
-
-              <Text style={styles.helperText}>{myClub ? clubMessage : challengeMessage}</Text>
-
-              {myClub && activeGoal ? (
-                <ProgressBar
-                  percent={(activeGoal.progress / activeGoal.target) * 100}
-                  color={activeGoal.metAt ? colors.primary : colors.accent}
-                  style={{ marginTop: SPACING.sm + 2 }}
-                />
-              ) : null}
-
-              <View style={styles.inlineButtons}>
-                <Button
-                  label={myClub ? 'Open club' : 'Open challenges'}
-                  variant="ghost"
-                  iconRight="arrow-right"
-                  onPress={() => navigation.navigate(myClub ? 'Clubs' : 'Challenges')}
-                />
-                {!myClub ? (
-                  <Button
-                    label="Browse clubs"
-                    variant="secondary"
-                    size="sm"
-                    onPress={() => navigation.navigate('Clubs')}
-                  />
-                ) : null}
-              </View>
-            </Card>
-        ) : null}
 
         <View>
           <SectionHeader title="Your last walk" action="See all" onAction={() => navigation.navigate('History')} />
@@ -275,8 +195,11 @@ function QuickAction({
       <View style={styles.quickIcon}>
         <Icon name={icon} size={18} color={colors.primary} strokeWidth={1.9} />
       </View>
-      <Text style={styles.quickTitle}>{title}</Text>
-      <Text style={styles.quickHint}>{hint}</Text>
+      <View style={{ flex: 1, minWidth: 0 }}>
+        <Text style={styles.quickTitle}>{title}</Text>
+        <Text style={styles.quickHint}>{hint}</Text>
+      </View>
+      <Icon name="chevron-right" size={18} color={colors.textMuted} />
     </Pressable>
   );
 }
@@ -285,7 +208,7 @@ function MiniInfo({ value, label }: { value: string; label: string }) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
-    <View style={{ flex: 1, minWidth: 0 }}>
+    <View style={{ flexBasis: 100, flexGrow: 1, minWidth: 0 }}>
       <Text style={styles.miniValue} numberOfLines={1}>
         {value}
       </Text>
@@ -296,27 +219,14 @@ function MiniInfo({ value, label }: { value: string; label: string }) {
   );
 }
 
-function goalLabel(metric: 'miles' | 'points' | 'trees' | 'activities') {
-  switch (metric) {
-    case 'miles':
-      return 'miles';
-    case 'points':
-      return 'points';
-    case 'trees':
-      return 'trees';
-    default:
-      return 'activities';
-  }
-}
-
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
-    body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
+    body: { paddingHorizontal: SPACING.md, gap: SPACING.lg },
 
-    panelHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+    panelHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md - 2 },
     panelIcon: {
-      width: 40,
-      height: 40,
+      width: 36,
+      height: 36,
       borderRadius: RADIUS.md,
       backgroundColor: c.primarySurface,
       alignItems: 'center',
@@ -324,51 +234,33 @@ function makeStyles(c: ColorPalette, t: Typography) {
     },
     panelEyebrow: { ...t.overline, color: c.textMuted },
     panelTitle: { ...t.h3, color: c.text, marginTop: 1 },
-    helperText: { ...t.small, color: c.textMuted, marginTop: SPACING.sm },
-    momentumRow: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.md - 2 },
+    helperText: { ...t.small, color: c.textMuted, marginTop: SPACING.sm + 2 },
+    momentumRow: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md, marginTop: SPACING.md },
     miniValue: { ...t.h3, color: c.text },
-    miniLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
+    miniLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase', marginTop: 2 },
 
-    quickGrid: {
-      flexDirection: 'row',
-      flexWrap: 'wrap',
-      gap: SPACING.sm,
-    },
+    quickGrid: { gap: SPACING.sm },
     quickCard: {
-      flexBasis: '46%',
-      flexGrow: 1,
-      flexShrink: 1,
-      backgroundColor: c.surface,
-      borderRadius: RADIUS.lg,
-      borderWidth: 1,
-      borderColor: c.border,
-      padding: SPACING.md,
-      minHeight: 118,
-      justifyContent: 'space-between',
+      flexDirection: 'row', alignItems: 'center', gap: SPACING.md,
+      paddingVertical: SPACING.md, minHeight: 72,
+      borderBottomWidth: 1, borderBottomColor: c.borderLight,
     },
     quickIcon: {
-      width: 38,
-      height: 38,
-      borderRadius: RADIUS.sm + 2,
+      width: 36,
+      height: 36,
+      borderRadius: RADIUS.md,
       backgroundColor: c.primarySurface,
       alignItems: 'center',
       justifyContent: 'center',
     },
-    quickTitle: { ...t.h4, color: c.text, marginTop: SPACING.sm },
+    quickTitle: { ...t.h4, color: c.text },
     quickHint: { ...t.small, color: c.textMuted, marginTop: 4 },
-
-    inlineButtons: {
-      flexDirection: 'column',
-      alignItems: 'stretch',
-      gap: SPACING.sm,
-      marginTop: SPACING.sm + 2,
-    },
 
     lastRow: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
     lastIcon: {
-      width: 48,
-      height: 48,
-      borderRadius: 24,
+      width: 44,
+      height: 44,
+      borderRadius: 22,
       backgroundColor: c.primarySurface,
       alignItems: 'center',
       justifyContent: 'center',

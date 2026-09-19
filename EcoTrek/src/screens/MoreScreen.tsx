@@ -8,18 +8,16 @@ import { Screen, Card, Divider, Button } from '../components/ui';
 import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
 import { Typography, useTheme } from '../context/ThemeContext';
 import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../constants/SettingsContext';
 import { openFeedbackForm } from '../constants/feedback';
 
 type Row = { icon: IconName; label: string; hint: string; to: string };
 type Section = { title: string; rows: Row[] };
 
 /**
- * More, but organised. One flat list of seven things was the old design and
- * it read like a dump. Now the page answers three questions:
- *   • You      — who you are and what you have done
- *   • Explore  — places to go and people to go with
- *   • App      — the practical stuff
+ * More, but organised. Two simple groups answer two questions:
+ *   • You      — your stuff
+ *   • App      — settings, safety and feedback
+ * (Clubs are hidden in this build; we can wire them back in later.)
  */
 const SECTIONS: Section[] = [
   {
@@ -34,7 +32,6 @@ const SECTIONS: Section[] = [
     title: 'Explore',
     rows: [
       { icon: 'map', label: 'Trails', hint: 'Walks and rides near you', to: 'Trails' },
-      { icon: 'users', label: 'Clubs', hint: 'Walk with friends', to: 'Clubs' },
       { icon: 'target', label: 'Weekly goals', hint: 'Five small things this week', to: 'Challenges' },
     ],
   },
@@ -51,48 +48,39 @@ export default function MoreScreen() {
   const navigation = useNavigation<any>();
   const { colors, typography } = useTheme();
   const { user } = useAuth();
-  const { simpleMode } = useSettings();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
   return (
     <Screen>
       <Header title="More" subtitle={user?.name ? `Signed in as ${user.name}` : undefined} hideAvatar />
       <View style={styles.body}>
-        {SECTIONS.map((section) => {
-          // Simple mode keeps the app to the essentials: clubs and weekly
-          // goals are hidden, everything else stays.
-          const rows = simpleMode
-            ? section.rows.filter((row) => row.to !== 'Clubs' && row.to !== 'Challenges')
-            : section.rows;
-          if (rows.length === 0) return null;
-          return (
-            <View key={section.title} style={styles.section}>
-              <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{section.title}</Text>
-              <Card padded={false}>
-                {rows.map((row, i) => (
-                  <View key={row.to}>
-                    {i > 0 ? <Divider style={{ marginLeft: 62 }} /> : null}
-                    <Pressable
-                      onPress={() => navigation.navigate(row.to)}
-                      style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
-                      accessibilityRole="button"
-                      accessibilityLabel={row.label}
-                    >
-                      <View style={styles.icon}>
-                        <Icon name={row.icon} size={20} color={colors.primary} strokeWidth={1.9} />
-                      </View>
-                      <View style={{ flex: 1 }}>
-                        <Text style={styles.label}>{row.label}</Text>
-                        <Text style={styles.hint}>{row.hint}</Text>
-                      </View>
-                      <Icon name="chevron-right" size={18} color={colors.textLight} />
-                    </Pressable>
-                  </View>
-                ))}
-              </Card>
-            </View>
-          );
-        })}
+        {SECTIONS.map((section) => (
+          <View key={section.title} style={styles.section}>
+            <Text style={[styles.sectionTitle, { color: colors.textMuted }]}>{section.title}</Text>
+            <Card padded={false}>
+              {section.rows.map((row, i) => (
+                <View key={row.to}>
+                  {i > 0 ? <Divider style={{ marginLeft: 64 }} /> : null}
+                  <Pressable
+                    onPress={() => navigation.navigate(row.to)}
+                    style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
+                    accessibilityRole="button"
+                    accessibilityLabel={row.label}
+                  >
+                    <View style={styles.icon}>
+                      <Icon name={row.icon} size={20} color={colors.primary} strokeWidth={1.9} />
+                    </View>
+                    <View style={{ flex: 1, minWidth: 0 }}>
+                      <Text style={styles.label} numberOfLines={1}>{row.label}</Text>
+                      <Text style={styles.hint} numberOfLines={2}>{row.hint}</Text>
+                    </View>
+                    <Icon name="chevron-right" size={18} color={colors.textLight} />
+                  </Pressable>
+                </View>
+              ))}
+            </Card>
+          </View>
+        ))}
 
         {/* Give feedback — always the last thing on the page, right under
             the sections instead of buried in Profile. Opens the team's
@@ -115,11 +103,11 @@ export default function MoreScreen() {
 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
-    body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
-    section: { gap: SPACING.sm - 2 },
+    body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 4 },
+    section: { gap: SPACING.sm },
     sectionTitle: {
       ...t.overline,
-      marginLeft: 4,
+      marginLeft: 6,
       textTransform: 'uppercase',
       letterSpacing: 0.6,
     },
@@ -127,13 +115,13 @@ function makeStyles(c: ColorPalette, t: Typography) {
       flexDirection: 'row',
       alignItems: 'center',
       gap: SPACING.md,
-      paddingVertical: 14,
-      paddingHorizontal: SPACING.md,
-      minHeight: 60,
+      paddingVertical: 16,
+      paddingHorizontal: SPACING.md + 2,
+      minHeight: 64,
     },
     icon: {
-      width: 44,
-      height: 44,
+      width: 40,
+      height: 40,
       borderRadius: RADIUS.md,
       backgroundColor: c.primarySurface,
       alignItems: 'center',
@@ -141,6 +129,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
     },
     label: { ...t.h4, color: c.text },
     hint: { ...t.small, color: c.textMuted, marginTop: 2 },
-    feedbackWrap: { marginTop: SPACING.xs },
+    feedbackWrap: { marginTop: SPACING.sm },
   });
 }

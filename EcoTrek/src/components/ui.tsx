@@ -102,7 +102,11 @@ export function Card({
       ? [ui.cardDark, { backgroundColor: colors.primaryDark }]
       : tone === 'accent'
       ? [ui.cardAccent, { backgroundColor: colors.accentLight, borderColor: colors.warningBorder }]
-      : { backgroundColor: colors.surface, borderColor: colors.border };
+      : // Default cards used to draw a 1px outline around every block of content.
+        // That made the screen feel like a stack of index cards. We now lean on
+        // a soft shadow and the page background instead, so the eye groups
+        // content by whitespace, not by boxes.
+        { backgroundColor: colors.surface, borderColor: 'transparent' };
 
   const content = (
     <View style={[ui.card, toneStyle, padded && ui.cardPad, style]}>{children}</View>
@@ -130,10 +134,17 @@ export function SectionHeader({
   const { colors, typography } = useTheme();
   return (
     <View style={[ui.sectionHeader, style]}>
-      <Text style={[ui.sectionTitle, typography.h3, { color: colors.text }]}>{title}</Text>
+      <Text style={[ui.sectionTitle, typography.h3, { color: colors.text }]} numberOfLines={1}>
+        {title}
+      </Text>
       {action ? (
         <Pressable onPress={onAction} hitSlop={8} style={ui.sectionAction}>
-          <Text style={[ui.sectionActionText, typography.smallMed, { color: colors.primary }]}>{action}</Text>
+          <Text
+            style={[ui.sectionActionText, typography.smallMed, { color: colors.primary }]}
+            numberOfLines={1}
+          >
+            {action}
+          </Text>
           <Icon name="chevron-right" size={14} color={colors.primary} strokeWidth={2.2} />
         </Pressable>
       ) : null}
@@ -178,7 +189,7 @@ export function Button({
       : variant === 'danger'
       ? colors.danger
       : variant === 'secondary'
-      ? colors.surface
+      ? colors.surfaceSunken
       : 'transparent';
 
   const fg =
@@ -189,7 +200,7 @@ export function Button({
       : '#fff';
 
   // Bigger text needs a bigger box around it. Without this, Large / Extra
-  // large / Simple mode grew the label inside a button that stayed the same
+  // large text grew the label inside a button that stayed the same
   // height, and the words wrapped or clipped.
   const grow = Math.max(1, fontScale);
   const base =
@@ -209,13 +220,16 @@ export function Button({
 
   return (
     <Pressable
+      accessibilityRole="button"
+      accessibilityLabel={label}
+      accessibilityState={{ disabled: !!isDisabled }}
       onPress={onPress}
       disabled={isDisabled}
       style={({ pressed }) => [
         ui.btn,
         pad,
         { backgroundColor: bg },
-        variant === 'secondary' && [ui.btnBordered, { borderColor: colors.borderStrong }],
+        variant === 'secondary' && [ui.btnBordered, { borderColor: 'transparent' }],
         variant !== 'ghost' && variant !== 'secondary' && SHADOWS.sm,
         full && { alignSelf: 'stretch' },
         isDisabled && ui.btnDisabled,
@@ -278,7 +292,7 @@ export function Pill({
     >
       {icon ? <Icon name={icon} size={size === 'sm' ? 11 : 13} color={c.fg} strokeWidth={2.2} /> : null}
       <Text
-        style={[ui.pillText, { color: c.fg, fontSize: Math.round((size === 'sm' ? 10.5 : 11.5) * fontScale) }]}
+        style={[ui.pillText, { color: c.fg, fontSize: Math.round((size === 'sm' ? 13 : 14) * fontScale) }]}
       >
         {label}
       </Text>
@@ -479,7 +493,7 @@ export function Sheet({
   subtitle?: string;
   children: React.ReactNode;
 }) {
-  const { colors, typography } = useTheme();
+  const { colors, typography, motionEnabled } = useTheme();
 
   /*
    * Sheets contain text inputs (club codes, names), so they must lift clear
@@ -494,7 +508,7 @@ export function Sheet({
   const { gap, keyboardVisible, onContainerLayout } = useKeyboardGap();
 
   return (
-    <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
+    <Modal visible={visible} animationType={motionEnabled ? "slide" : "none"} transparent onRequestClose={onClose}>
       <View
         style={[ui.sheetBackdrop, { backgroundColor: colors.overlay }]}
         onLayout={onContainerLayout}
@@ -506,10 +520,17 @@ export function Sheet({
         >
           <View style={[ui.sheetGrabber, { backgroundColor: colors.borderStrong }]} />
           <View style={ui.sheetHeader}>
-            <View style={{ flex: 1 }}>
-              <Text style={[ui.sheetTitle, typography.h2, { color: colors.text }]}>{title}</Text>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={[ui.sheetTitle, typography.h2, { color: colors.text }]}>
+                {title}
+              </Text>
               {subtitle ? (
-                <Text style={[ui.sheetSubtitle, typography.small, { color: colors.textMuted }]}>{subtitle}</Text>
+                <Text
+                  style={[ui.sheetSubtitle, typography.small, { color: colors.textMuted }]}
+                  numberOfLines={2}
+                >
+                  {subtitle}
+                </Text>
               ) : null}
             </View>
             <Pressable
@@ -633,19 +654,21 @@ export function Metric({
 */
 const ui = StyleSheet.create({
   screen: { flex: 1 },
-  scrollContent: { paddingBottom: 110 },
+  scrollContent: { paddingBottom: 140 },
   // Give short pages a full viewport while still allowing long pages to grow
   // and scroll on web and native.
   scrollContentGrow: { flexGrow: 1 },
 
   pressed: { opacity: 0.72 },
 
+  // Borderless cards with a softer radius. They used to wear a 1px outline
+  // around every section which made the whole app feel claustrophobic.
   card: {
-    borderRadius: RADIUS.lg,
-    borderWidth: 1,
+    borderRadius: RADIUS.xl,
+    borderWidth: 0,
     ...SHADOWS.sm,
   },
-  cardPad: { padding: SPACING.md },
+  cardPad: { padding: SPACING.md + 4 },
   cardSunken: { shadowOpacity: 0 },
   cardDark: { borderColor: 'rgba(255,255,255,0.08)' },
   cardAccent: { shadowOpacity: 0 },
@@ -654,39 +677,41 @@ const ui = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginBottom: SPACING.sm + 2,
+    marginBottom: SPACING.sm + 4,
+    paddingHorizontal: 4,
   },
-  sectionTitle: {},
-  sectionAction: { flexDirection: 'row', alignItems: 'center', gap: 2 },
-  sectionActionText: {},
+  sectionTitle: { flex: 1, minWidth: 0 },
+  sectionAction: { flexDirection: 'row', alignItems: 'center', gap: 2, maxWidth: '45%', minHeight: 44 },
+  sectionActionText: { flexShrink: 1 },
 
   btn: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
     gap: 7,
-    borderRadius: RADIUS.md,
+    borderRadius: RADIUS.xl,
   },
-  btnBordered: { borderWidth: 1 },
+  btnBordered: { borderWidth: 0 },
   btnDisabled: { opacity: 0.45 },
-  btnLabel: { fontSize: 16, fontWeight: '700', letterSpacing: -0.1, flexShrink: 1 },
+  btnLabel: { fontSize: 16, fontWeight: '700', letterSpacing: -0.1, flexShrink: 1, textAlign: 'center' },
 
   pill: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 4,
-    paddingVertical: 4.5,
+    paddingVertical: 5,
     paddingHorizontal: 10,
     borderRadius: RADIUS.pill,
     alignSelf: 'flex-start',
+    maxWidth: '100%',
   },
-  pillText: { fontSize: 11.5, fontWeight: '600', letterSpacing: 0.1 },
+  pillText: { flexShrink: 1, fontSize: 12, fontWeight: '600', letterSpacing: 0.1 },
 
   segmented: {
     flexDirection: 'row',
-    borderRadius: RADIUS.md,
-    padding: 3.5,
-    gap: 3,
+    borderRadius: RADIUS.pill,
+    padding: 4,
+    gap: 4,
   },
   segment: {
     flex: 1,
@@ -697,11 +722,11 @@ const ui = StyleSheet.create({
     paddingVertical: 12,
     paddingHorizontal: 4,
     minHeight: 48,
-    borderRadius: RADIUS.sm + 1,
+    borderRadius: RADIUS.pill,
     minWidth: 0,
   },
   segmentActive: { ...SHADOWS.sm },
-  segmentText: { fontSize: 13, fontWeight: '600' },
+  segmentText: { flexShrink: 1, textAlign: 'center', fontSize: 13, fontWeight: '600' },
   segmentTextActive: {},
 
   empty: { alignItems: 'center', paddingVertical: SPACING.xl, paddingHorizontal: SPACING.lg },
@@ -725,19 +750,19 @@ const ui = StyleSheet.create({
     maxHeight: '90%',
   },
   sheetGrabber: {
-    width: 38,
+    width: 40,
     height: 4,
     borderRadius: 2,
     alignSelf: 'center',
     marginBottom: SPACING.md,
   },
-  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', marginBottom: SPACING.md },
+  sheetHeader: { flexDirection: 'row', alignItems: 'flex-start', gap: SPACING.md, marginBottom: SPACING.md + 2 },
   sheetTitle: {},
-  sheetSubtitle: { marginTop: 2 },
+  sheetSubtitle: { marginTop: 4 },
   sheetClose: {
-    width: 30,
-    height: 30,
-    borderRadius: 15,
+    width: 44,
+    height: 44,
+    borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -746,9 +771,9 @@ const ui = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'flex-start',
     gap: SPACING.sm + 2,
-    padding: SPACING.md - 3,
-    borderRadius: RADIUS.md,
-    borderWidth: 1,
+    padding: SPACING.md - 2,
+    borderRadius: RADIUS.lg,
+    borderWidth: 0,
   },
   bannerTitle: {},
   bannerMessage: { marginTop: 2 },

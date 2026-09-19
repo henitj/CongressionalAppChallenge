@@ -42,16 +42,16 @@ export default function GoogleAccountSheet({ visible, onClose, mode = 'signin' }
     }
   };
 
-  const title = mode === 'upgrade' ? 'Save with Google' : 'Continue with Google';
+  const title = mode === 'upgrade' ? 'Keep a local profile' : 'Local demo profile';
   const subtitle = pickingNew
     ? mode === 'upgrade'
-      ? 'Create a preview Google account and keep the walks already on this device.'
-      : 'Create a preview Google account for this live demo.'
+      ? 'Create a local demo profile and keep the walks already on this device.'
+      : 'Create a local demo profile for this live demo.'
     : hasRememberedAccounts
     ? mode === 'upgrade'
       ? 'Pick an account to keep this guest progress.'
       : 'Choose an account to continue.'
-    : 'Use a preview Google account here. On a phone build, this step opens Google directly.';
+    : 'Use a local demo profile here. On a phone build, this step opens Google directly.';
 
   return (
     <Sheet visible={visible} onClose={onClose} title={title} subtitle={subtitle}>
@@ -61,7 +61,7 @@ export default function GoogleAccountSheet({ visible, onClose, mode = 'signin' }
             tone="neutral"
             icon="info"
             title="Why this looks different in the preview"
-            message="Arena's live preview cannot round-trip Google's secure popup, so this web demo uses a simple account chooser instead. The phone build still uses real Google sign-in."
+            message="Google sign-in is not configured here. This creates a local demo profile only — it does not sign in to Google or back up data. Anyone using this browser can access these demo profiles."
           />
         ) : null}
 
@@ -96,7 +96,7 @@ export default function GoogleAccountSheet({ visible, onClose, mode = 'signin' }
               <Icon name="globe" size={18} color={colors.primary} strokeWidth={1.9} />
             </View>
             <View style={{ flex: 1 }}>
-              <Text style={styles.emptyTitle}>No preview Google accounts yet</Text>
+              <Text style={styles.emptyTitle}>No local demo profiles yet</Text>
               <Text style={styles.emptyText}>
                 Create one once here, then it will show up as a one-tap option every time you sign out or come back.
               </Text>
@@ -145,7 +145,7 @@ export default function GoogleAccountSheet({ visible, onClose, mode = 'signin' }
           </>
         ) : (
           <Button
-            label={hasRememberedAccounts ? 'Use another Google account' : 'Create a preview Google account'}
+            label={hasRememberedAccounts ? 'Use another local profile' : 'Create a local demo profile'}
             variant="secondary"
             full
             onPress={() => setPickingNew(true)}

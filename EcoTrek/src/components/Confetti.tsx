@@ -1,3 +1,4 @@
+import { useTheme } from '../context/ThemeContext';
 import React, { useEffect, useMemo, useRef } from 'react';
 import { Animated, Easing, StyleSheet, StyleProp, useWindowDimensions, View, ViewStyle } from 'react-native';
 
@@ -64,12 +65,14 @@ export default function Confetti({
   onFinish?: () => void;
   style?: StyleProp<ViewStyle>;
 }) {
+  const { motionEnabled } = useTheme();
   const { height } = useWindowDimensions();
   const pieces = useMemo(() => makePieces(count), [count]);
   const progress = useRef(pieces.map(() => new Animated.Value(0))).current;
   const finishedRef = useRef(false);
 
   useEffect(() => {
+    if (!motionEnabled) { onFinish?.(); return; }
     const animations = pieces.map((p, i) =>
       Animated.sequence([
         Animated.delay(p.delay),
@@ -82,12 +85,14 @@ export default function Confetti({
       ])
     );
 
-    Animated.parallel(animations).start(({ finished }) => {
+    const burst = Animated.parallel(animations);
+    burst.start(({ finished }) => {
       if (finished && !finishedRef.current) {
         finishedRef.current = true;
         onFinish?.();
       }
     });
+    return () => burst.stop();
     // One burst per mount — parents remount (key change) to fire another.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

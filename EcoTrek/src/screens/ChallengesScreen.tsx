@@ -6,7 +6,6 @@ import ChallengeItem from '../components/ChallengeItem';
 import { Screen, Card, Pill, ProgressBar, Banner } from '../components/ui';
 import { SPACING, ColorPalette } from '../constants/theme';
 import { useChallenges } from '../context/ChallengeContext';
-import { useClub } from '../constants/ClubContext';
 import { useActivity } from '../context/ActivityContext';
 import { useTheme, Typography } from '../context/ThemeContext';
 
@@ -25,7 +24,6 @@ export default function ChallengesScreen() {
     completeChallenge,
     undoChallenge,
   } = useChallenges();
-  const { myClub } = useClub();
   const { totalActivities } = useActivity();
   const [busyId, setBusyId] = useState<string | null>(null);
   // Explainers are for new users. After a few activities they are just clutter.
@@ -79,22 +77,6 @@ export default function ChallengesScreen() {
           />
         ) : null}
 
-        {myClub ? (
-          <Banner
-            tone="info"
-            icon="users"
-            title={`Points go to ${myClub.name}`}
-            message="Every challenge you finish adds the same number of points to your club's score."
-          />
-        ) : (
-          <Banner
-            tone="neutral"
-            icon="users"
-            title="Join a club to make these count double"
-            message="Challenge points add to your club's total as well as your own."
-          />
-        )}
-
         {/* List */}
         <View style={{ gap: SPACING.sm }}>
           {challenges.map((c) => (
@@ -124,7 +106,6 @@ export default function ChallengesScreen() {
             icon="check"
             text="The rest are on your honour. Tap the circle when you have done it — the point is the habit, not the paperwork."
           />
-          <Rule icon="users" text="Points count toward your personal score and your club's." />
         </Card>
         ) : null}
       </View>

@@ -5,10 +5,7 @@ import {
   StyleSheet,
   Pressable,
   RefreshControl,
-  Linking,
   TextInput,
-  Image,
-  ScrollView,
   ActivityIndicator,
 } from 'react-native';
 import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
@@ -27,7 +24,6 @@ import { useActivity } from '../context/ActivityContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useResetOnLeave } from '../hooks/useResetOnLeave';
 import { useTheme, Typography } from '../context/ThemeContext';
-import { getTrailCover, getTrailPhotos, TrailPhoto, TrailPhotoSet } from '../services/trailPhotos';
 import {
   estimateElevationFt,
   estimateMinutes,
@@ -250,21 +246,6 @@ export default function TrailsScreen() {
       />
 
       <View style={styles.body}>
-        {/* Ask the assistant */}
-        <Pressable
-          onPress={() => navigation.navigate('Assistant', {})}
-          style={({ pressed }) => [styles.askBar, pressed && { opacity: 0.85 }]}
-        >
-          <View style={styles.askIcon}>
-            <Icon name="sparkles" size={17} color={colors.primary} strokeWidth={2} />
-          </View>
-          <View style={{ flex: 1 }}>
-            <Text style={styles.askTitle}>Ask about a trail</Text>
-            <Text style={styles.askSub}>Dogs, water, difficulty, what to expect today</Text>
-          </View>
-          <Icon name="chevron-right" size={17} color={colors.textLight} />
-        </Pressable>
-
         {/* Search */}
         <View style={styles.searchRow}>
           <View style={styles.search}>
@@ -326,7 +307,7 @@ export default function TrailsScreen() {
             />
             <Text style={[styles.chipText, activeFilterCount === 0 && styles.chipTextActive]}>All</Text>
           </Pressable>
-          {FILTERS.map((f) => {
+          {FILTERS.slice(0, 3).map((f) => {
             const active = filters.has(f.value);
             return (
               <Pressable
@@ -526,7 +507,7 @@ export default function TrailsScreen() {
             completed={completedIds.has(selected.id)}
             onStart={() => {
               setSelected(null);
-              navigation.navigate('Tabs', { screen: 'Track' });
+              navigation.navigate('Tabs', { screen: 'Track', params: { mode: selected.type === 'bike' ? 'bike' : 'hike' } });
             }}
             onAsk={() => {
               const t = selected;
@@ -566,20 +547,11 @@ function TrailDetail({
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
-  const [photos, setPhotos] = useState<TrailPhotoSet | null>(null);
-  const [photosLoading, setPhotosLoading] = useState(true);
   const [intel, setIntel] = useState<TrailIntel | null>(null);
 
   useEffect(() => {
     let alive = true;
-    setPhotos(null);
-    setPhotosLoading(true);
     setIntel(null);
-    getTrailPhotos(trail).then((set) => {
-      if (!alive) return;
-      setPhotos(set);
-      setPhotosLoading(false);
-    });
     getTrailIntel(trail).then((i) => {
       if (alive) setIntel(i);
     });
@@ -591,10 +563,6 @@ function TrailDetail({
   const climb = estimateElevationFt(trail);
   const climbEstimated = trail.elevationGainFt == null;
   const mins = estimateMinutes(trail);
-
-  const allTrailsUrl = `https://www.alltrails.com/search?q=${encodeURIComponent(
-    `${trail.name} ${trail.area}`
-  )}`;
 
   return (
     <View style={{ gap: SPACING.md }}>
@@ -626,27 +594,6 @@ function TrailDetail({
           label="Rating"
         />
       </View>
-
-      {/* Scenery photos — where this trail can take you */}
-      <PhotoStrip
-        title="Scenery along the way"
-        caption="Views and places this trail can take you."
-        photos={photos?.scenery ?? []}
-        loading={photosLoading}
-      />
-
-      {/* Path photos — what is underfoot */}
-      <PhotoStrip
-        title="The path underfoot"
-        caption="So you know the terrain before you go."
-        photos={photos?.path ?? []}
-        loading={photosLoading}
-      />
-      {!photosLoading && photos && photos.all.length === 0 ? (
-        <Text style={styles.photoNote}>
-          No photos of this trail yet — it may be a quieter local route.
-        </Text>
-      ) : null}
 
       <Text style={styles.detailDescription}>{trail.description}</Text>
 
@@ -711,41 +658,14 @@ function TrailDetail({
       <Divider />
 
       <View style={{ gap: SPACING.sm }}>
-        <Button label="Start a walk here" icon="play" full onPress={onStart} />
-
-        {/* AllTrails is our first recommendation for deeper research — full
-            reviews, recorded GPS tracks, and thousands of member photos. */}
+        <Button label={trail.type === 'bike' ? 'Start a ride here' : 'Start a walk here'} icon="play" full onPress={onStart} />
         <Button
-          label="View on AllTrails"
+          label="Ask AI about it"
           variant="secondary"
-          icon="external-link"
+          icon="sparkles"
           full
-          onPress={() => Linking.openURL(allTrailsUrl)}
+          onPress={onAsk}
         />
-        <Text style={styles.allTrailsNote}>
-          Our #1 recommendation for reviews, recorded routes, and more photos of this trail.
-        </Text>
-
-        <View style={{ flexDirection: 'row', gap: SPACING.sm }}>
-          <Button
-            label="Ask AI about it"
-            variant="secondary"
-            icon="sparkles"
-            style={{ flex: 1 }}
-            onPress={onAsk}
-          />
-          <Button
-            label="Directions"
-            variant="secondary"
-            icon="navigation"
-            style={{ flex: 1 }}
-            onPress={() =>
-              Linking.openURL(
-                `https://maps.google.com/?q=${encodeURIComponent(`${trail.startLat},${trail.startLng}`)}`
-              )
-            }
-          />
-        </View>
       </View>
 
       <Text style={styles.detectionNote}>
@@ -753,58 +673,6 @@ function TrailDetail({
         automatically. Cover 70% of its length to log a completion.
       </Text>
     </View>
-  );
-}
-
-function PhotoStrip({
-  title,
-  caption,
-  photos,
-  loading,
-}: {
-  title: string;
-  caption: string;
-  photos: TrailPhoto[];
-  loading: boolean;
-}) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
-
-  if (!loading && photos.length === 0) return null;
-
-  return (
-    <View style={{ gap: SPACING.xs + 2 }}>
-      <Text style={styles.detailSection}>{title}</Text>
-      <Text style={styles.photoCaption}>{caption}</Text>
-      <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={{ gap: SPACING.sm }}>
-        {loading
-          ? [0, 1, 2].map((i) => <View key={i} style={styles.photoSkeleton} />)
-          : photos.slice(0, 6).map((p) => (
-              <PhotoTile key={p.url} photo={p} style={styles.photo} />
-            ))}
-      </ScrollView>
-    </View>
-  );
-}
-
-function PhotoTile({ photo, style }: { photo: TrailPhoto; style: any }) {
-  const { colors } = useTheme();
-  const [failed, setFailed] = useState(false);
-  if (failed) {
-    return (
-      <View style={[style, { alignItems: 'center', justifyContent: 'center' }]} accessibilityLabel="Photo unavailable">
-        <Icon name="image" size={24} color={colors.textLight} strokeWidth={1.7} />
-      </View>
-    );
-  }
-  return (
-    <Image
-      source={{ uri: photo.thumbUrl || photo.url }}
-      style={style}
-      resizeMode="cover"
-      onError={() => setFailed(true)}
-      accessibilityLabel={photo.title}
-    />
   );
 }
 
@@ -832,29 +700,8 @@ function TrailCard({
   const difficultyTone =
     trail.difficulty === 'Easy' ? 'primary' : trail.difficulty === 'Moderate' ? 'warning' : 'danger';
 
-  const [cover, setCover] = useState<string | null>(null);
-  useEffect(() => {
-    let alive = true;
-    getTrailCover(trail).then((url) => {
-      if (alive) setCover(url);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [trail]);
-
   return (
     <Card onPress={onPress} style={styles.trailCard}>
-      {cover ? (
-        <Image
-          source={{ uri: cover }}
-          style={styles.trailCover}
-          resizeMode="cover"
-          onError={() => setCover(null)}
-          accessibilityLabel={`${trail.name} photo`}
-        />
-      ) : null}
-
       <View style={styles.trailHead}>
         <View style={[styles.trailIcon, completed && styles.trailIconDone]}>
           <Icon
@@ -864,7 +711,7 @@ function TrailCard({
             strokeWidth={completed ? 2.6 : 1.9}
           />
         </View>
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <Text style={styles.trailName} numberOfLines={1}>
             {trail.name}
           </Text>
@@ -907,7 +754,7 @@ function DetailStat({ icon, value, label }: { icon: IconName; value: string; lab
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
-    <View style={{ flex: 1, gap: 3 }}>
+    <View style={{ flexBasis: '45%', flexGrow: 1, minWidth: 0, gap: 3 }}>
       <Icon name={icon} size={15} color={colors.textMuted} strokeWidth={1.9} />
       <Text style={styles.detailStatValue}>{value}</Text>
       <Text style={styles.detailStatLabel}>{label}</Text>
@@ -924,17 +771,16 @@ function makeStyles(c: ColorPalette, t: Typography) {
   askBar: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: SPACING.sm + 4,
+    gap: SPACING.md - 2,
     backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.border,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md - 2,
+    borderWidth: 0,
+    borderRadius: RADIUS.xl,
+    padding: SPACING.md,
   },
   askIcon: {
     width: 36,
     height: 36,
-    borderRadius: RADIUS.sm + 2,
+    borderRadius: RADIUS.md,
     backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -949,27 +795,25 @@ function makeStyles(c: ColorPalette, t: Typography) {
     alignItems: 'center',
     gap: SPACING.sm,
     backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.border,
-    borderRadius: RADIUS.md,
-    paddingHorizontal: SPACING.md - 4,
-    height: 44,
+    borderWidth: 0,
+    borderRadius: RADIUS.pill,
+    paddingHorizontal: SPACING.md,
+    height: 48,
   },
-  searchInput: { flex: 1, ...t.body, color: c.text, paddingVertical: 0 },
+  searchInput: { flex: 1, minWidth: 0, ...t.body, color: c.text, paddingVertical: 0 },
   sortBtn: {
-    width: 44,
-    height: 44,
-    borderRadius: RADIUS.md,
+    width: 48,
+    height: 48,
+    borderRadius: 24,
     backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.border,
+    borderWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
   filterBadge: {
     position: 'absolute',
-    top: -5,
-    right: -5,
+    top: -4,
+    right: -4,
     minWidth: 18,
     height: 18,
     borderRadius: 9,
@@ -980,19 +824,18 @@ function makeStyles(c: ColorPalette, t: Typography) {
   },
   filterBadgeText: { ...t.micro, color: '#fff', fontWeight: '700' },
 
-  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
   chip: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: 5,
-    paddingVertical: 7,
-    paddingHorizontal: 12,
+    paddingVertical: 8,
+    paddingHorizontal: 14,
     borderRadius: RADIUS.pill,
     backgroundColor: c.surface,
-    borderWidth: 1,
-    borderColor: c.border,
+    borderWidth: 0,
   },
-  chipActive: { backgroundColor: c.primary, borderColor: c.primary },
+  chipActive: { backgroundColor: c.primary },
   chipText: { ...t.smallMed, color: c.textSecondary },
   chipTextActive: { color: '#fff' },
 
@@ -1001,23 +844,17 @@ function makeStyles(c: ColorPalette, t: Typography) {
   sortLabel: { flexDirection: 'row', alignItems: 'center', gap: 3 },
   sortLabelText: { ...t.smallMed, color: c.primary },
 
-  grid: { gap: SPACING.sm },
+  grid: { gap: SPACING.md },
   gridTablet: { flexDirection: 'row', flexWrap: 'wrap' },
   gridFull: { width: '100%' },
   gridHalf: { width: '50%', padding: SPACING.xs },
 
-  trailCard: { gap: SPACING.sm + 2 },
-  trailCover: {
-    width: '100%',
-    height: 140,
-    borderRadius: RADIUS.md,
-    backgroundColor: c.surfaceSunken,
-  },
-  trailHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 4 },
+  trailCard: { gap: SPACING.md - 2 },
+  trailHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md - 2 },
   trailIcon: {
-    width: 38,
-    height: 38,
-    borderRadius: RADIUS.sm + 2,
+    width: 40,
+    height: 40,
+    borderRadius: RADIUS.md,
     backgroundColor: c.primarySurface,
     alignItems: 'center',
     justifyContent: 'center',
@@ -1037,31 +874,16 @@ function makeStyles(c: ColorPalette, t: Typography) {
   },
   sortOptionText: { ...t.body, color: c.text },
 
-  detailStats: { flexDirection: 'row' },
+  detailStats: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
   detailStatValue: { ...t.h4, color: c.text },
   detailStatLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
   detailDescription: { ...t.body, color: c.textSecondary },
   detailSection: { ...t.overline, color: c.textMuted, marginBottom: SPACING.xs },
 
-  photoCaption: { ...t.small, color: c.textLight, marginBottom: 2 },
-  photo: {
-    width: 210,
-    height: 140,
-    borderRadius: RADIUS.md,
-    backgroundColor: c.surfaceSunken,
-  },
-  photoSkeleton: {
-    width: 210,
-    height: 140,
-    borderRadius: RADIUS.md,
-    backgroundColor: c.surfaceSunken,
-  },
-  photoNote: { ...t.small, color: c.textLight, fontStyle: 'italic' },
-
   aiCard: {
     backgroundColor: c.primarySurface,
-    borderRadius: RADIUS.md,
-    padding: SPACING.md - 2,
+    borderRadius: RADIUS.lg,
+    padding: SPACING.md,
     gap: SPACING.xs + 2,
   },
   aiCardLoading: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
@@ -1071,8 +893,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
   aiText: { ...t.small, color: c.textSecondary },
   aiDisclaimer: { ...t.micro, color: c.textLight, marginTop: 2, fontStyle: 'italic' },
   aiLoadingText: { ...t.small, color: c.textMuted },
-
-  allTrailsNote: { ...t.micro, color: c.textLight, textAlign: 'center' },
 
   amenities: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
   tipRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: 7, alignItems: 'flex-start' },

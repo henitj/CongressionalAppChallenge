@@ -57,7 +57,7 @@ export default function ActiveTrackingScreen() {
   const route = useRoute<any>();
   const { height: windowHeight } = useWindowDimensions();
   const mode: Mode = route.params?.mode ?? 'hike';
-  const { formatDistance, formatDistanceUnit, formatTemp, simpleMode } = useSettings();
+  const { formatDistance, formatDistanceUnit, formatTemp } = useSettings();
   const { trails } = useApp();
   const { profile } = useProfile();
   const { award } = useEcoPoints();
@@ -85,6 +85,7 @@ export default function ActiveTrackingScreen() {
   const [showRest, setShowRest] = useState(false);
   const [showCleanup, setShowCleanup] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showDetails, setShowDetails] = useState(false);
   const [confettiDone, setConfettiDone] = useState(false);
   const pendingFeedback = useRef(false);
 
@@ -243,7 +244,8 @@ export default function ActiveTrackingScreen() {
       // walk is over, it was long enough to have passed some litter, and it
       // actually counted. Feedback comes after that, as a popup — not a
       // button buried on the summary.
-      if (!res.rejected && !simpleMode) pendingFeedback.current = true;
+      // Feedback is available from More; saving does not trigger a second popup.
+      pendingFeedback.current = false;
       // Every valid trail ends with the honesty question. Do not gate it on
       // duration: a short named route still deserves the same chance to leave
       // the trail cleaner than you found it.
@@ -258,7 +260,7 @@ export default function ActiveTrackingScreen() {
     } finally {
       setSaving(false);
     }
-  }, [addActivity, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss, totalActivities, simpleMode]);
+  }, [addActivity, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss, totalActivities]);
 
   /**
    * Answering the cleanup question: the pieces are already logged by the
@@ -360,18 +362,14 @@ export default function ActiveTrackingScreen() {
                 />
                 <ResultStat label="Trees" value={String(result.trees)} icon="tree" />
                 <ResultStat label="Points" value={`+${result.points}`} icon="star" />
-                {!simpleMode ? (
-                  <>
-                    <ResultStat label="Calories" value={String(result.calories)} icon="zap" />
-                    <ResultStat label="Elevation" value={`${result.elevationGain} ft`} icon="trending-up" />
-                  </>
-                ) : null}
+                <ResultStat label="Calories" value={String(result.calories)} icon="zap" />
+                <ResultStat label="Elevation" value={`${result.elevationGain} ft`} icon="trending-up" />
               </View>
 
               {result.cleanupPieces > 0 ? (
                 <View style={styles.cleanupSummary}>
                   <Icon name="trash" size={18} color={colors.primary} strokeWidth={2} />
-                  <Text style={styles.cleanupSummaryText}>
+                  <Text style={styles.cleanupSummaryText} numberOfLines={2}>
                     {result.cleanupPieces} piece{result.cleanupPieces === 1 ? '' : 's'} of litter
                     picked up · +{result.cleanupPoints} points
                     {result.cleanupSeconds >= 60
@@ -384,7 +382,7 @@ export default function ActiveTrackingScreen() {
               {result.trailCompleted && (
                 <View style={styles.trailCompleteBadge}>
                   <Icon name="flag" size={18} color={colors.primary} strokeWidth={2} />
-                  <Text style={styles.trailCompleteText}>
+                  <Text style={styles.trailCompleteText} numberOfLines={2}>
                     Completed {result.trailName}!
                   </Text>
                 </View>
@@ -507,7 +505,7 @@ export default function ActiveTrackingScreen() {
               accessibilityRole="button"
             >
               <Icon name="alert-triangle" size={18} color={colors.danger} strokeWidth={2} />
-              <Text style={styles.helpLabel}>Call 911</Text>
+              <Text style={styles.helpLabel} numberOfLines={1}>Call 911</Text>
             </Pressable>
             <View style={{ flex: 1 }} />
           </View>
@@ -533,50 +531,45 @@ export default function ActiveTrackingScreen() {
               <Text style={styles.distanceUnit}>{formatDistanceUnit()}</Text>
             </View>
 
-            {/* Simple mode keeps three numbers that mean something to
-                everyone: how far, how long, how many trees. */}
-            {simpleMode ? (
-              <View style={styles.statsGrid}>
-                <StatBox icon="clock" value={formatTime(elapsed)} label="Time" />
-                <StatBox icon="tree" value={String(trees)} label="Trees" />
-                <StatBox icon="activity" value={avgMph.toFixed(1)} label="Avg mph" />
+            <View style={styles.statsGrid}>
+              <StatBox icon="clock" value={formatTime(elapsed)} label="Time" />
+              <StatBox icon="tree" value={String(trees)} label="Trees" />
+            </View>
+            <Button label={showDetails ? 'Hide details' : 'Show details'} variant="ghost"
+              onPress={() => setShowDetails((shown) => !shown)} />
+            {showDetails ? <>
+            {/* Speed — with warning indicator */}
+            <View style={styles.speedRow}>
+              <View style={styles.speedBlock}>
+                <Text style={[
+                  styles.speedValue,
+                  currentMph > speedLimit && styles.speedOverLimit
+                ]}>
+                  {currentMph.toFixed(1)}
+                </Text>
+                <Text style={styles.speedLabel}>mph now</Text>
+                {currentMph > speedLimit ? (
+                  <View style={styles.speedWarning}>
+                    <Icon name="alert-triangle" size={12} color={colors.danger} strokeWidth={2} />
+                    <Text style={styles.speedWarningText}>Over {speedLimit} mph limit</Text>
+                  </View>
+                ) : null}
               </View>
-            ) : (
-              <>
-                {/* Speed — with warning indicator */}
-                <View style={styles.speedRow}>
-                  <View style={styles.speedBlock}>
-                    <Text style={[
-                      styles.speedValue,
-                      currentMph > speedLimit && styles.speedOverLimit
-                    ]}>
-                      {currentMph.toFixed(1)}
-                    </Text>
-                    <Text style={styles.speedLabel}>mph now</Text>
-                    {currentMph > speedLimit ? (
-                      <View style={styles.speedWarning}>
-                        <Icon name="alert-triangle" size={12} color={colors.danger} strokeWidth={2} />
-                        <Text style={styles.speedWarningText}>Over {speedLimit} mph limit</Text>
-                      </View>
-                    ) : null}
-                  </View>
-                  <View style={styles.speedDivider} />
-                  <View style={styles.speedBlock}>
-                    <Text style={styles.speedValue}>{avgMph.toFixed(1)}</Text>
-                    <Text style={styles.speedLabel}>avg mph</Text>
-                  </View>
-                </View>
+              <View style={styles.speedDivider} />
+              <View style={styles.speedBlock}>
+                <Text style={styles.speedValue}>{avgMph.toFixed(1)}</Text>
+                <Text style={styles.speedLabel}>avg mph</Text>
+              </View>
+            </View>
 
-                {/* Secondary stats grid */}
-                <View style={styles.statsGrid}>
-                  <StatBox icon="clock" value={formatTime(elapsed)} label="Time" />
-                  <StatBox icon="trending-up" value={`${Math.round(elevationGain)}`} label="Gain (ft)" />
-                  <StatBox icon="trending-up" value={`${Math.round(elevationLoss)}`} label="Loss (ft)" iconColor={colors.textMuted} />
-                  <StatBox icon="zap" value={String(calories)} label="Calories" />
-                  <StatBox icon="tree" value={String(trees)} label="Trees" />
-                </View>
-              </>
-            )}
+            {/* Secondary stats grid */}
+            <View style={styles.statsGrid}>
+              <StatBox icon="trending-up" value={`${Math.round(elevationGain)}`} label="Gain (ft)" />
+              <StatBox icon="trending-up" value={`${Math.round(elevationLoss)}`} label="Loss (ft)" iconColor={colors.textMuted} />
+              <StatBox icon="zap" value={String(calories)} label="Calories" />
+            </View>
+
+            </> : null}
 
             {/* Finish button */}
             <View style={styles.finishRow}>
@@ -634,8 +627,8 @@ function StatBox({ icon, value, label, iconColor }: { icon: IconName; value: str
   return (
     <View style={styles.statBox}>
       <Icon name={icon} size={14} color={iconColor ?? colors.primary} strokeWidth={2} />
-      <Text style={styles.statBoxValue}>{value}</Text>
-      <Text style={styles.statBoxLabel}>{label}</Text>
+      <Text style={styles.statBoxValue} numberOfLines={1}>{value}</Text>
+      <Text style={styles.statBoxLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -685,8 +678,8 @@ function ResultStat({ label, value, icon }: { label: string; value: string; icon
   return (
     <View style={styles.resultStat}>
       {icon && <Icon name={icon} size={20} color={colors.primary} strokeWidth={2} />}
-      <Text style={styles.resultStatValue}>{value}</Text>
-      <Text style={styles.resultStatLabel}>{label}</Text>
+      <Text style={styles.resultStatValue} numberOfLines={1}>{value}</Text>
+      <Text style={styles.resultStatLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -718,7 +711,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
     borderRadius: 5,
     backgroundColor: '#FF4444',
   },
-  topLabel: { ...t.bodyMed, color: '#fff' },
+  topLabel: { flexShrink: 1, ...t.bodyMed, color: '#fff' },
   topActions: {
     flexDirection: 'row',
     alignItems: 'center',
@@ -831,9 +824,9 @@ function makeStyles(c: ColorPalette, t: Typography) {
     flexGrow: 1,
     alignItems: 'center',
     gap: 3,
-    backgroundColor: c.surfaceSunken,
+    backgroundColor: 'transparent',
     borderRadius: RADIUS.md,
-    paddingVertical: SPACING.sm + 2,
+    paddingVertical: SPACING.md,
     paddingHorizontal: SPACING.xs,
   },
   statBoxValue: { ...t.h3, color: c.text },
@@ -932,6 +925,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
     borderRadius: RADIUS.pill,
   },
   trailCompleteText: {
+    flexShrink: 1,
     ...t.bodyMed,
     color: c.primary,
   },

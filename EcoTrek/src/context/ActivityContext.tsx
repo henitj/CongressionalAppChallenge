@@ -1,4 +1,4 @@
-import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
+import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Coord } from '../services/location';
 import { createGrant, computeTrees, TreeGrant } from '../services/trees';
 import { evaluateCompletion, validateActivity } from '../services/trailDetection';
@@ -97,6 +97,8 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
   const storeKey = keyFor(userId, 'activities');
 
   const [history, setHistory] = useState<Activity[]>([]);
+  const historyRef = useRef<Activity[]>([]);
+  const pendingActivities = useRef(new Map<string, Promise<ActivityResult>>());
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -105,6 +107,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     (async () => {
       const local = await loadJSON<Activity[]>(storeKey, [], isArray);
       if (cancelled) return;
+      historyRef.current = local;
       setHistory(local);
       setLoading(false);
 
@@ -112,8 +115,9 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         const res = await api.get<Activity[]>(ROUTES.activities);
         if (!cancelled && res.ok && Array.isArray(res.data)) {
           const byId = new Map<string, Activity>();
-          [...res.data, ...local].forEach((a) => byId.set(a.id, a));
+          [...res.data, ...historyRef.current].forEach((a) => byId.set(a.id, a));
           const merged = [...byId.values()].sort((a, b) => b.startedAt - a.startedAt);
+          historyRef.current = merged;
           setHistory(merged);
           saveJSON(storeKey, merged);
         }
@@ -126,16 +130,15 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
 
   const persist = useCallback(
     (update: (prev: Activity[]) => Activity[]) => {
-      setHistory((prev) => {
-        const next = update(prev);
-        saveJSON(storeKey, next);
-        return next;
-      });
+      const next = update(historyRef.current);
+      historyRef.current = next;
+      setHistory(next);
+      return saveJSON(storeKey, next);
     },
     [storeKey]
   );
 
-  const addActivity = useCallback<ContextValue['addActivity']>(
+  const createActivity = useCallback<ContextValue['addActivity']>(
     async (input) => {
       const path = thinPath(input.path ?? []);
 
@@ -196,10 +199,10 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
       activity.points = pointsAwarded;
 
       // Replace rather than append if this id already exists
-      persist((prev) => [activity, ...prev.filter((a) => a.id !== activity.id)].slice(0, 500));
+      await persist((prev) => [activity, ...prev.filter((a) => a.id !== activity.id)]);
 
       if (validation.valid) {
-        await recordActivity(input.miles, trees, input.startedAt);
+        await recordActivity(input.miles, trees, input.startedAt, id);
         if (myClub) {
           await contribute({ points: pointsAwarded, trees, miles: input.miles, activities: 1 });
         }
@@ -221,6 +224,20 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     },
     [persist, award, recordActivity, contribute, myClub, userId, profile, trails]
   );
+
+  // Multiple Finish taps share one operation; previously they paid rewards twice.
+  const addActivity = useCallback<ContextValue['addActivity']>((input) => {
+    const id = `act-${input.startedAt}`;
+    const existing = historyRef.current.find((a) => a.id === id);
+    if (existing) return Promise.resolve({ activity: existing, pointsAwarded: existing.points,
+      treesAwarded: existing.trees, trailCompleted: !!existing.trailCompleted,
+      trailName: existing.trailName ?? null, rejected: !existing.valid, rejectionReason: existing.flagReason ?? null });
+    const pending = pendingActivities.current.get(id);
+    if (pending) return pending;
+    const task = createActivity(input).finally(() => pendingActivities.current.delete(id));
+    pendingActivities.current.set(id, task);
+    return task;
+  }, [createActivity]);
 
   const deleteActivity = useCallback(
     async (id: string) => {
