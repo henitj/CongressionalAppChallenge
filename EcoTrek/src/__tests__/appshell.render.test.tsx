@@ -21,6 +21,7 @@ import { AnalyticsProvider } from '../constants/AnalyticsContext';
 import { ProfileProvider } from '../context/ProfileContext';
 import OnboardingGate from '../components/OnboardingGate';
 import RootNavigator from '../navigation/RootNavigator';
+import { PRIVACY_POLICY_VERSION } from '../constants/privacyPolicy';
 
 /**
  * App-shell tests.
@@ -57,6 +58,12 @@ beforeEach(async () => {
   // This shell test represents a returning user; the real first-run path is
   // covered by the onboarding screen test and starts without this flag.
   await AsyncStorage.setItem('@ecotrek/test-user/start_tutorial_complete', 'true');
+  // Returning users have already accepted the current privacy policy; the
+  // first-run consent path has its own tests below.
+  await AsyncStorage.setItem(
+    '@ecotrek/test-user/privacy_policy_accepted_version',
+    PRIVACY_POLICY_VERSION
+  );
   jest.clearAllMocks();
 });
 
@@ -170,6 +177,53 @@ describe('the real app shell', () => {
       timeout: 10000,
     });
     expect(second.queryByText('Tap Start. Then walk.')).toBeNull();
+  });
+
+  it('asks for privacy consent first, and Accept persists the policy version', async () => {
+    await AsyncStorage.removeItem('@ecotrek/test-user/privacy_policy_accepted_version');
+    const utils = render(<FullApp />);
+
+    // The consent screen blocks everything, including the tutorial.
+    await waitFor(() => expect(utils.queryByText('Privacy Policy')).toBeTruthy(), {
+      timeout: 10000,
+    });
+    expect(utils.queryByText('Accept')).toBeTruthy();
+    expect(utils.queryByText('Reject')).toBeTruthy();
+    expect(utils.queryByText('Your last walk')).toBeNull();
+
+    fireEvent.press(utils.getByText('Accept'));
+    await waitFor(() => expect(utils.queryByText('Your last walk')).toBeTruthy(), {
+      timeout: 10000,
+    });
+    expect(
+      await AsyncStorage.getItem('@ecotrek/test-user/privacy_policy_accepted_version')
+    ).toBe(PRIVACY_POLICY_VERSION);
+  });
+
+  it('Reject reroutes to the declined screen and never enters the app', async () => {
+    await AsyncStorage.removeItem('@ecotrek/test-user/privacy_policy_accepted_version');
+    const utils = render(<FullApp />);
+
+    await waitFor(() => expect(utils.queryByText('Reject')).toBeTruthy(), { timeout: 10000 });
+    fireEvent.press(utils.getByText('Reject'));
+
+    await waitFor(() => expect(utils.queryByText('Policy declined')).toBeTruthy());
+    expect(utils.queryByText('Your last walk')).toBeNull();
+    expect(
+      await AsyncStorage.getItem('@ecotrek/test-user/privacy_policy_accepted_version')
+    ).toBeNull();
+
+    // The declined screen offers a way back to the policy…
+    fireEvent.press(utils.getByText('Review the policy again'));
+    await waitFor(() => expect(utils.queryByText('Accept')).toBeTruthy());
+
+    // …and rejecting again offers sign out, which lands outside the app.
+    fireEvent.press(utils.getByText('Reject'));
+    await waitFor(() => expect(utils.queryByText('Sign out')).toBeTruthy());
+    fireEvent.press(utils.getByText('Sign out'));
+    await waitFor(async () =>
+      expect(await AsyncStorage.getItem('@ecotrek/auth_user')).toBeNull()
+    );
   });
 
   it('switching tabs really switches screens', async () => {

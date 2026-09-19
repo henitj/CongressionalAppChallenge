@@ -12,6 +12,7 @@ import ProfileScreen from '../screens/ProfileScreen';
 import ImpactScreen from '../screens/ImpactScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import SafetyScreen from '../screens/SafetyScreen';
+import PrivacyPolicyScreen from '../screens/PrivacyPolicyScreen';
 import ChallengesScreen from '../screens/ChallengesScreen';
 import ConditionsScreen from '../screens/ConditionsScreen';
 import StreakScreen from '../screens/StreakScreen';
@@ -113,6 +114,7 @@ export default function RootNavigator() {
       <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
       <Stack.Screen name="Recap" component={RecapScreen} />
       <Stack.Screen name="Safety" component={SafetyScreen} />
+      <Stack.Screen name="PrivacyPolicy" component={PrivacyPolicyScreen} />
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="Badges" component={BadgesScreen} />

@@ -1,14 +1,15 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Linking, Platform, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Platform, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
 import Logo from '../components/Logo';
 import GoogleAccountSheet from '../components/GoogleAccountSheet';
-import { Button } from '../components/ui';
+import PrivacyPolicyContent from '../components/PrivacyPolicyContent';
+import { Button, Sheet } from '../components/ui';
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
-import { APP_NAME, PRIVACY_POLICY_URL } from '../constants/appInfo';
+import { APP_NAME } from '../constants/appInfo';
 import { useTheme, Typography } from '../context/ThemeContext';
 
 const FEATURES: { icon: IconName; title: string }[] = [
@@ -22,6 +23,7 @@ export default function SignInScreen() {
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const { signInWithGoogle, signInAsGuest, error, googleConfigured } = useAuth();
   const [showGoogle, setShowGoogle] = useState(false);
+  const [showPolicy, setShowPolicy] = useState(false);
   const [busy, setBusy] = useState(false);
 
   // The gap above the sign-in buttons scales with the screen instead of
@@ -109,8 +111,8 @@ export default function SignInScreen() {
             />
 
             <Text style={styles.legal}>
-              By continuing you agree to our{' '}
-              <Text style={styles.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
+              After signing in you will be asked to review and accept our{' '}
+              <Text style={styles.legalLink} onPress={() => setShowPolicy(true)}>
                 privacy policy
               </Text>
               . EcoTrek uses your location only while you are recording an activity.
@@ -122,6 +124,15 @@ export default function SignInScreen() {
       {useLocalGoogle ? (
         <GoogleAccountSheet visible={showGoogle} onClose={() => setShowGoogle(false)} mode="signin" />
       ) : null}
+
+      <Sheet
+        visible={showPolicy}
+        onClose={() => setShowPolicy(false)}
+        title="Privacy policy"
+        subtitle="What EcoTrek collects, and why"
+      >
+        <PrivacyPolicyContent />
+      </Sheet>
 
     </View>
   );

@@ -18,7 +18,7 @@ import { useApp } from '../context/AppContext';
 import { clearUserData } from '../services/storage';
 import { isBackendConfigured } from '../services/api';
 import { googleConfigProblems } from '../constants/authConfig';
-import { PRIVACY_POLICY_URL, SUPPORT_EMAIL, APP_VERSION } from '../constants/appInfo';
+import { SUPPORT_EMAIL, APP_VERSION } from '../constants/appInfo';
 
 export default function SettingsScreen() {
   const navigation = useNavigation<any>();
@@ -316,7 +316,7 @@ export default function SettingsScreen() {
         <View>
           <SectionHeader title="About" />
           <Card padded={false}>
-            <LinkRow icon="shield" title="Privacy policy" onPress={() => Linking.openURL(PRIVACY_POLICY_URL)} />
+            <LinkRow icon="shield" title="Privacy policy" onPress={() => navigation.navigate('PrivacyPolicy')} />
             <Divider style={{ marginLeft: 58 }} />
             <LinkRow
               icon="help-circle"
