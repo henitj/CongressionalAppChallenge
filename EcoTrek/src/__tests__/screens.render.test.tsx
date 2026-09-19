@@ -159,6 +159,78 @@ describe('every screen renders on an empty account', () => {
   }
 });
 
+describe('trail discovery upgrades', () => {
+  it('Home shows the floating AI chat button', async () => {
+    const utils = await mount(HomeScreen, 'Your last walk');
+    expect(utils.getByTestId('assistant-fab')).toBeTruthy();
+  });
+
+  it('Trails shows the floating AI chat button', async () => {
+    const utils = await mount(TrailsScreen, 'Ask about a trail');
+    expect(utils.getByTestId('assistant-fab')).toBeTruthy();
+  });
+
+  it('Trails filter chips are multi-select and stack', async () => {
+    const utils = await mount(TrailsScreen, 'Ask about a trail');
+
+    // Both chips can be active at once — selecting the second must not
+    // deselect the first (the old behaviour was single-choice).
+    fireEvent.press(utils.getByText('Dog friendly'));
+    fireEvent.press(utils.getByText('Family'));
+
+    // The filter button badge counts BOTH active filters.
+    const badge = utils.getByLabelText('Filters and sort');
+    expect(badge).toBeTruthy();
+    expect(utils.queryByText('2')).toBeTruthy();
+
+    // Tapping an active chip toggles it back off.
+    fireEvent.press(utils.getByText('Family'));
+    expect(utils.queryByText('1')).toBeTruthy();
+
+    // "All" clears everything.
+    fireEvent.press(utils.getByText('All'));
+    expect(utils.queryByText('1')).toBeFalsy();
+  });
+
+  it('the filter sheet has sliders for length, distance away, and climb', async () => {
+    const utils = await mount(TrailsScreen, 'Ask about a trail');
+    fireEvent.press(utils.getByLabelText('Filters and sort'));
+
+    await waitFor(() => expect(utils.queryByText('Filter trails')).toBeTruthy(), {
+      timeout: 4000,
+    });
+    expect(utils.getByLabelText('Trail length')).toBeTruthy();
+    expect(utils.getByLabelText('Distance from you')).toBeTruthy();
+    expect(utils.getByLabelText('Elevation gain')).toBeTruthy();
+    // Untouched sliders read as "no limit".
+    expect(utils.getByText('Any length')).toBeTruthy();
+    expect(utils.getByText('Any distance')).toBeTruthy();
+    expect(utils.getByText('Any climb')).toBeTruthy();
+    // Sorting now lives in the same sheet.
+    expect(utils.getByText('Sort by')).toBeTruthy();
+    expect(utils.getByText('Top rated')).toBeTruthy();
+  });
+
+  it('slider accessibility actions adjust the value', async () => {
+    const utils = await mount(TrailsScreen, 'Ask about a trail');
+    fireEvent.press(utils.getByLabelText('Filters and sort'));
+    await waitFor(() => expect(utils.queryByText('Filter trails')).toBeTruthy(), {
+      timeout: 4000,
+    });
+
+    const slider = utils.getByLabelText('Trail length');
+    fireEvent(slider, 'accessibilityAction', {
+      nativeEvent: { actionName: 'decrement' },
+    });
+    // 15 (Any length) stepped down once → "under 14 mi".
+    expect(utils.getByText('under 14 mi')).toBeTruthy();
+    fireEvent(slider, 'accessibilityAction', {
+      nativeEvent: { actionName: 'increment' },
+    });
+    expect(utils.getByText('Any length')).toBeTruthy();
+  });
+});
+
 describe('review fixes', () => {
   it('More is grouped into sections, not one flat list', async () => {
     const { queryByText } = await mount(MoreScreen, 'My walks');

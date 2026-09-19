@@ -37,23 +37,30 @@ export default function Slider({
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
   const width = useRef(0);
-  const valueRef = useRef(value);
-  valueRef.current = value;
 
-  const set = (x: number) => {
+  // The PanResponder is created once, so everything it touches goes through
+  // refs — otherwise it would keep calling the first render's `onChange`
+  // with the first render's `min`/`max` forever.
+  const setRef = useRef((_x: number) => {});
+  setRef.current = (x: number) => {
     if (width.current <= 0) return;
     const ratio = Math.max(0, Math.min(1, x / width.current));
     const raw = min + ratio * (max - min);
     const snapped = Math.max(min, Math.min(max, Math.round(raw / step) * step));
-    if (snapped !== valueRef.current) onChange(snapped);
+    if (snapped !== value) onChange(snapped);
   };
 
   const pan = useRef(
     PanResponder.create({
       onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: () => true,
-      onPanResponderGrant: (e) => set(e.nativeEvent.locationX),
-      onPanResponderMove: (e) => set(e.nativeEvent.locationX),
+      // The slider lives inside a scrolling Sheet. Without these two, a
+      // slightly diagonal drag lets the ScrollView steal the gesture and
+      // the thumb freezes mid-slide.
+      onPanResponderTerminationRequest: () => false,
+      onShouldBlockNativeResponder: () => true,
+      onPanResponderGrant: (e) => setRef.current(e.nativeEvent.locationX),
+      onPanResponderMove: (e) => setRef.current(e.nativeEvent.locationX),
     })
   ).current;
 

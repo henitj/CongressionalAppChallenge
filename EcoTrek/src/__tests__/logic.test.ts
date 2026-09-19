@@ -62,7 +62,7 @@ import {
   isSupportedCountry,
   isInServiceArea,
 } from '../services/nearbyTrails';
-import { classifyPhotos } from '../services/trailPhotos';
+import { classifyPhotos, pagesToPhotos, throttled } from '../services/trailPhotos';
 import { estimateElevationFt, estimateMinutes, formatMinutes } from '../services/trailIntel';
 
 let passed = 0;
@@ -993,6 +993,51 @@ test('ambiguous photos still fill both buckets', () => {
   assert.ok(set.scenery.length >= 1 && set.path.length >= 1);
 });
 
+test('Commons pages parse in relevance order, skipping non-photos', () => {
+  // Shape captured from the live API: pages keyed by pageid (which JS
+  // iterates in ascending numeric order — NOT relevance), relevance in
+  // `index`, and URLs that carry a query string after the extension.
+  const data = {
+    query: {
+      pages: {
+        '94637594': {
+          pageid: 94637594,
+          title: 'File:Butler Trail Walk 2020.jpg',
+          index: 1,
+          imageinfo: [{ thumburl: 'https://thumb.example/walk.jpg?utm_source=x', url: 'https://up.example/walk.jpg?utm_source=x' }],
+        },
+        '59670217': {
+          pageid: 59670217,
+          title: 'File:Butler Trail Runners 2017.jpg',
+          index: 0,
+          imageinfo: [{ thumburl: 'https://thumb.example/run.jpg', url: 'https://up.example/run.jpg' }],
+        },
+        '59678732': {
+          pageid: 59678732,
+          title: 'File:Butler Trail Austin Rules 2017.jpg', // signage — skip
+          index: 2,
+          imageinfo: [{ thumburl: 'https://thumb.example/rules.jpg', url: 'https://up.example/rules.jpg' }],
+        },
+        '11111111': {
+          pageid: 11111111,
+          title: 'File:Trail area map.svg', // not a photo — skip
+          index: 3,
+          imageinfo: [{ thumburl: 'https://thumb.example/map.svg', url: 'https://up.example/map.svg' }],
+        },
+      },
+    },
+  };
+  const photos = pagesToPhotos(data);
+  assert.equal(photos.length, 2);
+  assert.ok(photos[0].title.includes('Runners'), 'index 0 must come first, not lowest pageid');
+  assert.ok(photos[1].title.includes('Walk'));
+
+  // Garbage in, empty out — never a throw.
+  assert.deepEqual(pagesToPhotos(null), []);
+  assert.deepEqual(pagesToPhotos({}), []);
+  assert.deepEqual(pagesToPhotos({ query: { pages: 'nope' } }), []);
+});
+
 test('trail intel derives time and climb estimates sensibly', () => {
   const ladyBird = getTrailById('lady-bird-lake')!;
   // Bundled trail keeps its own posted time.
@@ -1012,8 +1057,46 @@ test('trail intel derives time and climb estimates sensibly', () => {
   assert.equal(formatMinutes(200), '3h 20m');
 });
 
-console.log('\nEcoTrek logic tests\n');
-console.log(results.join('\n'));
-console.log(
-  `\n${passed}/${passed + results.filter((r) => r.includes('FAIL')).length} passed\n`
-);
+/**
+ * Async tests. The plain `test` harness is synchronous, so anything that
+ * awaits runs here and is finished before the summary prints.
+ */
+async function asyncTests() {
+  await (async () => {
+    const name = 'photo request throttle caps concurrency and never loses tasks';
+    try {
+      let running = 0;
+      let peak = 0;
+      const outcomes = await Promise.all(
+        Array.from({ length: 10 }, (_, i) =>
+          throttled(async () => {
+            running++;
+            peak = Math.max(peak, running);
+            await new Promise((r) => setTimeout(r, 5));
+            running--;
+            if (i === 4) throw new Error('boom'); // a failing task must free its slot
+            return i;
+          }).catch(() => -1)
+        )
+      );
+      assert.ok(peak <= 3, `peak concurrency ${peak} exceeded cap`);
+      assert.equal(outcomes.filter((r) => r === -1).length, 1);
+      assert.equal(outcomes.filter((r) => r >= 0).length, 9);
+      // Slots fully released — a fresh task still runs.
+      assert.equal(await throttled(async () => 'ok'), 'ok');
+      passed++;
+      results.push(`  PASS  ${name}`);
+    } catch (e: any) {
+      results.push(`  FAIL  ${name}\n        ${e.message}`);
+      process.exitCode = 1;
+    }
+  })();
+}
+
+asyncTests().then(() => {
+  console.log('\nEcoTrek logic tests\n');
+  console.log(results.join('\n'));
+  console.log(
+    `\n${passed}/${passed + results.filter((r) => r.includes('FAIL')).length} passed\n`
+  );
+});

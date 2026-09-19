@@ -6,10 +6,8 @@ import {
   TextInput,
   Pressable,
   ScrollView,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
-import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import Header from '../components/Header';
@@ -29,7 +27,7 @@ import {
 } from '../services/assistant';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 import { useTheme, Typography } from '../context/ThemeContext';
-import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
+import { useKeyboardGap } from '../hooks/useKeyboardHeight';
 
 type Message = {
   id: string;
@@ -190,30 +188,26 @@ export default function AssistantScreen() {
    * Keyboard handling. The old KeyboardAvoidingView guessed the header
    * height with a fixed 88px offset — wrong on notched iPhones and a no-op
    * on Android, so the keyboard could sit on top of the composer and you
-   * typed blind. Instead we measure the real keyboard frame and pad the
-   * layout by exactly that much (minus the bottom safe-area inset that the
-   * keyboard already covers). Works identically inside and outside modals,
-   * on both platforms. On Android `softwareKeyboardLayoutMode: resize`
-   * (app.json) already shrinks the window, so extra padding would double up.
+   * typed blind. useKeyboardGap measures the real keyboard frame AND how
+   * much the window already shrank for it, then returns only the remainder
+   * as padding — so the composer sits flush on the keyboard on both
+   * platforms, whether or not the OS resized the window.
    */
-  const insets = useSafeAreaInsets();
-  const keyboardHeight = useKeyboardHeight();
-  const keyboardPad =
-    Platform.OS === 'ios' ? Math.max(0, keyboardHeight - insets.bottom) : 0;
+  const { gap: keyboardPad, keyboardVisible, onContainerLayout } = useKeyboardGap();
 
   // Keep the conversation pinned to the latest message when the keyboard
   // opens, so the input never ends up detached from what you are replying to.
   useEffect(() => {
-    if (keyboardHeight > 0) {
+    if (keyboardVisible) {
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
     }
-  }, [keyboardHeight]);
+  }, [keyboardVisible]);
 
   return (
     <View style={styles.root}>
       <Header title="Trail assistant" subtitle="Ask about trails near you" back />
 
-      <View style={{ flex: 1, paddingBottom: keyboardPad }}>
+      <View style={{ flex: 1, paddingBottom: keyboardPad }} onLayout={onContainerLayout}>
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.scroll}
@@ -343,7 +337,7 @@ export default function AssistantScreen() {
           </Pressable>
         </View>
 
-        {keyboardHeight === 0 ? (
+        {!keyboardVisible ? (
           <Text style={styles.disclaimer}>
             Answers come from the trail data in this app. Conditions still change — check before you go.
           </Text>

@@ -61,20 +61,39 @@ async function fetchJSON(url: string): Promise<any | null> {
   }
 }
 
-function pagesToPhotos(data: any): Omit<TrailPhoto, 'kind'>[] {
+/**
+ * Exported for tests. Converts a Commons API response into photo entries.
+ *
+ * Two things learned from the live API that are easy to get wrong:
+ *   • `query.pages` is keyed by pageid, and JS iterates numeric-like keys in
+ *     ascending pageid order — NOT relevance. The API's relevance lives in
+ *     each page's `index` field, so we sort by it or the "best" photo would
+ *     be whichever was uploaded first.
+ *   • URLs can carry a query string (`....JPG?utm_source=...`), so the
+ *     file-type check must not anchor the extension to the end of the URL.
+ */
+export function pagesToPhotos(data: any): Omit<TrailPhoto, 'kind'>[] {
   const pages = data?.query?.pages;
   if (!pages || typeof pages !== 'object') return [];
+  const entries = Object.keys(pages)
+    .map((key) => pages[key])
+    .sort(
+      (a, b) =>
+        (Number.isFinite(Number(a?.index)) ? Number(a.index) : 1e9) -
+        (Number.isFinite(Number(b?.index)) ? Number(b.index) : 1e9)
+    );
+
   const out: Omit<TrailPhoto, 'kind'>[] = [];
-  for (const key of Object.keys(pages)) {
-    const p = pages[key];
+  for (const p of entries) {
     const info = Array.isArray(p?.imageinfo) ? p.imageinfo[0] : null;
     if (!info) continue;
     const title = String(p.title ?? '').replace(/^File:/, '').replace(/\.[a-z]+$/i, '');
     const url: string | undefined = info.thumburl || info.url;
     if (!url) continue;
-    // Photos only — skip maps, SVG signage, PDFs.
-    if (!/\.(jpe?g|png|webp)$/i.test(String(info.url ?? url))) continue;
-    if (/\b(map|logo|diagram|plaque|sign)\b/i.test(title)) continue;
+    // Photos only — skip maps, SVG signage, PDFs. The URL may end in a
+    // query string, so match the extension anywhere before it.
+    if (!/\.(jpe?g|png|webp)(\?|$)/i.test(String(info.url ?? url))) continue;
+    if (/\b(map|logo|diagram|plaque|signs?|signage|rules|marker|poster)\b/i.test(title)) continue;
     out.push({ url, thumbUrl: url, title });
   }
   return out;
@@ -165,7 +184,11 @@ function dedupe(photos: Omit<TrailPhoto, 'kind'>[]): Omit<TrailPhoto, 'kind'>[] 
 
 const photoSetCache = new Map<string, Promise<TrailPhotoSet>>();
 
-/** Full photo set for the trail detail sheet. Cached per trail. */
+/**
+ * Full photo set for the trail detail sheet. Successes are cached per trail;
+ * an empty result (offline, API blip) is NOT kept, so reopening the trail
+ * retries instead of hiding photos until the app restarts.
+ */
 export function getTrailPhotos(trail: Trail): Promise<TrailPhotoSet> {
   const cached = photoSetCache.get(trail.id);
   if (cached) return cached;
@@ -176,8 +199,13 @@ export function getTrailPhotos(trail: Trail): Promise<TrailPhotoSet> {
       trail.name.length >= 6 ? searchPhotosByName(trail.name, 10, 900) : Promise.resolve([]),
     ]);
     const merged = dedupe([...named, ...near]).slice(0, 16);
-    return classifyPhotos(merged);
-  })().catch(() => ({ scenery: [], path: [], all: [] }));
+    const set = classifyPhotos(merged);
+    if (set.all.length === 0) photoSetCache.delete(trail.id);
+    return set;
+  })().catch(() => {
+    photoSetCache.delete(trail.id);
+    return { scenery: [], path: [], all: [] };
+  });
 
   photoSetCache.set(trail.id, promise);
   return promise;
@@ -188,30 +216,39 @@ export function getTrailPhotos(trail: Trail): Promise<TrailPhotoSet> {
  * so opening the Trails tab does not fire two dozen requests at once.
  */
 const coverCache = new Map<string, Promise<string | null>>();
-let coverQueue: Promise<unknown> = Promise.resolve();
-let coverInFlight = 0;
 const COVER_MAX_CONCURRENT = 3;
 
-function throttled<T>(task: () => Promise<T>): Promise<T> {
-  if (coverInFlight < COVER_MAX_CONCURRENT) {
+/**
+ * Simple promise semaphore: at most COVER_MAX_CONCURRENT tasks run at once,
+ * the rest wait in FIFO order and start the moment a slot frees up (they do
+ * not serialise behind the whole queue). Exported for tests.
+ */
+let coverInFlight = 0;
+const coverWaiters: (() => void)[] = [];
+
+export async function throttled<T>(task: () => Promise<T>): Promise<T> {
+  if (coverInFlight >= COVER_MAX_CONCURRENT) {
+    // Queue up. The finishing task hands its slot to us directly (the count
+    // is not decremented in between), so a newcomer can never race past a
+    // queued waiter and push concurrency above the cap.
+    await new Promise<void>((resolve) => coverWaiters.push(resolve));
+  } else {
     coverInFlight++;
-    const p = task().finally(() => {
-      coverInFlight--;
-    });
-    coverQueue = coverQueue.then(() => p.catch(() => undefined));
-    return p;
   }
-  const run = coverQueue.then(() => {
-    coverInFlight++;
-    return task().finally(() => {
-      coverInFlight--;
-    });
-  });
-  coverQueue = run.catch(() => undefined);
-  return run;
+  try {
+    return await task();
+  } finally {
+    const next = coverWaiters.shift();
+    if (next) next();
+    else coverInFlight--;
+  }
 }
 
-/** Best single photo for a trail card, or null. Cached per trail. */
+/**
+ * Best single photo for a trail card, or null. Found covers are cached per
+ * trail; a null (offline, API blip) is dropped from the cache so the next
+ * visit to the list retries instead of staying photo-less until restart.
+ */
 export function getTrailCover(trail: Trail): Promise<string | null> {
   const cached = coverCache.get(trail.id);
   if (cached) return cached;
@@ -223,7 +260,12 @@ export function getTrailCover(trail: Trail): Promise<string | null> {
     // Prefer a scenery-looking shot for the cover.
     const scenic = photos.find((p) => SCENERY_RE.test(p.title));
     return (scenic ?? photos[0]).url;
-  }).catch(() => null);
+  })
+    .catch(() => null)
+    .then((url) => {
+      if (url == null) coverCache.delete(trail.id);
+      return url;
+    });
 
   coverCache.set(trail.id, promise);
   return promise;
