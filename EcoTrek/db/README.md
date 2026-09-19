@@ -16,7 +16,9 @@ organization is involved, so nothing in the DB says "planted by X" — the colum
 | `users` | `AsyncStorage @ecotrek/auth_user`, `'demo-user'` | AuthContext, everything |
 | `devices` | `@ecotrek/device_id` | AnalyticsContext, push notifications |
 | `trails` | hardcoded `AUSTIN_TRAILS` array | TrailsScreen, HomeScreen |
+| `trail_photos` | Wikimedia Commons photo metadata | TrailsScreen detail cards |
 | `activities` | in-memory `ActivityContext.history` | TrackScreen, ImpactScreen |
+| `cleanup_records` | local `LogbookContext` cleanup history | post-trail question, ImpactScreen |
 | `point_events` | `@ecotrek/ecopoints` | EcoPointsContext |
 | `tree_grants` | fake `services/veritree.ts` receipts | ImpactScreen |
 | `clubs` / `club_members` | Firebase playground DB | LeaderboardScreen, ClubContext |
@@ -63,9 +65,31 @@ organization is involved, so nothing in the DB says "planted by X" — the colum
 `animals text[]`, `start_lat`, `start_lng`, `end_lat`, `end_lng`, `is_loop`,
 `geojson jsonb`, `is_active`, `source` (seed/ai/admin/user), `created_at`, `updated_at`.
 
-Store AI-generated trails with `source='ai'` so you can wipe them if the model hallucinates.
+Store AI-generated trails with `source='ai'` so you can wipe them if the model hallucinates. Keep
+those rows reviewable and never let AI invent coordinates or photos that are presented as real.
 
-## 4. `activities`
+## 4. `trail_photos`
+
+One row per approved photo. Store the URL and attribution, never image bytes in Postgres.
+The current offline client uses Wikimedia Commons directly (`source='commons'`); an admin can
+copy an approved URL into this table later without changing the app. `thumb_url` keeps list
+cards fast, and `is_active=false` removes a bad or outdated image without deleting history.
+
+## 5. `cleanup_records`
+
+| Column | Type | Notes |
+|---|---|---|
+| `user_id` | uuid FK | owner of the self-reported cleanup |
+| `client_id` | text | local id; unique per user so offline retries cannot double-log |
+| `activity_id` / `trail_id` | uuid FK nullable | optional link to the trail that just ended |
+| `pieces` | smallint | check constraint: 1 through 99 |
+| `notes` | text | optional, capped by the API |
+
+The app posts this record to `POST /api/cleanups` when `EXPO_PUBLIC_API_URL` is configured,
+while still saving locally first. The same answer also creates a `cleanup` point event and is
+contributed to the user's club. There is no database URL or photo upload secret in the app.
+
+## 6. `activities`
 
 | Column | Type | Notes |
 |---|---|---|

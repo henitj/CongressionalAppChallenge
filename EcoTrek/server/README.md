@@ -75,6 +75,7 @@ POST someone else's id and write to their account.
 | POST | `/api/me/sync` | upsert from token |
 | GET/POST | `/api/activities` | POST is idempotent on `client_id` |
 | DELETE | `/api/activities/:id` | `:id` is the client id (`act-…`) |
+| GET/POST | `/api/cleanups` | honest 1–99 piece counts, idempotent on `client_id` |
 | GET/POST | `/api/points` | points ledger |
 | GET | `/api/streak` | day map + longest streak |
 | POST | `/api/streak/check-in` | upserts recent days |

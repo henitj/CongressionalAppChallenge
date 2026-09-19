@@ -7,8 +7,9 @@ import { useLogbook } from '../context/LogbookContext';
 import { useApp } from '../context/AppContext';
 import { detectCurrentTrail } from '../services/trailDetection';
 import { useTheme, Typography } from '../context/ThemeContext';
+import { MAX_CLEANUP_PIECES, normalizeCleanupPieces } from '../services/cleanup';
 
-const PRESETS = [3, 5, 10, 25];
+const PRESETS = [1, 10, 50, MAX_CLEANUP_PIECES];
 
 /**
  * Logs a trail cleanup.
@@ -43,12 +44,12 @@ export default function CleanupSheet({
   const { addCleanup } = useLogbook();
   const { coords, trails } = useApp();
 
-  const [pieces, setPieces] = useState(5);
+  const [pieces, setPieces] = useState(0);
   const [saving, setSaving] = useState(false);
 
   // Every time the question comes back it should start fresh.
   useEffect(() => {
-    if (visible) setPieces(5);
+    if (visible) setPieces(0);
   }, [visible]);
 
   const trail = detectCurrentTrail(
@@ -57,12 +58,13 @@ export default function CleanupSheet({
   );
 
   const submit = async () => {
-    if (pieces < 1) return;
+    const count = normalizeCleanupPieces(pieces);
+    if (count < 1) return;
     setSaving(true);
     try {
-      await addCleanup(pieces);
-      await onLogged?.(pieces);
-      setPieces(5);
+      await addCleanup(count);
+      await onLogged?.(count);
+      setPieces(0);
       onClose();
     } finally {
       setSaving(false);
@@ -79,6 +81,7 @@ export default function CleanupSheet({
       <View style={{ gap: SPACING.md }}>
         <View style={{ gap: 8 }}>
           <Text style={styles.label}>How many pieces did you pick up?</Text>
+          <Text style={styles.policy}>Honesty policy · enter 0 to 99. More pieces earn more points for your club.</Text>
           <View style={styles.presets}>
             {PRESETS.map((n) => (
               <Pressable
@@ -94,11 +97,13 @@ export default function CleanupSheet({
           </View>
           <TextInput
             value={String(pieces)}
-            onChangeText={(t) => setPieces(Number(t.replace(/[^0-9]/g, '')) || 0)}
+            onChangeText={(t) => setPieces(normalizeCleanupPieces(t.replace(/[^0-9]/g, '')))}
             keyboardType="number-pad"
-            maxLength={3}
+            maxLength={2}
+            placeholder="0–99"
+            placeholderTextColor={colors.textLight}
             style={styles.input}
-            accessibilityLabel="Number of pieces collected"
+            accessibilityLabel="Number of pieces collected, 0 to 99"
           />
         </View>
 
@@ -131,6 +136,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
 
   label: { ...t.overline, color: c.textMuted },
+  policy: { ...t.small, color: c.textSecondary },
   presets: { flexDirection: 'row', gap: 8 },
   chip: {
     flex: 1,

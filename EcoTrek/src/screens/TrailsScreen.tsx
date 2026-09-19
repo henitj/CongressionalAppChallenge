@@ -1,4 +1,4 @@
-import React, { useCallback, useEffect, useMemo, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -11,7 +11,7 @@ import {
   ScrollView,
   ActivityIndicator,
 } from 'react-native';
-import { useNavigation, useRoute } from '@react-navigation/native';
+import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/native';
 
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
@@ -118,6 +118,24 @@ export default function TrailsScreen() {
   const { formatDistanceCompact, formatDistanceUnit } = useSettings();
   const { history } = useActivity();
   const { isTablet } = useResponsive();
+  const openedRef = useRef(false);
+
+  // Opening Trails is the location request. It also kicks off the bounded
+  // three-attempt catalogue lookup in AppContext, so the first screen visit
+  // behaves like the user already pressed Retry a couple of times.
+  useFocusEffect(
+    useCallback(() => {
+      if (openedRef.current) return;
+      openedRef.current = true;
+      let alive = true;
+      requestLocation().then((found) => {
+        if (alive && !found) refreshTrails();
+      });
+      return () => {
+        alive = false;
+      };
+    }, [requestLocation, refreshTrails])
+  );
 
   const [filters, setFilters] = useState<Set<FilterKey>>(new Set());
   const [maxLen, setMaxLen] = useState(LEN_MAX);
@@ -762,16 +780,31 @@ function PhotoStrip({
         {loading
           ? [0, 1, 2].map((i) => <View key={i} style={styles.photoSkeleton} />)
           : photos.slice(0, 6).map((p) => (
-              <Image
-                key={p.url}
-                source={{ uri: p.url }}
-                style={styles.photo}
-                resizeMode="cover"
-                accessibilityLabel={p.title}
-              />
+              <PhotoTile key={p.url} photo={p} style={styles.photo} />
             ))}
       </ScrollView>
     </View>
+  );
+}
+
+function PhotoTile({ photo, style }: { photo: TrailPhoto; style: any }) {
+  const { colors } = useTheme();
+  const [failed, setFailed] = useState(false);
+  if (failed) {
+    return (
+      <View style={[style, { alignItems: 'center', justifyContent: 'center' }]} accessibilityLabel="Photo unavailable">
+        <Icon name="image" size={24} color={colors.textLight} strokeWidth={1.7} />
+      </View>
+    );
+  }
+  return (
+    <Image
+      source={{ uri: photo.thumbUrl || photo.url }}
+      style={style}
+      resizeMode="cover"
+      onError={() => setFailed(true)}
+      accessibilityLabel={photo.title}
+    />
   );
 }
 
@@ -813,7 +846,13 @@ function TrailCard({
   return (
     <Card onPress={onPress} style={styles.trailCard}>
       {cover ? (
-        <Image source={{ uri: cover }} style={styles.trailCover} resizeMode="cover" />
+        <Image
+          source={{ uri: cover }}
+          style={styles.trailCover}
+          resizeMode="cover"
+          onError={() => setCover(null)}
+          accessibilityLabel={`${trail.name} photo`}
+        />
       ) : null}
 
       <View style={styles.trailHead}>

@@ -20,9 +20,11 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
   onboarding state — it never feels like re-registering.
 - **Guest → Google** later: walks already on the phone are copied over when you
   sign in with Google.
-- **First run, once per account:** sign in → **Get Started** (your name is
-  pre-filled from your sign-in name; height/weight are optional) → home.
-  Returning users go straight to home.
+- **First run, once per account:** sign in → the five-page **Start tutorial** →
+  **Get Started** (your name is pre-filled from your sign-in name; height/weight
+  are optional) → home. The tutorial includes the honesty prompt and shows the
+  0–99 trash count. Done and Skip are both persisted per account, so it is shown
+  only once. Returning users go straight to home.
 - **Your name is always yours.** Tap your name on the profile (pencil icon) to
   edit it any time; it updates the home screen and the share card.
 
@@ -41,7 +43,7 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 | **Weather** | One tiny box on Home: temperature, condition, and a single friendly line. We are not a weather app. Full detail is one tap away. |
 | **Safety** | A big one-tap Stop button at the top of the live screen, plus Call 911 (with a confirm step). Sit-down reminder after 25 minutes. |
 | **Live map** | Real map tiles: Apple Maps on iOS, Google on Android, OpenStreetMap through Leaflet on web (bundled, not fetched from a CDN). If tiles cannot be reached, the screen draws the route it has recorded instead of a grey box. |
-| **Trash pickup** | After a walk of ten minutes or more, EcoTrek asks how many pieces of litter you picked up. Answering adds bonus points, credits the extra minutes, and counts toward your Impact and badges. "None this time" is one tap. |
+| **Trash pickup** | After every valid trail, EcoTrek asks, "How many pieces of trash do you pick up?" Enter an honest number from 0 to 99. More pieces earn more points, contribute to your club, and count toward Impact and badges. "None this time" is one tap. |
 | **Simple mode** | Bigger text and bigger buttons everywhere, clubs and weekly goals hidden from Home and More, and three big numbers on the live walk screen instead of eight. |
 | **Text size / look** | Normal, Large, Extra large. Light, Dark, or Sky (sunrise / afternoon / sunset in daytime only). |
 | **Your photo** | Tap the avatar on your profile to pick or take your own picture. It becomes your profile logo everywhere. |
@@ -90,7 +92,7 @@ src/navigation/RootNavigator.tsx   Home / Start / More tabs + stack
 src/screens/SignInScreen.tsx       sign-in: Google (local account sheet on web) + guest
 src/screens/SetupScreen.tsx        Get Started: name (pre-filled) → height/weight → step length
 src/screens/OnboardingScreen.tsx   4-page intro, dots + Next + Skip
-src/components/OnboardingGate.tsx  first-run order + once-per-account persistence
+src/components/OnboardingGate.tsx  one-time tutorial → profile setup, per-account persistence
 src/context/AuthContext.tsx        sessions, Google (real + local), stable guest id, migration
 src/screens/HomeScreen.tsx         greeting, weather, this week, last walk
 src/screens/TrackScreen.tsx        Start tab: Walk/Bike + one big Start button

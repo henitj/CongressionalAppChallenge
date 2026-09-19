@@ -40,7 +40,7 @@ describe('ErrorBoundary fallback', () => {
       </ErrorBoundary>
     );
 
-    expect(screen.getByText('Something went wrong')).toBeTruthy();
+    expect(screen.getByText('Sorry, something went wrong')).toBeTruthy();
     expect(screen.getByText('Try again')).toBeTruthy();
     expect(screen.getByText('Report error')).toBeTruthy();
   });
@@ -52,7 +52,7 @@ describe('ErrorBoundary fallback', () => {
       </ErrorBoundary>
     );
     expect(screen.getByText('all good')).toBeTruthy();
-    expect(screen.queryByText('Something went wrong')).toBeNull();
+    expect(screen.queryByText('Sorry, something went wrong')).toBeNull();
   });
 
   it('opens the mail app with the error prefilled when Report error is tapped', async () => {

@@ -458,6 +458,26 @@ describe('screens that do not need the provider stack', () => {
     expect(queryByText('Skip')).toBeTruthy();
     expect(toJSON()).toBeTruthy();
   });
+
+  it('the start tutorial explains the 0–99 honesty count', async () => {
+    const utils = render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 47, left: 0, right: 0, bottom: 34 },
+        }}
+      >
+        <OnboardingScreen onDone={() => {}} />
+      </SafeAreaProvider>
+    );
+
+    for (let i = 0; i < 4; i += 1) {
+      fireEvent.press(utils.getByText('Next'));
+    }
+    await waitFor(() => expect(utils.queryByText('Every piece counts.')).toBeTruthy());
+    expect(utils.queryByText(/0 to 99/i)).toBeTruthy();
+    expect(utils.queryByText('More pieces = more points for your club')).toBeTruthy();
+  });
 });
 
 describe('empty states say something useful', () => {

@@ -7,9 +7,11 @@ import { Screen, Card, Segmented, EmptyState, Pill, Divider, Banner, Button } fr
 import { RADIUS, SPACING, TREE_RULES, ColorPalette } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
+import { useClub } from '../constants/ClubContext';
 import { useSettings } from '../constants/SettingsContext';
 import CleanupSheet from '../components/CleanupSheet';
 import { TREES_DISCLAIMER } from '../services/trees';
+import { cleanupBonusPoints } from '../services/cleanup';
 import { computeRecords } from '../services/records';
 import { useLogbook } from '../context/LogbookContext';
 import { useTheme, Typography } from '../context/ThemeContext';
@@ -23,7 +25,8 @@ export default function ImpactScreen() {
   const route = useRoute<any>();
   const { history, totalMiles, totalTrees, totalActivities, uniqueTrailsCompleted, deleteActivity } =
     useActivity();
-  const { history: pointHistory, totalPoints } = useEcoPoints();
+  const { history: pointHistory, totalPoints, award } = useEcoPoints();
+  const { myClub, contribute } = useClub();
   const { cleanupCount, litterCollected } = useLogbook();
   const [showCleanup, setShowCleanup] = useState(false);
   const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
@@ -56,6 +59,16 @@ export default function ImpactScreen() {
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deleteActivity(id) },
     ]);
+  };
+
+  const handleCleanupLogged = async (pieces: number) => {
+    const bonus = cleanupBonusPoints(pieces);
+    if (bonus <= 0) return;
+    await award('cleanup', {
+      points: bonus,
+      label: `Picked up ${pieces} piece${pieces === 1 ? '' : 's'} of litter`,
+    });
+    if (myClub) await contribute({ points: bonus, trees: 0, miles: 0, activities: 0 });
   };
 
   return (
@@ -330,7 +343,11 @@ export default function ImpactScreen() {
           </>
         ) : null}
       </View>
-          <CleanupSheet visible={showCleanup} onClose={() => setShowCleanup(false)} />
+          <CleanupSheet
+            visible={showCleanup}
+            onClose={() => setShowCleanup(false)}
+            onLogged={handleCleanupLogged}
+          />
       </Screen>
   );
 }

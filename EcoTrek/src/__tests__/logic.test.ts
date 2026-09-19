@@ -35,9 +35,12 @@ import {
 import { answerQuestion, AssistantContext, resolveTrail, STARTER_QUESTIONS } from '../services/assistant';
 import {
   CLEANUP_PROMPT_SEC,
+  MAX_CLEANUP_PIECES,
   cleanupBonusPoints,
   cleanupBonusSeconds,
+  normalizeCleanupPieces,
   shouldAskCleanup,
+  shouldAskCleanupAfterTrail,
 } from '../services/cleanup';
 import {
   rarityLabel,
@@ -867,6 +870,16 @@ test('cleanup time credited back is small and capped', () => {
   assert.equal(cleanupBonusSeconds(0), 0);
   assert.equal(cleanupBonusSeconds(3), 60);
   assert.equal(cleanupBonusSeconds(999), 600);
+});
+
+test('every trail asks once and accepts an honest 0–99 answer', () => {
+  assert.equal(MAX_CLEANUP_PIECES, 99);
+  assert.equal(normalizeCleanupPieces('99'), 99);
+  assert.equal(normalizeCleanupPieces('999'), 99);
+  assert.equal(normalizeCleanupPieces(''), 0);
+  assert.equal(shouldAskCleanupAfterTrail(false), true);
+  assert.equal(shouldAskCleanupAfterTrail(true), false);
+  assert.ok(cleanupBonusPoints(99) > cleanupBonusPoints(10));
 });
 
 

@@ -93,10 +93,9 @@ function Fallback({
       <View style={styles.mark}>
         <Text style={styles.markText}>!</Text>
       </View>
-      <Text style={styles.title}>Something went wrong</Text>
+      <Text style={styles.title}>Sorry, something went wrong</Text>
       <Text style={styles.body}>
-        The app hit an unexpected problem. Your walks are safe. Try again — if it keeps happening,
-        please tell the team.
+        Your walks are safe. Tap Try again — if it keeps happening, please tell the team.
       </Text>
       <Pressable
         onPress={onRetry}
