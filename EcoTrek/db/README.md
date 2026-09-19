@@ -78,6 +78,10 @@ and `is_active=false` removes a bad or outdated image without deleting history.
 
 ## 5. `cleanup_records`
 
+The app presents an honest **0–99** range after every valid trail. `0` / **None this
+time** means no cleanup was logged, so it stays local to the prompt and earns no points.
+Only a positive answer is persisted here, using the database's **1–99** constraint.
+
 | Column | Type | Notes |
 |---|---|---|
 | `user_id` | uuid FK | owner of the self-reported cleanup |

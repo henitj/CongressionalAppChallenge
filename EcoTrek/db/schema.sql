@@ -230,7 +230,8 @@ CREATE TRIGGER activities_touch BEFORE UPDATE ON activities
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ===========================================================================
--- 5. cleanup_records  (one honest 0–99 answer per logged cleanup)
+-- 5. cleanup_records  (one positive honest 1–99 answer per logged cleanup)
+-- The app offers 0–99; zero means no cleanup row is logged or rewarded.
 -- Keep the count as structured data rather than burying it in point metadata.
 -- The photo itself is never stored in this table; if a future cleanup photo is
 -- added, put it in object storage and store only its URL.
