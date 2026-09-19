@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,8 +6,6 @@ import {
   TextInput,
   Pressable,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   ActivityIndicator,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -29,6 +27,7 @@ import {
 } from '../services/assistant';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 import { useTheme, Typography } from '../context/ThemeContext';
+import { useKeyboardGap } from '../hooks/useKeyboardHeight';
 
 type Message = {
   id: string;
@@ -185,15 +184,30 @@ export default function AssistantScreen() {
 
   const showStarters = messages.filter((m) => m.role === 'user').length === 0;
 
+  /*
+   * Keyboard handling. The old KeyboardAvoidingView guessed the header
+   * height with a fixed 88px offset — wrong on notched iPhones and a no-op
+   * on Android, so the keyboard could sit on top of the composer and you
+   * typed blind. useKeyboardGap measures the real keyboard frame AND how
+   * much the window already shrank for it, then returns only the remainder
+   * as padding — so the composer sits flush on the keyboard on both
+   * platforms, whether or not the OS resized the window.
+   */
+  const { gap: keyboardPad, keyboardVisible, onContainerLayout } = useKeyboardGap();
+
+  // Keep the conversation pinned to the latest message when the keyboard
+  // opens, so the input never ends up detached from what you are replying to.
+  useEffect(() => {
+    if (keyboardVisible) {
+      requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+    }
+  }, [keyboardVisible]);
+
   return (
     <View style={styles.root}>
       <Header title="Trail assistant" subtitle="Ask about trails near you" back />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
-      >
+      <View style={{ flex: 1, paddingBottom: keyboardPad }} onLayout={onContainerLayout}>
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.scroll}
@@ -323,10 +337,12 @@ export default function AssistantScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.disclaimer}>
-          Answers come from the trail data in this app. Conditions still change — check before you go.
-        </Text>
-      </KeyboardAvoidingView>
+        {!keyboardVisible ? (
+          <Text style={styles.disclaimer}>
+            Answers come from the trail data in this app. Conditions still change — check before you go.
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
