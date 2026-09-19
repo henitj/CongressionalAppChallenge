@@ -20,9 +20,11 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
   onboarding state — it never feels like re-registering.
 - **Guest → Google** later: walks already on the phone are copied over when you
   sign in with Google.
-- **First run, once per account:** sign in → **Get Started** (your name is
-  pre-filled from your sign-in name; height/weight are optional) → home.
-  Returning users go straight to home.
+- **First run, once per account:** sign in → the five-page **Start tutorial** →
+  **Get Started** (your name is pre-filled from your sign-in name; height/weight
+  are optional) → home. The tutorial includes the honesty prompt and shows the
+  0–99 trash count. Done and Skip are both persisted per account, so it is shown
+  only once. Returning users go straight to home.
 - **Your name is always yours.** Tap your name on the profile (pencil icon) to
   edit it any time; it updates the home screen and the share card.
 
@@ -41,13 +43,74 @@ Built for the Congressional App Challenge by Henit Jain, Matan Heber, Arjun Aver
 | **Weather** | One tiny box on Home: temperature, condition, and a single friendly line. We are not a weather app. Full detail is one tap away. |
 | **Safety** | A big one-tap Stop button at the top of the live screen, plus Call 911 (with a confirm step). Sit-down reminder after 25 minutes. |
 | **Live map** | Real map tiles: Apple Maps on iOS, Google on Android, OpenStreetMap through Leaflet on web (bundled, not fetched from a CDN). If tiles cannot be reached, the screen draws the route it has recorded instead of a grey box. |
-| **Trash pickup** | After a walk of ten minutes or more, EcoTrek asks how many pieces of litter you picked up. Answering adds bonus points, credits the extra minutes, and counts toward your Impact and badges. "None this time" is one tap. |
+| **Trash pickup** | After every valid trail, EcoTrek asks, "How many pieces of trash do you pick up?" Enter an honest number from 0 to 99. More pieces earn more points, contribute to your club, and count toward Impact and badges. "None this time" is one tap. |
 | **Simple mode** | Bigger text and bigger buttons everywhere, clubs and weekly goals hidden from Home and More, and three big numbers on the live walk screen instead of eight. |
 | **Text size / look** | Normal, Large, Extra large. Light, Dark, or Sky (sunrise / afternoon / sunset in daytime only). |
 | **Your photo** | Tap the avatar on your profile to pick or take your own picture. It becomes your profile logo everywhere. |
 | **Share card** | A real picture — your photo plus your stats — sent through the system share sheet. If a device can't make a picture, it falls back to sharing the stats as text, and the card is always on screen to show someone directly. |
 | **Trails** | Named walks and rides near you in the US, Canada, and Mexico, looked up from OpenStreetMap using live GPS. Austin's 14 trails ship as richer cards when you are actually in Austin. Cards show area, distance, easy/medium/hard, dogs, water, bathrooms. "Ask about a trail" goes straight to the assistant. |
 | **Trees** | Symbolic only. 1 per mile walked, 1 per 3 miles biked. |
+
+---
+
+## Release behavior and reliability
+
+### Post-trail trash honesty prompt
+
+Every valid trail activity opens a post-trail sheet with the exact question:
+
+> **How many pieces of trash do you pick up?**
+
+The answer is self-reported and limited to **0–99 pieces**. The sheet includes quick
+choices for 1, 10, 50, and 99, accepts keyboard entry, and explains the honesty policy.
+More pieces earn more EcoPoints, contribute to the user's club, and appear in Impact,
+badges, and the points ledger. **None this time** closes the question without inventing
+a number. Activities rejected by the anti-cheat checks do not receive the prompt or rewards.
+
+The UI and local-first logbook normalize every answer through `MAX_CLEANUP_PIECES = 99`.
+A positive answer is saved and synced as one idempotent `cleanup_records` row; choosing
+zero / **None this time** intentionally closes the prompt without creating a cleanup
+record or awarding points.
+
+### One-time start tutorial
+
+The five-page Start tutorial appears between sign-in and profile setup. Its final page
+shows the 0–99 trash input, the honesty policy, and the club-points relationship. The
+Done/Skip choice is stored under the signed-in account's namespaced storage key:
+
+```text
+@ecotrek/<account-id>/start_tutorial_complete
+```
+
+That makes it a once-per-account experience: signing out and back in does not replay it,
+and a returning account goes straight to the app after the flag is present.
+
+### Trail loading without repeated taps
+
+Opening the Trails page automatically requests location and starts the catalogue lookup.
+The lookup runs up to three bounded attempts in the background, equivalent to the old
+manual Retry, Retry, Retry flow. Austin's verified bundled catalogue appears immediately
+while the live OpenStreetMap/Nominatim result is loading. A stale or empty network result
+never replaces a working bundled result with an error screen.
+
+### Real-photo rules
+
+Trail photos are real image URLs, not AI-generated scenery presented as fact. The client
+prefers approved `trail_photos` rows returned by the optional API, then uses Wikimedia
+Commons as the offline/no-backend source. Photo titles are ranked for trail relevance,
+map/sign/logo files are filtered out, thumbnails are used where available, and a failed
+image becomes a neutral placeholder instead of a broken image. See `db/README.md` for
+how to add an approved photo without changing the app build.
+
+### Error fallback
+
+The root `ErrorBoundary` catches render-time failures and shows a self-contained screen:
+
+> **Sorry, something went wrong**
+
+It includes a working **Try again** retry button, protects saved walks, and provides a
+Report error action if the problem persists. Network-backed features use local fallback
+or a safe empty state rather than surfacing raw fetch/API errors to the user.
 
 ---
 
@@ -60,15 +123,39 @@ npm run start:lan    # same Wi‑Fi only (no tunnel)
 npm run web          # web only
 npm test
 npm run typecheck
+npm run verify      # strict typecheck + logic + render suites
 ```
 
 Expo Go on a phone cannot use `localhost`. If the browser preview works but the phone stays on a loading screen, use `npm start` (tunnel) and update Expo Go to SDK 57.
 
-Copy `.env.example` to `.env` only if you need Google sign-in or `EXPO_PUBLIC_API_URL`. Empty env = full offline app.
+### Optional configuration
 
-Google sign-in: paste the three client IDs into `.env`. Full walkthrough: `docs/GOOGLE_OAUTH_SETUP.md`.
+Copy `.env.example` to `.env`. With an empty app `.env`, EcoTrek remains a fully usable
+local-first app: walks, trash answers, points, clubs, photos, and tutorial state work on
+the device without a server.
 
-Neon (shared clubs / leaderboards): `cd server && cp .env.example .env`, paste the pooled connection string from [neon.com](https://neon.com), then `npm install && npm run migrate && npm run check`. Full walkthrough: `docs/NEON_SETUP.md`.
+For Google sign-in, paste the three client IDs into `.env`. Full walkthrough:
+`docs/GOOGLE_OAUTH_SETUP.md`.
+
+For shared clubs, leaderboards, cleanup records, curated photos, and cross-device sync:
+
+```bash
+cd server
+cp .env.example .env
+# add DATABASE_URL and GOOGLE_CLIENT_IDS
+npm install
+npm run migrate
+npm run check
+```
+
+Then set the public API URL in `EcoTrek/.env`:
+
+```text
+EXPO_PUBLIC_API_URL=https://your-api.example.com
+```
+
+Full database walkthrough: `docs/NEON_SETUP.md`. Never put `DATABASE_URL` in the Expo
+app; it belongs only in `server/.env`.
 
 ---
 
@@ -76,9 +163,13 @@ Neon (shared clubs / leaderboards): `cd server && cp .env.example .env`, paste t
 
 | Command | What it proves |
 |---|---|
-| `npm run test:logic` | Pure logic — dates, streaks, trails, anti-cheat, recap |
-| `npm run test:render` | Every screen mounts on an empty account, plus sign-in, onboarding, setup, and profile flows |
-| `npm run verify` | Typecheck with unused-code checks, then both suites |
+| `npm run test:logic` | Pure logic — dates, streaks, trails, anti-cheat, recap, 0–99 cleanup rules, and photo parsing |
+| `npm run test:render` | Every screen mounts on an empty account, plus sign-in, one-time tutorial, setup, profile, cleanup, and error-boundary flows |
+| `npm run verify` | Strict typecheck with unused-code checks, then both suites |
+
+The release verification includes an explicit test that the tutorial is persisted after
+Skip and does not appear on the next launch, a test that the tutorial visibly shows the
+0–99 trash range, cleanup reward tests, and render tests for the working retry fallback.
 
 ---
 
@@ -89,8 +180,8 @@ App.tsx                            providers + single font scaler + branded spla
 src/navigation/RootNavigator.tsx   Home / Start / More tabs + stack
 src/screens/SignInScreen.tsx       sign-in: Google (local account sheet on web) + guest
 src/screens/SetupScreen.tsx        Get Started: name (pre-filled) → height/weight → step length
-src/screens/OnboardingScreen.tsx   4-page intro, dots + Next + Skip
-src/components/OnboardingGate.tsx  first-run order + once-per-account persistence
+src/screens/OnboardingScreen.tsx   5-page intro, 0–99 trash demo, dots + Next + Skip
+src/components/OnboardingGate.tsx  one-time tutorial → profile setup, per-account persistence
 src/context/AuthContext.tsx        sessions, Google (real + local), stable guest id, migration
 src/screens/HomeScreen.tsx         greeting, weather, this week, last walk
 src/screens/TrackScreen.tsx        Start tab: Walk/Bike + one big Start button
@@ -101,8 +192,10 @@ src/screens/ActiveTrackingScreen.tsx  live GPS, 911, rest reminder, post-walk tr
 src/components/LiveMap.web.tsx     web map: bundled Leaflet + OpenStreetMap tiles
 src/components/RouteSketch.tsx     drawn route, used when map tiles are unreachable
 src/components/TrailScene.tsx      the Start tab illustration (SVG, re-themes itself)
-src/services/cleanup.ts            when to ask about litter, and what it is worth
+src/services/cleanup.ts            0–99 cleanup normalization, prompt rules, and rewards
+src/services/trailPhotos.ts         Commons/admin photo lookup, relevance ranking, and fallbacks
 src/constants/SettingsContext.tsx  units, text size, theme
+db/schema.sql                      trails, approved trail photos, cleanups, activities, clubs
 src/context/ThemeContext.tsx       light / dark / sky + scaled typography
 src/services/location.ts           foreground watch + background task
 src/services/locationTask.ts       TaskManager definition
@@ -134,12 +227,33 @@ src/services/avatar.ts             profile photo: pick/take, compress, store
 
 ---
 
-## Backend (optional)
+## Backend and database (optional but Play-ready)
 
-See `server/README.md` and `db/README.md`. The app does not need a server.
+The app does not need a server to run. Local-first storage means a user can walk,
+answer the cleanup question, earn points, and view trails offline. When the API is
+configured, the same records sync to Neon:
+
+- `activities` — validated hikes/rides and their paths
+- `cleanup_records` — one idempotent 1–99 cleanup count per answer
+- `point_events` — auditable personal points ledger
+- `clubs` / `club_members` — shared club competition
+- `trails` — approved trail catalogue rows
+- `trail_photos` — approved image URLs, thumbnails, attribution, and scenery/path kind
+
+To add a curated photo, insert a URL and optional thumbnail into `trail_photos`, set
+`is_active = true`, and the API automatically includes it in `/api/trails`. Image bytes
+stay in Wikimedia/object storage; Postgres stores metadata and URLs only. This avoids
+shipping a new APK just to replace a strange or outdated image.
+
+See `server/README.md` and `db/README.md` for the complete setup and endpoint list.
 
 ---
 
 ## Shipping
 
-`docs/LAUNCH_CHECKLIST.md` — privacy policy, Google Cloud SHA-1, and store review.
+`docs/LAUNCH_CHECKLIST.md` — privacy policy, Google Cloud SHA-1, EAS credentials,
+Neon/API configuration, Play data-safety answers, and store review. Before uploading,
+run `npm run verify`, configure production environment variables, run the API migration,
+and test the release build on a physical Android device with location permission,
+background recording, offline mode, cleanup prompt, photo fallback, and the error retry
+screen.

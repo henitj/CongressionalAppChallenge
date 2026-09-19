@@ -1,7 +1,13 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { Platform } from 'react-native';
 import * as Location from 'expo-location';
-import { fetchNearbyTrails, Trail, type TrailSource } from '../constants/austinTrails';
+import {
+  AUSTIN_TRAILS,
+  fetchNearbyTrails,
+  Trail,
+  type TrailSource,
+} from '../constants/austinTrails';
+import { isNearAustin, withDistances } from '../services/nearbyTrails';
 
 /**
  * Location + trail catalogue.
@@ -91,12 +97,38 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const refreshTrails = useCallback(async () => {
     setTrailsLoading(true);
     setTrailsError(null);
+    const lat = coords?.latitude;
+    const lon = coords?.longitude;
+
+    // Austin ships with a vetted offline catalogue. Put it on screen while
+    // the live lookup retries in the background so the page is useful on the
+    // very first tap, even if Overpass is slow.
+    if (lat != null && lon != null && isNearAustin(lat, lon)) {
+      const immediate = withDistances(AUSTIN_TRAILS, lat, lon);
+      setTrails(immediate);
+      setTrailsRegion('Austin, TX');
+      setTrailsSource('bundled');
+    }
+
     try {
-      const data = await fetchNearbyTrails(coords?.latitude, coords?.longitude);
+      // A cold Overpass/Nominatim request is the most common reason the old
+      // Trails page looked empty until the user tapped Retry several times.
+      // Treat the first open like a small, bounded retry queue instead. The
+      // request that eventually succeeds updates the same screen; no second
+      // tap is needed.
+      const attempts = lat == null || lon == null ? 1 : 3;
+      let data = await fetchNearbyTrails(lat, lon);
+      for (let attempt = 1; attempt < attempts && data.trails.length === 0 && data.source === 'live'; attempt += 1) {
+        await new Promise((resolve) => setTimeout(resolve, attempt === 1 ? 250 : 700));
+        data = await fetchNearbyTrails(lat, lon);
+      }
+
       setTrails(data.trails);
       setTrailsRegion(data.region);
       setTrailsSource(data.source);
     } catch (e: any) {
+      // The catalogue service normally returns a safe empty result, but this
+      // envelope protects the page if a future provider throws unexpectedly.
       setTrailsError(e?.message ?? 'Could not load trails');
     } finally {
       setTrailsLoading(false);

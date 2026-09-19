@@ -110,6 +110,15 @@ function toPointEvent(r) {
   };
 }
 
+function toCleanupRecord(r) {
+  return {
+    id: r.client_id,
+    date: ms(r.created_at),
+    litterCount: r.pieces,
+    notes: r.notes ?? undefined,
+  };
+}
+
 function toClub(club, members) {
   return {
     id: club.id,
@@ -283,6 +292,36 @@ export const routes = [
     handler: async ({ user, params, sql }) => {
       await sql`DELETE FROM activities WHERE user_id = ${user.id} AND client_id = ${params.id}`;
       return undefined;
+    },
+  },
+
+  {
+    method: 'GET',
+    path: '/api/cleanups',
+    handler: async ({ user, sql }) => {
+      const rows = await sql`
+        SELECT * FROM cleanup_records
+        WHERE user_id = ${user.id}
+        ORDER BY created_at DESC
+        LIMIT 500`;
+      return rows.map(toCleanupRecord);
+    },
+  },
+  {
+    method: 'POST',
+    path: '/api/cleanups',
+    handler: async ({ user, body, sql }) => {
+      if (!body?.id) throw fail(400, 'invalid_cleanup');
+      const pieces = clampNumber(body.litterCount, 1, 99);
+      const clientId = capString(body.id, 200);
+      const notes = body.notes == null ? null : capString(body.notes, 500);
+      const rows = await sql`
+        INSERT INTO cleanup_records (user_id, client_id, pieces, notes)
+        VALUES (${user.id}, ${clientId}, ${pieces}, ${notes})
+        ON CONFLICT (user_id, client_id) DO UPDATE
+          SET pieces = EXCLUDED.pieces, notes = EXCLUDED.notes
+        RETURNING *`;
+      return toCleanupRecord(rows[0]);
     },
   },
 
@@ -715,6 +754,13 @@ export const routes = [
     public: true,
     handler: async ({ sql }) => {
       const rows = await sql`SELECT * FROM trails WHERE is_active ORDER BY name`;
+      const photos = rows.length
+        ? await sql`
+            SELECT trail_id, image_url, thumb_url, title, kind
+            FROM trail_photos
+            WHERE is_active AND trail_id = ANY(${rows.map((t) => t.id)})
+            ORDER BY created_at ASC`
+        : [];
       return rows.map((t) => ({
         id: t.slug,
         slug: t.slug,
@@ -726,6 +772,14 @@ export const routes = [
         description: t.description,
         safetyTips: t.safety_tips ?? [],
         imageUrl: t.image_url ?? undefined,
+        photos: photos
+          .filter((p) => p.trail_id === t.id)
+          .map((p) => ({
+            url: p.image_url,
+            thumbUrl: p.thumb_url ?? p.image_url,
+            title: p.title ?? t.name,
+            kind: p.kind,
+          })),
         rating: t.rating == null ? undefined : Number(t.rating),
         petFriendly: t.pet_friendly,
         familyFriendly: t.family_friendly,

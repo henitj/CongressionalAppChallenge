@@ -33,11 +33,11 @@ import {
 import { computeTrees, useActivity } from '../context/ActivityContext';
 import { useSettings } from '../constants/SettingsContext';
 import { useEcoPoints } from '../constants/EcoPointsContext';
+import { useClub } from '../constants/ClubContext';
 import {
-  CLEANUP_PROMPT_SEC,
   cleanupBonusPoints,
   cleanupBonusSeconds,
-  shouldAskCleanup,
+  shouldAskCleanupAfterTrail,
 } from '../services/cleanup';
 import { useApp } from '../context/AppContext';
 import { detectCurrentTrail } from '../services/trailDetection';
@@ -61,6 +61,7 @@ export default function ActiveTrackingScreen() {
   const { trails } = useApp();
   const { profile } = useProfile();
   const { award } = useEcoPoints();
+  const { myClub, contribute } = useClub();
   const { addActivity, totalActivities } = useActivity();
 
   // The map gets a share of the screen rather than a hard 280px, so short
@@ -243,7 +244,10 @@ export default function ActiveTrackingScreen() {
       // actually counted. Feedback comes after that, as a popup — not a
       // button buried on the summary.
       if (!res.rejected && !simpleMode) pendingFeedback.current = true;
-      if (shouldAskCleanup(elapsed, res.rejected, mode)) {
+      // Every valid trail ends with the honesty question. Do not gate it on
+      // duration: a short named route still deserves the same chance to leave
+      // the trail cleaner than you found it.
+      if (shouldAskCleanupAfterTrail(res.rejected)) {
         setShowCleanup(true);
       } else if (pendingFeedback.current) {
         pendingFeedback.current = false;
@@ -270,6 +274,11 @@ export default function ActiveTrackingScreen() {
         points: bonus,
         label: `Picked up ${pieces} piece${pieces === 1 ? '' : 's'} of litter`,
       });
+      // Cleanup points count for the user's club as well as their personal
+      // total. That makes the honesty policy meaningful in club competition.
+      if (myClub) {
+        await contribute({ points: bonus, trees: 0, miles: 0, activities: 0 });
+      }
       setResult((prev: any) =>
         prev
           ? {
@@ -282,7 +291,7 @@ export default function ActiveTrackingScreen() {
           : prev
       );
     },
-    [award]
+    [award, contribute, myClub]
   );
 
   const handleDiscard = () => {
@@ -384,7 +393,6 @@ export default function ActiveTrackingScreen() {
               <View style={styles.resultButtons}>
                 {/* Said no first, then remembered the can by the bench. */}
                 {!result.rejected &&
-                (result.kind === 'bike' || result.durationSec >= CLEANUP_PROMPT_SEC) &&
                 result.cleanupPieces === 0 ? (
                   <Button
                     label="I picked up litter"
@@ -406,8 +414,8 @@ export default function ActiveTrackingScreen() {
             </View>
           </ScrollView>
 
-          {/* The trash question. Only ever shown after a walk of ten minutes
-              or more, and never blocking: "None this time" closes it. */}
+          {/* The trash question appears after every valid trail. It never
+              blocks the result: "None this time" closes it honestly. */}
           <CleanupSheet
             visible={showCleanup}
             onClose={() => {
@@ -417,8 +425,8 @@ export default function ActiveTrackingScreen() {
                 setShowFeedback(true);
               }
             }}
-            title="Pieces of trash you picked up"
-            subtitle={`Nice ${result.kind === 'bike' ? 'ride' : 'walk'} — enter a number for extra points`}
+            title="How many pieces of trash do you pick up?"
+            subtitle={`Nice ${result.kind === 'bike' ? 'ride' : 'walk'} — enter 0 to 99 for extra points`}
             allowNone
             onLogged={handleCleanupLogged}
           />

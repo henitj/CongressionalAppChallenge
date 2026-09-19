@@ -175,11 +175,28 @@ export function classifyPhotos(photos: Omit<TrailPhoto, 'kind'>[]): TrailPhotoSe
 function dedupe(photos: Omit<TrailPhoto, 'kind'>[]): Omit<TrailPhoto, 'kind'>[] {
   const seen = new Set<string>();
   return photos.filter((p) => {
-    const key = p.title.toLowerCase();
+    const key = p.url.toLowerCase();
     if (seen.has(key)) return false;
     seen.add(key);
     return true;
   });
+}
+
+/** Prefer photos whose title is actually about this trail, not just nearby. */
+function trailWords(name: string): string[] {
+  return name
+    .toLowerCase()
+    .split(/[^a-z0-9]+/)
+    .filter((word) => word.length >= 4 && !['trail', 'park', 'loop', 'hike', 'bike'].includes(word));
+}
+
+function relevanceForTrail(photo: Omit<TrailPhoto, 'kind'>, trail: Trail): number {
+  const title = photo.title.toLowerCase();
+  const words = trailWords(trail.name);
+  const nameHits = words.filter((word) => title.includes(word)).length;
+  const scenic = SCENERY_RE.test(photo.title) ? 2 : 0;
+  const path = PATH_RE.test(photo.title) ? 1 : 0;
+  return nameHits * 10 + scenic + path;
 }
 
 const photoSetCache = new Map<string, Promise<TrailPhotoSet>>();
@@ -193,12 +210,31 @@ export function getTrailPhotos(trail: Trail): Promise<TrailPhotoSet> {
   const cached = photoSetCache.get(trail.id);
   if (cached) return cached;
 
+  // A configured API can supply an approved/admin-curated set from
+  // `trail_photos`. Use it first so a database editor can replace a bad
+  // Commons result without shipping a new app build.
+  const approved = Array.isArray(trail.photos)
+    ? trail.photos.filter((photo) => photo && /^https?:\/\//i.test(photo.url))
+    : [];
+  if (approved.length > 0) {
+    const set: TrailPhotoSet = {
+      scenery: approved.filter((photo) => photo.kind === 'scenery'),
+      path: approved.filter((photo) => photo.kind === 'path'),
+      all: approved,
+    };
+    const promise = Promise.resolve(set);
+    photoSetCache.set(trail.id, promise);
+    return promise;
+  }
+
   const promise = (async (): Promise<TrailPhotoSet> => {
     const [near, named] = await Promise.all([
       geosearchPhotos(trail.startLat, trail.startLng, 3000, 20, 900),
       trail.name.length >= 6 ? searchPhotosByName(trail.name, 10, 900) : Promise.resolve([]),
     ]);
-    const merged = dedupe([...named, ...near]).slice(0, 16);
+    const merged = dedupe([...named, ...near])
+      .sort((a, b) => relevanceForTrail(b, trail) - relevanceForTrail(a, trail))
+      .slice(0, 16);
     const set = classifyPhotos(merged);
     if (set.all.length === 0) photoSetCache.delete(trail.id);
     return set;
@@ -255,11 +291,24 @@ export function getTrailCover(trail: Trail): Promise<string | null> {
 
   const promise = throttled(async () => {
     if (trail.imageUrl) return trail.imageUrl;
-    const photos = await geosearchPhotos(trail.startLat, trail.startLng, 1500, 6, 640);
+    const approved = Array.isArray(trail.photos)
+      ? trail.photos.find((photo) => /^https?:\/\//i.test(photo.url))
+      : null;
+    if (approved) return approved.thumbUrl || approved.url;
+    const [named, nearby] = await Promise.all([
+      trail.name.length >= 6 ? searchPhotosByName(trail.name, 6, 640) : Promise.resolve([]),
+      geosearchPhotos(trail.startLat, trail.startLng, 1500, 6, 640),
+    ]);
+    const photos = dedupe([...named, ...nearby]).sort(
+      (a, b) =>
+        relevanceForTrail(b, trail) + (SCENERY_RE.test(b.title) ? 3 : 0) -
+        (relevanceForTrail(a, trail) + (SCENERY_RE.test(a.title) ? 3 : 0))
+    );
     if (photos.length === 0) return null;
-    // Prefer a scenery-looking shot for the cover.
-    const scenic = photos.find((p) => SCENERY_RE.test(p.title));
-    return (scenic ?? photos[0]).url;
+    // Prefer the best-matching scenery shot for the cover. A nearby photo is
+    // still better than a broken card, but an unrelated scenic image cannot
+    // outrank a photo whose title names this trail.
+    return photos[0].thumbUrl || photos[0].url;
   })
     .catch(() => null)
     .then((url) => {

@@ -97,6 +97,7 @@ export const ROUTES = {
 
   activities: '/api/activities',
   activity: (id: string) => `/api/activities/${id}`,
+  cleanups: '/api/cleanups',
 
   points: '/api/points',
 

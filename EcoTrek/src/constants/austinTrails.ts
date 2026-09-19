@@ -38,6 +38,13 @@ export type Trail = {
   description: string;
   safetyTips: string[];
   imageUrl?: string;
+  /** Admin-approved photo metadata supplied by the optional database. */
+  photos?: {
+    url: string;
+    thumbUrl: string;
+    title: string;
+    kind: 'scenery' | 'path';
+  }[];
   rating?: number;
   petFriendly?: boolean;
   familyFriendly?: boolean;

@@ -159,7 +159,25 @@ CREATE TRIGGER trails_touch BEFORE UPDATE ON trails
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ===========================================================================
--- 4. activities  (one finished hike/bike — replaces in-memory ActivityContext)
+-- 4. trail_photos  (metadata only; image bytes stay in Wikimedia/object storage)
+-- ===========================================================================
+CREATE TABLE IF NOT EXISTS trail_photos (
+  id             UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  trail_id       UUID NOT NULL REFERENCES trails(id) ON DELETE CASCADE,
+  image_url      TEXT NOT NULL,
+  thumb_url      TEXT,
+  title          TEXT,
+  attribution    TEXT,
+  kind           TEXT NOT NULL DEFAULT 'scenery' CHECK (kind IN ('scenery','path')),
+  source         TEXT NOT NULL DEFAULT 'commons' CHECK (source IN ('commons','admin','user')),
+  is_active      BOOLEAN NOT NULL DEFAULT TRUE,
+  created_at     TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (trail_id, image_url)
+);
+CREATE INDEX IF NOT EXISTS trail_photos_trail_idx ON trail_photos (trail_id) WHERE is_active;
+
+-- ===========================================================================
+-- 5. activities  (one finished hike/bike — replaces in-memory ActivityContext)
 -- ===========================================================================
 CREATE TABLE IF NOT EXISTS activities (
   id              UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -212,7 +230,28 @@ CREATE TRIGGER activities_touch BEFORE UPDATE ON activities
   FOR EACH ROW EXECUTE FUNCTION set_updated_at();
 
 -- ===========================================================================
--- 5. point_events  (ledger — the source of truth for EcoPoints)
+-- 5. cleanup_records  (one positive honest 1–99 answer per logged cleanup)
+-- The app offers 0–99; zero means no cleanup row is logged or rewarded.
+-- Keep the count as structured data rather than burying it in point metadata.
+-- The photo itself is never stored in this table; if a future cleanup photo is
+-- added, put it in object storage and store only its URL.
+-- ===========================================================================
+CREATE TABLE IF NOT EXISTS cleanup_records (
+  id            UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+  user_id       UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  client_id     TEXT NOT NULL,
+  activity_id   UUID REFERENCES activities(id) ON DELETE SET NULL,
+  trail_id      UUID REFERENCES trails(id) ON DELETE SET NULL,
+  pieces        SMALLINT NOT NULL CHECK (pieces BETWEEN 1 AND 99),
+  notes         TEXT,
+  created_at    TIMESTAMPTZ NOT NULL DEFAULT now(),
+  UNIQUE (user_id, client_id)
+);
+CREATE INDEX IF NOT EXISTS cleanup_records_user_idx ON cleanup_records (user_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS cleanup_records_activity_idx ON cleanup_records (activity_id);
+
+-- ===========================================================================
+-- 6. point_events  (ledger — the source of truth for EcoPoints)
 -- Never store only a total: store every award so you can rebuild/audit.
 -- ===========================================================================
 CREATE TABLE IF NOT EXISTS point_events (

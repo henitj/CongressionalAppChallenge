@@ -54,6 +54,9 @@ beforeEach(async () => {
   await AsyncStorage.clear();
   await AsyncStorage.setItem('@ecotrek/auth_user', JSON.stringify(TEST_USER));
   await AsyncStorage.setItem('@ecotrek/test-user/user_profile', JSON.stringify(TEST_PROFILE));
+  // This shell test represents a returning user; the real first-run path is
+  // covered by the onboarding screen test and starts without this flag.
+  await AsyncStorage.setItem('@ecotrek/test-user/start_tutorial_complete', 'true');
   jest.clearAllMocks();
 });
 
@@ -147,6 +150,26 @@ describe('the real app shell', () => {
     expect(utils.getAllByLabelText('Home').length).toBeGreaterThan(0);
     expect(utils.getAllByLabelText('Start').length).toBeGreaterThan(0);
     expect(utils.getAllByLabelText('More').length).toBeGreaterThan(0);
+  });
+
+  it('shows the start tutorial once, then persists the choice for the account', async () => {
+    await AsyncStorage.removeItem('@ecotrek/test-user/start_tutorial_complete');
+    const first = render(<FullApp />);
+    await waitFor(() => expect(first.queryByText('Tap Start. Then walk.')).toBeTruthy(), {
+      timeout: 10000,
+    });
+    fireEvent.press(first.getByLabelText('Skip introduction'));
+    await waitFor(() => expect(first.queryByText('Your last walk')).toBeTruthy(), {
+      timeout: 10000,
+    });
+    expect(await AsyncStorage.getItem('@ecotrek/test-user/start_tutorial_complete')).toBe('true');
+    first.unmount();
+
+    const second = render(<FullApp />);
+    await waitFor(() => expect(second.queryByText('Your last walk')).toBeTruthy(), {
+      timeout: 10000,
+    });
+    expect(second.queryByText('Tap Start. Then walk.')).toBeNull();
   });
 
   it('switching tabs really switches screens', async () => {

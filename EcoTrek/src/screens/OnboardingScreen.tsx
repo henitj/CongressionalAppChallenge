@@ -40,6 +40,11 @@ const PAGES: Page[] = [
     title: 'Walk with friends.',
     body: 'Join a club with a short code and cheer each other on. Or enjoy the quiet solo miles.',
   },
+  {
+    icon: 'trash',
+    title: 'Every piece counts.',
+    body: 'After every trail, EcoTrek asks: How many pieces of trash do you pick up? Enter any honest number from 0 to 99. The more you collect, the more EcoPoints you earn for your club.',
+  },
 ];
 
 export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
@@ -86,6 +91,16 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
               </View>
               <Text style={[styles.title, typography.h1]}>{p.title}</Text>
               <Text style={[styles.body, typography.body]}>{p.body}</Text>
+              {p.icon === 'trash' ? (
+                <View style={styles.trashDemo} accessibilityLabel="Trash count tutorial: enter 0 to 99 pieces">
+                  <Text style={[styles.trashDemoLabel, typography.smallMed]}>Honesty policy</Text>
+                  <View style={styles.trashDemoInput}>
+                    <Text style={[styles.trashDemoNumber, typography.h2]}>0–99</Text>
+                    <Text style={[styles.trashDemoUnit, typography.small]}>pieces</Text>
+                  </View>
+                  <Text style={[styles.trashDemoHint, typography.small]}>More pieces = more points for your club</Text>
+                </View>
+              ) : null}
             </View>
           ))}
         </ScrollView>
@@ -151,6 +166,33 @@ function makeStyles(c: ColorPalette) {
     marginTop: SPACING.md,
     maxWidth: 340,
   },
+  trashDemo: {
+    width: '100%',
+    maxWidth: 300,
+    marginTop: SPACING.lg,
+    padding: SPACING.md,
+    borderRadius: 16,
+    backgroundColor: 'rgba(255,255,255,0.1)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.2)',
+    alignItems: 'center',
+    gap: SPACING.xs,
+  },
+  trashDemoLabel: { color: '#fff' },
+  trashDemoInput: {
+    minWidth: 160,
+    minHeight: 58,
+    paddingHorizontal: SPACING.md,
+    borderRadius: 12,
+    backgroundColor: '#fff',
+    flexDirection: 'row',
+    alignItems: 'baseline',
+    justifyContent: 'center',
+    gap: SPACING.xs,
+  },
+  trashDemoNumber: { color: '#1A2B24' },
+  trashDemoUnit: { color: '#6B7F75' },
+  trashDemoHint: { color: 'rgba(255,255,255,0.75)', textAlign: 'center' },
   footer: { paddingHorizontal: SPACING.lg, paddingBottom: SPACING.md, gap: SPACING.md },
   dots: { flexDirection: 'row', justifyContent: 'center', gap: 8, paddingVertical: SPACING.sm },
   dot: { width: 10, height: 10, borderRadius: 5, backgroundColor: 'rgba(255,255,255,0.22)' },

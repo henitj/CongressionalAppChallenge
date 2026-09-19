@@ -312,7 +312,7 @@ describe('the trash question at the end of a walk', () => {
       <CleanupSheet
         visible
         onClose={() => {}}
-        title="Pieces of trash you picked up"
+        title="How many pieces of trash do you pick up?"
         subtitle="Nice walk — every piece counts for extra points"
         allowNone
         onLogged={onLogged}
@@ -321,17 +321,18 @@ describe('the trash question at the end of a walk', () => {
   }
 
   it('asks the question and offers an honest way out', async () => {
-    const utils = await mount(PostWalkQuestion, 'Pieces of trash you picked up');
-    expect(utils.queryByText('How many pieces did you pick up?')).toBeTruthy();
+    const utils = await mount(PostWalkQuestion, 'How many pieces of trash do you pick up?');
+    expect(utils.queryByText('How many pieces of trash do you pick up?')).toBeTruthy();
     expect(utils.queryByText('None this time')).toBeTruthy();
     // Presets are there so nobody has to type on a phone after a walk.
     expect(utils.getByLabelText('10 pieces')).toBeTruthy();
+    expect(utils.getByLabelText('99 pieces')).toBeTruthy();
   });
 
   it('logging pieces hands the count back so points can be awarded', async () => {
     const logged: number[] = [];
     const Screen = () => <PostWalkQuestion onLogged={(n) => logged.push(n)} />;
-    const utils = await mount(Screen, 'Pieces of trash you picked up');
+    const utils = await mount(Screen, 'How many pieces of trash do you pick up?');
 
     fireEvent.press(utils.getByLabelText('10 pieces'));
     await waitFor(() => expect(utils.queryByText('Log 10 pieces')).toBeTruthy());
@@ -457,6 +458,26 @@ describe('screens that do not need the provider stack', () => {
     await waitFor(() => expect(queryByText('Tap Start. Then walk.')).toBeTruthy());
     expect(queryByText('Skip')).toBeTruthy();
     expect(toJSON()).toBeTruthy();
+  });
+
+  it('the start tutorial explains the 0–99 honesty count', async () => {
+    const utils = render(
+      <SafeAreaProvider
+        initialMetrics={{
+          frame: { x: 0, y: 0, width: 390, height: 844 },
+          insets: { top: 47, left: 0, right: 0, bottom: 34 },
+        }}
+      >
+        <OnboardingScreen onDone={() => {}} />
+      </SafeAreaProvider>
+    );
+
+    for (let i = 0; i < 4; i += 1) {
+      fireEvent.press(utils.getByText('Next'));
+    }
+    await waitFor(() => expect(utils.queryByText('Every piece counts.')).toBeTruthy());
+    expect(utils.queryByText(/0 to 99/i)).toBeTruthy();
+    expect(utils.queryByText('More pieces = more points for your club')).toBeTruthy();
   });
 });
 

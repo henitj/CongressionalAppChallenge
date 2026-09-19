@@ -275,7 +275,7 @@ describe('ErrorBoundary', () => {
         <Bomber />
       </ErrorBoundary>
     );
-    await waitFor(() => expect(utils.queryByText('Something went wrong')).toBeTruthy());
+    await waitFor(() => expect(utils.queryByText('Sorry, something went wrong')).toBeTruthy());
     expect(utils.queryByText('kaboom-test')).toBeTruthy();
     expect(utils.getByLabelText('Try again')).toBeTruthy();
   });
@@ -286,11 +286,11 @@ describe('ErrorBoundary', () => {
         <Bomber />
       </ErrorBoundary>
     );
-    await waitFor(() => expect(utils.queryByText('Something went wrong')).toBeTruthy());
+    await waitFor(() => expect(utils.queryByText('Sorry, something went wrong')).toBeTruthy());
 
     shouldThrow = false; // the transient problem is gone
     fireEvent.press(utils.getByLabelText('Try again'));
     await waitFor(() => expect(utils.queryByText('Back on track')).toBeTruthy());
-    expect(utils.queryByText('Something went wrong')).toBeNull();
+    expect(utils.queryByText('Sorry, something went wrong')).toBeNull();
   });
 });
