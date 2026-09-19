@@ -17,6 +17,7 @@ export default function StreakScreen() {
     longestStreak,
     totalActiveWeeks,
     availableFreezes,
+    canUseFreeze,
     freezes,
     useFreeze,
     weekHistory,
@@ -24,6 +25,7 @@ export default function StreakScreen() {
   } = useStreak();
 
   const [freezing, setFreezing] = useState(false);
+  const [freezeMessage, setFreezeMessage] = useState('');
   const history = weekHistory(12);
 
   const handleUseFreeze = async () => {
@@ -35,21 +37,11 @@ export default function StreakScreen() {
       return;
     }
 
-    Alert.alert(
-      'Use a streak freeze?',
-      'This will protect your most recent missed week. You cannot undo this.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        {
-          text: 'Use freeze',
-          onPress: async () => {
-            setFreezing(true);
-            await useFreeze();
-            setFreezing(false);
-          },
-        },
-      ]
-    );
+    setFreezing(true);
+    try {
+      const result = await useFreeze();
+      setFreezeMessage(result ? `Week ${Number(result.week.split('-W')[1])} protected. Your freeze is saved.` : 'No eligible missed week. Your freezes are unchanged.');
+    } finally { setFreezing(false); }
   };
 
   return (
@@ -94,9 +86,9 @@ export default function StreakScreen() {
             <View style={styles.freezeIcon}>
               <Icon name="shield" size={18} color={colors.primary} strokeWidth={2} />
             </View>
-            <View style={{ flex: 1 }}>
-              <Text style={styles.freezeTitle}>Streak Freezes</Text>
-              <Text style={styles.freezeSub}>
+            <View style={{ flex: 1, minWidth: 0 }}>
+              <Text style={styles.freezeTitle} numberOfLines={1}>Streak Freezes</Text>
+              <Text style={styles.freezeSub} numberOfLines={2}>
                 Skip a week without breaking your streak
               </Text>
             </View>
@@ -123,18 +115,20 @@ export default function StreakScreen() {
           </View>
 
           <Text style={styles.freezeHint}>
-            Earn 1 freeze for every 4 consecutive active weeks. Stack up to 4 freezes.
+            Earn 1 freeze for every 4 consecutive active weeks, up to 4 stored. A freeze repairs last week if it was missed and follows an active or frozen week.
           </Text>
 
           <Button
-            label={availableFreezes > 0 ? 'Use a freeze' : 'No freezes available'}
+            label={canUseFreeze ? 'Protect last week' : 'No week to protect'}
             variant="secondary"
             full
-            disabled={availableFreezes === 0 || freezing}
+            disabled={!canUseFreeze || freezing}
             loading={freezing}
             onPress={handleUseFreeze}
           />
         </Card>
+
+        {freezeMessage ? <Text accessibilityLiveRegion="polite" style={styles.freezeHint}>{freezeMessage}</Text> : null}
 
         {/* Week history */}
         <View>
@@ -199,9 +193,9 @@ function HeroStat({ value, label }: { value: number; label: string }) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
-    <View style={{ flex: 1, alignItems: 'center' }}>
-      <Text style={styles.heroStatValue}>{value}</Text>
-      <Text style={styles.heroStatLabel}>{label}</Text>
+    <View style={{ flex: 1, alignItems: 'center', minWidth: 0 }}>
+      <Text style={styles.heroStatValue} numberOfLines={1}>{value}</Text>
+      <Text style={styles.heroStatLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
 }
@@ -225,9 +219,9 @@ function LegendItem({ color, border, label }: { color: string; border?: string; 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
 
-  body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 2 },
+  body: { paddingHorizontal: SPACING.md, gap: SPACING.md + 4 },
 
-  heroCard: { gap: SPACING.md, padding: SPACING.lg },
+  heroCard: { gap: SPACING.md, padding: SPACING.lg + 4 },
   heroLabel: { ...t.overline, color: 'rgba(255,255,255,0.6)' },
   heroValue: { flexDirection: 'row', alignItems: 'baseline', gap: 8 },
   heroNumber: { fontSize: 64, fontWeight: '700', color: '#fff', letterSpacing: -0.6 },
@@ -263,21 +257,20 @@ function makeStyles(c: ColorPalette, t: Typography) {
   freezeTitle: { ...t.h4, color: c.text },
   freezeSub: { ...t.small, color: c.textMuted, marginTop: 1 },
 
-  freezeSlots: { flexDirection: 'row', gap: SPACING.sm, marginTop: SPACING.md },
+  freezeSlots: { flexDirection: 'row', gap: SPACING.md, marginTop: SPACING.md },
   freezeSlot: {
     flex: 1,
-    height: 52,
-    borderRadius: RADIUS.md,
+    height: 56,
+    borderRadius: RADIUS.lg,
     backgroundColor: c.surfaceSunken,
-    borderWidth: 1,
-    borderColor: c.border,
+    borderWidth: 0,
     alignItems: 'center',
     justifyContent: 'center',
   },
-  freezeSlotFilled: { backgroundColor: c.primarySurface, borderColor: c.primaryGlow },
+  freezeSlotFilled: { backgroundColor: c.primarySurface },
   freezeHint: { ...t.small, color: c.textMuted, marginTop: SPACING.sm },
 
-  weekGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.sm },
+  weekGrid: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
   weekCell: {
     width: '22%',
     flexGrow: 1,
@@ -286,12 +279,11 @@ function makeStyles(c: ColorPalette, t: Typography) {
     paddingVertical: SPACING.sm,
   },
   weekDot: {
-    width: 28,
-    height: 28,
-    borderRadius: 14,
+    width: 30,
+    height: 30,
+    borderRadius: 15,
     backgroundColor: c.surfaceSunken,
-    borderWidth: 1,
-    borderColor: c.border,
+    borderWidth: 0,
   },
   weekDotActive: { backgroundColor: c.primary, borderColor: c.primary },
   weekDotFrozen: { backgroundColor: c.accent, borderColor: c.accent },

@@ -8,7 +8,6 @@ import TrackScreen from '../screens/TrackScreen';
 import MoreScreen from '../screens/MoreScreen';
 import ActiveTrackingScreen from '../screens/ActiveTrackingScreen';
 import TrailsScreen from '../screens/TrailsScreen';
-import LeaderboardScreen from '../screens/LeaderboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
 import ImpactScreen from '../screens/ImpactScreen';
 import SettingsScreen from '../screens/SettingsScreen';
@@ -60,7 +59,7 @@ function TabItem({ icon, label, focused }: { icon: IconName; label: string; focu
 
 function Tabs() {
   const { colors, fontScale } = useTheme();
-  // Large text and Simple mode grow the tab labels, so the bar has to grow
+  // Large text grows the tab labels, so the bar has to grow
   // with them — otherwise the words are clipped by the bar's fixed height.
   const barHeight = Math.round((Platform.OS === 'ios' ? 94 : 78) + (fontScale - 1) * 34);
   return (
@@ -105,7 +104,6 @@ export default function RootNavigator() {
         }}
       />
       <Stack.Screen name="Trails" component={TrailsScreen} />
-      <Stack.Screen name="Clubs" component={LeaderboardScreen} />
       <Stack.Screen name="Profile" component={ProfileScreen} />
       <Stack.Screen name="Impact" component={ImpactScreen} />
       <Stack.Screen name="Challenges" component={ChallengesScreen} />

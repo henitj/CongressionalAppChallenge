@@ -308,7 +308,7 @@ export default function ImpactScreen() {
               <EmptyState icon="star" title="No points yet" message="Points arrive as you log activities and finish challenges." />
             ) : (
               <Card padded={false}>
-                {pointHistory.slice(0, 60).map((e, i) => (
+                {pointHistory.filter((event) => !event.action.startsWith('club')).slice(0, 60).map((e, i) => (
                   <View key={e.id}>
                     {i > 0 ? <Divider style={{ marginLeft: 58 }} /> : null}
                     <View style={styles.pointRow}>

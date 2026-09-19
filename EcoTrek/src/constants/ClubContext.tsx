@@ -201,8 +201,10 @@ export function sortedMembers(club: Club): ClubMember[] {
 export function ClubProvider({
   children,
   onJoined,
+  enabled = true,
 }: {
   children: React.ReactNode;
+  enabled?: boolean;
   /**
    * Fired after a successful join. Clubs cannot award points directly —
    * EcoPoints sits above this provider — so the app wires the reward in.
@@ -265,8 +267,9 @@ export function ClubProvider({
   }, []);
 
   useEffect(() => {
-    refresh();
-  }, [refresh]);
+    if (enabled) refresh();
+    else { setClubs([]); setLoading(false); }
+  }, [refresh, enabled]);
 
   const persist = useCallback((next: Club[]) => {
     setClubs(next);

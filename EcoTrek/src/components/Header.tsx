@@ -49,7 +49,7 @@ export default function Header({
           <Pressable
             onPress={goBack}
             hitSlop={12}
-            style={[styles.iconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+            style={[styles.iconBtn, { backgroundColor: colors.surface }]}
             accessibilityLabel="Go back"
           >
             <Icon name="chevron-left" size={20} color={colors.text} strokeWidth={2.1} />
@@ -62,7 +62,7 @@ export default function Header({
               {subtitle}
             </Text>
           ) : null}
-          <Text style={[styles.title, typography.h1, { color: colors.text }]} numberOfLines={2}>
+          <Text style={[styles.title, typography.h1, { color: colors.text }]} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.7}>
             {title}
           </Text>
         </View>
@@ -73,7 +73,7 @@ export default function Header({
               key={i}
               onPress={a.onPress}
               hitSlop={10}
-              style={[styles.iconBtn, { backgroundColor: colors.surface, borderColor: colors.border }]}
+              style={[styles.iconBtn, { backgroundColor: colors.surface }]}
               accessibilityLabel={a.label}
             >
               <Icon name={a.icon} size={19} color={colors.textSecondary} strokeWidth={1.9} />
@@ -106,23 +106,23 @@ export default function Header({
 const styles = StyleSheet.create({
   bar: {
     paddingHorizontal: SPACING.md,
-    paddingTop: SPACING.sm,
-    paddingBottom: SPACING.sm + 2,
+    paddingTop: SPACING.md,
+    paddingBottom: SPACING.md,
     flexDirection: 'row',
     alignItems: 'center',
     gap: SPACING.sm,
   },
-  titleWrap: { flex: 1 },
+  titleWrap: { flex: 1, minWidth: 0 },
   title: { marginBottom: 0 },
-  subtitle: { marginBottom: 1 },
-  actions: { flexDirection: 'row', alignItems: 'center', gap: 6 },
+  subtitle: { marginBottom: 2 },
+  actions: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   iconBtn: {
     width: 44,
     height: 44,
     borderRadius: 22,
     alignItems: 'center',
     justifyContent: 'center',
-    borderWidth: 1,
+    borderWidth: 0,
   },
   dot: {
     position: 'absolute',

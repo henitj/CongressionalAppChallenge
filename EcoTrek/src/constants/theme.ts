@@ -134,33 +134,36 @@ export const TOUCH = {
 
 export const SHADOWS = {
   none: {},
+  // Lighter shadows, fewer borders. The old design wrapped every section in a
+  // outlined card which felt boxy and busy; this leaves a single faint shadow
+  // so cards still feel distinct without screaming "container!".
   sm: {
     shadowColor: '#0D3D2D',
-    shadowOpacity: 0.05,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 2,
+    shadowOpacity: 0.04,
+    shadowRadius: 10,
+    shadowOffset: { width: 0, height: 3 },
+    elevation: 1,
   },
   md: {
     shadowColor: '#0D3D2D',
-    shadowOpacity: 0.08,
-    shadowRadius: 12,
-    shadowOffset: { width: 0, height: 4 },
-    elevation: 4,
+    shadowOpacity: 0.06,
+    shadowRadius: 16,
+    shadowOffset: { width: 0, height: 6 },
+    elevation: 3,
   },
   lg: {
     shadowColor: '#0D3D2D',
-    shadowOpacity: 0.12,
-    shadowRadius: 20,
-    shadowOffset: { width: 0, height: 8 },
-    elevation: 8,
+    shadowOpacity: 0.1,
+    shadowRadius: 24,
+    shadowOffset: { width: 0, height: 10 },
+    elevation: 6,
   },
   xl: {
     shadowColor: '#0D3D2D',
-    shadowOpacity: 0.16,
-    shadowRadius: 32,
-    shadowOffset: { width: 0, height: 12 },
-    elevation: 12,
+    shadowOpacity: 0.14,
+    shadowRadius: 36,
+    shadowOffset: { width: 0, height: 14 },
+    elevation: 10,
   },
 };
 

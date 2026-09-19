@@ -508,3 +508,18 @@ describe('the weekly streak', () => {
     expect(history[history.length - 1].isCurrent).toBe(true);
   });
 });
+
+describe('finish retry protection', () => {
+  it('rapid Finish taps share one save and one set of rewards', async () => {
+    await boot();
+    const input = hikeInput();
+    await act(async () => {
+      await Promise.all([harness.activity.addActivity(input), harness.activity.addActivity(input)]);
+    });
+    expect(harness.activity.totalActivities).toBe(1);
+    expect(harness.streak.weeks[Object.keys(harness.streak.weeks)[0]].activities).toBe(1);
+    const total = harness.points.totalPoints;
+    await act(async () => { await harness.activity.addActivity(input); });
+    expect(harness.points.totalPoints).toBe(total);
+  });
+});

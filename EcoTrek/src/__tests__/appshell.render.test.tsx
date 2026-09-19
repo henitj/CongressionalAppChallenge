@@ -188,18 +188,7 @@ describe('the real app shell', () => {
     await waitFor(() => expect(utils.queryByText('Your last walk')).toBeTruthy());
   });
 
-  it('simple mode hides Clubs and Weekly goals from More', async () => {
-    await AsyncStorage.setItem(
-      '@ecotrek/settings',
-      JSON.stringify({
-        units: 'imperial',
-        tempUnit: 'F',
-        appearance: 'light',
-        textSize: 'default',
-        simpleMode: true,
-        reduceMotion: 'system',
-      })
-    );
+  it('More keeps Trails, Profile and Impact visible and hides Clubs', async () => {
     const utils = render(<FullApp />);
     await waitFor(() => expect(utils.queryByText('Your last walk')).toBeTruthy(), {
       timeout: 10000,
@@ -208,9 +197,10 @@ describe('the real app shell', () => {
     fireEvent.press(utils.getAllByLabelText('More')[0]);
     await waitFor(() => expect(utils.queryByText('My walks')).toBeTruthy());
 
+    // The two remaining Explore entries (Clubs removed entirely for now).
     expect(utils.queryByText('Trails')).toBeTruthy();
+    expect(utils.queryByText('Weekly goals')).toBeTruthy();
     expect(utils.queryByText('Clubs')).toBeNull();
-    expect(utils.queryByText('Weekly goals')).toBeNull();
   });
 
   it('the Impact screen can log a cleanup (the sheet is reachable)', async () => {
@@ -236,7 +226,7 @@ describe('the real app shell', () => {
     );
   });
 
-  it('Settings offers Simple mode and Less motion', async () => {
+  it('Settings offers text size and look but not Simple mode or Less motion', async () => {
     const utils = render(<FullApp />);
     await waitFor(() => expect(utils.queryByText('Your last walk')).toBeTruthy(), {
       timeout: 10000,
@@ -245,13 +235,14 @@ describe('the real app shell', () => {
     fireEvent.press(utils.getAllByLabelText('More')[0]);
     await waitFor(() => expect(utils.queryByText('Settings')).toBeTruthy());
     fireEvent.press(utils.getByText('Settings'));
-    await waitFor(() => expect(utils.queryByText('Simple mode')).toBeTruthy());
-    expect(utils.queryByText('Less motion')).toBeTruthy();
+    await waitFor(() => expect(utils.queryByText('Text size')).toBeTruthy());
+    expect(utils.queryByText('Simple mode')).toBeNull();
+    expect(utils.queryByText('Less motion')).toBeNull();
   });
 });
 
 describe('theme motion + simple mode scaling', () => {
-  it('reduceMotion on turns motion off', async () => {
+  it('motion is always on now (no Less motion setting)', async () => {
     await AsyncStorage.setItem(
       '@ecotrek/settings',
       JSON.stringify({
@@ -264,22 +255,23 @@ describe('theme motion + simple mode scaling', () => {
       })
     );
     const utils = render(<ThemedProbeApp />);
-    await waitFor(() => expect(utils.queryByText(/motion:off/)).toBeTruthy());
+    await waitFor(() => expect(utils.queryByText(/motion:on/)).toBeTruthy());
   });
 
-  it('simple mode bumps the font scale', async () => {
+  it('font scale matches the chosen text size (no Simple mode bump)', async () => {
     await AsyncStorage.setItem(
       '@ecotrek/settings',
       JSON.stringify({
         units: 'imperial',
         tempUnit: 'F',
         appearance: 'light',
-        textSize: 'default',
+        textSize: 'large',
         simpleMode: true,
         reduceMotion: 'system',
       })
     );
     const utils = render(<ThemedProbeApp />);
-    await waitFor(() => expect(utils.queryByText(/scale:1\.12/)).toBeTruthy());
+    // "large" maps to 1.16 in fontScaleFor.
+    await waitFor(() => expect(utils.queryByText(/scale:1\.16/)).toBeTruthy());
   });
 });

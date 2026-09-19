@@ -73,10 +73,10 @@ export default function ConditionsCard() {
           <Icon name={report.icon as IconName} size={20} color={colors.primary} strokeWidth={1.9} />
         </View>
 
-        <View style={{ flex: 1 }}>
+        <View style={{ flex: 1, minWidth: 0 }}>
           <View style={styles.topLine}>
-            <Text style={styles.temp}>{formatTemp(report.tempF)}</Text>
-            <Text style={styles.condition}>{report.condition}</Text>
+            <Text style={styles.temp} numberOfLines={1}>{formatTemp(report.tempF)}</Text>
+            <Text style={styles.condition} numberOfLines={1}>{report.condition}</Text>
           </View>
           <Text style={[styles.note, { color: meta.tone === 'danger' ? colors.danger : colors.textSecondary }]} numberOfLines={2}>
             {meta.label} · {report.shortNote}
@@ -92,12 +92,11 @@ export default function ConditionsCard() {
 function makeWeatherStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
     card: {
-      borderRadius: RADIUS.lg,
-      borderWidth: 1,
-      borderColor: c.border,
+      borderRadius: RADIUS.xl,
+      borderWidth: 0,
       backgroundColor: c.surface,
-      paddingVertical: SPACING.sm + 4,
-      paddingHorizontal: SPACING.md,
+      paddingVertical: SPACING.md,
+      paddingHorizontal: SPACING.md + 2,
     },
     loadingCard: {
       flexDirection: 'row',
@@ -106,17 +105,17 @@ function makeWeatherStyles(c: ColorPalette, t: Typography) {
       paddingVertical: SPACING.md + 4,
     },
     loadingText: { ...t.small, color: c.textMuted, flex: 1 },
-    row: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm + 2 },
+    row: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md },
     iconWrap: {
       width: 40,
       height: 40,
-      borderRadius: RADIUS.md,
+      borderRadius: RADIUS.lg,
       alignItems: 'center',
       justifyContent: 'center',
     },
     topLine: { flexDirection: 'row', alignItems: 'baseline', gap: SPACING.sm - 2 },
     temp: { ...t.h2, color: c.text, letterSpacing: -0.4 },
-    condition: { ...t.body, color: c.textSecondary },
+    condition: { flexShrink: 1, ...t.body, color: c.textSecondary },
     note: { ...t.small, color: c.textSecondary, marginTop: 2 },
   });
 }

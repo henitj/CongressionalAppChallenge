@@ -20,7 +20,7 @@ const FEATURES: { icon: IconName; title: string }[] = [
 export default function SignInScreen() {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
-  const { signInWithGoogle, signInAsGuest, error } = useAuth();
+  const { signInWithGoogle, signInAsGuest, error, googleConfigured } = useAuth();
   const [showGoogle, setShowGoogle] = useState(false);
   const [busy, setBusy] = useState(false);
 
@@ -31,7 +31,7 @@ export default function SignInScreen() {
   const { height: windowHeight } = useWindowDimensions();
   const buttonGap = Math.max(SPACING.lg, Math.round(windowHeight * 0.05));
 
-  const useLocalGoogle = Platform.OS === 'web';
+  const useLocalGoogle = Platform.OS === 'web' && !googleConfigured;
 
   const handleGoogle = async () => {
     if (useLocalGoogle) {

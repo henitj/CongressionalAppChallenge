@@ -134,7 +134,7 @@ const SCREENS: [string, React.ComponentType<any>, string | RegExp][] = [
   ['Home', HomeScreen, 'Your last walk'],
   ['Track', TrackScreen, /1 tree per 1 mile/],
   ['More', MoreScreen, 'My walks'],
-  ['Trails', TrailsScreen, 'Ask about a trail'],
+  ['Trails', TrailsScreen, 'Trails'],
   ['Clubs', LeaderboardScreen, 'My club'],
   ['Profile', ProfileScreen, /earned/],
   ['Impact', ImpactScreen, /Everything you have logged/i],
@@ -166,15 +166,16 @@ describe('trail discovery upgrades', () => {
   });
 
   it('Trails shows the floating AI chat button', async () => {
-    const utils = await mount(TrailsScreen, 'Ask about a trail');
+    const utils = await mount(TrailsScreen, 'Trails');
     expect(utils.getByTestId('assistant-fab')).toBeTruthy();
   });
 
   it('Trails filter chips are multi-select and stack', async () => {
-    const utils = await mount(TrailsScreen, 'Ask about a trail');
+    const utils = await mount(TrailsScreen, 'Trails');
 
     // Both chips can be active at once — selecting the second must not
     // deselect the first (the old behaviour was single-choice).
+    fireEvent.press(utils.getByLabelText('Filters and sort'));
     fireEvent.press(utils.getByText('Dog friendly'));
     fireEvent.press(utils.getByText('Family'));
 
@@ -188,12 +189,12 @@ describe('trail discovery upgrades', () => {
     expect(utils.queryByText('1')).toBeTruthy();
 
     // "All" clears everything.
-    fireEvent.press(utils.getByText('All'));
+    fireEvent.press(utils.getByText('Reset'));
     expect(utils.queryByText('1')).toBeFalsy();
   });
 
   it('the filter sheet has sliders for length, distance away, and climb', async () => {
-    const utils = await mount(TrailsScreen, 'Ask about a trail');
+    const utils = await mount(TrailsScreen, 'Trails');
     fireEvent.press(utils.getByLabelText('Filters and sort'));
 
     await waitFor(() => expect(utils.queryByText('Filter trails')).toBeTruthy(), {
@@ -212,7 +213,7 @@ describe('trail discovery upgrades', () => {
   });
 
   it('slider accessibility actions adjust the value', async () => {
-    const utils = await mount(TrailsScreen, 'Ask about a trail');
+    const utils = await mount(TrailsScreen, 'Trails');
     fireEvent.press(utils.getByLabelText('Filters and sort'));
     await waitFor(() => expect(utils.queryByText('Filter trails')).toBeTruthy(), {
       timeout: 4000,
@@ -477,7 +478,7 @@ describe('screens that do not need the provider stack', () => {
     }
     await waitFor(() => expect(utils.queryByText('Every piece counts.')).toBeTruthy());
     expect(utils.queryByText(/0 to 99/i)).toBeTruthy();
-    expect(utils.queryByText('More pieces = more points for your club')).toBeTruthy();
+    expect(utils.queryByText('More pieces = more points')).toBeTruthy();
   });
 });
 

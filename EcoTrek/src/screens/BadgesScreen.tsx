@@ -2,7 +2,7 @@ import React, { useEffect, useMemo, useRef, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 
 import Header from '../components/Header';
-import Icon from '../components/Icon';
+import Icon, { IconName } from '../components/Icon';
 import Confetti from '../components/Confetti';
 import { Screen, Card, Pill, ProgressBar, Sheet, Button } from '../components/ui';
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
@@ -23,26 +23,28 @@ import { useTheme, Typography } from '../context/ThemeContext';
  *
  * Every badge carries a small point reward. When a badge unlocks it gets a
  * little dot; tapping it and claiming the reward pays out EcoPoints and
- * fires a confetti celebration.
+ * fires a confetti celebration. A "Claim all" button at the top lets you
+ * collect every new reward in one tap and you get one big confetti burst
+ * with the total reward.
  *
  * Layout note: tile sizes are computed as exact pixel values from the screen
  * width instead of percentage widths + aspectRatio. That combination used to
  * reflow while scrolling on Android, which made the grid look glitchy.
  */
 export default function BadgesScreen() {
-  const { colors, typography } = useTheme();
+  const { colors, typography, fontScale } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const { badges, unlockedBadges, newBadges, claimBadge } = useEcoPoints();
   const { width, isTablet, contentWidth, badgeColumns } = useResponsive();
   const [selected, setSelected] = useState<Badge | null>(null);
   const [claiming, setClaiming] = useState(false);
-  const [celebration, setCelebration] = useState<{ badge: Badge; points: number } | null>(null);
+  const [celebration, setCelebration] = useState<{ title: string; subtitle?: string; points: number; iconName?: IconName; count?: number } | null>(null);
   const celebrationTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // Whole number of equal columns; the grid gets a couple of extra px of
   // slack per row so rounding can never push a tile onto a new line.
   const columnWidth = isTablet ? Math.min(width, contentWidth) : width;
-  const cellSize = Math.floor((columnWidth - SPACING.md * 2) / badgeColumns);
+  const cellSize = Math.floor((columnWidth - SPACING.md * 2) / (width < 400 || fontScale > 1 ? 2 : badgeColumns));
 
   useEffect(() => {
     return () => {
@@ -58,6 +60,13 @@ export default function BadgesScreen() {
     })).filter((g) => g.items.length > 0);
   }, [badges]);
 
+  const fireCelebration = (next: typeof celebration) => {
+    if (celebrationTimer.current) clearTimeout(celebrationTimer.current);
+    setCelebration(next);
+    // The celebration dismisses itself so nobody is ever stuck behind it.
+    celebrationTimer.current = setTimeout(() => setCelebration(null), 6000);
+  };
+
   const handleClaim = async (badge: Badge) => {
     if (claiming) return;
     setClaiming(true);
@@ -65,9 +74,44 @@ export default function BadgesScreen() {
       const points = await claimBadge(badge.id);
       setSelected(null);
       if (points > 0) {
-        setCelebration({ badge, points });
-        // The celebration dismisses itself so nobody is ever stuck behind it.
-        celebrationTimer.current = setTimeout(() => setCelebration(null), 6000);
+        fireCelebration({
+          title: 'Badge unlocked!',
+          subtitle: badge.name,
+          points,
+          iconName: badge.icon,
+        });
+      }
+    } finally {
+      setClaiming(false);
+    }
+  };
+
+  const handleClaimAll = async () => {
+    if (claiming || newBadges.length === 0) return;
+    setClaiming(true);
+    try {
+      let total = 0;
+      const firstIcon = newBadges[0]?.icon;
+      // Claim one at a time so each badge updates the UI cleanly; in practice
+      // the badge list is small enough that this is instant.
+      for (const b of newBadges) {
+        const pts = await claimBadge(b.id);
+        total += pts;
+      }
+      if (total > 0) {
+        fireCelebration({
+          title:
+            newBadges.length === 1
+              ? 'Badge unlocked!'
+              : `${newBadges.length} badges claimed`,
+          subtitle:
+            newBadges.length === 1
+              ? newBadges[0].name
+              : 'Every new badge is now collected.',
+          points: total,
+          iconName: firstIcon,
+          count: newBadges.length,
+        });
       }
     } finally {
       setClaiming(false);
@@ -81,7 +125,7 @@ export default function BadgesScreen() {
 
   const subtitle =
     newBadges.length > 0
-      ? `${newBadges.length} new badge${newBadges.length === 1 ? '' : 's'} to claim · ${unlockedBadges.length} of ${badges.length} earned`
+      ? `${newBadges.length} new badge${newBadges.length === 1 ? '' : 's'} to claim`
       : `${unlockedBadges.length} of ${badges.length} earned`;
 
   return (
@@ -91,24 +135,41 @@ export default function BadgesScreen() {
 
         <View style={styles.body}>
           <Card>
-            <Text style={styles.summary}>
-              {unlockedBadges.length} of {badges.length} badges earned
-            </Text>
+            <View style={styles.summaryRow}>
+              <View style={{ flex: 1, minWidth: 0 }}>
+                <Text style={styles.summary}>
+                  {unlockedBadges.length} of {badges.length} badges earned
+                </Text>
+              </View>
+              {newBadges.length > 0 ? (
+                <Pressable
+                  onPress={handleClaimAll}
+                  disabled={claiming}
+                  style={({ pressed }) => [styles.claimPill, pressed && { opacity: 0.7 }, claiming && { opacity: 0.5 }]}
+                  accessibilityLabel={`Claim all ${newBadges.length} new badge rewards`}
+                >
+                  <Icon name="gift" size={13} color="#fff" strokeWidth={2.4} />
+                  <Text style={styles.claimPillText} numberOfLines={1}>
+                    Claim all (+{newBadges.length * BADGE_CLAIM_POINTS})
+                  </Text>
+                </Pressable>
+              ) : null}
+            </View>
             <ProgressBar
               percent={badges.length ? (unlockedBadges.length / badges.length) * 100 : 0}
-              style={{ marginTop: SPACING.sm }}
+              style={{ marginTop: SPACING.md }}
               height={10}
             />
           </Card>
 
           {grouped.map((g) => (
             <View key={g.cat}>
-              <Text style={styles.section}>{g.label}</Text>
+              <Text style={styles.section} numberOfLines={1}>{g.label}</Text>
               <View style={styles.grid}>
                 {g.items.map((b) => {
                   const isNew = b.unlocked && !b.claimedAt;
                   return (
-                    <View key={b.id} style={[styles.cell, { width: cellSize, height: cellSize }]}>
+                    <View key={b.id} style={[styles.cell, { width: cellSize, minHeight: cellSize }]}>
                       <Pressable
                         onPress={() => setSelected(b)}
                         style={[
@@ -206,13 +267,17 @@ export default function BadgesScreen() {
           <Confetti />
           <View style={styles.celebrationCard}>
             <View style={styles.celebrationIcon}>
-              <Icon name={celebration.badge.icon} size={38} color="#fff" strokeWidth={1.8} />
+              <Icon name={celebration.iconName ?? 'gift'} size={38} color="#fff" strokeWidth={1.8} />
             </View>
-            <Text style={styles.celebrationTitle}>Badge unlocked!</Text>
-            <Text style={styles.celebrationName}>{celebration.badge.name}</Text>
+            <Text style={styles.celebrationTitle} numberOfLines={2}>{celebration.title}</Text>
+            {celebration.subtitle ? (
+              <Text style={styles.celebrationName} numberOfLines={2}>{celebration.subtitle}</Text>
+            ) : null}
             <View style={styles.celebrationPoints}>
               <Icon name="star" size={16} color={colors.accentDark} strokeWidth={2.2} />
-              <Text style={styles.celebrationPointsText}>+{celebration.points} EcoPoints</Text>
+              <Text style={styles.celebrationPointsText} numberOfLines={1}>
+                +{celebration.points} EcoPoints
+              </Text>
             </View>
             <Text style={styles.celebrationHint}>Tap anywhere to keep exploring</Text>
           </View>
@@ -228,7 +293,25 @@ function makeStyles(c: ColorPalette, t: Typography) {
   page: { flex: 1 },
   body: { paddingHorizontal: SPACING.md, gap: SPACING.lg },
   summary: { ...t.h3, color: c.text },
+  summaryRow: { alignItems: 'stretch', gap: SPACING.md },
   section: { ...t.h3, color: c.text, marginBottom: SPACING.sm },
+
+  claimPill: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 6,
+    paddingHorizontal: SPACING.md,
+    paddingVertical: 14,
+    minHeight: 52,
+    justifyContent: 'center',
+    borderRadius: RADIUS.pill,
+    backgroundColor: c.primary,
+  },
+  claimPillText: {
+    color: '#fff',
+    fontWeight: '700',
+    fontSize: 14,
+  },
 
   grid: {
     flexDirection: 'row',
@@ -239,11 +322,10 @@ function makeStyles(c: ColorPalette, t: Typography) {
   },
   tile: {
     flex: 1,
-    borderRadius: RADIUS.lg,
-    // One uniform border everywhere: changing border widths between states
-    // made tiles jump a pixel when a badge was claimed.
-    borderWidth: 1,
-    borderColor: c.border,
+    borderRadius: RADIUS.xl,
+    // Borderless tiles; the unlocked state uses a coloured background so the
+    // change still reads clearly without an outline.
+    borderWidth: 0,
     backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
@@ -253,10 +335,9 @@ function makeStyles(c: ColorPalette, t: Typography) {
   },
   tileOn: {
     backgroundColor: c.primarySurface,
-    borderColor: c.primaryGlow,
   },
   tileNew: {
-    borderColor: c.accent,
+    backgroundColor: c.accentLight,
   },
   // Sits INSIDE the tile (no negative offsets) so Android never clips or
   // flickers it while the list scrolls.
@@ -270,18 +351,18 @@ function makeStyles(c: ColorPalette, t: Typography) {
     backgroundColor: c.accent,
   },
   name: {
-    fontSize: 13,
+    ...t.micro,
     fontWeight: '700',
     color: c.textMuted,
     textAlign: 'center',
-    lineHeight: 17,
+    lineHeight: Math.round(t.micro.fontSize * 1.35),
   },
   nameOn: { color: c.primary },
   detail: { alignItems: 'center', gap: SPACING.md, paddingBottom: SPACING.md },
   large: {
     width: 96,
     height: 96,
-    borderRadius: RADIUS.xl,
+    borderRadius: RADIUS.xxl,
     backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
@@ -303,14 +384,14 @@ function makeStyles(c: ColorPalette, t: Typography) {
   },
   celebrationCard: {
     backgroundColor: c.surface,
-    borderRadius: RADIUS.xl,
+    borderRadius: RADIUS.xxl,
     paddingVertical: SPACING.xl,
     paddingHorizontal: SPACING.lg,
-    marginHorizontal: SPACING.xl,
+    marginHorizontal: SPACING.lg,
     alignItems: 'center',
     gap: SPACING.sm,
     maxWidth: 340,
-    width: '100%',
+    width: '86%',
   },
   celebrationIcon: {
     width: 84,
@@ -321,7 +402,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
     justifyContent: 'center',
     marginBottom: SPACING.xs,
   },
-  celebrationTitle: { ...t.h2, color: c.text },
+  celebrationTitle: { ...t.h2, color: c.text, textAlign: 'center' },
   celebrationName: { ...t.h3, color: c.primary, textAlign: 'center' },
   celebrationPoints: {
     flexDirection: 'row',

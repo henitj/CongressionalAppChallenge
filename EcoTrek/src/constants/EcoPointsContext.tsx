@@ -36,7 +36,7 @@ export const BADGE_CATEGORY_LABEL: Record<BadgeCategory, string> = {
   start: 'Getting started',
   distance: 'Miles and trees',
   streak: 'Showing up',
-  community: 'Challenges and clubs',
+  community: 'Challenges and care',
 };
 
 export type Badge = {
@@ -93,7 +93,7 @@ type EcoPointsState = {
   badges: Badge[];
   unlockedBadges: Badge[];
   /** Fixed-value award, e.g. award('daily_login'). */
-  award: (action: EcoAction, opts?: { points?: number; label?: string; multiplier?: number }) => Promise<number>;
+  award: (action: EcoAction, opts?: { points?: number; label?: string; multiplier?: number; eventId?: string }) => Promise<number>;
   /** Back-compat alias used by older screens. */
   addPoints: (action: EcoAction, multiplier?: number) => Promise<number>;
   refreshBadges: (inputs: BadgeInputs) => void;
@@ -197,6 +197,8 @@ const DEFAULT_BADGES: Badge[] = [
   { id: 'eco_champion', name: 'EcoChampion', description: 'Reach the EcoChampion level', icon: 'crown', category: 'community', unlocked: false },
 ];
 
+const HIDDEN_BADGES = new Set(['club_member', 'club_founder', 'goal_getter', 'goal_streak']);
+
 const EcoPointsContext = createContext<EcoPointsState | null>(null);
 
 export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
@@ -204,6 +206,7 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
   const userId = user?.id ?? null;
 
   const [history, setHistory] = useState<PointEvent[]>([]);
+  const historyRef = useRef<PointEvent[]>([]);
   const [badges, setBadges] = useState<Badge[]>(DEFAULT_BADGES);
   const [loaded, setLoaded] = useState(false);
 
@@ -229,11 +232,12 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
               ...d,
               unlocked: stored.unlocked,
               unlockedAt: stored.unlockedAt,
-              claimedAt: stored.claimedAt,
+              claimedAt: stored.claimedAt ?? h.find((event) => event.id === `badge-claim:${d.id}`)?.timestamp,
             }
           : d;
       });
 
+      historyRef.current = h;
       setHistory(h);
       setBadges(merged);
       setLoaded(true);
@@ -241,8 +245,13 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
       if (isBackendConfigured()) {
         const res = await api.get<PointEvent[]>(ROUTES.points);
         if (!cancelled && res.ok && Array.isArray(res.data)) {
-          setHistory(res.data);
-          saveJSON(histKey, res.data);
+          setHistory((current) => {
+            const merged = [...new Map([...res.data, ...current].map((e) => [e.id, e])).values()]
+              .sort((a, b) => b.timestamp - a.timestamp);
+            historyRef.current = merged;
+            saveJSON(histKey, merged);
+            return merged;
+          });
         }
       }
     })();
@@ -258,23 +267,23 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
 
   const award = useCallback<EcoPointsState['award']>(
     async (action, opts = {}) => {
+      if (opts.eventId && historyRef.current.some((e) => e.id === opts.eventId)) return 0;
       const base = opts.points ?? POINT_VALUES[action];
       const pts = Math.round(base * (opts.multiplier ?? 1));
       if (pts === 0) return 0;
 
       const event: PointEvent = {
-        id: `${Date.now()}-${action}-${Math.random().toString(36).slice(2, 7)}`,
+        id: opts.eventId ?? `${Date.now()}-${action}-${Math.random().toString(36).slice(2, 7)}`,
         action,
         points: pts,
         label: opts.label ?? ACTION_LABELS[action],
         timestamp: Date.now(),
       };
 
-      setHistory((prev) => {
-        const updated = [event, ...prev].slice(0, 1000);
-        saveJSON(histKey, updated);
-        return updated;
-      });
+      const updated = [event, ...historyRef.current];
+      historyRef.current = updated;
+      setHistory(updated);
+      await saveJSON(histKey, updated);
 
       if (isBackendConfigured()) {
         api.post(ROUTES.points, event);
@@ -365,15 +374,12 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
       const badge = badgesRef.current.find((b) => b.id === badgeId);
       if (!badge || !badge.unlocked || badge.claimedAt) return 0;
 
-      const pts = await award('badge_claimed', { label: `Badge unlocked: ${badge.name}` });
-
-      setBadges((prev) => {
-        const next = prev.map((b) =>
-          b.id === badgeId && b.unlocked && !b.claimedAt ? { ...b, claimedAt: Date.now() } : b
-        );
-        saveJSON(badgeKey, next);
-        return next;
-      });
+      if (HIDDEN_BADGES.has(badgeId)) return 0;
+      const next = badgesRef.current.map((b) => b.id === badgeId ? { ...b, claimedAt: Date.now() } : b);
+      badgesRef.current = next;
+      setBadges(next);
+      const pts = await award('badge_claimed', { label: `Badge unlocked: ${badge.name}`, eventId: `badge-claim:${badge.id}` });
+      await saveJSON(badgeKey, next);
 
       return pts;
     },
@@ -387,23 +393,25 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
   );
 
   const resetPoints = useCallback(async () => {
+    historyRef.current = [];
     setHistory([]);
     setBadges(DEFAULT_BADGES);
     await Promise.all([saveJSON(histKey, []), saveJSON(badgeKey, DEFAULT_BADGES)]);
   }, [histKey, badgeKey]);
 
   const levelInfo = useMemo(() => getLevel(totalPoints), [totalPoints]);
-  const unlockedBadges = useMemo(() => badges.filter((b) => b.unlocked), [badges]);
+  const visibleBadges = useMemo(() => badges.filter((b) => !HIDDEN_BADGES.has(b.id)), [badges]);
+  const unlockedBadges = useMemo(() => visibleBadges.filter((b) => b.unlocked), [visibleBadges]);
   const newBadges = useMemo(
-    () => badges.filter((b) => b.unlocked && !b.claimedAt),
-    [badges]
+    () => visibleBadges.filter((b) => b.unlocked && !b.claimedAt),
+    [visibleBadges]
   );
 
   const value = useMemo<EcoPointsState>(
     () => ({
       totalPoints,
       history,
-      badges,
+      badges: visibleBadges,
       unlockedBadges,
       newBadges,
       award,
@@ -417,7 +425,7 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
     [
       totalPoints,
       history,
-      badges,
+      visibleBadges,
       unlockedBadges,
       newBadges,
       award,

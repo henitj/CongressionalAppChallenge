@@ -36,14 +36,14 @@ const PAGES: Page[] = [
     body: 'See today’s temperature before you go. If it is too hot or stormy, we will say so in plain words.',
   },
   {
-    icon: 'users',
-    title: 'Walk with friends.',
-    body: 'Join a club with a short code and cheer each other on. Or enjoy the quiet solo miles.',
+    icon: 'clock',
+    title: 'Your progress stays with you.',
+    body: 'Your walks, rides and personal profile are saved on this device. Find them under More.',
   },
   {
     icon: 'trash',
     title: 'Every piece counts.',
-    body: 'After every trail, EcoTrek asks: How many pieces of trash do you pick up? Enter any honest number from 0 to 99. The more you collect, the more EcoPoints you earn for your club.',
+    body: 'After every trail, EcoTrek asks: How many pieces of trash do you pick up? Enter any honest number from 0 to 99. The more you collect, the more EcoPoints you earn.',
   },
 ];
 
@@ -98,7 +98,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
                     <Text style={[styles.trashDemoNumber, typography.h2]}>0–99</Text>
                     <Text style={[styles.trashDemoUnit, typography.small]}>pieces</Text>
                   </View>
-                  <Text style={[styles.trashDemoHint, typography.small]}>More pieces = more points for your club</Text>
+                  <Text style={[styles.trashDemoHint, typography.small]}>More pieces = more points</Text>
                 </View>
               ) : null}
             </View>
