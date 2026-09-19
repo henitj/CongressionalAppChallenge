@@ -62,6 +62,8 @@ import {
   isSupportedCountry,
   isInServiceArea,
 } from '../services/nearbyTrails';
+import { classifyPhotos } from '../services/trailPhotos';
+import { estimateElevationFt, estimateMinutes, formatMinutes } from '../services/trailIntel';
 
 let passed = 0;
 const results: string[] = [];
@@ -964,6 +966,50 @@ test('Austin catalogue still has every named trail', () => {
   for (const id of ids) {
     assert.equal(getTrailById(id)?.id, id, `missing trail ${id}`);
   }
+});
+
+test('trail photos split into scenery and path buckets', () => {
+  const photos = [
+    { url: 'a', thumbUrl: 'a', title: 'Sunset view from the overlook' },
+    { url: 'b', thumbUrl: 'b', title: 'Gravel path through the woods' },
+    { url: 'c', thumbUrl: 'c', title: 'Stone steps near the trailhead' },
+    { url: 'd', thumbUrl: 'd', title: 'Waterfall at Twin Falls' },
+  ];
+  const set = classifyPhotos(photos);
+  assert.equal(set.all.length, 4);
+  assert.ok(set.scenery.some((p) => p.title.includes('overlook')));
+  assert.ok(set.scenery.some((p) => p.title.includes('Waterfall')));
+  assert.ok(set.path.some((p) => p.title.includes('Gravel path')));
+  assert.ok(set.path.some((p) => p.title.includes('steps')));
+});
+
+test('ambiguous photos still fill both buckets', () => {
+  const photos = [
+    { url: 'a', thumbUrl: 'a', title: 'IMG 4021' },
+    { url: 'b', thumbUrl: 'b', title: 'IMG 4022' },
+  ];
+  const set = classifyPhotos(photos);
+  assert.equal(set.scenery.length + set.path.length, 2);
+  assert.ok(set.scenery.length >= 1 && set.path.length >= 1);
+});
+
+test('trail intel derives time and climb estimates sensibly', () => {
+  const ladyBird = getTrailById('lady-bird-lake')!;
+  // Bundled trail keeps its own posted time.
+  assert.equal(estimateMinutes(ladyBird), ladyBird.estimatedMinutes);
+  // With an explicit climb figure, use it verbatim.
+  assert.equal(estimateElevationFt(ladyBird), ladyBird.elevationGainFt);
+
+  // A thin OSM-style trail gets a derived estimate.
+  const thin = { ...ladyBird, estimatedMinutes: undefined, elevationGainFt: undefined };
+  const mins = estimateMinutes(thin as any);
+  assert.ok(mins >= 15, `derived minutes too small: ${mins}`);
+  const hardThin = { ...thin, difficulty: 'Hard' as const };
+  assert.ok(estimateElevationFt(hardThin as any) > estimateElevationFt(thin as any));
+
+  assert.equal(formatMinutes(45), '45 min');
+  assert.equal(formatMinutes(60), '1h');
+  assert.equal(formatMinutes(200), '3h 20m');
 });
 
 console.log('\nEcoTrek logic tests\n');

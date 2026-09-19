@@ -9,14 +9,13 @@ import {
   StyleProp,
   Modal,
   ScrollView,
-  KeyboardAvoidingView,
-  Platform,
   Image,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContext } from '@react-navigation/native';
 import Icon, { IconName } from './Icon';
 import { useResponsive } from '../hooks/useResponsive';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 import { useTheme } from '../context/ThemeContext';
 import { AVATAR_COLORS, RADIUS, SHADOWS, SPACING } from '../constants/theme';
 
@@ -481,16 +480,27 @@ export function Sheet({
   children: React.ReactNode;
 }) {
   const { colors, typography } = useTheme();
+
+  /*
+   * Sheets contain text inputs (club codes, names), so they must lift clear
+   * of the keyboard rather than sitting behind it. KeyboardAvoidingView was
+   * unreliable here: inside a Modal on Android the window does not resize,
+   * so behavior="height" did nothing and the keyboard covered the input
+   * while you typed. We now measure the real keyboard frame and pad the
+   * sheet by exactly that height on BOTH platforms — the input always stays
+   * visible above the keyboard, and the content area shrinks to match so it
+   * stays scrollable rather than clipped.
+   */
+  const keyboardHeight = useKeyboardHeight();
+
   return (
     <Modal visible={visible} animationType="slide" transparent onRequestClose={onClose}>
-      {/* Sheets contain text inputs (club codes, names), so they have to lift
-          clear of the keyboard rather than sitting behind it. */}
-      <KeyboardAvoidingView
-        style={[ui.sheetBackdrop, { backgroundColor: colors.overlay }]}
-        behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
-      >
+      <View style={[ui.sheetBackdrop, { backgroundColor: colors.overlay }]}>
         <Pressable style={{ flex: 1 }} onPress={onClose} />
-        <SafeAreaView edges={['bottom']} style={[ui.sheet, { backgroundColor: colors.surface }]}>
+        <SafeAreaView
+          edges={['bottom']}
+          style={[ui.sheet, { backgroundColor: colors.surface, paddingBottom: keyboardHeight }]}
+        >
           <View style={[ui.sheetGrabber, { backgroundColor: colors.borderStrong }]} />
           <View style={ui.sheetHeader}>
             <View style={{ flex: 1 }}>
@@ -509,7 +519,7 @@ export function Sheet({
             </Pressable>
           </View>
           <ScrollView
-            style={{ maxHeight: 520 }}
+            style={{ maxHeight: keyboardHeight > 0 ? 320 : 520 }}
             contentContainerStyle={{ paddingBottom: SPACING.lg }}
             keyboardShouldPersistTaps="handled"
             showsVerticalScrollIndicator={false}
@@ -517,7 +527,7 @@ export function Sheet({
             {children}
           </ScrollView>
         </SafeAreaView>
-      </KeyboardAvoidingView>
+      </View>
     </Modal>
   );
 }

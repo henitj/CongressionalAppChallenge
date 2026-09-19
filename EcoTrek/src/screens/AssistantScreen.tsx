@@ -1,4 +1,4 @@
-import React, { useCallback, useMemo, useRef, useState } from 'react';
+import React, { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import {
   View,
   Text,
@@ -6,10 +6,10 @@ import {
   TextInput,
   Pressable,
   ScrollView,
-  KeyboardAvoidingView,
   Platform,
   ActivityIndicator,
 } from 'react-native';
+import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import Header from '../components/Header';
@@ -29,6 +29,7 @@ import {
 } from '../services/assistant';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 import { useTheme, Typography } from '../context/ThemeContext';
+import { useKeyboardHeight } from '../hooks/useKeyboardHeight';
 
 type Message = {
   id: string;
@@ -185,15 +186,34 @@ export default function AssistantScreen() {
 
   const showStarters = messages.filter((m) => m.role === 'user').length === 0;
 
+  /*
+   * Keyboard handling. The old KeyboardAvoidingView guessed the header
+   * height with a fixed 88px offset — wrong on notched iPhones and a no-op
+   * on Android, so the keyboard could sit on top of the composer and you
+   * typed blind. Instead we measure the real keyboard frame and pad the
+   * layout by exactly that much (minus the bottom safe-area inset that the
+   * keyboard already covers). Works identically inside and outside modals,
+   * on both platforms. On Android `softwareKeyboardLayoutMode: resize`
+   * (app.json) already shrinks the window, so extra padding would double up.
+   */
+  const insets = useSafeAreaInsets();
+  const keyboardHeight = useKeyboardHeight();
+  const keyboardPad =
+    Platform.OS === 'ios' ? Math.max(0, keyboardHeight - insets.bottom) : 0;
+
+  // Keep the conversation pinned to the latest message when the keyboard
+  // opens, so the input never ends up detached from what you are replying to.
+  useEffect(() => {
+    if (keyboardHeight > 0) {
+      requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
+    }
+  }, [keyboardHeight]);
+
   return (
     <View style={styles.root}>
       <Header title="Trail assistant" subtitle="Ask about trails near you" back />
 
-      <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === 'ios' ? 'padding' : undefined}
-        keyboardVerticalOffset={Platform.OS === 'ios' ? 88 : 0}
-      >
+      <View style={{ flex: 1, paddingBottom: keyboardPad }}>
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.scroll}
@@ -323,10 +343,12 @@ export default function AssistantScreen() {
           </Pressable>
         </View>
 
-        <Text style={styles.disclaimer}>
-          Answers come from the trail data in this app. Conditions still change — check before you go.
-        </Text>
-      </KeyboardAvoidingView>
+        {keyboardHeight === 0 ? (
+          <Text style={styles.disclaimer}>
+            Answers come from the trail data in this app. Conditions still change — check before you go.
+          </Text>
+        ) : null}
+      </View>
     </View>
   );
 }
