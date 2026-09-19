@@ -312,7 +312,7 @@ describe('the trash question at the end of a walk', () => {
       <CleanupSheet
         visible
         onClose={() => {}}
-        title="Pieces of trash you picked up"
+        title="How many pieces of trash do you pick up?"
         subtitle="Nice walk — every piece counts for extra points"
         allowNone
         onLogged={onLogged}
@@ -321,17 +321,18 @@ describe('the trash question at the end of a walk', () => {
   }
 
   it('asks the question and offers an honest way out', async () => {
-    const utils = await mount(PostWalkQuestion, 'Pieces of trash you picked up');
-    expect(utils.queryByText('How many pieces did you pick up?')).toBeTruthy();
+    const utils = await mount(PostWalkQuestion, 'How many pieces of trash do you pick up?');
+    expect(utils.queryByText('How many pieces of trash do you pick up?')).toBeTruthy();
     expect(utils.queryByText('None this time')).toBeTruthy();
     // Presets are there so nobody has to type on a phone after a walk.
     expect(utils.getByLabelText('10 pieces')).toBeTruthy();
+    expect(utils.getByLabelText('99 pieces')).toBeTruthy();
   });
 
   it('logging pieces hands the count back so points can be awarded', async () => {
     const logged: number[] = [];
     const Screen = () => <PostWalkQuestion onLogged={(n) => logged.push(n)} />;
-    const utils = await mount(Screen, 'Pieces of trash you picked up');
+    const utils = await mount(Screen, 'How many pieces of trash do you pick up?');
 
     fireEvent.press(utils.getByLabelText('10 pieces'));
     await waitFor(() => expect(utils.queryByText('Log 10 pieces')).toBeTruthy());

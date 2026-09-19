@@ -19,8 +19,8 @@ const PRESETS = [1, 10, 50, MAX_CLEANUP_PIECES];
  * nudge someone into bending down on the way past, not to audit them.
  *
  * It is used in two places: the Impact screen (log one any time) and the end
- * of a walk that lasted ten minutes or more, where `allowNone` adds a
- * "None today" answer so the question is never a dead end.
+ * of every valid trail, where `allowNone` adds a "None this time" answer so
+ * the question is never a dead end.
  */
 export default function CleanupSheet({
   visible,
