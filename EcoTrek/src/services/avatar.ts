@@ -73,9 +73,18 @@ export async function pickAndStoreAvatarPhoto(
       return null;
     }
 
+    // ImagePicker can return an empty URI on a cancelled/partially failed
+    // picker result. Passing that value to File throws a rather unhelpful
+    // "file upload"/invalid URI exception on Android.
+    if (!asset.uri) return null;
+
     const dest = avatarFile(Date.now());
-    if (!dest) return asset.uri ?? null;
-    const picked = new File(asset.uri ?? '');
+    if (!dest) return asset.uri;
+
+    // `copy` is the supported SDK 55+ replacement for the old
+    // FileSystem.copyAsync API. Constructing both objects explicitly also
+    // makes this work for Android content:// picker URIs.
+    const picked = new File(asset.uri);
     await picked.copy(dest, { overwrite: true });
     await removeStoredAvatar(previousUri);
     return dest.uri;
