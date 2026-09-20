@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useAuth } from './AuthContext';
-import { useEcoPoints } from '../constants/EcoPointsContext';
+import { useEcoPoints } from '../context/EcoPointsContext';
 import { isObject, keyFor, loadJSON, saveJSON } from '../services/storage';
 import { dayKey, weekKey } from '../services/dates';
 import { activeMilestones, currentWeeklyStreak, freezeTarget, longestWeeklyStreak, weekOffset, WeekRecord, StreakFreeze } from '../services/weeklyStreaks';

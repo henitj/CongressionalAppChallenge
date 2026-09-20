@@ -19,11 +19,12 @@ import { Screen, Card, Pill, EmptyState, Sheet, Button, Banner, Divider } from '
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { Trail } from '../constants/austinTrails';
 import { useApp } from '../context/AppContext';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import { useActivity } from '../context/ActivityContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useResetOnLeave } from '../hooks/useResetOnLeave';
 import { useTheme, Typography } from '../context/ThemeContext';
+import { loadTrailRatings, trailPreferenceScore, TrailRatings } from '../services/trailRatings';
 import {
   estimateElevationFt,
   estimateMinutes,
@@ -138,7 +139,16 @@ export default function TrailsScreen() {
   const [maxAway, setMaxAway] = useState(AWAY_MAX);
   const [maxClimb, setMaxClimb] = useState(CLIMB_MAX);
   const [sort, setSort] = useState<SortKey>('nearest');
+  const [ratings, setRatings] = useState<TrailRatings>({});
   const [query, setQuery] = useState('');
+
+  useFocusEffect(
+    useCallback(() => {
+      let active = true;
+      loadTrailRatings().then((saved) => active && setRatings(saved));
+      return () => { active = false; };
+    }, [])
+  );
   const [selected, setSelected] = useState<Trail | null>(null);
   const [showFilters, setShowFilters] = useState(false);
 
@@ -217,13 +227,20 @@ export default function TrailsScreen() {
       case 'rating':
         sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
         break;
-      default:
-        sorted.sort(
-          (a, b) => (a.distanceFromUserMi ?? Infinity) - (b.distanceFromUserMi ?? Infinity)
-        );
+      default: {
+        // Ratings tailor discovery without hiding nearby choices. Trails that
+        // resemble a highly-rated trail (same activity and difficulty) receive
+        // a modest distance bonus; low ratings push similar options down.
+        sorted.sort((a, b) => {
+          const aRank = (a.distanceFromUserMi ?? 50) - trailPreferenceScore(a, trails, ratings) * 0.4;
+          const bRank = (b.distanceFromUserMi ?? 50) - trailPreferenceScore(b, trails, ratings) * 0.4;
+          return aRank - bRank;
+        });
+        break;
+      }
     }
     return sorted;
-  }, [trails, filters, maxLen, maxAway, maxClimb, sort, query]);
+  }, [trails, filters, maxLen, maxAway, maxClimb, sort, query, ratings]);
 
   const completedCount = completedIds.size;
 

@@ -9,9 +9,9 @@ import { Screen, Card, SectionHeader, Segmented, Divider, Banner, Button } from 
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useTheme, Typography } from '../context/ThemeContext';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import { useAuth } from '../context/AuthContext';
-import { useEcoPoints } from '../constants/EcoPointsContext';
+import { useEcoPoints } from '../context/EcoPointsContext';
 import { useActivity } from '../context/ActivityContext';
 import { useNotifications } from '../context/NotificationContext';
 import { useApp } from '../context/AppContext';
@@ -182,16 +182,12 @@ export default function SettingsScreen() {
                 options={[
                   { value: 'light', label: 'Light' },
                   { value: 'dark', label: 'Dark' },
-                  { value: 'sky', label: 'Sky' },
                 ]}
                 value={appearance}
                 onChange={(v) => setAppearance(v as any)}
                 style={{ marginTop: 8 }}
               />
-              <Text style={styles.note}>
-                Sky follows daytime only: sunrise in the morning, bright afternoon, sunset in the evening.
-                At night it stays light.
-              </Text>
+              <Text style={styles.note}>Choose a bright light theme or a balanced dark theme.</Text>
             </View>
           </Card>
         </View>

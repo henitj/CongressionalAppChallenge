@@ -5,7 +5,7 @@ import Icon, { IconName } from './Icon';
 import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
 import { useWeather } from '../context/WeatherContext';
 import { LEVEL_META, SafetyLevel } from '../services/weather';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import { Typography, useTheme } from '../context/ThemeContext';
 
 function toneFor(c: ColorPalette): Record<SafetyLevel, { bg: string; border: string }> {

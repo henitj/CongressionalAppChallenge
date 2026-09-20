@@ -6,9 +6,9 @@ import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, Segmented, EmptyState, Pill, Divider, Banner, Button } from '../components/ui';
 import { RADIUS, SPACING, TREE_RULES, ColorPalette } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
-import { useEcoPoints } from '../constants/EcoPointsContext';
-import { useClub } from '../constants/ClubContext';
-import { useSettings } from '../constants/SettingsContext';
+import { useEcoPoints } from '../context/EcoPointsContext';
+import { useClub } from '../context/ClubContext';
+import { useSettings } from '../context/SettingsContext';
 import CleanupSheet from '../components/CleanupSheet';
 import { TREES_DISCLAIMER } from '../services/trees';
 import { cleanupBonusPoints } from '../services/cleanup';
@@ -23,7 +23,7 @@ export default function ImpactScreen() {
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { history, totalMiles, totalTrees, totalActivities, uniqueTrailsCompleted, deleteActivity } =
+  const { history, totalMiles, totalTrees, uniqueTrailsCompleted, deleteActivity } =
     useActivity();
   const { history: pointHistory, totalPoints, award } = useEcoPoints();
   const { myClub, contribute } = useClub();
@@ -98,7 +98,6 @@ export default function ImpactScreen() {
           <View style={styles.summaryGrid}>
             <Summary value={formatDistanceCompact(totalMiles)} unit={formatDistanceUnit()} label="Distance" />
             <Summary value={String(totalTrees)} label="Trees earned" />
-            <Summary value={String(totalActivities)} label="Activities" />
             <Summary value={String(uniqueTrailsCompleted)} label="Trails" />
           </View>
         </Card>
@@ -373,7 +372,7 @@ function Summary({ value, unit, label }: { value: string; unit?: string; label: 
         <Text style={styles.summaryValue}>{value}</Text>
         {unit ? <Text style={styles.summaryUnit}>{unit}</Text> : null}
       </View>
-      <Text style={styles.summaryLabel}>{label}</Text>
+      <Text style={styles.summaryLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</Text>
     </View>
   );
 }
@@ -395,7 +394,7 @@ function MiniStat({ value, label }: { value: string; label: string }) {
   return (
     <View style={{ flex: 1 }}>
       <Text style={styles.miniValue}>{value}</Text>
-      <Text style={styles.miniLabel}>{label}</Text>
+      <Text style={styles.miniLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>{label}</Text>
     </View>
   );
 }

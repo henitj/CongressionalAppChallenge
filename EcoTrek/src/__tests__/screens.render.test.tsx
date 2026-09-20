@@ -8,17 +8,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AppProvider } from '../context/AppContext';
-import { EcoPointsProvider } from '../constants/EcoPointsContext';
-import { SettingsProvider } from '../constants/SettingsContext';
+import { EcoPointsProvider } from '../context/EcoPointsContext';
+import { SettingsProvider } from '../context/SettingsContext';
 import { ThemeProvider } from '../context/ThemeContext';
-import { ClubProvider } from '../constants/ClubContext';
+import { ClubProvider } from '../context/ClubContext';
 import { StreakProvider } from '../context/StreakContext';
 import { ActivityProvider } from '../context/ActivityContext';
 import { LogbookProvider } from '../context/LogbookContext';
 import { ChallengeProvider } from '../context/ChallengeContext';
 import { NotificationProvider } from '../context/NotificationContext';
 import { WeatherProvider } from '../context/WeatherContext';
-import { AnalyticsProvider } from '../constants/AnalyticsContext';
+import { AnalyticsProvider } from '../context/AnalyticsContext';
 import { ProfileProvider } from '../context/ProfileContext';
 
 import HomeScreen from '../screens/HomeScreen';
@@ -266,12 +266,9 @@ describe('the badge reward celebration', () => {
     expect(utils.getByText(/new badge to claim/)).toBeTruthy();
 
     const tile = utils.getByLabelText(/First Steps\. New/);
+    // Claiming is deliberately one tap: no detail sheet and no second button.
     fireEvent.press(tile);
-    await waitFor(() => expect(utils.queryByText('Claim +20 EcoPoints')).toBeTruthy(), {
-      timeout: 4000,
-    });
-
-    fireEvent.press(utils.getByText('Claim +20 EcoPoints'));
+    expect(utils.queryByText('Claim +20 EcoPoints')).toBeNull();
     await waitFor(() => expect(utils.queryByText('Badge unlocked!')).toBeTruthy(), {
       timeout: 4000,
     });

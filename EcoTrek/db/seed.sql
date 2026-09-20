@@ -1,5 +1,5 @@
 -- Seed data for EcoTrek (run AFTER schema.sql)
--- Badge ids and icon names match src/constants/EcoPointsContext.tsx exactly,
+-- Badge ids and icon names match src/context/EcoPointsContext.tsx exactly,
 -- so the app and the database never disagree about what a badge is.
 
 INSERT INTO badges (id, name, description, icon, tier, criteria, sort_order) VALUES

@@ -133,9 +133,12 @@ function Walker({ dark, pack, skin }: { dark: string; pack: string; skin: string
       <Path d="M152 326 L148 341 L135 352 L130 352" stroke="#60766B" strokeWidth="5.5" fill="none" />
       <Path d="M158 327 L170 339 L176 352 L184 352" stroke={dark} strokeWidth="5.5" fill="none" />
       <Rect x="143" y="303" width="12" height="20" rx="4" fill={pack} />
-      <Path d="M155 301 Q161 300 165 305 L160 330 L150 327 Z" fill={dark} />
-      <Path d="M158 307 L169 318 L180 315" stroke={skin} strokeWidth="4" fill="none" />
-      <Path d="M152 308 L142 319 L139 331" stroke={dark} strokeWidth="4" fill="none" />
+      {/* Jacket and two matching sleeves; hands begin only at the wrists. */}
+      <Path d="M154 300 Q163 299 167 306 L161 329 Q156 333 149 327 L150 307 Z" fill={dark} />
+      <Path d="M159 307 L170 317" stroke={dark} strokeWidth="6" fill="none" />
+      <Path d="M170 317 L180 315" stroke={skin} strokeWidth="4" fill="none" />
+      <Path d="M152 308 L143 319" stroke={dark} strokeWidth="6" fill="none" />
+      <Path d="M143 319 L139 331" stroke={skin} strokeWidth="4" fill="none" />
       <Path d="M161 298 L159 304" stroke={skin} strokeWidth="4" />
       <Circle cx="163" cy="292" r="7.5" fill={skin} />
       <Path d="M155 291 Q156 281 165 284 Q171 286 171 291 L175 292 Z" fill={dark} />
@@ -155,8 +158,10 @@ function Biker({ dark, pack, skin }: { dark: string; pack: string; skin: string 
       <Path d="M146 327 L143 320 M138 320 L150 320 M177 327 L175 315 L184 315"
         stroke={dark} strokeWidth="3" fill="none" />
       <Path d="M145 320 L138 339 L151 348" stroke="#60766B" strokeWidth="5" fill="none" />
-      <Path d="M143 320 L157 300 L167 306 L151 324 Z" fill={dark} />
-      <Path d="M160 305 L174 318 L180 315" stroke={skin} strokeWidth="4" fill="none" />
+      <Path d="M143 320 L156 299 Q163 299 168 306 L152 325 Z" fill={dark} />
+      {/* Long jersey sleeve plus a short exposed hand at the handlebar. */}
+      <Path d="M160 305 L174 318" stroke={dark} strokeWidth="6" fill="none" />
+      <Path d="M174 318 L180 315" stroke={skin} strokeWidth="4" fill="none" />
       <Path d="M150 322 L167 333 L163 358" stroke={dark} strokeWidth="5" fill="none" />
       <Path d="M158 358 L168 358 M146 348 L156 348" stroke={dark} strokeWidth="3" fill="none" />
       <Path d="M151 348 L163 358" stroke={pack} strokeWidth="2" />

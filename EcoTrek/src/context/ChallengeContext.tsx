@@ -2,8 +2,8 @@ import React, { createContext, useCallback, useContext, useEffect, useMemo, useS
 import { useAuth } from './AuthContext';
 import { useActivity } from './ActivityContext';
 import { useStreak } from './StreakContext';
-import { useEcoPoints } from '../constants/EcoPointsContext';
-import { useClub } from '../constants/ClubContext';
+import { useEcoPoints } from '../context/EcoPointsContext';
+import { useClub } from '../context/ClubContext';
 import {
   challengesForWeek,
   ChallengeTemplate,

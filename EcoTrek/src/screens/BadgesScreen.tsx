@@ -12,7 +12,7 @@ import {
   BADGE_CATEGORY_LABEL,
   BADGE_CATEGORY_ORDER,
   useEcoPoints,
-} from '../constants/EcoPointsContext';
+} from '../context/EcoPointsContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useTheme, Typography } from '../context/ThemeContext';
 
@@ -171,7 +171,7 @@ export default function BadgesScreen() {
                   return (
                     <View key={b.id} style={[styles.cell, { width: cellSize, minHeight: cellSize }]}>
                       <Pressable
-                        onPress={() => setSelected(b)}
+                        onPress={() => (isNew ? handleClaim(b) : setSelected(b))}
                         style={[
                           styles.tile,
                           b.unlocked && styles.tileOn,

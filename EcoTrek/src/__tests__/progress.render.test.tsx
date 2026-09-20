@@ -3,7 +3,7 @@ import { Text } from 'react-native';
 import { act, render, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider } from '../context/AuthContext';
-import { EcoPointsProvider, useEcoPoints } from '../constants/EcoPointsContext';
+import { EcoPointsProvider, useEcoPoints } from '../context/EcoPointsContext';
 import { StreakProvider, useStreak } from '../context/StreakContext';
 import { currentWeeklyStreak, freezeTarget, activeMilestones, weekOffset, WeekMap } from '../services/weeklyStreaks';
 import { weekKey } from '../services/dates';

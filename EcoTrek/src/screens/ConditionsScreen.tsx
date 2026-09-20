@@ -5,7 +5,7 @@ import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, Pill, Banner, EmptyState, Divider } from '../components/ui';
 import { ColorPalette, RADIUS, SPACING } from '../constants/theme';
 import { useWeather } from '../context/WeatherContext';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import { useApp } from '../context/AppContext';
 import { iconForCode, LEVEL_META, SafetyLevel } from '../services/weather';
 import { Typography, useTheme } from '../context/ThemeContext';

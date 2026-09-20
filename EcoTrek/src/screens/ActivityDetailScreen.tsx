@@ -9,7 +9,7 @@ import { Screen, Card, Pill, Button, Divider, EmptyState, Banner } from '../comp
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import { getTrailById } from '../constants/austinTrails';
 import { useApp } from '../context/AppContext';
 import { FLAG_MESSAGES } from '../services/trailDetection';

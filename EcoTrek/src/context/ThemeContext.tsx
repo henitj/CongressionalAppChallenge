@@ -9,7 +9,7 @@ import {
   fontScaleFor,
   paletteFor,
 } from '../constants/theme';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 
 type ThemeValue = {
   colors: ColorPalette;
@@ -37,17 +37,9 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
     const sub = AccessibilityInfo.addEventListener('reduceMotionChanged', setReduceMotion);
     return () => sub.remove();
   }, []);
-  const [hour, setHour] = useState(() => new Date().getHours());
-
-  useEffect(() => {
-    const tick = () => setHour(new Date().getHours());
-    const id = setInterval(tick, 60_000);
-    return () => clearInterval(id);
-  }, []);
-
   const value = useMemo<ThemeValue>(() => {
     const scale = fontScaleFor(textSize);
-    const colors = paletteFor(appearance, hour);
+    const colors = paletteFor(appearance);
     return {
       colors,
       appearance,
@@ -55,7 +47,7 @@ export function ThemeProvider({ children }: { children: React.ReactNode }) {
       fontScale: scale,
       typography: scaleTypography(TYPOGRAPHY, scale),
     };
-  }, [appearance, textSize, hour, reduceMotion]);
+  }, [appearance, textSize, reduceMotion]);
 
   const darkBar = appearance === 'dark';
 

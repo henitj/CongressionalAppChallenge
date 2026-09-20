@@ -1,6 +1,6 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { IconName } from '../components/Icon';
-import { LEVELS } from './theme';
+import { LEVELS } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
 import { isArray, keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
