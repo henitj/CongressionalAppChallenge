@@ -128,6 +128,30 @@ npm run verify      # strict typecheck + logic + render suites
 
 Expo Go on a phone cannot use `localhost`. If the browser preview works but the phone stays on a loading screen, use `npm start` (tunnel) and update Expo Go to SDK 57.
 
+### Troubleshooting: `java.io.IOException: Failed to download remote update`
+
+This error appears **on the phone inside Expo Go**, not in the project. It means Expo
+Go could not reach the Metro bundler on your computer to download the JS bundle. It is a
+network/environment issue, not a code bug. Fix it in this order:
+
+1. **Run through the tunnel** (this repo's default): `npm start`. Plain `npx expo start`
+   uses LAN mode, which needs the phone and PC to reach each other directly. The tunnel
+   routes through Expo's servers and sidesteps most of these problems. Let it install
+   `@expo/ngrok` the first time if it asks. (Watch for typos — the command is
+   `expo`, not `epxo`/`espo`.)
+2. **Windows Firewall / antivirus** is the most common cause on Windows. Open "Allow an
+   app through Windows Firewall", find every **Node.js JavaScript Runtime** entry and
+   tick both **Private** and **Public**. Also set your Wi-Fi to a **Private** network
+   (Settings → Network & Internet → Wi-Fi → your network → Private).
+3. **SDK mismatch.** This project targets **Expo SDK 57**. If Expo Go on the phone was
+   updated past SDK 57 it cannot load the project. Update/reinstall Expo Go and clear its
+   cache (long-press the app → App info → Storage → Clear cache).
+4. **Same network.** In LAN mode both devices must be on the same network — no VPN, no
+   guest/"AP isolation" Wi-Fi, and not one on Ethernet while the other is on Wi-Fi. A
+   reliable fallback is to make the phone a hotspot and connect the PC to it, then
+   `npm start`.
+5. **Clear the Metro cache** if a stale bundle is suspected: `npx expo start --tunnel --clear`.
+
 ### Optional configuration
 
 Copy `.env.example` to `.env`. With an empty app `.env`, EcoTrek remains a fully usable
