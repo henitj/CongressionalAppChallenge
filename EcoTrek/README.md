@@ -136,9 +136,15 @@ network/environment issue, not a code bug. Fix it in this order:
 
 1. **Run through the tunnel** (this repo's default): `npm start`. Plain `npx expo start`
    uses LAN mode, which needs the phone and PC to reach each other directly. The tunnel
-   routes through Expo's servers and sidesteps most of these problems. Let it install
-   `@expo/ngrok` the first time if it asks. (Watch for typos — the command is
-   `expo`, not `epxo`/`espo`.)
+   routes through Expo's servers and sidesteps most of these problems. (Watch for typos —
+   the command is `expo`, not `epxo`/`espo`.) `@expo/ngrok` is already listed as a dev
+   dependency so `npm install` sets it up; you should not be prompted to install it.
+
+   If you ever see **`CommandError: Install @expo/ngrok@^4.1.0 and try again`** even after
+   it "installed globally", it's because Expo looks for ngrok **inside the project's
+   `node_modules`**, not the global copy. Run `npm install` (this project already declares
+   it) — or install it locally with `npm install --save-dev @expo/ngrok@^4.1.0` — then run
+   `npm start` again.
 2. **Windows Firewall / antivirus** is the most common cause on Windows. Open "Allow an
    app through Windows Firewall", find every **Node.js JavaScript Runtime** entry and
    tick both **Private** and **Public**. Also set your Wi-Fi to a **Private** network
