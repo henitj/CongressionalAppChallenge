@@ -5,9 +5,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AppProvider } from '../context/AppContext';
-import { BADGE_CLAIM_POINTS, EcoPointsProvider, useEcoPoints } from '../constants/EcoPointsContext';
-import { SettingsProvider } from '../constants/SettingsContext';
-import { ClubProvider, useClub } from '../constants/ClubContext';
+import { BADGE_CLAIM_POINTS, EcoPointsProvider, useEcoPoints } from '../context/EcoPointsContext';
+import { SettingsProvider } from '../context/SettingsContext';
+import { ClubProvider, useClub } from '../context/ClubContext';
 import { StreakProvider, useStreak } from '../context/StreakContext';
 import { ActivityProvider, useActivity } from '../context/ActivityContext';
 import { LogbookProvider, useLogbook } from '../context/LogbookContext';

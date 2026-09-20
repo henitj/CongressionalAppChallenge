@@ -185,93 +185,13 @@ export const LEVELS = [
   { name: 'Trail legend', min: 50000 },
 ];
 
-export type Appearance = 'light' | 'dark' | 'sky';
+export type Appearance = 'light' | 'dark';
 export type TextSize = 'default' | 'large' | 'xlarge';
-export type SkyPhase = 'sunrise' | 'afternoon' | 'sunset' | 'night';
-
 export type ColorPalette = typeof COLORS;
 
-export function skyPhaseForHour(hour: number): SkyPhase {
-  if (hour < 5 || hour >= 20) return 'night';
-  if (hour < 9) return 'sunrise';
-  if (hour < 16) return 'afternoon';
-  return 'sunset';
+export function paletteFor(appearance: Appearance): ColorPalette {
+  return appearance === 'dark' ? PALETTES.dark : PALETTES.light;
 }
-
-/** Sky look only applies in daytime. At night it falls back to light. */
-export function paletteFor(appearance: Appearance, hour = new Date().getHours()): ColorPalette {
-  if (appearance === 'dark') return PALETTES.dark;
-  if (appearance !== 'sky') return PALETTES.light;
-  const phase = skyPhaseForHour(hour);
-  if (phase === 'night') return PALETTES.light;
-  return SKY_PALETTES[phase];
-}
-
-const SKY_PALETTES: Record<Exclude<SkyPhase, 'night'>, ColorPalette> = {
-  sunrise: {
-    ...COLORS,
-    primary: '#C45C2A',
-    primaryDark: '#7A3318',
-    primaryMid: '#D4683A',
-    primaryLight: '#E8943A',
-    primaryGlow: '#F3C08A',
-    primarySurface: '#FFE8D6',
-    accent: '#E07040',
-    accentLight: '#FFE4D4',
-    accentDark: '#B84A22',
-    background: '#FFF4EB',
-    backgroundDark: '#F8E6D8',
-    surface: '#FFFBF7',
-    surfaceElevated: '#FFFFFF',
-    surfaceSunken: '#F8EDE4',
-    text: '#3A2418',
-    textSecondary: '#5C3D2A',
-    textMuted: '#8A6754',
-    border: '#E8D2C2',
-    borderLight: '#F3E6DC',
-    borderStrong: '#D4B8A4',
-  },
-  afternoon: {
-    ...COLORS,
-    primary: '#1A7A5A',
-    primaryDark: '#0D3D2D',
-    primaryLight: '#2B9A6E',
-    primaryGlow: '#7DD4AD',
-    primarySurface: '#E3F4FF',
-    accent: '#2B6CB0',
-    accentLight: '#D6EAF8',
-    accentDark: '#1A4A7A',
-    background: '#F3FAFF',
-    backgroundDark: '#E4F1F8',
-    surface: '#FFFFFF',
-    surfaceSunken: '#EAF3F8',
-    border: '#D0E0EA',
-    borderLight: '#E4EEF4',
-    borderStrong: '#B7CCD8',
-  },
-  sunset: {
-    ...COLORS,
-    primary: '#B84A2A',
-    primaryDark: '#5A2218',
-    primaryMid: '#C45C2A',
-    primaryLight: '#E07040',
-    primaryGlow: '#F0A070',
-    primarySurface: '#FFE0D0',
-    accent: '#E8943A',
-    accentLight: '#FFE8D0',
-    accentDark: '#C45C2A',
-    background: '#FFF0E8',
-    backgroundDark: '#F4DCD0',
-    surface: '#FFF8F4',
-    surfaceSunken: '#F8E4D8',
-    text: '#3A1E18',
-    textSecondary: '#5C3228',
-    textMuted: '#8A5848',
-    border: '#E8C8B8',
-    borderLight: '#F4E0D6',
-    borderStrong: '#D4A890',
-  },
-};
 
 export const PALETTES: Record<'light' | 'dark', ColorPalette> = {
   light: { ...COLORS },
@@ -282,24 +202,24 @@ export const PALETTES: Record<'light' | 'dark', ColorPalette> = {
     primaryMid: '#3FA97A',
     primaryLight: '#7DD4AD',
     primaryGlow: '#A6E6C8',
-    primarySurface: '#163528',
+    primarySurface: '#17332F',
     accent: '#F0B15A',
-    accentLight: '#3A2A14',
-    accentDark: '#F0B15A',
-    background: '#0E1713',
-    backgroundDark: '#0A120E',
-    surface: '#18241E',
-    surfaceElevated: '#1E2D26',
-    surfaceSunken: '#121C17',
-    surfaceOverlay: 'rgba(14,23,19,0.97)',
-    text: '#F2F7F4',
-    textSecondary: '#D5E0DA',
-    textMuted: '#B4C4BB',
-    textLight: '#8A9C93',
-    textInverse: '#0E1713',
-    border: '#2C3D34',
-    borderLight: '#24332C',
-    borderStrong: '#3D5248',
+    accentLight: '#382B1C',
+    accentDark: '#F6C474',
+    background: '#11151A',
+    backgroundDark: '#0B0E12',
+    surface: '#1B2128',
+    surfaceElevated: '#232A33',
+    surfaceSunken: '#151A20',
+    surfaceOverlay: 'rgba(17,21,26,0.97)',
+    text: '#F4F7FA',
+    textSecondary: '#D7DEE6',
+    textMuted: '#AAB4C0',
+    textLight: '#7E8A98',
+    textInverse: '#11151A',
+    border: '#343D48',
+    borderLight: '#29313A',
+    borderStrong: '#4A5664',
     danger: '#FF7A7A',
     dangerLight: '#3A1818',
     warning: '#F0B15A',

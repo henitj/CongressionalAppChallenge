@@ -84,15 +84,17 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
           onMomentumScrollEnd={onScroll}
           style={{ flex: 1 }}
         >
-          {PAGES.map((p) => (
+          {PAGES.map((p, index) => (
             <View key={p.title} style={[styles.page, { width }]}>
-              <View style={styles.picture}>
-                <Icon name={p.icon} size={72} color={colors.primaryGlow} strokeWidth={1.5} />
-              </View>
-              <Text style={[styles.title, typography.h1]}>{p.title}</Text>
-              <Text style={[styles.body, typography.body]}>{p.body}</Text>
-              {p.icon === 'trash' ? (
-                <View style={styles.trashDemo} accessibilityLabel="Trash count tutorial: enter 0 to 99 pieces">
+              <View style={styles.tourPanel}>
+                <Text style={[styles.stepLabel, typography.overline]}>INTRODUCTION · {index + 1} OF {PAGES.length}</Text>
+                <View style={styles.picture}>
+                  <Icon name={p.icon} size={72} color={colors.primaryGlow} strokeWidth={1.5} />
+                </View>
+                <Text style={[styles.title, typography.h1]}>{p.title}</Text>
+                <Text style={[styles.body, typography.body]}>{p.body}</Text>
+                {p.icon === 'trash' ? (
+                  <View style={styles.trashDemo} accessibilityLabel="Trash count tutorial: enter 0 to 99 pieces">
                   <Text style={[styles.trashDemoLabel, typography.smallMed]}>Honesty policy</Text>
                   <View style={styles.trashDemoInput}>
                     <Text style={[styles.trashDemoNumber, typography.h2]}>0–99</Text>
@@ -100,7 +102,8 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
                   </View>
                   <Text style={[styles.trashDemoHint, typography.small]}>More pieces = more points</Text>
                 </View>
-              ) : null}
+                ) : null}
+              </View>
             </View>
           ))}
         </ScrollView>
@@ -140,11 +143,26 @@ function makeStyles(c: ColorPalette) {
   },
   skip: { color: 'rgba(255,255,255,0.8)' },
   page: {
-    paddingHorizontal: SPACING.xl,
+    paddingLeft: SPACING.xl,
+    paddingRight: SPACING.md,
     justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: 'flex-end',
     flex: 1,
   },
+  tourPanel: {
+    width: '94%',
+    maxWidth: 440,
+    maxHeight: '96%',
+    alignItems: 'center',
+    justifyContent: 'center',
+    backgroundColor: 'rgba(255,255,255,0.08)',
+    borderWidth: 1,
+    borderColor: 'rgba(255,255,255,0.14)',
+    borderRadius: 28,
+    paddingHorizontal: SPACING.lg,
+    paddingVertical: SPACING.lg,
+  },
+  stepLabel: { color: 'rgba(255,255,255,0.62)', marginBottom: SPACING.md },
   picture: {
     width: 180,
     height: 180,

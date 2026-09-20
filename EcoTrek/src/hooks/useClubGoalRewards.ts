@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useClub } from '../constants/ClubContext';
-import { useEcoPoints } from '../constants/EcoPointsContext';
+import { useClub } from '../context/ClubContext';
+import { useEcoPoints } from '../context/EcoPointsContext';
 import { useAuth } from '../context/AuthContext';
 import { isObject, keyFor, loadJSON, saveJSON } from '../services/storage';
 

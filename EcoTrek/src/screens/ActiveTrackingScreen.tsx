@@ -7,7 +7,6 @@ import {
   Alert,
   AppState,
   AppStateStatus,
-  Linking,
   ScrollView,
   useWindowDimensions,
 } from 'react-native';
@@ -18,6 +17,7 @@ import LiveMap from '../components/LiveMap';
 import CleanupSheet from '../components/CleanupSheet';
 import Confetti from '../components/Confetti';
 import FeedbackSheet from '../components/FeedbackSheet';
+import TrailRatingSheet from '../components/TrailRatingSheet';
 import Icon, { IconName } from '../components/Icon';
 import { Button } from '../components/ui';
 
@@ -31,9 +31,9 @@ import {
   Subscription,
 } from '../services/location';
 import { computeTrees, useActivity } from '../context/ActivityContext';
-import { useSettings } from '../constants/SettingsContext';
-import { useEcoPoints } from '../constants/EcoPointsContext';
-import { useClub } from '../constants/ClubContext';
+import { useSettings } from '../context/SettingsContext';
+import { useEcoPoints } from '../context/EcoPointsContext';
+import { useClub } from '../context/ClubContext';
 import {
   cleanupBonusPoints,
   cleanupBonusSeconds,
@@ -85,6 +85,7 @@ export default function ActiveTrackingScreen() {
   const [showRest, setShowRest] = useState(false);
   const [showCleanup, setShowCleanup] = useState(false);
   const [showFeedback, setShowFeedback] = useState(false);
+  const [showTrailRating, setShowTrailRating] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [confettiDone, setConfettiDone] = useState(false);
   const pendingFeedback = useRef(false);
@@ -111,17 +112,6 @@ export default function ActiveTrackingScreen() {
   useEffect(() => {
     if (!paused && elapsed >= 25 * 60 && !showRest) setShowRest(true);
   }, [elapsed, paused, showRest]);
-
-  const call911 = () => {
-    Alert.alert(
-      'Call 911?',
-      'This will start an emergency call. Only continue if you need help right now.',
-      [
-        { text: 'Cancel', style: 'cancel' },
-        { text: 'Call 911', style: 'destructive', onPress: () => Linking.openURL('tel:911') },
-      ]
-    );
-  };
 
   const togglePause = () => {
     setPaused((p) => {
@@ -228,6 +218,7 @@ export default function ActiveTrackingScreen() {
         calories,
         elevationGain: Math.round(elevationGain),
         elevationLoss: Math.round(elevationLoss),
+        trailId: res.trailId,
         trailName: res.trailName,
         trailCompleted: res.trailCompleted,
         rejected: res.rejected,
@@ -418,7 +409,9 @@ export default function ActiveTrackingScreen() {
             visible={showCleanup}
             onClose={() => {
               setShowCleanup(false);
-              if (pendingFeedback.current) {
+              if (result.trailCompleted && result.trailId) {
+                setShowTrailRating(true);
+              } else if (pendingFeedback.current) {
                 pendingFeedback.current = false;
                 setShowFeedback(true);
               }
@@ -427,6 +420,12 @@ export default function ActiveTrackingScreen() {
             subtitle={`Nice ${result.kind === 'bike' ? 'ride' : 'walk'} — enter 0 to 99 for extra points`}
             allowNone
             onLogged={handleCleanupLogged}
+          />
+          <TrailRatingSheet
+            visible={showTrailRating}
+            trailId={result.trailId}
+            trailName={result.trailName}
+            onClose={() => setShowTrailRating(false)}
           />
           <FeedbackSheet
             visible={showFeedback}
@@ -495,19 +494,6 @@ export default function ActiveTrackingScreen() {
                 </Text>
               </View>
             ) : null}
-          </View>
-
-          <View style={styles.helpRow}>
-            <Pressable
-              onPress={call911}
-              style={styles.helpIconBtn}
-              accessibilityLabel="Call 911"
-              accessibilityRole="button"
-            >
-              <Icon name="alert-triangle" size={18} color={colors.danger} strokeWidth={2} />
-              <Text style={styles.helpLabel} numberOfLines={1}>Call 911</Text>
-            </Pressable>
-            <View style={{ flex: 1 }} />
           </View>
 
           {showRest ? (

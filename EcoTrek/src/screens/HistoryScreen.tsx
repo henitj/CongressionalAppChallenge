@@ -1,14 +1,14 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
 import Icon from '../components/Icon';
-import { Screen, Card, Pill, EmptyState } from '../components/ui';
+import { Screen, Card, Pill, EmptyState, Segmented } from '../components/ui';
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useActivity, Activity } from '../context/ActivityContext';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import { weekStart } from '../services/dates';
 import { useTheme, Typography } from '../context/ThemeContext';
 
@@ -19,7 +19,10 @@ export default function HistoryScreen() {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
-  const recent = history;
+  const [range, setRange] = useState<'week' | 'month' | 'year'>('week');
+  const cutoffDays = range === 'week' ? 7 : range === 'month' ? 30 : 365;
+  const cutoff = Date.now() - cutoffDays * 24 * 60 * 60 * 1000;
+  const recent = history.filter((activity) => activity.startedAt >= cutoff);
   const weekBegin = weekStart().getTime();
   const thisWeek = history.filter((a) => a.valid && a.startedAt >= weekBegin);
   const weekMiles = thisWeek.reduce((n, a) => n + a.miles, 0);
@@ -39,6 +42,16 @@ export default function HistoryScreen() {
             </Text>
           </Text>
         </Card>
+
+        <Segmented
+          options={[
+            { value: 'week', label: 'Past week' },
+            { value: 'month', label: 'Past month' },
+            { value: 'year', label: 'Past year' },
+          ]}
+          value={range}
+          onChange={setRange}
+        />
 
         {recent.length === 0 ? (
           <EmptyState

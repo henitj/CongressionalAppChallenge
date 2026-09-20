@@ -38,9 +38,9 @@ import {
   MIN_MEMBER_CAP,
   sortedMembers,
   useClub,
-} from '../constants/ClubContext';
+} from '../context/ClubContext';
 import { useAuth } from '../context/AuthContext';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import { useActivity } from '../context/ActivityContext';
 import { shareText } from '../services/share';
 import { useResetOnLeave } from '../hooks/useResetOnLeave';

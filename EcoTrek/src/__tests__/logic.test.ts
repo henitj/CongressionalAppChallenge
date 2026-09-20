@@ -18,7 +18,7 @@ import { AUSTIN_TRAILS, getTrailById } from '../constants/austinTrails';
 import { Coord, haversineMiles, instantMph, smoothDelta } from '../services/geo';
 import { computeTrees, speciesFor, TREES_DISCLAIMER } from '../services/trees';
 import { firstNameOf, fullNameOf } from '../services/displayName';
-import { LEVELS, TREE_RULES, fontScaleFor, skyPhaseForHour } from '../constants/theme';
+import { LEVELS, TREE_RULES, fontScaleFor } from '../constants/theme';
 import {
   activeDaysInLast,
   bonusForStreak,
@@ -928,15 +928,10 @@ test('levels are strictly increasing', () => {
   assert.equal(LEVELS[0].min, 0);
 });
 
-test('font scale and sky phase helpers', () => {
+test('font scale helpers', () => {
   assert.equal(fontScaleFor('default'), 1);
   assert.equal(fontScaleFor('large'), 1.16);
   assert.equal(fontScaleFor('xlarge'), 1.32);
-  assert.equal(skyPhaseForHour(3), 'night');
-  assert.equal(skyPhaseForHour(7), 'sunrise');
-  assert.equal(skyPhaseForHour(12), 'afternoon');
-  assert.equal(skyPhaseForHour(18), 'sunset');
-  assert.equal(skyPhaseForHour(21), 'night');
 });
 
 test('weather icons follow WMO codes and flip sun to moon at night', () => {

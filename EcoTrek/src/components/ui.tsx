@@ -62,6 +62,10 @@ export function Screen({
     );
   }
 
+  const items = React.Children.toArray(children);
+  const first = items[0] as React.ReactElement | undefined;
+  const hasHeader = !!first && typeof first === 'object' && (first.type as any)?.displayName === 'EcoTrekHeader';
+
   return (
     <View style={[ui.screen, { backgroundColor: colors.background }, style]}>
       <ScrollView
@@ -73,8 +77,12 @@ export function Screen({
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
         keyboardDismissMode="on-drag"
+        stickyHeaderIndices={hasHeader ? [0] : undefined}
       >
-        <View style={column}>{children}</View>
+        {hasHeader ? (
+          <View style={[column, { backgroundColor: colors.background, zIndex: 20 }]}>{first}</View>
+        ) : null}
+        <View style={column}>{hasHeader ? items.slice(1) : items}</View>
       </ScrollView>
     </View>
   );
@@ -367,6 +375,9 @@ export function Segmented<T extends string>({
             ) : null}
             <Text
               style={[ui.segmentText, { color: active ? colors.text : colors.textMuted, fontSize: Math.round(13 * fontScale) }]}
+              numberOfLines={1}
+              adjustsFontSizeToFit
+              minimumFontScale={0.7}
             >
               {o.label}
             </Text>
@@ -516,7 +527,7 @@ export function Sheet({
         <Pressable style={{ flex: 1 }} onPress={onClose} />
         <SafeAreaView
           edges={['bottom']}
-          style={[ui.sheet, { backgroundColor: colors.surface, paddingBottom: gap }]}
+          style={[ui.sheet, { backgroundColor: colors.surface, paddingBottom: keyboardVisible ? gap + 16 : gap }]}
         >
           <View style={[ui.sheetGrabber, { backgroundColor: colors.borderStrong }]} />
           <View style={ui.sheetHeader}>

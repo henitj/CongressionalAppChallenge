@@ -1,7 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 
-import { Appearance, TextSize } from './theme';
+import { Appearance, TextSize } from '../constants/theme';
 
 type Units = 'imperial' | 'metric';
 type TempUnit = 'F' | 'C';
@@ -21,7 +21,7 @@ const DEFAULTS: Stored = {
 };
 
 function normalizeAppearance(raw: unknown): Appearance {
-  if (raw === 'dark' || raw === 'sky') return raw;
+  if (raw === 'dark') return raw;
   return 'light';
 }
 

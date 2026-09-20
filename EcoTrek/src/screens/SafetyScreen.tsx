@@ -78,10 +78,8 @@ const GUIDES: Guide[] = [
 ];
 
 const EMERGENCY = [
-  { label: 'Emergency', value: '911', tel: '911' },
-  { label: 'Austin Police non-emergency', value: '(512) 974-5000', tel: '5129745000' },
-  { label: 'Texas Poison Center', value: '(800) 222-1222', tel: '8002221222' },
-  { label: 'Austin Parks and Recreation', value: '(512) 974-6700', tel: '5129746700' },
+  { label: 'Police non-emergency', value: '(512) 974-5000', tel: '5129745000' },
+  { label: 'Poison Center', value: '(800) 222-1222', tel: '8002221222' },
 ];
 
 export default function SafetyScreen() {
@@ -115,20 +113,9 @@ export default function SafetyScreen() {
               <View key={e.tel}>
                 {i > 0 ? <Divider style={{ marginLeft: 58 }} /> : null}
                 <Pressable
-                  onPress={() => {
-                    if (e.tel === '911') {
-                      Alert.alert(
-                        'Call 911?',
-                        'This will start an emergency call. Only continue if you need help right now.',
-                        [
-                          { text: 'Cancel', style: 'cancel' },
-                          { text: 'Call 911', style: 'destructive', onPress: () => Linking.openURL('tel:911') },
-                        ]
-                      );
-                      return;
-                    }
-                    Linking.openURL(`tel:${e.tel}`);
-                  }}
+                  onPress={() => Linking.openURL(`tel:${e.tel}`).catch(() => {
+                    Alert.alert('Could not open the phone app', `Call ${e.value} from another phone if needed.`);
+                  })}
                   style={({ pressed }) => [styles.callRow, pressed && { opacity: 0.7 }]}
                 >
                   <View style={[styles.callIcon, i === 0 && { backgroundColor: colors.dangerLight }]}>

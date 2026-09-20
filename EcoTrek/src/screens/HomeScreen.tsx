@@ -13,7 +13,7 @@ import { useAuth } from '../context/AuthContext';
 import { useActivity } from '../context/ActivityContext';
 import { useStreak } from '../context/StreakContext';
 import { useProfile } from '../context/ProfileContext';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import { weekStart } from '../services/dates';
 import { firstNameOf } from '../services/displayName';
 import { useTheme, Typography } from '../context/ThemeContext';
@@ -51,7 +51,7 @@ export default function HomeScreen() {
     <Screen>
       <Header
         title={firstName}
-        subtitle={`${greeting} · ${new Date().toLocaleDateString(undefined, {
+        subtitle={`Home · ${greeting} · ${new Date().toLocaleDateString(undefined, {
           weekday: 'long',
           month: 'short',
           day: 'numeric',

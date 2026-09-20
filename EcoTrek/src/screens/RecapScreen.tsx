@@ -8,11 +8,11 @@ import { Screen, Card, Pill, Button, Divider, EmptyState } from '../components/u
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useActivity } from '../context/ActivityContext';
-import { useEcoPoints } from '../constants/EcoPointsContext';
+import { useEcoPoints } from '../context/EcoPointsContext';
 import { useStreak } from '../context/StreakContext';
 import { useLogbook } from '../context/LogbookContext';
 import { useChallenges } from '../context/ChallengeContext';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import { buildRecap, lastWeekStart, RecapMetric } from '../services/recap';
 import { weekKey } from '../services/dates';
 import { computeRecords } from '../services/records';

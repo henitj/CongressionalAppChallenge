@@ -4,12 +4,13 @@ import { createGrant, computeTrees, TreeGrant } from '../services/trees';
 import { evaluateCompletion, validateActivity } from '../services/trailDetection';
 import { useAuth } from './AuthContext';
 import { useStreak } from './StreakContext';
-import { useClub } from '../constants/ClubContext';
-import { useEcoPoints } from '../constants/EcoPointsContext';
+import { useClub } from '../context/ClubContext';
+import { useEcoPoints } from '../context/EcoPointsContext';
 import { useProfile, estimateCalories, estimateElevation } from './ProfileContext';
 import { useApp } from './AppContext';
 import { isArray, keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
+import { retainRecentActivities } from '../services/activityRetention';
 
 export type ActivityType = 'hike' | 'bike';
 
@@ -48,6 +49,7 @@ export type ActivityResult = {
   pointsAwarded: number;
   treesAwarded: number;
   trailCompleted: boolean;
+  trailId: string | null;
   trailName: string | null;
   rejected: boolean;
   rejectionReason: string | null;
@@ -105,7 +107,11 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     let cancelled = false;
     setLoading(true);
     (async () => {
-      const local = await loadJSON<Activity[]>(storeKey, [], isArray);
+      const stored = await loadJSON<Activity[]>(storeKey, [], isArray);
+      // Keep the logbook bounded: summaries cover a year and older raw walks
+      // are removed from the device so history cannot grow forever.
+      const local = retainRecentActivities(stored);
+      if (local.length !== stored.length) await saveJSON(storeKey, local);
       if (cancelled) return;
       historyRef.current = local;
       setHistory(local);
@@ -116,7 +122,8 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         if (!cancelled && res.ok && Array.isArray(res.data)) {
           const byId = new Map<string, Activity>();
           [...res.data, ...historyRef.current].forEach((a) => byId.set(a.id, a));
-          const merged = [...byId.values()].sort((a, b) => b.startedAt - a.startedAt);
+          const merged = retainRecentActivities([...byId.values()])
+            .sort((a, b) => b.startedAt - a.startedAt);
           historyRef.current = merged;
           setHistory(merged);
           saveJSON(storeKey, merged);
@@ -217,6 +224,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         pointsAwarded,
         treesAwarded: trees,
         trailCompleted: !!activity.trailCompleted,
+        trailId: completion.trail?.id ?? null,
         trailName: completion.trail?.name ?? null,
         rejected: !validation.valid,
         rejectionReason: validation.flagReason,
@@ -231,7 +239,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     const existing = historyRef.current.find((a) => a.id === id);
     if (existing) return Promise.resolve({ activity: existing, pointsAwarded: existing.points,
       treesAwarded: existing.trees, trailCompleted: !!existing.trailCompleted,
-      trailName: existing.trailName ?? null, rejected: !existing.valid, rejectionReason: existing.flagReason ?? null });
+      trailId: existing.trailId ?? null, trailName: existing.trailName ?? null, rejected: !existing.valid, rejectionReason: existing.flagReason ?? null });
     const pending = pendingActivities.current.get(id);
     if (pending) return pending;
     const task = createActivity(input).finally(() => pendingActivities.current.delete(id));

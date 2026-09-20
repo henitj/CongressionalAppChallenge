@@ -19,7 +19,7 @@ import { Trail } from '../constants/austinTrails';
 import { useApp } from '../context/AppContext';
 import { useWeather } from '../context/WeatherContext';
 import { useActivity } from '../context/ActivityContext';
-import { useSettings } from '../constants/SettingsContext';
+import { useSettings } from '../context/SettingsContext';
 import {
   answerQuestion,
   AssistantContext,
@@ -207,7 +207,7 @@ export default function AssistantScreen() {
     <View style={styles.root}>
       <Header title="Trail assistant" subtitle="Ask about trails near you" back />
 
-      <View style={{ flex: 1, paddingBottom: keyboardPad }} onLayout={onContainerLayout}>
+      <View style={{ flex: 1, paddingBottom: keyboardVisible ? keyboardPad + 16 : 0 }} onLayout={onContainerLayout}>
         <ScrollView
           ref={scrollRef}
           contentContainerStyle={styles.scroll}
@@ -229,7 +229,7 @@ export default function AssistantScreen() {
               </Text>
 
               <View style={styles.starters}>
-                {STARTER_QUESTIONS.map((q) => (
+                {STARTER_QUESTIONS.slice(0, 2).map((q) => (
                   <Pressable key={q} onPress={() => send(q)} style={styles.starter}>
                     <Text style={styles.starterText}>{q}</Text>
                     <Icon name="arrow-right" size={13} color={colors.primary} strokeWidth={2.1} />

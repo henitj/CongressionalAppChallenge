@@ -102,6 +102,8 @@ export default function Header({
   );
 }
 
+Header.displayName = 'EcoTrekHeader';
+
 // Color-free geometry; every color is applied at render time from the theme.
 const styles = StyleSheet.create({
   bar: {
