@@ -410,6 +410,8 @@ export default function TrailsScreen() {
                   onPress={() => setSelected(t)}
                   formatDistance={formatDistanceCompact}
                   unit={formatDistanceUnit()}
+                  styles={styles}
+                  colors={colors}
                 />
               </View>
             ))}
@@ -695,7 +697,7 @@ function TrailDetail({
 
 /* ── List card ────────────────────────────────────────────────────────── */
 
-function TrailCard({
+const TrailCard = React.memo(function TrailCard({
   trail,
   completed,
   visited,
@@ -703,6 +705,8 @@ function TrailCard({
   onPress,
   formatDistance,
   unit,
+  styles,
+  colors,
 }: {
   trail: Trail;
   completed: boolean;
@@ -711,9 +715,9 @@ function TrailCard({
   onPress: () => void;
   formatDistance: (m: number) => string;
   unit: string;
+  styles: ReturnType<typeof makeStyles>;
+  colors: ColorPalette;
 }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const difficultyTone =
     trail.difficulty === 'Easy' ? 'primary' : trail.difficulty === 'Moderate' ? 'warning' : 'danger';
 
@@ -765,11 +769,25 @@ function TrailCard({
       </View>
     </Card>
   );
-}
+});
 
-function DetailStat({ icon, value, label }: { icon: IconName; value: string; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const DetailStat = React.memo(function DetailStat({
+  icon,
+  value,
+  label,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  icon: IconName;
+  value: string;
+  label: string;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flexBasis: '45%', flexGrow: 1, minWidth: 0, gap: 3 }}>
       <Icon name={icon} size={15} color={colors.textMuted} strokeWidth={1.9} />
@@ -777,7 +795,7 @@ function DetailStat({ icon, value, label }: { icon: IconName; value: string; lab
       <Text style={styles.detailStatLabel}>{label}</Text>
     </View>
   );
-}
+});
 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({

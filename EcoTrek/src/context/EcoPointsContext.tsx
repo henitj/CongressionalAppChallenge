@@ -261,9 +261,11 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
   }, [histKey, badgeKey]);
 
   const totalPoints = useMemo(
-    () => history.reduce((sum, e) => sum + e.points, 0),
+    () => history.reduce((sum, e) => sum + (Number.isFinite(e.points) ? e.points : 0), 0),
     [history]
   );
+  const totalPointsRef = useRef(totalPoints);
+  totalPointsRef.current = totalPoints;
 
   const award = useCallback<EcoPointsState['award']>(
     async (action, opts = {}) => {
@@ -302,7 +304,8 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
   const refreshBadges = useCallback(
     (inputs: BadgeInputs) => {
       setBadges((current) => {
-        const { levelIndex } = getLevel(totalPoints);
+        const pts = totalPointsRef.current;
+        const { levelIndex } = getLevel(pts);
         const rules: Record<string, boolean> = {
           first_hike: inputs.hikes >= 1,
           first_ride: inputs.rides >= 1,
@@ -329,8 +332,8 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
           fifty_challenges: inputs.challengesCompleted >= 50,
           first_trail: inputs.trailsCompleted >= 1,
           five_trails: inputs.trailsCompleted >= 5,
-          five_hundred_points: totalPoints >= 500,
-          thousand_points: totalPoints >= 1000,
+          five_hundred_points: pts >= 500,
+          thousand_points: pts >= 1000,
           trail_steward: levelIndex >= 4,
           eco_champion: levelIndex >= 7,
           club_member: inputs.clubsJoined >= 1,
@@ -361,7 +364,7 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
         return changed ? next : current;
       });
     },
-    [badgeKey, totalPoints]
+    [badgeKey]
   );
 
   // claimBadge reads the current list through a ref so it never works from a

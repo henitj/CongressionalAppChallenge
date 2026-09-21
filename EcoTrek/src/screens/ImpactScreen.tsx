@@ -87,18 +87,18 @@ export default function ImpactScreen() {
             </View>
           </View>
           <View style={styles.heroStats}>
-            <MiniStat value={String(cleanupCount)} label="Cleanups" />
-            <MiniStat value={String(litterCollected)} label="Litter" />
-            <MiniStat value={String(totalPoints)} label="Points" />
+            <MiniStat value={String(cleanupCount)} label="Cleanups" styles={styles} colors={colors} />
+            <MiniStat value={String(litterCollected)} label="Litter" styles={styles} colors={colors} />
+            <MiniStat value={String(totalPoints)} label="Points" styles={styles} colors={colors} />
           </View>
         </Card>
 
         {/* Summary */}
         <Card>
           <View style={styles.summaryGrid}>
-            <Summary value={formatDistanceCompact(totalMiles)} unit={formatDistanceUnit()} label="Distance" />
-            <Summary value={String(totalTrees)} label="Trees earned" />
-            <Summary value={String(uniqueTrailsCompleted)} label="Trails" />
+            <Summary value={formatDistanceCompact(totalMiles)} unit={formatDistanceUnit()} label="Distance" styles={styles} colors={colors} />
+            <Summary value={String(totalTrees)} label="Trees earned" styles={styles} colors={colors} />
+            <Summary value={String(uniqueTrailsCompleted)} label="Trails" styles={styles} colors={colors} />
           </View>
         </Card>
 
@@ -363,9 +363,23 @@ function iconForAction(action: string): IconName {
   return 'star';
 }
 
-function Summary({ value, unit, label }: { value: string; unit?: string; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const Summary = React.memo(function Summary({
+  value,
+  unit,
+  label,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  value: string;
+  unit?: string;
+  label: string;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.summaryItem}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
@@ -375,29 +389,53 @@ function Summary({ value, unit, label }: { value: string; unit?: string; label: 
       <Text style={styles.summaryLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.75}>{label}</Text>
     </View>
   );
-}
+});
 
-function FieldStat({ value, label }: { value: string; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const FieldStat = React.memo(function FieldStat({
+  value,
+  label,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  value: string;
+  label: string;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1 }}>
       <Text style={styles.fieldValue}>{value}</Text>
       <Text style={styles.fieldLabel}>{label}</Text>
     </View>
   );
-}
+});
 
-function MiniStat({ value, label }: { value: string; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const MiniStat = React.memo(function MiniStat({
+  value,
+  label,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  value: string;
+  label: string;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1 }}>
       <Text style={styles.miniValue}>{value}</Text>
       <Text style={styles.miniLabel} numberOfLines={1} adjustsFontSizeToFit minimumFontScale={0.72}>{label}</Text>
     </View>
   );
-}
+});
 
 function formatDuration(sec: number) {
   const h = Math.floor(sec / 3600);

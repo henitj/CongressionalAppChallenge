@@ -80,7 +80,19 @@ export async function copyUserData(fromId: string, toId: string): Promise<number
       const existing = await AsyncStorage.getItem(dest);
       const val = await AsyncStorage.getItem(key);
       if (val == null) continue;
-      const merged = existing ? mergeAccountData(key.slice(prefix.length), JSON.parse(val), JSON.parse(existing)) : JSON.parse(val);
+      let parsedVal: any;
+      let parsedExisting: any;
+      try {
+        parsedVal = JSON.parse(val);
+      } catch {
+        continue;
+      }
+      try {
+        parsedExisting = existing ? JSON.parse(existing) : null;
+      } catch {
+        parsedExisting = null;
+      }
+      const merged = parsedExisting ? mergeAccountData(key.slice(prefix.length), parsedVal, parsedExisting) : parsedVal;
       await saveJSON(dest, merged);
       copied += 1;
     }

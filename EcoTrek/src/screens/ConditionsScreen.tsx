@@ -222,7 +222,7 @@ export default function ConditionsScreen() {
                         strokeWidth={1.8}
                       />
                       <Text style={[styles.hourTemp, typography.h4, { color: colors.text }]}>
-                        {Math.round(h.temp)}°
+                        {Number.isFinite(h.temp) ? `${Math.round(h.temp)}°` : '—'}
                       </Text>
                       {/* Rain chance: a bar in a fixed-height track, so every
                           column lines up instead of floating at its own level. */}
@@ -231,7 +231,7 @@ export default function ConditionsScreen() {
                           style={[
                             styles.rainFill,
                             {
-                              height: `${Math.max(4, h.precipChance)}%`,
+                              height: `${Number.isFinite(h.precipChance) ? Math.max(4, Math.min(100, h.precipChance)) : 4}%`,
                               backgroundColor: wet ? colors.info : colors.infoBorder,
                             },
                           ]}
@@ -244,7 +244,7 @@ export default function ConditionsScreen() {
                           { color: wet ? colors.info : colors.textLight },
                         ]}
                       >
-                        {h.precipChance}%
+                        {Number.isFinite(h.precipChance) ? `${h.precipChance}%` : '0%'}
                       </Text>
                     </View>
                   );

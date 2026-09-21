@@ -54,8 +54,8 @@ export default function ConditionsCard() {
     );
   }
 
-  const tone = toneFor(colors)[report.level];
-  const meta = LEVEL_META[report.level];
+  const tone = toneFor(colors)[report.level] ?? toneFor(colors).good;
+  const meta = LEVEL_META[report.level] ?? LEVEL_META.good;
 
   return (
     <Pressable

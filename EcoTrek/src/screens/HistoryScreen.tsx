@@ -70,6 +70,8 @@ export default function HistoryScreen() {
                 formatDistance={formatDistance}
                 unit={formatDistanceUnit()}
                 onPress={() => navigation.navigate('ActivityDetail', { activityId: activity.id })}
+                styles={styles}
+                colors={colors}
               />
             ))}
 
@@ -84,16 +86,20 @@ export default function HistoryScreen() {
   );
 }
 
-function ActivityHistoryCard({
+const ActivityHistoryCard = React.memo(function ActivityHistoryCard({
   activity,
   formatDistance,
   unit,
   onPress,
+  styles,
+  colors,
 }: {
   activity: Activity;
   formatDistance: (m: number) => string;
   unit: string;
   onPress: () => void;
+  styles: ReturnType<typeof makeStyles>;
+  colors: ColorPalette;
 }) {
   const date = new Date(activity.startedAt);
   const dateStr = date.toLocaleDateString(undefined, {
@@ -107,8 +113,6 @@ function ActivityHistoryCard({
   });
 
   const durationMin = Math.floor(activity.durationSec / 60);
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
 
   return (
     <Card onPress={onPress}>
@@ -139,17 +143,17 @@ function ActivityHistoryCard({
 
       {/* Primary stats */}
       <View style={styles.statsRow}>
-        <StatBlock value={`${formatDistance(activity.miles)} ${unit}`} label="Distance" />
-        <StatBlock value={`${durationMin} min`} label="Duration" />
-        <StatBlock value={`${activity.avgMph} mph`} label="Speed" />
+        <StatBlock value={`${formatDistance(activity.miles)} ${unit}`} label="Distance" styles={styles} />
+        <StatBlock value={`${durationMin} min`} label="Duration" styles={styles} />
+        <StatBlock value={`${activity.avgMph} mph`} label="Speed" styles={styles} />
       </View>
 
       {/* Secondary stats */}
       <View style={styles.detailsRow}>
-        <DetailItem icon="zap" label={`${activity.calories || 0} cal`} />
-        <DetailItem icon="tree" label={`${activity.trees} trees`} />
-        <DetailItem icon="trending-up" label={`↑${activity.elevationGain || 0} ft`} />
-        <DetailItem icon="trending-up" label={`↓${activity.elevationLoss || 0} ft`} />
+        <DetailItem icon="zap" label={`${activity.calories || 0} cal`} styles={styles} colors={colors} />
+        <DetailItem icon="tree" label={`${activity.trees} trees`} styles={styles} colors={colors} />
+        <DetailItem icon="trending-up" label={`↑${activity.elevationGain || 0} ft`} styles={styles} colors={colors} />
+        <DetailItem icon="trending-up" label={`↓${activity.elevationLoss || 0} ft`} styles={styles} colors={colors} />
       </View>
 
       {/* Trail completion badge */}
@@ -181,29 +185,43 @@ function ActivityHistoryCard({
       ) : null}
     </Card>
   );
-}
+});
 
-function StatBlock({ value, label }: { value: string; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const StatBlock = React.memo(function StatBlock({
+  value,
+  label,
+  styles,
+}: {
+  value: string;
+  label: string;
+  styles: ReturnType<typeof makeStyles>;
+}) {
   return (
     <View style={styles.statBlock}>
       <Text style={styles.statValue} numberOfLines={1}>{value}</Text>
       <Text style={styles.statLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
-}
+});
 
-function DetailItem({ icon, label }: { icon: any; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const DetailItem = React.memo(function DetailItem({
+  icon,
+  label,
+  styles,
+  colors,
+}: {
+  icon: any;
+  label: string;
+  styles: ReturnType<typeof makeStyles>;
+  colors: ColorPalette;
+}) {
   return (
     <View style={styles.detailItem}>
       <Icon name={icon} size={13} color={colors.textMuted} strokeWidth={2} />
       <Text style={styles.detailLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
-}
+});
 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({

@@ -29,7 +29,9 @@ export function freezeTarget(weeks: WeekMap, now = new Date()): string | null {
 }
 
 function weekDate(key: string): Date {
-  const [year, week] = key.split('-W').map(Number);
+  const parts = (key || '').split('-W').map(Number);
+  const year = Number.isFinite(parts[0]) && parts[0] > 1970 ? parts[0] : new Date().getFullYear();
+  const week = Number.isFinite(parts[1]) && parts[1] >= 1 ? parts[1] : 1;
   const first = weekStart(new Date(year, 0, 4));
   first.setDate(first.getDate() + (week - 1) * 7);
   return first;

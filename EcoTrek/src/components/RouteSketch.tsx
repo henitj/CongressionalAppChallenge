@@ -37,23 +37,38 @@ export default function RouteSketch({
   let dots: { x: number; y: number }[] = [];
   if (ready && points.length > 0) {
     const pad = 26;
-    const lats = points.map((p) => p.latitude);
-    const lons = points.map((p) => p.longitude);
-    const minLat = Math.min(...lats);
-    const maxLat = Math.max(...lats);
-    const minLon = Math.min(...lons);
-    const maxLon = Math.max(...lons);
-    const spanLat = Math.max(maxLat - minLat, 0.0004);
-    const spanLon = Math.max(maxLon - minLon, 0.0004);
-    const scale = Math.min((size.width - pad * 2) / spanLon, (size.height - pad * 2) / spanLat);
-    const offsetX = (size.width - spanLon * scale) / 2;
-    const offsetY = (size.height - spanLat * scale) / 2;
+    let minLat = Infinity;
+    let maxLat = -Infinity;
+    let minLon = Infinity;
+    let maxLon = -Infinity;
+    let validCount = 0;
 
-    dots = points.map((p) => ({
-      x: offsetX + (p.longitude - minLon) * scale,
-      y: size.height - (offsetY + (p.latitude - minLat) * scale),
-    }));
-    d = dots.map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(' ');
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i];
+      if (p && Number.isFinite(p.latitude) && Number.isFinite(p.longitude)) {
+        if (p.latitude < minLat) minLat = p.latitude;
+        if (p.latitude > maxLat) maxLat = p.latitude;
+        if (p.longitude < minLon) minLon = p.longitude;
+        if (p.longitude > maxLon) maxLon = p.longitude;
+        validCount++;
+      }
+    }
+
+    if (validCount > 0 && Number.isFinite(minLat) && Number.isFinite(maxLat) && Number.isFinite(minLon) && Number.isFinite(maxLon)) {
+      const spanLat = Math.max(maxLat - minLat, 0.0004);
+      const spanLon = Math.max(maxLon - minLon, 0.0004);
+      const scale = Math.min((size.width - pad * 2) / spanLon, (size.height - pad * 2) / spanLat);
+      const offsetX = (size.width - spanLon * scale) / 2;
+      const offsetY = (size.height - spanLat * scale) / 2;
+
+      dots = points
+        .filter((p) => p && Number.isFinite(p.latitude) && Number.isFinite(p.longitude))
+        .map((p) => ({
+          x: offsetX + (p.longitude - minLon) * scale,
+          y: size.height - (offsetY + (p.latitude - minLat) * scale),
+        }));
+      d = dots.map((pt, i) => `${i === 0 ? 'M' : 'L'}${pt.x.toFixed(1)},${pt.y.toFixed(1)}`).join(' ');
+    }
   }
 
   const gridStep = 34;

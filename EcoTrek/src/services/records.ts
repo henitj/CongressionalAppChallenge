@@ -118,12 +118,14 @@ export function computeRecords(
   const [bestDay, bestDayMiles] = [...byDay.entries()].reduce((best, entry) =>
     entry[1] > best[1] ? entry : best
   );
+  const [bYear, bMonth, bDay] = bestDay.split('-').map(Number);
+  const bestDayDate = new Date(bYear, (bMonth || 1) - 1, bDay || 1, 12, 0, 0);
   records.push({
     id: 'biggest_day',
     label: 'Biggest day',
     value: formatMiles(bestDayMiles),
     unit: distanceUnit,
-    detail: formatDate(new Date(bestDay).getTime() + 12 * 3600000),
+    detail: formatDate(bestDayDate.getTime()),
     raw: bestDayMiles,
   });
 

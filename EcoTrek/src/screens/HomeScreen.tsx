@@ -86,11 +86,12 @@ export default function HomeScreen() {
           <StreakStrip compact style={{ marginTop: SPACING.md }} />
 
           <View style={styles.momentumRow}>
-            <MiniInfo value={String(week.count)} label="Activities" />
-            <MiniInfo value={String(week.trees)} label="Trees" />
+            <MiniInfo value={String(week.count)} label="Activities" styles={styles} />
+            <MiniInfo value={String(week.trees)} label="Trees" styles={styles} />
             <MiniInfo
               value={`${formatDistance(week.miles)} ${formatDistanceUnit()}`}
               label="This week"
+              styles={styles}
             />
           </View>
 
@@ -105,24 +106,32 @@ export default function HomeScreen() {
               title="Impact"
               hint="Miles, trees and records"
               onPress={() => navigation.navigate('Impact')}
+              styles={styles}
+              colors={colors}
             />
             <QuickAction
               icon="clock"
               title="My walks"
               hint="Open your full history"
               onPress={() => navigation.navigate('History')}
+              styles={styles}
+              colors={colors}
             />
             <QuickAction
               icon="map"
               title="Trails"
               hint="Walks and rides near you"
               onPress={() => navigation.navigate('Trails')}
+              styles={styles}
+              colors={colors}
             />
             <QuickAction
               icon="target"
               title="Weekly goals"
               hint="See this week’s challenges"
               onPress={() => navigation.navigate('Challenges')}
+              styles={styles}
+              colors={colors}
             />
           </View>
         </View>
@@ -177,19 +186,21 @@ export default function HomeScreen() {
   );
 }
 
-function QuickAction({
+const QuickAction = React.memo(function QuickAction({
   icon,
   title,
   hint,
   onPress,
+  styles,
+  colors,
 }: {
   icon: IconName;
   title: string;
   hint: string;
   onPress: () => void;
+  styles: ReturnType<typeof makeStyles>;
+  colors: ColorPalette;
 }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <Pressable onPress={onPress} style={({ pressed }) => [styles.quickCard, pressed && { opacity: 0.72 }]}>
       <View style={styles.quickIcon}>
@@ -202,11 +213,17 @@ function QuickAction({
       <Icon name="chevron-right" size={18} color={colors.textMuted} />
     </Pressable>
   );
-}
+});
 
-function MiniInfo({ value, label }: { value: string; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const MiniInfo = React.memo(function MiniInfo({
+  value,
+  label,
+  styles,
+}: {
+  value: string;
+  label: string;
+  styles: ReturnType<typeof makeStyles>;
+}) {
   return (
     <View style={{ flexBasis: 100, flexGrow: 1, minWidth: 0 }}>
       <Text style={styles.miniValue} numberOfLines={1}>
@@ -217,7 +234,7 @@ function MiniInfo({ value, label }: { value: string; label: string }) {
       </Text>
     </View>
   );
-}
+});
 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({

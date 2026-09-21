@@ -252,7 +252,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           // trails list / weather pick them up — no second tap needed.
           fix.then((c) => {
             if (c) setCoords(c);
-          });
+          }).catch(() => {});
           return coordsRef.current;
         } catch (e) {
           console.warn('[location] failed', e);
@@ -266,7 +266,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       if (!opts.permissionOnly) inFlight.current = run;
       return run;
     },
-    []
+    [getPositionFix]
   );
 
   const value = useMemo<AppContextType>(
