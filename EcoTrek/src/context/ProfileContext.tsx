@@ -163,26 +163,30 @@ export function estimateCalories(
   avgMph: number,
   profile: UserProfile
 ): number {
-  const weightKg = (profile.weightPounds || 155) * 0.453592;
+  if (!Number.isFinite(durationSec) || durationSec <= 0) return 0;
+  const safeMph = Number.isFinite(avgMph) && avgMph >= 0 ? avgMph : 0;
+  const weight = profile && Number.isFinite(profile.weightPounds) && profile.weightPounds > 0 ? profile.weightPounds : 155;
+  const weightKg = weight * 0.453592;
   const hours = durationSec / 3600;
   
   // MET values from the Compendium of Physical Activities
   let met: number;
   if (type === 'hike') {
-    if (avgMph < 2.5) met = 3.5;
-    else if (avgMph < 3.5) met = 5.3;
-    else if (avgMph < 4.5) met = 7.0;
+    if (safeMph < 2.5) met = 3.5;
+    else if (safeMph < 3.5) met = 5.3;
+    else if (safeMph < 4.5) met = 7.0;
     else met = 8.5;
   } else {
-    if (avgMph < 10) met = 4.0;
-    else if (avgMph < 12) met = 6.0;
-    else if (avgMph < 14) met = 8.0;
-    else if (avgMph < 16) met = 10.0;
+    if (safeMph < 10) met = 4.0;
+    else if (safeMph < 12) met = 6.0;
+    else if (safeMph < 14) met = 8.0;
+    else if (safeMph < 16) met = 10.0;
     else met = 12.0;
   }
 
   // Calories = MET × weight(kg) × time(hours)
-  return Math.round(met * weightKg * hours);
+  const cals = Math.round(met * weightKg * hours);
+  return Number.isFinite(cals) && cals >= 0 ? cals : 0;
 }
 
 /**
@@ -192,7 +196,7 @@ export function estimateCalories(
 export function estimateElevation(
   path: { latitude: number; longitude: number; altitude?: number }[]
 ): { gain: number; loss: number } {
-  if (path.length < 2) return { gain: 0, loss: 0 };
+  if (!Array.isArray(path) || path.length < 2) return { gain: 0, loss: 0 };
   
   let gain = 0;
   let loss = 0;
@@ -200,12 +204,17 @@ export function estimateElevation(
   for (let i = 1; i < path.length; i++) {
     const prev = path[i - 1];
     const curr = path[i];
-    if (prev.altitude != null && curr.altitude != null) {
-      const diff = (curr.altitude - prev.altitude) * 3.28084; // meters to feet
-      if (diff > 1) gain += diff; // filter GPS noise
-      else if (diff < -1) loss += Math.abs(diff);
+    if (prev && curr && Number.isFinite(prev.altitude) && Number.isFinite(curr.altitude)) {
+      const diff = (curr.altitude! - prev.altitude!) * 3.28084; // meters to feet
+      if (Number.isFinite(diff)) {
+        if (diff > 1) gain += diff; // filter GPS noise
+        else if (diff < -1) loss += Math.abs(diff);
+      }
     }
   }
   
-  return { gain: Math.round(gain), loss: Math.round(loss) };
+  return {
+    gain: Number.isFinite(gain) ? Math.round(gain) : 0,
+    loss: Number.isFinite(loss) ? Math.round(loss) : 0,
+  };
 }

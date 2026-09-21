@@ -14,7 +14,7 @@ import { useTheme, Typography } from '../context/ThemeContext';
  * progress bar instead — the app ticks those off itself, so there is nothing
  * to press and no way to cheat yourself into thinking you did it.
  */
-export default function ChallengeItem({
+const ChallengeItem = React.memo(function ChallengeItem({
   challenge,
   onComplete,
   onUndo,
@@ -55,7 +55,7 @@ export default function ChallengeItem({
 
         {kind === 'auto' && !done ? (
           <View style={styles.progressWrap}>
-            <ProgressBar percent={challenge.progressPercent} height={5} />
+            <ProgressBar percent={Number.isFinite(challenge.progressPercent) ? challenge.progressPercent : 0} height={5} />
             <Text style={styles.progressText}>
               {formatProgress(progress, target, challenge.metric)}
             </Text>
@@ -92,10 +92,14 @@ export default function ChallengeItem({
       ) : null}
     </View>
   );
-}
+});
+
+export default ChallengeItem;
 
 function formatProgress(progress: number, target: number, metric?: string) {
-  const p = metric === 'miles' ? progress.toFixed(1) : Math.floor(progress);
+  const safeP = Number.isFinite(progress) ? progress : 0;
+  const safeT = Number.isFinite(target) && target > 0 ? target : 1;
+  const p = metric === 'miles' ? safeP.toFixed(1) : Math.floor(safeP);
   const unit =
     metric === 'miles'
       ? 'mi'
@@ -104,7 +108,7 @@ function formatProgress(progress: number, target: number, metric?: string) {
       : metric === 'trees'
       ? 'trees'
       : 'days';
-  return `${p} of ${target} ${unit}`;
+  return `${p} of ${safeT} ${unit}`;
 }
 
 function makeStyles(c: ColorPalette, t: Typography) {

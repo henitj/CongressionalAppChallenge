@@ -347,9 +347,19 @@ export default function AssistantScreen() {
   );
 }
 
-function FollowUps({ onPick }: { onPick: (q: string) => void }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const FollowUps = React.memo(function FollowUps({
+  onPick,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  onPick: (q: string) => void;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const options = [
     'Is it dog friendly?',
     'Is there water?',
@@ -365,7 +375,7 @@ function FollowUps({ onPick }: { onPick: (q: string) => void }) {
       ))}
     </View>
   );
-}
+});
 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({

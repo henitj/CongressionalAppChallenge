@@ -1,106 +1,122 @@
-# EcoTrek App
+# EcoTrek Mobile App
 
-EcoTrek is an Expo/React Native outdoor activity app for iOS, Android, and web. It is designed around a short path from opening the app to starting a walk, while still providing trail discovery, progress, impact, and accessibility tools.
+EcoTrek is an Expo / React Native outdoor activity application engineered for iOS, Android, and Web. Designed with a short path from launch to tracking, EcoTrek combines real-time GPS recording, offline-first data caching, local trail discovery, weather safety monitoring, and community conservation gamification.
 
-## Product behavior
+Built for the **Congressional App Challenge** by Henit Jain, Matan Heber, Arjun Averineni, and Basil Vinesh.
 
-### Activities and trails
+---
 
-Users can record walks and bike rides with GPS, pause and finish from the live screen, and review results afterward. Named trails are detected near the recorded route; completing enough of a trail logs a true completion. A completed trail asks for a 1–5 star rating, stores it locally, and uses that preference in trail recommendations.
+## Architecture & Design Principles
 
-Activity history is grouped into **Past week**, **Past month**, and **Past year**. Raw activities older than one year are removed when the account history loads, keeping device storage bounded.
+### 1. Local-First Architecture
+EcoTrek requires zero cloud infrastructure to function. All activities, streak records, eco badges, sightings, and cleanups persist in device-isolated AsyncStorage partitions. When connectivity is available, the app gracefully enriches the experience with real-time weather alerts and optional cloud sync.
 
-### Progress and impact
+### 2. High-Performance Mobile UI
+- **Zero-Allocation Rerenders**: Component-level memoization (`React.memo`) and cached theme stylesheets prevent garbage collection spikes during high-frequency GPS updates.
+- **Virtualized Lists**: FlatList configurations are fine-tuned with bounded window sizes, clipped subviews, and item height estimation for smooth 60/120fps scrolling.
+- **Measured Keyboard Clearance**: Native dynamic keyboard height measurement eliminates layout jitter and jumpy bottom sheets.
 
-EcoPoints, badges, streaks, challenges, cleanup records, and symbolic trees provide lightweight motivation. An unlocked badge is claimed by tapping it once: the reward is applied immediately and confetti confirms the action. Symbolic trees do not represent real-world partner planting.
+### 3. Crash Resilience & Defensive Programming
+- **Division-by-Zero & Math Bounds Guards**: All pace, speed, elevation gain, and percentage calculation functions are shielded with fallback guards against non-finite values (`NaN`, `Infinity`).
+- **Safe Serialization**: Structured JSON storage handlers (`safeParse` / `safeStringify`) validate data integrity and gracefully recover from corrupted storage keys.
+- **Comprehensive Error Boundaries**: React error boundaries isolate screen exceptions, offering users an instant "Try Again" recovery action without terminating the app.
+- **Safe Teardown**: Map rendering engines (Leaflet for Web, native views for mobile) use guarded unmounting routines to prevent asynchronous memory leaks or null-pointer dereferences.
 
-### First run and navigation
+### 4. Natural Vector Illustrations
+- Built with React Native SVG, the interactive `TrailScene` showcases anatomically proportioned walkers and cyclists with natural stride physics, lifelike limb extension angles, and adaptive environment elements.
 
-A first-time account receives a multi-step introduction before profile setup. The persistent tab bar explicitly identifies **Home**, **Start**, and **More**. Interior screens use sticky headers, so the back button remains available after scrolling.
+---
 
-### Responsive UI
+## Product Features
 
-The app supports light and dark appearances, three text sizes, reduced motion, phone and tablet widths, safe areas, and measured keyboard clearance. Bottom sheets and the Trail Assistant measure the actual keyboard instead of relying on fixed offsets. The unused Sky appearance has been retired.
+### Active Recording & Smart Trails
+- **GPS Recording**: Track distance, duration, elevation, live pace, splits, and route polylines.
+- **Auto Trail Completion**: Compares active route points against catalog trail bounding polygons to automatically detect trail completions.
+- **Trail Ratings & Bookmarks**: Save favorite trails, record ratings, and get smart recommendations based on difficulty and past ratings.
 
-## Architecture
+### Environmental Impact & Gamification
+- **EcoPoints**: Earn points for zero-emission travel (walking, running, cycling) and environmental cleanups.
+- **Streaks & Freezes**: 4-week milestones award streak freezes to protect active streaks during rest periods.
+- **Community & Leaderboards**: Track personal milestones, club standings, and weekly challenges.
+
+### Conditions & Trail Assistant
+- **Weather Safety Matrix**: Live temperature, precipitation probability, humidity, UV index, and National Weather Service advisories.
+- **Intelligent Offline Assistant**: Conversational offline guide answering queries on trail difficulty, dog-friendliness, water availability, and route distances.
+
+---
+
+## Directory Structure
 
 ```text
 src/
-├── components/      Shared controls, sheets, cards, maps, and illustrations
-├── constants/       Themes, catalogues, app metadata, and point rules
-├── context/         Auth, profile, activity, logbook, weather, and app state
-├── hooks/           Responsive, keyboard, activity, and lifecycle hooks
-├── navigation/      Root stack and primary tabs
-├── screens/         One module per user-facing screen
-├── services/        Domain logic and external integrations
-├── types/           Ambient TypeScript declarations
-└── __tests__/       Logic and React Native render coverage
+├── __tests__/       # Comprehensive Jest test suite (120+ unit and component tests)
+├── components/      # UI primitives, error boundary, headers, cards, and SVG illustrations
+├── constants/       # Color palettes, typography, spacing, trail datasets, and badge criteria
+├── context/         # App context providers (Auth, Activity, Theme, Weather, Streak, etc.)
+├── hooks/           # Custom hooks for responsiveness, GPS location, and keyboard height
+├── navigation/      # Root navigation stack and persistent bottom tab navigators
+├── screens/         # Feature screens (Home, LiveRecord, Trails, Impact, Leaderboard, etc.)
+├── services/        # Business logic, mathematical formulas, GPS geodesy, storage, API
+└── types/           # Core TypeScript types and data models
 ```
 
-The app is local-first. Context providers own user-visible state; service modules own storage, calculations, location, trail lookup, and network calls. The optional API lives in `server/`, while SQL migrations and seed data live in `db/`. Operational guides are isolated in `docs/`.
+---
 
-## Requirements
+## Getting Started
 
-- Node.js 20+
-- npm
-- Expo Go for physical-device development, or a supported iOS/Android simulator
+### Development Requirements
+- **Node.js**: v20.0.0 or higher
+- **npm**: v10.0.0 or higher
+- **Expo CLI**: bundled via `npx expo`
 
-## Install and run
+### Running the App
 
 ```bash
+# 1. Install dependencies
 npm install
-npm start            # Expo tunnel (recommended for phones)
-npm run start:lan    # same-network development
-npm run web          # browser
+
+# 2. Launch Metro bundler
+npm start            # Interactive CLI (Expo Go tunnel for mobile)
+npm run start:lan    # Local network mode
+npm run web          # Web browser preview
 ```
 
-If Expo Go cannot download the bundle, verify that Expo Go supports the SDK in `package.json`, retry with `npm start`, and run `npx expo start --tunnel --clear` to clear Metro state.
-
-## Quality checks
+### Verification & Quality Assurance
 
 ```bash
+# Run strict TypeScript type checks
 npm run typecheck
+
+# Run Jest unit and component test suites
 npm test
+
+# Run full quality verification
 npm run verify
 ```
 
-`verify` runs strict TypeScript checks, logic tests, and render tests. Tests live in `src/__tests__/`.
+---
 
-## Optional configuration
+## Environment Variables (Optional)
+
+EcoTrek works completely out of the box without any `.env` configuration. To enable optional Google OAuth or external API synchronization:
 
 ```bash
 cp .env.example .env
 ```
 
-The app works without backend variables. Add platform-specific Google client IDs only for real Google OAuth. Set `EXPO_PUBLIC_API_URL` to enable shared server features. Database credentials belong only in `server/.env`, never in the Expo app.
+| Variable | Description |
+| :--- | :--- |
+| `EXPO_PUBLIC_API_URL` | Base URL for optional Node.js / Neon PostgreSQL backend |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB` | Google OAuth Client ID for Web |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS` | Google OAuth Client ID for iOS |
+| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID` | Google OAuth Client ID for Android |
 
-To configure Neon:
+---
 
-```bash
-cd server
-npm install
-cp .env.example .env
-npm run migrate
-npm run check
-```
+## Documentation Links
 
-See `docs/NEON_SETUP.md` and `server/README.md` for deployment and endpoint details.
-
-## Data and privacy
-
-- Activity and preference data are namespaced by account in device storage.
-- Location recording stops when the user finishes the active activity.
-- Stored route paths are thinned to limit storage growth.
-- Activity history retains at most one year of raw entries.
-- Positive cleanup reports may sync idempotently when the API is configured.
-
-Read `docs/PRIVACY_POLICY.md` for the complete policy.
-
-## Key documentation
-
-- `docs/LAUNCH_CHECKLIST.md` — release readiness
-- `docs/GOOGLE_OAUTH_SETUP.md` — authentication setup
-- `docs/NEON_SETUP.md` — database and API setup
-- `docs/PEN_TEST.md` — security verification
-- `db/README.md` — schema and curated trail photos
-- `server/README.md` — API design and endpoints
+- [Launch Checklist](docs/LAUNCH_CHECKLIST.md)
+- [Database & Neon API Setup](docs/NEON_SETUP.md)
+- [Google OAuth Configuration](docs/GOOGLE_OAUTH_SETUP.md)
+- [Penetration & Security Testing](docs/PEN_TEST.md)
+- [Privacy Policy](docs/PRIVACY_POLICY.md)

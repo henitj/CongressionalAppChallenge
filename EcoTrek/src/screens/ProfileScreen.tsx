@@ -439,26 +439,37 @@ export default function ProfileScreen() {
 function WeightGraph({ data }: { data: { date: number; weight: number }[] }) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
-  if (data.length < 2) return null;
+  if (!Array.isArray(data) || data.length < 2) return null;
 
-  const weights = data.map((d) => d.weight);
-  const min = Math.min(...weights) - 2;
-  const max = Math.max(...weights) + 2;
+  const validData = data.filter((d) => d && Number.isFinite(d.weight) && d.weight > 0);
+  if (validData.length < 2) return null;
+
+  let minWeight = Infinity;
+  let maxWeight = -Infinity;
+  for (let i = 0; i < validData.length; i++) {
+    const w = validData[i].weight;
+    if (w < minWeight) minWeight = w;
+    if (w > maxWeight) maxWeight = w;
+  }
+  if (!Number.isFinite(minWeight) || !Number.isFinite(maxWeight)) return null;
+
+  const min = minWeight - 2;
+  const max = maxWeight + 2;
   const range = max - min || 1;
   const height = 80;
 
   return (
     <View style={{ height, marginTop: SPACING.sm }}>
       <View style={[styles.graphContainer, { height }]}>
-        {data.map((d, i) => {
-          const barHeight = ((d.weight - min) / range) * (height - 20);
+        {validData.map((d, i) => {
+          const barHeight = Math.max(4, Math.min(height - 20, ((d.weight - min) / range) * (height - 20)));
           return (
             <View key={d.date} style={styles.graphBar}>
               <View
                 style={[
                   styles.graphBarFill,
-                  { height: Math.max(4, barHeight) },
-                  i === data.length - 1 && styles.graphBarCurrent,
+                  { height: barHeight },
+                  i === validData.length - 1 && styles.graphBarCurrent,
                 ]}
               />
             </View>
@@ -473,9 +484,23 @@ function WeightGraph({ data }: { data: { date: number; weight: number }[] }) {
   );
 }
 
-function ImpactStat({ value, unit, label }: { value: string; unit?: string; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const ImpactStat = React.memo(function ImpactStat({
+  value,
+  unit,
+  label,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  value: string;
+  unit?: string;
+  label: string;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flexBasis: '45%', flexGrow: 1, minWidth: 0 }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
@@ -485,11 +510,27 @@ function ImpactStat({ value, unit, label }: { value: string; unit?: string; labe
       <Text style={styles.impactStatLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
-}
+});
 
-function StreakStat({ value, label, icon, highlight }: { value: number; label: string; icon: IconName; highlight?: boolean }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const StreakStat = React.memo(function StreakStat({
+  value,
+  label,
+  icon,
+  highlight,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  value: number;
+  label: string;
+  icon: IconName;
+  highlight?: boolean;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flexBasis: '45%', flexGrow: 1, gap: 3, minWidth: 0 }}>
       <Icon name={icon} size={15} color={highlight ? colors.accent : colors.textMuted} strokeWidth={2} />
@@ -497,11 +538,23 @@ function StreakStat({ value, label, icon, highlight }: { value: number; label: s
       <Text style={styles.streakStatLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
-}
+});
 
-function LegendItem({ color, border, label }: { color: string; border?: string; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const LegendItem = React.memo(function LegendItem({
+  color,
+  border,
+  label,
+  styles: propStyles,
+}: {
+  color: string;
+  border?: string;
+  label: string;
+  styles?: ReturnType<typeof makeStyles>;
+}) {
+  const theme = useTheme();
+  const typography = theme.typography;
+  const colors = theme.colors;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.legendItem}>
       <View
@@ -513,7 +566,7 @@ function LegendItem({ color, border, label }: { color: string; border?: string; 
       <Text style={styles.legendText}>{label}</Text>
     </View>
   );
-}
+});
 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({

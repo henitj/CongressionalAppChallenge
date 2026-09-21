@@ -244,27 +244,34 @@ export default function ActivityDetailScreen() {
           <View>
             <Text style={styles.sectionTitle}>Splits</Text>
             <Card padded={false}>
-              {splits.map((s, i) => {
-                const fastest = Math.min(...splits.filter((x) => !x.partial).map((x) => x.seconds));
-                const width = Math.max(8, (fastest / s.seconds) * 100);
-                return (
-                  <View key={s.mile}>
-                    {i > 0 ? <Divider style={{ marginLeft: 52 }} /> : null}
-                    <View style={styles.splitRow}>
-                      <Text style={styles.splitMile}>
-                        {s.partial ? '·' : s.mile}
-                      </Text>
-                      <View style={styles.splitBarTrack}>
-                        <View style={[styles.splitBarFill, { width: `${width}%` }]} />
+              {(() => {
+                const fullSplits = splits.filter((x) => !x.partial && Number.isFinite(x.seconds) && x.seconds > 0);
+                const fastest = fullSplits.length > 0
+                  ? Math.min(...fullSplits.map((x) => x.seconds))
+                  : splits.length > 0 && splits[0].seconds > 0
+                  ? splits[0].seconds
+                  : 1;
+                return splits.map((s, i) => {
+                  const width = s.seconds > 0 ? Math.max(8, Math.min(100, (fastest / s.seconds) * 100)) : 8;
+                  return (
+                    <View key={s.mile}>
+                      {i > 0 ? <Divider style={{ marginLeft: 52 }} /> : null}
+                      <View style={styles.splitRow}>
+                        <Text style={styles.splitMile}>
+                          {s.partial ? '·' : s.mile}
+                        </Text>
+                        <View style={styles.splitBarTrack}>
+                          <View style={[styles.splitBarFill, { width: `${width}%` }]} />
+                        </View>
+                        <Text style={styles.splitTime}>
+                          {formatDuration(s.seconds)}
+                          {s.partial ? ' (partial)' : ''}
+                        </Text>
                       </View>
-                      <Text style={styles.splitTime}>
-                        {formatDuration(s.seconds)}
-                        {s.partial ? ' (partial)' : ''}
-                      </Text>
                     </View>
-                  </View>
-                );
-              })}
+                  );
+                });
+              })()}
             </Card>
           </View>
         ) : null}

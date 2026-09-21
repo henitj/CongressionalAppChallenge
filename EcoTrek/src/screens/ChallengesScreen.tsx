@@ -59,7 +59,7 @@ export default function ChallengesScreen() {
             </View>
           </View>
           <ProgressBar
-            percent={(completedCount / totalCount) * 100}
+            percent={totalCount > 0 ? (completedCount / totalCount) * 100 : 0}
             style={{ marginTop: SPACING.md - 2 }}
           />
           <View style={styles.summaryFooter}>
@@ -97,14 +97,20 @@ export default function ChallengesScreen() {
           <Rule
             icon="target"
             text="Five challenges every week, the same five for everyone. They reset Monday at midnight."
+            styles={styles}
+            colors={colors}
           />
           <Rule
             icon="activity"
             text="Ones marked Tracked automatically tick off on their own as you log distance."
+            styles={styles}
+            colors={colors}
           />
           <Rule
             icon="check"
             text="The rest are on your honour. Tap the circle when you have done it — the point is the habit, not the paperwork."
+            styles={styles}
+            colors={colors}
           />
         </Card>
         ) : null}
@@ -113,16 +119,28 @@ export default function ChallengesScreen() {
   );
 }
 
-function Rule({ icon, text }: { icon: any; text: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const Rule = React.memo(function Rule({
+  icon,
+  text,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  icon: any;
+  text: string;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={styles.rule}>
       <Icon name={icon} size={15} color={colors.textMuted} strokeWidth={1.9} />
       <Text style={styles.ruleText}>{text}</Text>
     </View>
   );
-}
+});
 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({

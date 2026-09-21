@@ -107,10 +107,11 @@ export default function RecapScreen() {
                   value={formatDistanceCompact(recap.miles)}
                   unit={formatDistanceUnit()}
                   label="Distance"
+                  styles={styles}
                 />
-                <HeroStat value={String(recap.activities)} label="Activities" />
-                <HeroStat value={String(recap.trees)} label="Trees" />
-                <HeroStat value={`${recap.activeDays}/7`} label="Days out" />
+                <HeroStat value={String(recap.activities)} label="Activities" styles={styles} />
+                <HeroStat value={String(recap.trees)} label="Trees" styles={styles} />
+                <HeroStat value={`${recap.activeDays}/7`} label="Days out" styles={styles} />
               </View>
             </Card>
 
@@ -121,7 +122,7 @@ export default function RecapScreen() {
                 {recap.metrics.map((m, i) => (
                   <View key={m.label}>
                     {i > 0 ? <Divider style={{ marginLeft: SPACING.md }} /> : null}
-                    <MetricRow metric={m} />
+                    <MetricRow metric={m} styles={styles} colors={colors} />
                   </View>
                 ))}
               </Card>
@@ -220,9 +221,19 @@ export default function RecapScreen() {
   );
 }
 
-function HeroStat({ value, unit, label }: { value: string; unit?: string; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const HeroStat = React.memo(function HeroStat({
+  value,
+  unit,
+  label,
+  styles: propStyles,
+}: {
+  value: string;
+  unit?: string;
+  label: string;
+  styles?: ReturnType<typeof makeStyles>;
+}) {
+  const theme = useTheme();
+  const styles = propStyles ?? useMemo(() => makeStyles(theme.colors, theme.typography), [theme.colors, theme.typography]);
   return (
     <View style={{ flex: 1 }}>
       <View style={{ flexDirection: 'row', alignItems: 'baseline', gap: 2 }}>
@@ -232,11 +243,21 @@ function HeroStat({ value, unit, label }: { value: string; unit?: string; label:
       <Text style={styles.heroStatLabel}>{label}</Text>
     </View>
   );
-}
+});
 
-function MetricRow({ metric }: { metric: RecapMetric }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const MetricRow = React.memo(function MetricRow({
+  metric,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  metric: RecapMetric;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const up = metric.changePercent != null && metric.changePercent > 0;
 
   return (
@@ -264,7 +285,7 @@ function MetricRow({ metric }: { metric: RecapMetric }) {
       </View>
     </View>
   );
-}
+});
 
 function Extra({ icon, value, label }: { icon: IconName; value: number; label: string }) {
   const { colors, typography } = useTheme();

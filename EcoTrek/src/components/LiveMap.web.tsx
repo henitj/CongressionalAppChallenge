@@ -148,21 +148,25 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !polylineRef.current) return;
-    polylineRef.current.setLatLngs(path.map((p) => [p.latitude, p.longitude] as [number, number]));
+    try {
+      polylineRef.current.setLatLngs(path.map((p) => [p.latitude, p.longitude] as [number, number]));
 
-    if (path.length > 0 && !startMarkerRef.current) {
-      const startIcon = L.divIcon({
-        className: 'ecotrek-start-icon',
-        html:
-          '<div style="width:14px;height:14px;border-radius:50%;background:#F4A300;' +
-          'border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
-        iconSize: [14, 14],
-        iconAnchor: [7, 7],
-      });
-      startMarkerRef.current = L.marker([path[0].latitude, path[0].longitude], {
-        icon: startIcon,
-        keyboard: false,
-      }).addTo(map);
+      if (path.length > 0 && !startMarkerRef.current) {
+        const startIcon = L.divIcon({
+          className: 'ecotrek-start-icon',
+          html:
+            '<div style="width:14px;height:14px;border-radius:50%;background:#F4A300;' +
+            'border:2px solid #fff;box-shadow:0 1px 3px rgba(0,0,0,0.4);"></div>',
+          iconSize: [14, 14],
+          iconAnchor: [7, 7],
+        });
+        startMarkerRef.current = L.marker([path[0].latitude, path[0].longitude], {
+          icon: startIcon,
+          keyboard: false,
+        }).addTo(map);
+      }
+    } catch {
+      /* ignore map tear-down glitches */
     }
   }, [path]);
 
@@ -170,26 +174,30 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
   useEffect(() => {
     const map = mapRef.current;
     if (!map || !markerRef.current || !current) return;
-    const ll: [number, number] = [current.latitude, current.longitude];
-    markerRef.current.setLatLng(ll);
+    try {
+      const ll: [number, number] = [current.latitude, current.longitude];
+      markerRef.current.setLatLng(ll);
 
-    if (current.accuracy !== undefined) {
-      if (accuracyCircleRef.current) {
-        accuracyCircleRef.current.setLatLng(ll);
-        accuracyCircleRef.current.setRadius(current.accuracy);
-      } else {
-        accuracyCircleRef.current = L.circle(ll, {
-          radius: current.accuracy,
-          color: colors.primary,
-          fillColor: colors.primary,
-          fillOpacity: 0.08,
-          weight: 1,
-          opacity: 0.4,
-        }).addTo(map);
+      if (current.accuracy !== undefined) {
+        if (accuracyCircleRef.current) {
+          accuracyCircleRef.current.setLatLng(ll);
+          accuracyCircleRef.current.setRadius(current.accuracy);
+        } else {
+          accuracyCircleRef.current = L.circle(ll, {
+            radius: current.accuracy,
+            color: colors.primary,
+            fillColor: colors.primary,
+            fillOpacity: 0.08,
+            weight: 1,
+            opacity: 0.4,
+          }).addTo(map);
+        }
       }
-    }
 
-    if (follow) map.panTo(ll, { animate: true, duration: 0.5 });
+      if (follow) map.panTo(ll, { animate: true, duration: 0.5 });
+    } catch {
+      /* ignore map tear-down glitches */
+    }
   }, [current, follow, colors.primary]);
 
   const shellStyle = useMemo(

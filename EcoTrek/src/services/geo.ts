@@ -20,6 +20,9 @@ export function haversineMiles(
   a: { latitude: number; longitude: number },
   b: { latitude: number; longitude: number }
 ): number {
+  if (!a || !b || !Number.isFinite(a.latitude) || !Number.isFinite(b.latitude) || !Number.isFinite(a.longitude) || !Number.isFinite(b.longitude)) {
+    return 0;
+  }
   const R = 3958.8; // Earth radius, miles
   const toRad = (deg: number) => (deg * Math.PI) / 180;
   const dLat = toRad(b.latitude - a.latitude);
@@ -28,30 +31,35 @@ export function haversineMiles(
   const lat2 = toRad(b.latitude);
   const x =
     Math.sin(dLat / 2) ** 2 + Math.sin(dLon / 2) ** 2 * Math.cos(lat1) * Math.cos(lat2);
-  return R * 2 * Math.atan2(Math.sqrt(x), Math.sqrt(1 - x));
+  const clampedX = Math.min(1, Math.max(0, x));
+  const result = R * 2 * Math.atan2(Math.sqrt(clampedX), Math.sqrt(1 - clampedX));
+  return Number.isFinite(result) ? result : 0;
 }
 
 /** Miles to add for a new GPS point, or 0 if it is noise / a glitch. */
 export function smoothDelta(prev: Coord | undefined, next: Coord): number {
-  if (!prev) return 0;
+  if (!prev || !next) return 0;
+  if (!Number.isFinite(next.latitude) || !Number.isFinite(next.longitude)) return 0;
   if (next.accuracy !== undefined && next.accuracy > 50) return 0;
 
-  const dtSec = Math.max(0.1, (next.timestamp - prev.timestamp) / 1000);
+  const dtSec = Math.max(0.1, ((next.timestamp || 0) - (prev.timestamp || 0)) / 1000);
   const miles = haversineMiles(prev, next);
   const metres = miles * 1609.34;
 
   if (metres < 2) return 0;
 
   const mph = miles / (dtSec / 3600);
-  if (mph > 100) return 0;
+  if (!Number.isFinite(mph) || mph > 100) return 0;
 
   return miles;
 }
 
 /** Instant speed in mph between two coordinates. */
 export function instantMph(prev: Coord | undefined, next: Coord): number {
-  if (!prev) return 0;
-  const dtSec = Math.max(0.1, (next.timestamp - prev.timestamp) / 1000);
+  if (!prev || !next) return 0;
+  if (!Number.isFinite(next.latitude) || !Number.isFinite(next.longitude)) return 0;
+  const dtSec = Math.max(0.1, ((next.timestamp || 0) - (prev.timestamp || 0)) / 1000);
   const miles = haversineMiles(prev, next);
-  return miles / (dtSec / 3600);
+  const mph = miles / (dtSec / 3600);
+  return Number.isFinite(mph) && mph >= 0 ? mph : 0;
 }

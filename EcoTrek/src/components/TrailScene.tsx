@@ -120,17 +120,17 @@ export default function TrailScene({
 }
 
 /**
- * Hiker mid-stride. The walker was redrawn with two distinct legs that swing
- * opposite directions — one bent forward, one trailing back — and a clear
- * torso, head, and a small backpack. The whole figure now reads as a person
- * on a trail, not an abstract shape.
+ * Hiker mid-stride. The walker has two distinct, anatomically natural legs
+ * that swing in opposite directions — front leg reaching forward into the next step,
+ * rear leg extending naturally back with toe pushing off forward — plus a clear
+ * torso, head, hat, arms, and a small backpack.
  */
 function Walker({ dark, pack, skin }: { dark: string; pack: string; skin: string }) {
   return (
     <G strokeLinecap="round" strokeLinejoin="round">
       <Ellipse cx="157" cy="356" rx="28" ry="3" fill={dark} opacity={0.12} />
-      {/* Rear leg bends at the knee; front leg reaches into the next step. */}
-      <Path d="M152 326 L148 341 L135 352 L130 352" stroke="#60766B" strokeWidth="5.5" fill="none" />
+      {/* Rear leg extends naturally back; front leg reaches into the next step. */}
+      <Path d="M152 326 L141 338 L132 348 L139 352" stroke="#60766B" strokeWidth="5.5" fill="none" />
       <Path d="M158 327 L170 339 L176 352 L184 352" stroke={dark} strokeWidth="5.5" fill="none" />
       <Rect x="143" y="303" width="12" height="20" rx="4" fill={pack} />
       {/* Jacket and two matching sleeves; hands begin only at the wrists. */}

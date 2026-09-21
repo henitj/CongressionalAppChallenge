@@ -410,7 +410,7 @@ export default function LeaderboardScreen() {
                       <View key={m.id}>
                         {i > 0 ? <Divider style={{ marginLeft: 60 }} /> : null}
                         <View style={[styles.memberRow, isMe && styles.rowHighlight]}>
-                          <RankBadge rank={i + 1} />
+                          <RankBadge rank={i + 1} styles={styles} colors={colors} />
                           <Avatar name={m.name} uri={m.avatarUrl} size={34} />
                           <View style={{ flex: 1 }}>
                             <View style={styles.memberNameRow}>
@@ -555,6 +555,8 @@ export default function LeaderboardScreen() {
                         isMine={club.id === myClub?.id}
                         formatDistance={formatDistance}
                         unit={formatDistanceUnit()}
+                        styles={styles}
+                        colors={colors}
                       />
                     </View>
                   ))}
@@ -571,6 +573,8 @@ export default function LeaderboardScreen() {
                         isMine
                         formatDistance={formatDistance}
                         unit={formatDistanceUnit()}
+                        styles={styles}
+                        colors={colors}
                       />
                     </Card>
                     <Text style={styles.gapHint}>
@@ -815,24 +819,26 @@ export default function LeaderboardScreen() {
 }
 
 
-function ClubRankRow({
+const ClubRankRow = React.memo(function ClubRankRow({
   rank,
   club,
   isMine,
   formatDistance,
   unit,
+  styles,
+  colors,
 }: {
   rank: number;
   club: Club;
   isMine: boolean;
   formatDistance: (m: number) => string;
   unit: string;
+  styles: ReturnType<typeof makeStyles>;
+  colors: ColorPalette;
 }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={[styles.rankRow, isMine && styles.rowHighlight]}>
-      <RankBadge rank={rank} />
+      <RankBadge rank={rank} styles={styles} colors={colors} />
       <View style={{ flex: 1 }}>
         <View style={styles.rankNameRow}>
           <Text style={styles.rankName} numberOfLines={1}>
@@ -848,16 +854,26 @@ function ClubRankRow({
       <Text style={styles.rankPoints}>{club.totalPoints.toLocaleString()}</Text>
     </View>
   );
-}
+});
 
 /** Goal progress can be fractional for miles but never for counts. */
 function formatGoalValue(n: number): string {
   return Number.isInteger(n) ? String(n) : String(Number(n.toFixed(1)));
 }
 
-function RankBadge({ rank }: { rank: number }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const RankBadge = React.memo(function RankBadge({
+  rank,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  rank: number;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const top = rank <= 3;
   const bg =
     rank === 1
@@ -872,7 +888,7 @@ function RankBadge({ rank }: { rank: number }) {
       <Text style={[styles.rankBadgeText, top && { color: '#fff' }]}>{rank}</Text>
     </View>
   );
-}
+});
 
 function DarkStat({ value, label }: { value: string; label: string }) {
   const { colors, typography } = useTheme();

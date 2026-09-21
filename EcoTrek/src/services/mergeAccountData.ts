@@ -1,10 +1,12 @@
 /** Non-destructive guest upgrade. Existing account preferences win; logs are unioned by ID. */
 export function mergeAccountData(name: string, source: any, destination: any): any {
   if (destination == null) return source;
+  if (source == null) return destination;
   if (Array.isArray(source) && Array.isArray(destination)) {
     const items = new Map<string, any>();
     for (const item of [...source, ...destination]) {
-      const id = item?.id ?? JSON.stringify(item);
+      if (!item) continue;
+      const id = item.id != null ? String(item.id) : JSON.stringify(item) || `${Math.random()}`;
       const previous = items.get(id);
       items.set(id, name === 'badges' && previous ? {
         ...previous, ...item,
@@ -21,27 +23,29 @@ export function mergeAccountData(name: string, source: any, destination: any): a
       for (const key of ['firstName', 'lastName', 'age', 'heightInches', 'weightPounds', 'stepLengthInches', 'createdAt', 'avatarUri']) {
         if (!result[key]) result[key] = source[key];
       }
-      result.weightHistory = [...new Map([...(source.weightHistory ?? []), ...(destination.weightHistory ?? [])].map((h: any) => [h.date, h])).values()];
+      const rawWeights = [...(Array.isArray(source.weightHistory) ? source.weightHistory : []), ...(Array.isArray(destination.weightHistory) ? destination.weightHistory : [])].filter((h) => h && h.date != null);
+      result.weightHistory = [...new Map(rawWeights.map((h: any) => [h.date, h])).values()];
       return result;
     }
     if (name === 'streak') {
-      const weeks = { ...source.weeks };
+      const weeks = { ...(source.weeks ?? {}) };
       for (const [key, value] of Object.entries(destination.weeks ?? {}) as [string, any][]) {
         const old = weeks[key];
-        weeks[key] = { ...old, ...value, active: !!(old?.active || value.active), frozen: !!(old?.frozen || value.frozen),
-          activities: Math.max(old?.activities ?? 0, value.activities ?? 0), miles: Math.max(old?.miles ?? 0, value.miles ?? 0) };
+        weeks[key] = { ...old, ...value, active: !!(old?.active || value?.active), frozen: !!(old?.frozen || value?.frozen),
+          activities: Math.max(old?.activities ?? 0, value?.activities ?? 0), miles: Math.max(old?.miles ?? 0, value?.miles ?? 0) };
       }
       const freezes = new Map<number, any>();
-      for (const f of [...(source.freezes ?? []), ...(destination.freezes ?? [])]) {
+      const rawFreezes = [...(Array.isArray(source.freezes) ? source.freezes : []), ...(Array.isArray(destination.freezes) ? destination.freezes : [])].filter((f) => f && f.earnedAt != null);
+      for (const f of rawFreezes) {
         const old = freezes.get(f.earnedAt);
         freezes.set(f.earnedAt, old?.usedAt ? old : f);
       }
       return { ...source, ...destination, weeks,
         longestStreak: Math.max(source.longestStreak ?? 0, destination.longestStreak ?? 0),
         freezes: [...freezes.values()].filter((f) => f.usedAt != null).concat([...freezes.values()].filter((f) => f.usedAt == null).slice(0, 4)),
-        rewardedWeeks: [...new Set([...(source.rewardedWeeks ?? []), ...(destination.rewardedWeeks ?? [])])],
-        activityIds: [...new Set([...(source.activityIds ?? []), ...(destination.activityIds ?? [])])],
-        days: { ...source.days, ...destination.days },
+        rewardedWeeks: [...new Set([...(Array.isArray(source.rewardedWeeks) ? source.rewardedWeeks : []), ...(Array.isArray(destination.rewardedWeeks) ? destination.rewardedWeeks : [])])],
+        activityIds: [...new Set([...(Array.isArray(source.activityIds) ? source.activityIds : []), ...(Array.isArray(destination.activityIds) ? destination.activityIds : [])])],
+        days: { ...(source.days ?? {}), ...(destination.days ?? {}) },
       };
     }
   }

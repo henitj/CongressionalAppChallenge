@@ -58,9 +58,9 @@ export default function StreakScreen() {
           </View>
 
           <View style={styles.heroStats}>
-            <HeroStat value={longestStreak} label="Best ever" />
-            <HeroStat value={totalActiveWeeks} label="Total active" />
-            <HeroStat value={availableFreezes} label="Freezes" />
+            <HeroStat value={longestStreak} label="Best ever" styles={styles} colors={colors} />
+            <HeroStat value={totalActiveWeeks} label="Total active" styles={styles} colors={colors} />
+            <HeroStat value={availableFreezes} label="Freezes" styles={styles} colors={colors} />
           </View>
 
           {!activeThisWeek ? (
@@ -189,20 +189,43 @@ export default function StreakScreen() {
   );
 }
 
-function HeroStat({ value, label }: { value: number; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const HeroStat = React.memo(function HeroStat({
+  value,
+  label,
+  styles: propStyles,
+  colors: propColors,
+}: {
+  value: number;
+  label: string;
+  styles?: ReturnType<typeof makeStyles>;
+  colors?: ColorPalette;
+}) {
+  const theme = useTheme();
+  const colors = propColors ?? theme.colors;
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
   return (
     <View style={{ flex: 1, alignItems: 'center', minWidth: 0 }}>
       <Text style={styles.heroStatValue} numberOfLines={1}>{value}</Text>
       <Text style={styles.heroStatLabel} numberOfLines={1}>{label}</Text>
     </View>
   );
-}
+});
 
-function LegendItem({ color, border, label }: { color: string; border?: string; label: string }) {
-  const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+const LegendItem = React.memo(function LegendItem({
+  color,
+  border,
+  label,
+  styles: propStyles,
+}: {
+  color: string;
+  border?: string;
+  label: string;
+  styles?: ReturnType<typeof makeStyles>;
+}) {
+  const theme = useTheme();
+  const typography = theme.typography;
+  const styles = propStyles ?? useMemo(() => makeStyles(theme.colors, typography), [theme.colors, typography]);
   return (
     <View style={styles.legendItem}>
       <View
@@ -214,7 +237,7 @@ function LegendItem({ color, border, label }: { color: string; border?: string; 
       <Text style={styles.legendText}>{label}</Text>
     </View>
   );
-}
+});
 
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
