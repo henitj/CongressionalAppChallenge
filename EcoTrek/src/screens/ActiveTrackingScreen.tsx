@@ -440,8 +440,9 @@ export default function ActiveTrackingScreen() {
   return (
     <View style={styles.root}>
       <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        {/* Top bar — Stop lives here, big and within thumb reach, so ending
-            a hike never depends on scrolling or remembering where Finish is. */}
+        {/* Top bar — just the exit and pause controls. Ending the activity
+            is handled by the big "Stop and save" button below, so we do not
+            duplicate it up here. */}
         <View style={styles.topBar}>
           <Pressable onPress={handleDiscard} style={styles.backBtn} hitSlop={12} accessibilityLabel="Discard activity">
             <Icon name="x" size={20} color="#fff" strokeWidth={2.2} />
@@ -449,7 +450,7 @@ export default function ActiveTrackingScreen() {
           <View style={styles.topCenter}>
             <View style={styles.recordingDot} />
             <Text style={styles.topLabel} numberOfLines={1}>
-              {paused ? 'Paused' : isBackgrounded ? 'Recording in background' : 'Recording'}
+              {paused ? 'Paused' : isBackgrounded ? 'Tracking in background' : 'Tracking'}
             </Text>
           </View>
           <View style={styles.topActions}>
@@ -460,16 +461,6 @@ export default function ActiveTrackingScreen() {
               accessibilityLabel={paused ? 'Resume' : 'Pause'}
             >
               <Icon name={paused ? 'play' : 'pause'} size={18} color="#fff" strokeWidth={2} />
-            </Pressable>
-            <Pressable
-              onPress={handleFinish}
-              disabled={saving}
-              style={({ pressed }) => [styles.stopBtn, pressed && { opacity: 0.85 }]}
-              accessibilityLabel="Stop and save"
-              accessibilityRole="button"
-            >
-              <Icon name="stop" size={15} color="#fff" strokeWidth={2} filled />
-              <Text style={styles.stopLabel}>Stop</Text>
             </Pressable>
           </View>
         </View>
@@ -711,31 +702,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
     alignItems: 'center',
     justifyContent: 'center',
   },
-  // The one-tap exit. Red on purpose — it is the "I am done" control and it
-  // should be the easiest thing on this screen to find.
-  stopBtn: {
-    minHeight: 48,
-    paddingHorizontal: SPACING.md + 2,
-    paddingRight: SPACING.md + 4,
-    borderRadius: RADIUS.pill,
-    backgroundColor: '#E5484D',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    gap: 7,
-    shadowColor: '#000',
-    shadowOpacity: 0.25,
-    shadowRadius: 6,
-    shadowOffset: { width: 0, height: 2 },
-    elevation: 4,
-  },
-  stopLabel: {
-    ...t.bodyMed,
-    fontWeight: '800',
-    color: '#fff',
-    letterSpacing: 0.2,
-  },
-
   // flexGrow keeps the white stats panel filling the bottom of the screen
   // when the content is short, and lets it scroll when it is not.
   scrollBody: { flexGrow: 1 },

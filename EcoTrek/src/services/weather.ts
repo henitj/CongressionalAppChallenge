@@ -216,17 +216,31 @@ async function fetchJSON(url: string, headers?: Record<string, string>, timeoutM
 let cache: { key: string; report: WeatherReport } | null = null;
 const CACHE_MS = 10 * 60 * 1000;
 
-function cacheKey(lat: number, lon: number) {
-  return `${lat.toFixed(2)},${lon.toFixed(2)}`;
+function cacheKey(lat: number, lon: number, tempUnit: string) {
+  return `${lat.toFixed(2)},${lon.toFixed(2)},${tempUnit}`;
+}
+
+/** Falls back to Fahrenheit when no unit-aware formatter is supplied. */
+function defaultFormatTemp(f: number) {
+  return `${Math.round(f)}°F`;
 }
 
 
 export async function getWeatherReport(
   lat: number,
   lon: number,
-  opts: { force?: boolean } = {}
+  opts: {
+    force?: boolean;
+    /** Which unit the copy below should be baked in as, e.g. 'F' or 'C'. */
+    tempUnit?: string;
+    formatTemp?: (fahrenheit: number) => string;
+  } = {}
 ): Promise<WeatherReport> {
-  const key = cacheKey(lat, lon);
+  // Everywhere a temperature gets baked into copy (advisory titles, the
+  // headline/summary, the short home-screen note) goes through this so the
+  // detail screen never shows °F next to a °C reading, or vice versa.
+  const fmt = opts.formatTemp ?? defaultFormatTemp;
+  const key = cacheKey(lat, lon, opts.tempUnit ?? 'F');
   if (!opts.force && cache && cache.key === key && Date.now() - cache.report.fetchedAt < CACHE_MS) {
     return cache.report;
   }
@@ -384,7 +398,7 @@ export async function getWeatherReport(
       id: 'heat-extreme',
       level: 'danger',
       icon: 'thermometer',
-      title: `Feels like ${Math.round(feelsLikeF)}°F`,
+      title: `Feels like ${fmt(feelsLikeF)}`,
       detail:
         'That is too hot for a walk right now. If you really want to move, early morning is far safer — or just take the day off.',
     });
@@ -393,7 +407,7 @@ export async function getWeatherReport(
       id: 'heat-high',
       level: 'warning',
       icon: 'thermometer',
-      title: `Feels like ${Math.round(feelsLikeF)}°F`,
+      title: `Feels like ${fmt(feelsLikeF)}`,
       detail:
         'Hot out there. Go early or late, carry more water than you think you need, and skip the open, shade-free stretches.',
     });
@@ -415,7 +429,7 @@ export async function getWeatherReport(
       id: 'cold-extreme',
       level: 'danger',
       icon: 'thermometer',
-      title: `Feels like ${Math.round(coldF)}°F`,
+      title: `Feels like ${fmt(coldF)}`,
       detail: 'Way too cold — exposed skin can freeze in about half an hour. Stay in and try again when it warms up.',
     });
   } else if (coldF <= 32) {
@@ -423,7 +437,7 @@ export async function getWeatherReport(
       id: 'cold',
       level: 'warning',
       icon: 'thermometer',
-      title: `Freezing — ${Math.round(coldF)}°F`,
+      title: `Freezing — ${fmt(coldF)}`,
       detail: 'Below freezing. Layer up, keep to shorter loops so you stay warm, and cut it short if you start shivering.',
     });
   } else if (coldF <= 45) {
@@ -431,7 +445,7 @@ export async function getWeatherReport(
       id: 'cold-mild',
       level: 'caution',
       icon: 'thermometer',
-      title: `Chilly — ${Math.round(coldF)}°F`,
+      title: `Chilly — ${fmt(coldF)}`,
       detail: 'On the cold side. Wear a jacket, and keep moving so you stay warm.',
     });
   }
@@ -519,8 +533,8 @@ export async function getWeatherReport(
   advisories.sort((a, b) => LEVEL_RANK[b.level] - LEVEL_RANK[a.level]);
 
   const level = worst(advisories.map((a) => a.level));
-  const { headline, summary } = buildVerdict(level, advisories, condition, tempF);
-  const shortNote = buildShortNote(level, advisories, { highF, lowF });
+  const { headline, summary } = buildVerdict(level, advisories, condition, tempF, fmt);
+  const shortNote = buildShortNote(level, advisories, { highF, lowF }, fmt);
 
   const report: WeatherReport = {
     fetchedAt: Date.now(),
@@ -566,7 +580,13 @@ export async function getWeatherReport(
  * Exported (rather than hidden) so the tone itself has a test — a walk app
  * that starts shouting "DANGER" again is a regression.
  */
-export function buildVerdict(level: SafetyLevel, advisories: Advisory[], condition: string, temp: number) {
+export function buildVerdict(
+  level: SafetyLevel,
+  advisories: Advisory[],
+  condition: string,
+  temp: number,
+  formatTemp: (fahrenheit: number) => string = defaultFormatTemp
+) {
   const top = advisories[0];
   switch (level) {
     case 'danger':
@@ -582,12 +602,12 @@ export function buildVerdict(level: SafetyLevel, advisories: Advisory[], conditi
     case 'caution':
       return {
         headline: 'You can head out',
-        summary: top ? top.detail : `${condition}, ${Math.round(temp)}°F. A nice one.`,
+        summary: top ? top.detail : `${condition}, ${formatTemp(temp)}. A nice one.`,
       };
     default:
       return {
         headline: 'Nice day to get outside',
-        summary: `${condition}, ${Math.round(temp)}°F. Go enjoy it.`,
+        summary: `${condition}, ${formatTemp(temp)}. Go enjoy it.`,
       };
   }
 }
@@ -599,7 +619,8 @@ export function buildVerdict(level: SafetyLevel, advisories: Advisory[], conditi
 export function buildShortNote(
   level: SafetyLevel,
   advisories: Advisory[],
-  temps?: { highF: number; lowF: number }
+  temps?: { highF: number; lowF: number },
+  formatTemp: (fahrenheit: number) => string = defaultFormatTemp
 ): string {
   const topId = advisories[0]?.id;
   const byId: Record<string, string> = {
@@ -635,7 +656,7 @@ export function buildShortNote(
     default:
       // A nice day: the one forecast detail worth showing is high/low.
       return temps
-        ? `High ${Math.round(temps.highF)}° · Low ${Math.round(temps.lowF)}° — go enjoy it.`
+        ? `High ${formatTemp(temps.highF)} · Low ${formatTemp(temps.lowF)} — go enjoy it.`
         : 'A nice one — go enjoy it.';
   }
 }

@@ -1,6 +1,7 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { AppState } from 'react-native';
 import { useApp } from './AppContext';
+import { useSettings } from './SettingsContext';
 import { getWeatherReport, WeatherReport } from '../services/weather';
 import { sendSafetyAlert } from '../services/notifications';
 
@@ -33,12 +34,19 @@ export function WeatherProvider({
   notificationsEnabled?: boolean;
 }) {
   const { effectiveCoords } = useApp();
+  const { tempUnit, formatTemp } = useSettings();
   const [report, setReport] = useState<WeatherReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const lastFetch = useRef(0);
   const notifyRef = useRef(notificationsEnabled);
   notifyRef.current = notificationsEnabled;
+  // Copy baked into the report (advisory titles, headline, short note) is
+  // formatted in whatever unit is current when it is built, so it must be
+  // re-fetched whenever the user flips between °F and °C — otherwise the
+  // top-line summary can show one unit while the detail grid shows another.
+  const formatTempRef = useRef(formatTemp);
+  formatTempRef.current = formatTemp;
 
   const refresh = useCallback(
     async (force = false) => {
@@ -50,7 +58,7 @@ export function WeatherProvider({
         const r = await getWeatherReport(
           effectiveCoords.latitude,
           effectiveCoords.longitude,
-          { force }
+          { force, tempUnit, formatTemp: formatTempRef.current }
         );
         setReport(r);
 
@@ -72,9 +80,11 @@ export function WeatherProvider({
         setLoading(false);
       }
     },
-    [effectiveCoords.latitude, effectiveCoords.longitude]
+    [effectiveCoords.latitude, effectiveCoords.longitude, tempUnit]
   );
 
+  // Re-fetch (forced, so the request actually goes out) whenever location or
+  // the temperature unit changes, so cached copy never shows the old unit.
   useEffect(() => {
     refresh(true);
   }, [refresh]);

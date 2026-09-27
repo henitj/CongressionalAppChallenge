@@ -46,7 +46,7 @@ export default function AssistantScreen() {
   const { trails, coords } = useApp();
   const { report } = useWeather();
   const { history } = useActivity();
-  const { units } = useSettings();
+  const { units, formatTemp } = useSettings();
 
   // Only an id crosses the navigation boundary — params must stay
   // serialisable or React Navigation cannot persist or deep-link state.
@@ -87,8 +87,9 @@ export default function AssistantScreen() {
       userCoords: coords,
       focus: focusRef.current,
       units,
+      formatTemp,
     }),
-    [trails, report, completedTrailIds, coords, units]
+    [trails, report, completedTrailIds, coords, units, formatTemp]
   );
 
   const send = useCallback(
