@@ -64,13 +64,13 @@ export function looksReal(id: string): boolean {
  * everything looks fine on iOS.
  */
 export function isGoogleConfigured(): boolean {
-  if (Platform.OS === 'android') {
-    // Android needs its own client; Expo Go falls back to the web one.
-    return looksReal(GOOGLE_AUTH.androidClientId) || looksReal(GOOGLE_AUTH.expoClientId);
-  }
-  if (Platform.OS === 'ios') {
-    return looksReal(GOOGLE_AUTH.iosClientId) || looksReal(GOOGLE_AUTH.expoClientId);
-  }
+  // A web client can keep the Expo auth hook alive as a placeholder, but it
+  // must never be treated as a valid native configuration. Android and iOS
+  // client IDs are bound to the package/bundle identifier and (for Android)
+  // the release signing certificate. Using the web ID in a store build makes
+  // sign-in appear to work in development and fail after publishing.
+  if (Platform.OS === 'android') return looksReal(GOOGLE_AUTH.androidClientId);
+  if (Platform.OS === 'ios') return looksReal(GOOGLE_AUTH.iosClientId);
   return looksReal(GOOGLE_AUTH.webClientId);
 }
 

@@ -1,0 +1,17 @@
+{
+  "name": "EcoTrek",
+  "short_name": "EcoTrek",
+  "description": "Move with purpose. Leave a lighter trail.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#fbfaf5",
+  "theme_color": "#102319",
+  "icons": [
+    {
+      "src": "/EcoTrek/assets/icon.png",
+      "sizes": "1024x1024",
+      "type": "image/png",
+      "purpose": "any maskable"
+    }
+  ]
+}

@@ -62,6 +62,10 @@ src/
 
 ---
 
+## Public landing page
+
+The repository root contains the Vercel-ready static landing page for the Android distribution (`../index.html`). It links to the signed APK at `/downloads/ecotrek.apk`, with the public privacy policy at `/privacy`. See the root README for the short release flow.
+
 ## Getting Started
 
 ### Development Requirements

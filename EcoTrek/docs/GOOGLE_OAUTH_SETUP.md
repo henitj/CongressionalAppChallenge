@@ -43,13 +43,19 @@ Authorized JavaScript origins:
 ```
 http://localhost:8081
 https://auth.expo.io
+https://YOUR_VERCEL_DOMAIN
 ```
 
 Authorized redirect URIs:
 ```
 https://auth.expo.io/@YOUR_EXPO_USERNAME/ecotrek
 http://localhost:8081
+https://YOUR_VERCEL_DOMAIN
 ```
+
+Keep the Vercel entries only if you also publish the Expo web build there. The
+static landing page itself does not collect Google credentials; the installed
+app uses the native client IDs below.
 
 Replace `YOUR_EXPO_USERNAME` with your actual Expo account name
 (`npx expo whoami`).
