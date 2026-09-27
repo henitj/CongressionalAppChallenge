@@ -28,7 +28,13 @@ export type AssistantContext = {
   focus: Trail | null;
   /** Miles or kilometres, matching the user's Settings choice. */
   units: 'imperial' | 'metric';
+  /** °F or °C, matching the user's Settings choice. Defaults to °F. */
+  formatTemp?: (fahrenheit: number) => string;
 };
+
+function defaultFormatTemp(f: number) {
+  return `${Math.round(f)}°F`;
+}
 
 export type AssistantAnswer = {
   text: string;
@@ -419,6 +425,7 @@ export function answerQuestion(question: string, ctx: AssistantContext): Assista
 
 function weatherAnswer(ctx: AssistantContext, trail: Trail | null): AssistantAnswer {
   const w = ctx.weather;
+  const fmt = ctx.formatTemp ?? defaultFormatTemp;
   if (!w) {
     return {
       text: 'I cannot reach the weather service right now. Check the Conditions screen in a moment.',
@@ -440,7 +447,7 @@ function weatherAnswer(ctx: AssistantContext, trail: Trail | null): AssistantAns
   const advisories = w.advisories.slice(0, 2).map((a) => `• ${a.title}: ${a.detail}`).join('\n');
 
   return {
-    text: `${verdict}\n\n${Math.round(w.tempF)}°F, feels like ${Math.round(w.feelsLikeF)}°F. ${
+    text: `${verdict}\n\n${fmt(w.tempF)}, feels like ${fmt(w.feelsLikeF)}. ${
       w.condition
     }.${w.aqi != null ? ` Air quality index ${w.aqi}.` : ''}\n\n${
       advisories || 'No advisories in effect.'
@@ -629,7 +636,7 @@ function recommend(question: string, ctx: AssistantContext): AssistantAnswer {
   const first = top[0];
 
   const heat = ctx.weather && ctx.weather.feelsLikeF >= 95
-    ? `\n\nIt feels like ${Math.round(ctx.weather.feelsLikeF)}°F out there — ${
+    ? `\n\nIt feels like ${(ctx.formatTemp ?? defaultFormatTemp)(ctx.weather.feelsLikeF)} out there — ${
         ctx.weather.bestWindow ? `${ctx.weather.bestWindow} is your best window.` : 'go early or late.'
       }`
     : '';

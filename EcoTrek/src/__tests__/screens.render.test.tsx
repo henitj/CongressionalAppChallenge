@@ -341,16 +341,15 @@ describe('the trash question at the end of a walk', () => {
 });
 
 describe('stop button, feedback and the removed contacts feature', () => {
-  it('tracking puts a big one-tap Stop control in the top bar', async () => {
-    const utils = await mount(ActiveTrackingScreen, /Recording/);
-    expect(utils.getByLabelText('Stop and save')).toBeTruthy();
+  it('tracking puts a big one-tap Stop and save control at the bottom', async () => {
+    const utils = await mount(ActiveTrackingScreen, /Tracking/);
     expect(utils.getByLabelText('Pause')).toBeTruthy();
-    expect(utils.getByText('Stop')).toBeTruthy();
+    expect(utils.getByText(/Stop and save/)).toBeTruthy();
   });
 
   it('tapping Stop finishes the hike and shows the summary', async () => {
-    const utils = await mount(ActiveTrackingScreen, /Recording/);
-    fireEvent.press(utils.getByLabelText('Stop and save'));
+    const utils = await mount(ActiveTrackingScreen, /Tracking/);
+    fireEvent.press(utils.getByText(/Stop and save/));
     // A zero-second, zero-mile activity is rejected by design — the summary
     // must still appear, and the post-walk feedback popup is not offered.
     await waitFor(() => expect(utils.queryByText('This one did not count')).toBeTruthy(), { timeout: 8000 });
