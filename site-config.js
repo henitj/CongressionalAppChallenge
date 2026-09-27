@@ -11,6 +11,7 @@ window.ECOTREK_CONFIG = {
   installMode: 'apk',
   apkUrl: '/downloads/ecotrek.apk',
   playStoreUrl: 'https://play.google.com/store/apps/details?id=com.ecotrek.app',
+  webAppUrl: '/app/',
 
   // Paste the public App Store or TestFlight URL here after making the iOS
   // build. The page automatically uses it when opened on an iPhone or iPad.

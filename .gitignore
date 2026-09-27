@@ -7,5 +7,3 @@ web-build/
 .env
 .env.local
 
-# Signed Android release artifacts are published outside the source tree.
-downloads/*.apk
