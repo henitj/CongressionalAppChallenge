@@ -8,7 +8,7 @@ import {
   isGoogleConfigured,
   looksReal,
 } from '../constants/authConfig';
-import { setAuthTokenProvider } from '../services/api';
+import { api, isBackendConfigured, ROUTES, setAuthTokenProvider } from '../services/api';
 import { copyUserData } from '../services/storage';
 
 WebBrowser.maybeCompleteAuthSession();
@@ -151,8 +151,14 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       const idToken =
         (response as any).authentication?.idToken ?? (response as any).params?.id_token;
 
-      if (accessToken) {
-        fetchGoogleProfile(accessToken)
+      // Some Google responses contain only an ID token. That is enough for
+      // our API, but it is not enough to call Google's userinfo endpoint, so
+      // read the standard profile claims from the signed token instead.
+      if (accessToken || idToken) {
+        const profilePromise = accessToken
+          ? fetchGoogleProfile(accessToken)
+          : Promise.resolve().then(() => profileFromIdToken(idToken));
+        profilePromise
           .then(async (profile) => {
             const fromGuest = guestToMigrate.current;
             guestToMigrate.current = null;
@@ -168,6 +174,10 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               accessToken,
               idToken,
             };
+            // Install the token immediately as well as through the effect
+            // below. The first cloud sync must not race the React render that
+            // publishes the new user.
+            setAuthTokenProvider(() => idToken ?? accessToken ?? null);
             setUser(u);
             await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(u));
             setLocalGoogleAccounts((prev) => {
@@ -178,10 +188,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
               AsyncStorage.setItem(LOCAL_GOOGLE_KEY, JSON.stringify(next));
               return next;
             });
+            // This upserts the account before the feature providers begin
+            // loading. Every later request is still independently authorized.
+            if (isBackendConfigured()) await api.post(ROUTES.syncUser);
           })
           .catch((e) => setError(e.message ?? 'Sign-in failed'));
       } else {
-        setError('No access token returned from Google.');
+        setError('Google did not return a usable sign-in token.');
       }
     } else if (response.type === 'error') {
       setError(response.error?.message ?? 'Sign-in cancelled');
@@ -316,6 +329,32 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used inside <AuthProvider />');
   return ctx;
+}
+
+function profileFromIdToken(idToken: string): {
+  id: string;
+  name?: string;
+  email: string;
+  picture?: string;
+} {
+  try {
+    const payload = idToken.split('.')[1];
+    if (!payload) throw new Error('Google ID token is malformed.');
+    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
+    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
+    const decode = (globalThis as any).atob;
+    if (typeof decode !== 'function') throw new Error('This device cannot read the Google sign-in response.');
+    const claims = JSON.parse(decode(padded));
+    if (!claims.sub || !claims.email) throw new Error('Google ID token has no account profile.');
+    return {
+      id: String(claims.sub),
+      name: claims.name ? String(claims.name) : undefined,
+      email: String(claims.email),
+      picture: claims.picture ? String(claims.picture) : undefined,
+    };
+  } catch (error: any) {
+    throw new Error(error?.message ?? 'Google ID token is invalid.');
+  }
 }
 
 async function fetchGoogleProfile(accessToken: string): Promise<{

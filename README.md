@@ -44,7 +44,22 @@ EcoTrek has been optimized for speed, battery life, and crash resilience:
 
 ---
 
-## Quick Start
+## Vercel landing page and Android download
+
+The repository root now contains a one-page, static EcoTrek landing page (`index.html`) that is ready to deploy on Vercel. It uses the existing app artwork, includes a public privacy policy at `/privacy`, and wires both install buttons to `/downloads/ecotrek.apk`.
+
+The APK itself is not checked into Git. Android packages must be signed, and a generated binary should not be committed to the source repository. Build one from `EcoTrek/` with the included EAS profile:
+
+```bash
+cd EcoTrek
+npx eas build --platform android --profile apk
+```
+
+After the build finishes, either upload the signed file as `downloads/ecotrek.apk` or set its public URL in `site-config.js`. The file also has an `installMode` switch: leave it as `apk` for the direct download, or change it to `play` after the package is live in Google Play. Then import this repository into Vercel with the project root as the root directory. The static page needs no build command.
+
+> Android still requires the user to open the downloaded APK and confirm Install. A web page can start the download, but it cannot silently install an Android app. For iPhone, build the iOS app with EAS and distribute it through the App Store or TestFlight, then paste that public URL into `iosUrl` in `site-config.js`. The page automatically detects iPhone/iPad visitors and opens the iOS link. iOS does not allow an arbitrary IPA from a normal website to install as a general app.
+
+Google sign-in and cross-device cloud progress are configured in the app and API, but they still require the owner's Google Cloud OAuth client IDs and a deployed API/Neon database. Follow `EcoTrek/docs/GOOGLE_OAUTH_SETUP.md` and `EcoTrek/docs/NEON_SETUP.md`; credentials are intentionally not committed.
 
 ### Prerequisites
 - Node.js 20+

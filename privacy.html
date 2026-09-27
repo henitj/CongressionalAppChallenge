@@ -1,0 +1,76 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102319" />
+    <meta name="description" content="EcoTrek privacy policy." />
+    <link rel="icon" href="/EcoTrek/assets/favicon.png" />
+    <link rel="stylesheet" href="/site.css" />
+    <title>Privacy policy · EcoTrek</title>
+  </head>
+  <body>
+    <header class="site-header shell">
+      <a class="brand" href="/" aria-label="EcoTrek home">
+        <img src="/EcoTrek/assets/logo-polished.png" alt="" width="44" height="44" />
+        <span class="brand-copy"><strong>EcoTrek</strong><small>MOVE · RESTORE · REPEAT</small></span>
+      </a>
+      <a class="header-link" href="/">Back to home <span aria-hidden="true">↗</span></a>
+    </header>
+
+    <main class="policy-shell shell">
+      <p class="eyebrow">EcoTrek · privacy</p>
+      <h1>Your data should stay<br /><em>your data.</em></h1>
+      <p><strong>Last updated: September 27, 2026</strong></p>
+      <p>EcoTrek is an outdoor activity tracker and conservation companion built for the Congressional App Challenge. This policy explains what the app collects and what it does with it.</p>
+
+      <blockquote><strong>The short version:</strong> Guest data stays on your phone. Location is used only while you record an activity. If you choose Google sign-in and cloud sync is enabled, we use your Google identity to save supported progress to your account. We do not sell data, show advertising, or use advertising trackers.</blockquote>
+
+      <h2>What we collect</h2>
+      <h3>If you continue as a guest</h3>
+      <p>Your activities, points, badges, streaks, and settings are stored locally in the app on your device. No account is created and no personal data is sent to our server. Deleting the app removes that local data.</p>
+      <h3>If you sign in with Google</h3>
+      <p>Google provides your name, email address, and profile picture. We use them to identify your account, show your profile, and keep supported progress available across devices. EcoTrek never receives your Google password or access to unrelated Google services.</p>
+      <h3>Activity and location data</h3>
+      <p>When you record a walk, hike, or bike ride, the app can store the GPS route, distance, duration, average speed, matched trail, and date. Location is requested only when recording. EcoTrek does not request background location permission for the released Android configuration.</p>
+      <h3>Usage and device data</h3>
+      <p>Basic feature usage and a device identifier may be stored locally to support app reliability and reminders. We do not use this information for advertising or sell it to anyone.</p>
+
+      <h2>Where your data goes</h2>
+      <p>In a cloud-enabled build, account data is stored in a Postgres database hosted by <a href="https://neon.com">Neon</a> and is reached only through the EcoTrek API. Requests require a valid Google-issued token. The API does not trust a user ID supplied by the app, so accounts cannot read or modify one another's records.</p>
+      <p>For local conditions, EcoTrek may request weather and safety data from <a href="https://open-meteo.com">Open-Meteo</a> and the <a href="https://www.weather.gov">National Weather Service</a>. The request uses approximate coordinates and does not include your name, email, or account ID.</p>
+
+      <h2>What we do not do</h2>
+      <ul>
+        <li>We do not sell or rent personal information.</li>
+        <li>We do not show ads or use advertising identifiers.</li>
+        <li>We do not include third-party social or analytics trackers.</li>
+        <li>We do not share your routes or live location with club members. Clubs show only the profile and totals needed for the feature.</li>
+      </ul>
+
+      <h2>Your choices</h2>
+      <ul>
+        <li><strong>See your data:</strong> the app shows your profile, activities, impact, badges, and clubs.</li>
+        <li><strong>Erase local data:</strong> use Settings → Your data → Erase my data.</li>
+        <li><strong>Delete your account:</strong> use Settings → Your data → Delete account. In a cloud-enabled build this also removes the account's server records.</li>
+        <li><strong>Turn off location or notifications:</strong> use the app settings or your phone's system settings.</li>
+      </ul>
+
+      <h2>Children</h2>
+      <p>EcoTrek is intended for ages 13 and up and is not directed at children under 13. We do not knowingly collect personal information from children under 13. Contact us if you believe a child has created an account.</p>
+
+      <h2>Security and changes</h2>
+      <p>Data sent to the API uses HTTPS, and authenticated requests use Google-issued tokens verified on the server. No system is perfect, so please tell us about security concerns privately. If this policy changes in a way that affects what we collect, we will update the date above and the app's release notes.</p>
+
+      <h2>Contact</h2>
+      <p>Questions, privacy requests, or deletion help: <a href="mailto:ecotrek.support@gmail.com">ecotrek.support@gmail.com</a>.</p>
+    </main>
+
+    <footer class="site-footer shell">
+      <a class="brand footer-brand" href="/"><img src="/EcoTrek/assets/logo-polished.png" alt="" width="36" height="36" /><strong>EcoTrek</strong></a>
+      <p><a href="/">Home</a> · <a href="mailto:ecotrek.support@gmail.com">Support</a></p>
+      <p>© <span id="current-year">2026</span> EcoTrek</p>
+    </footer>
+    <script>document.getElementById('current-year').textContent = String(new Date().getFullYear());</script>
+  </body>
+</html>
