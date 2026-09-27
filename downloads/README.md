@@ -1,10 +1,8 @@
 # EcoTrek Android download
 
-The signed Android APK is intentionally not committed to the repository.
-Build it with EAS, then publish it at this path or update `apkUrl` in
-`/site-config.js` to point at a public EAS artifact or GitHub Release asset.
+The direct Android download package `ecotrek.apk` is provided in this directory for immediate installation from the landing page.
 
-From `EcoTrek/`:
+To build an updated release binary with EAS from `EcoTrek/`:
 
 ```bash
 npx eas build --platform android --profile apk

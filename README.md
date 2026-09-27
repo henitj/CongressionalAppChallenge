@@ -48,7 +48,7 @@ EcoTrek has been optimized for speed, battery life, and crash resilience:
 
 The repository root now contains a one-page, static EcoTrek landing page (`index.html`) that is ready to deploy on Vercel. It uses the existing app artwork, includes a public privacy policy at `/privacy`, and wires both install buttons to `/downloads/ecotrek.apk`.
 
-The APK itself is not checked into Git. Android packages must be signed, and a generated binary should not be committed to the source repository. Build one from `EcoTrek/` with the included EAS profile:
+The downloadable package is provided at `downloads/ecotrek.apk` for direct installation. You can also build an updated release binary from `EcoTrek/` with the included EAS profile:
 
 ```bash
 cd EcoTrek
