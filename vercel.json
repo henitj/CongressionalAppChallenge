@@ -17,13 +17,15 @@
       ]
     },
     {
-      "source": "/EcoTrek/assets/(.*)",
+      "source": "/(EcoTrek/assets|app/_expo|app/assets)/(.*)",
       "headers": [
         { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     }
   ],
   "rewrites": [
-    { "source": "/privacy", "destination": "/privacy.html" }
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/app", "destination": "/app/index.html" },
+    { "source": "/app/", "destination": "/app/index.html" }
   ]
 }
