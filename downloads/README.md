@@ -1,9 +1,8 @@
 # EcoTrek Android download
 
-The signed APK is intentionally not committed to the repository. Build it with
-EAS, then upload the resulting file here as `ecotrek.apk`, or update
-`apkUrl` in `/site-config.js` to point at a public EAS artifact or GitHub
-Release asset.
+The signed Android APK is intentionally not committed to the repository.
+Build it with EAS, then publish it at this path or update `apkUrl` in
+`/site-config.js` to point at a public EAS artifact or GitHub Release asset.
 
 From `EcoTrek/`:
 
@@ -11,4 +10,13 @@ From `EcoTrek/`:
 npx eas build --platform android --profile apk
 ```
 
-The landing page button is already wired to `/downloads/ecotrek.apk`.
+For iPhone, build the iOS app through Apple distribution instead of uploading a
+raw IPA:
+
+```bash
+npx eas build --platform ios --profile production
+```
+
+After the iOS build is approved in the App Store or available in TestFlight,
+paste that public URL into `iosUrl` in `/site-config.js`. The landing page
+automatically opens the iOS link for iPhone and iPad visitors.
