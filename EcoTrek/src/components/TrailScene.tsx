@@ -119,56 +119,115 @@ export default function TrailScene({
   );
 }
 
+/** Far-side limbs read as "behind" with this muted green. */
+const FAR_LIMB = '#5F7367';
+/** Boots and shoes. */
+const BOOT = '#2B3A32';
+/** The sleeve on the far arm, a shade off the jacket for depth. */
+const FAR_SLEEVE = '#11352A';
+/** Darker accent for pack straps and the helmet band. */
+const STRAP = '#C47A28';
+
 /**
- * Hiker mid-stride. The walker has two distinct, anatomically natural legs
- * that swing in opposite directions — front leg reaching forward into the next step,
- * rear leg extending naturally back with toe pushing off forward — plus a clear
- * torso, head, hat, arms, and a small backpack.
+ * Hiker mid-stride, built from a few connected shapes:
+ * one capsule stroke for the torso (which gives naturally rounded
+ * shoulders and hips), jointed limb strokes that always start at the
+ * shoulder/hip, small round hands at the sleeve ends, a short neck,
+ * and a cap. No bare "skin" segments ever float free of the body.
  */
 function Walker({ dark, pack, skin }: { dark: string; pack: string; skin: string }) {
   return (
     <G strokeLinecap="round" strokeLinejoin="round">
-      <Ellipse cx="157" cy="356" rx="28" ry="3" fill={dark} opacity={0.12} />
-      {/* Rear leg extends naturally back; front leg reaches into the next step. */}
-      <Path d="M152 326 L141 338 L132 348 L139 352" stroke="#60766B" strokeWidth="5.5" fill="none" />
-      <Path d="M158 327 L170 339 L176 352 L184 352" stroke={dark} strokeWidth="5.5" fill="none" />
-      <Rect x="143" y="303" width="12" height="20" rx="4" fill={pack} />
-      {/* Jacket and two matching sleeves; hands begin only at the wrists. */}
-      <Path d="M154 300 Q163 299 167 306 L161 329 Q156 333 149 327 L150 307 Z" fill={dark} />
-      <Path d="M159 307 L170 317" stroke={dark} strokeWidth="6" fill="none" />
-      <Path d="M170 317 L180 315" stroke={skin} strokeWidth="4" fill="none" />
-      <Path d="M152 308 L143 319" stroke={dark} strokeWidth="6" fill="none" />
-      <Path d="M143 319 L139 331" stroke={skin} strokeWidth="4" fill="none" />
-      <Path d="M161 298 L159 304" stroke={skin} strokeWidth="4" />
-      <Circle cx="163" cy="292" r="7.5" fill={skin} />
-      <Path d="M155 291 Q156 281 165 284 Q171 286 171 291 L175 292 Z" fill={dark} />
+      <Ellipse cx="158" cy="354" rx="26" ry="3" fill={dark} opacity={0.12} />
+
+      {/* Rear leg: hip → knee swung back → foot, with a boot. */}
+      <Path d="M157 321 L149 335 L141 347" stroke={FAR_LIMB} strokeWidth="6" fill="none" />
+      <Path d="M141 347 L135 351" stroke={BOOT} strokeWidth="5" fill="none" />
+
+      {/* Front leg: hip → knee forward → foot planted. */}
+      <Path d="M160 321 L169 334 L173 348" stroke={dark} strokeWidth="6" fill="none" />
+      <Path d="M173 348 L181 350" stroke={BOOT} strokeWidth="5" fill="none" />
+
+      {/* Backpack sits snug behind the torso. */}
+      <Rect x="142" y="301" width="11" height="19" rx="4.5" fill={pack} transform="rotate(6 147 310)" />
+      <Path d="M150 304 L156 303 M150 316 L156 316" stroke={STRAP} strokeWidth="2" fill="none" />
+
+      {/* Torso: a single capsule stroke — clean rounded shoulders. */}
+      <Path d="M158.5 319 L160.5 302" stroke={dark} strokeWidth="13" fill="none" />
+
+      {/* Back arm swings down and back; small hand at the sleeve end. */}
+      <Path d="M159 304 L153 313 L150 321" stroke={FAR_SLEEVE} strokeWidth="5" fill="none" />
+      <Circle cx="149.5" cy="323.5" r="2.7" fill={skin} />
+
+      {/* Front arm swings forward with a bent elbow. */}
+      <Path d="M162 304 L170 311 L176 307" stroke={dark} strokeWidth="5" fill="none" />
+      <Circle cx="178" cy="305.5" r="2.7" fill={skin} />
+
+      {/* Short neck, head, and a cap with a small front brim. */}
+      <Path d="M161 299 L161.5 294" stroke={skin} strokeWidth="4.5" />
+      <Circle cx="162" cy="289" r="7" fill={skin} />
+      <Path
+        d="M155 287.5 Q155.5 279.5 163 280.5 Q169.5 281.5 169.3 287 L173.5 288.2 Q169 290 165.5 289.4 Q159 288.6 155 287.5 Z"
+        fill={dark}
+      />
     </G>
   );
 }
 
-/** Side-view bicycle with two frame triangles and feet on opposite pedals. */
+/**
+ * Side-view cyclist: a clean diamond frame, saddle and bars, cranks with
+ * both feet on opposite pedals, a leaning capsule torso, one visible hand
+ * on the grip, and a snug helmet. Same construction rules as the walker —
+ * every limb starts at a joint on the body.
+ */
 function Biker({ dark, pack, skin }: { dark: string; pack: string; skin: string }) {
   return (
     <G strokeLinecap="round" strokeLinejoin="round">
       <Ellipse cx="160" cy="373" rx="45" ry="4" fill={dark} opacity={0.12} />
+
+      {/* Wheels with hubs. */}
       <Circle cx="131" cy="353" r="18" stroke={dark} strokeWidth="3" fill="none" />
       <Circle cx="187" cy="353" r="18" stroke={dark} strokeWidth="3" fill="none" />
-      <Path d="M131 353 L146 327 L157 353 Z M146 327 L177 327 L157 353 M177 320 L187 353"
-        stroke={pack} strokeWidth="3.2" fill="none" />
-      <Path d="M146 327 L143 320 M138 320 L150 320 M177 327 L175 315 L184 315"
-        stroke={dark} strokeWidth="3" fill="none" />
-      <Path d="M145 320 L138 339 L151 348" stroke="#60766B" strokeWidth="5" fill="none" />
-      <Path d="M143 320 L156 299 Q163 299 168 306 L152 325 Z" fill={dark} />
-      {/* Long jersey sleeve plus a short exposed hand at the handlebar. */}
-      <Path d="M160 305 L174 318" stroke={dark} strokeWidth="6" fill="none" />
-      <Path d="M174 318 L180 315" stroke={skin} strokeWidth="4" fill="none" />
-      <Path d="M150 322 L167 333 L163 358" stroke={dark} strokeWidth="5" fill="none" />
-      <Path d="M158 358 L168 358 M146 348 L156 348" stroke={dark} strokeWidth="3" fill="none" />
-      <Path d="M151 348 L163 358" stroke={pack} strokeWidth="2" />
-      <Circle cx="169" cy="292" r="7" fill={skin} />
-      <Path d="M162 292 Q162 281 171 284 Q179 286 177 293 Z" fill={pack} />
-      <Path d="M166 298 L162 305" stroke={skin} strokeWidth="4" />
-      <Path d="M146 305 L152 297 Q155 295 158 299 L154 309 Z" fill={pack} />
+      <Circle cx="131" cy="353" r="2.4" fill={dark} />
+      <Circle cx="187" cy="353" r="2.4" fill={dark} />
+
+      {/* Frame: rear triangle, top and down tubes, fork. */}
+      <Path
+        d="M131 353 L150 325 L157 353 Z M150 325 L176 325 M176 325 L157 353 M176 325 L187 353"
+        stroke={pack}
+        strokeWidth="3.2"
+        fill="none"
+      />
+
+      {/* Seat post and saddle; head tube and handlebar. */}
+      <Path d="M150 325 L148 317" stroke={pack} strokeWidth="3" fill="none" />
+      <Path d="M143 316.5 L153 316.5" stroke={dark} strokeWidth="3.5" fill="none" />
+      <Path d="M176 325 L173.5 313.5 L180 311.5" stroke={dark} strokeWidth="2.6" fill="none" />
+
+      {/* Cranks and pedals. */}
+      <Path d="M157 353 L163 359 M157 353 L151 347" stroke={dark} strokeWidth="2.5" fill="none" />
+      <Circle cx="157" cy="353" r="2.6" fill={dark} />
+
+      {/* Far leg: hip → knee → rear pedal. */}
+      <Path d="M148 319 L141 333 L150 346" stroke={FAR_LIMB} strokeWidth="5" fill="none" />
+      <Path d="M148 346.5 L153 347.5" stroke={BOOT} strokeWidth="4" fill="none" />
+
+      {/* Torso: capsule leaning toward the bars. */}
+      <Path d="M150 317 L164 302" stroke={dark} strokeWidth="11" fill="none" />
+
+      {/* Near leg: hip → knee → front pedal, with a shoe. */}
+      <Path d="M151 317 L163 336 L162 357" stroke={dark} strokeWidth="5.5" fill="none" />
+      <Path d="M160 358.5 L166 359.5" stroke={BOOT} strokeWidth="4" fill="none" />
+
+      {/* Arm reaching the handlebar; the hand rests on the grip. */}
+      <Path d="M163.5 303.5 L170 309 L176 311" stroke={FAR_SLEEVE} strokeWidth="4.6" fill="none" />
+      <Circle cx="179.3" cy="311.6" r="2.7" fill={skin} />
+
+      {/* Short neck, head, snug helmet with a band. */}
+      <Path d="M166 300 L167.5 295.5" stroke={skin} strokeWidth="4.2" />
+      <Circle cx="168.5" cy="290.5" r="6.6" fill={skin} />
+      <Path d="M161.8 289.6 A6.8 6.8 0 0 1 175.2 289.6 L173.8 290.2 L163 290.1 Z" fill={pack} />
+      <Path d="M163 286.2 L174.2 286.2" stroke={STRAP} strokeWidth="1.3" />
     </G>
   );
 }

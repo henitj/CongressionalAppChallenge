@@ -12,7 +12,8 @@
     "test": "tsx src/__tests__/logic.test.ts && jest",
     "test:logic": "tsx src/__tests__/logic.test.ts",
     "test:render": "jest",
-    "verify": "tsc --noEmit --noUnusedLocals --noUnusedParameters && npm test"
+    "verify": "tsc --noEmit --noUnusedLocals --noUnusedParameters && npm test",
+    "export:web": "expo export --platform web && node scripts/postexport-web.mjs"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",

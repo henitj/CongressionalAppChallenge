@@ -12,7 +12,7 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 
 import Header from '../components/Header';
 import Icon from '../components/Icon';
-import { Card, Pill } from '../components/ui';
+import { Banner, Button, Card, Pill, Sheet } from '../components/ui';
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { Trail } from '../constants/austinTrails';
@@ -26,6 +26,16 @@ import {
   STARTER_QUESTIONS,
 } from '../services/assistant';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
+import {
+  AI_PRESETS,
+  AiProviderSettings,
+  DEFAULT_AI_SETTINGS,
+  askUserModel,
+  hasAiKey,
+  loadAiSettings,
+  saveAiSettings,
+  testAiSettings,
+} from '../services/aiProvider';
 import { useTheme, Typography } from '../context/ThemeContext';
 import { useKeyboardGap } from '../hooks/useKeyboardHeight';
 
@@ -69,6 +79,19 @@ export default function AssistantScreen() {
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
 
+  // Bring-your-own-key AI upgrade. Loaded once; edited through the sheet.
+  const [aiSettings, setAiSettings] = useState<AiProviderSettings>(DEFAULT_AI_SETTINGS);
+  const [aiSheet, setAiSheet] = useState(false);
+  useEffect(() => {
+    let alive = true;
+    loadAiSettings().then((s) => {
+      if (alive) setAiSettings(s);
+    });
+    return () => {
+      alive = false;
+    };
+  }, []);
+
   // The trail the conversation is currently about. This is what makes
   // "is it dog friendly?" work without repeating the trail name.
   const focusRef = useRef<Trail | null>(initialTrail);
@@ -107,7 +130,10 @@ export default function AssistantScreen() {
       if (local.trail) focusRef.current = local.trail;
 
       const answerId = `a-${Date.now()}`;
-      const canUpgrade = isBackendConfigured();
+      // A better phrasing can come from the project backend (if deployed) or
+      // from the user's own API key. Without either, the on-device answer
+      // stands on its own — no key required, works offline.
+      const canUpgrade = isBackendConfigured() || hasAiKey(aiSettings);
 
       setMessages((m) => [
         ...m,
@@ -127,7 +153,7 @@ export default function AssistantScreen() {
       // phrasing of the same grounded facts and swap the text in.
       if (canUpgrade) {
         const subject = local.trail ?? focusRef.current;
-        const res = await api.post<{ text: string }>(ROUTES.assistant, {
+        const payload = {
           question,
           context: {
             trail: subject
@@ -169,18 +195,25 @@ export default function AssistantScreen() {
                 }
               : null,
           },
-        });
+        };
+
+        let better: string | null = null;
+        if (isBackendConfigured()) {
+          const res = await api.post<{ text: string }>(ROUTES.assistant, payload);
+          better = res.ok && typeof res.data?.text === 'string' ? res.data.text : null;
+        }
+        if (!better && hasAiKey(aiSettings)) {
+          better = await askUserModel(question, payload.context, aiSettings);
+        }
 
         setMessages((m) =>
           m.map((msg) =>
-            msg.id === answerId
-              ? { ...msg, text: res.ok && res.data?.text ? res.data.text : msg.text, upgrading: false }
-              : msg
+            msg.id === answerId ? { ...msg, text: better ?? msg.text, upgrading: false } : msg
           )
         );
       }
     },
-    [thinking, buildContext, trails, report]
+    [thinking, buildContext, trails, report, aiSettings]
   );
 
   const showStarters = messages.filter((m) => m.role === 'user').length === 0;
@@ -206,7 +239,12 @@ export default function AssistantScreen() {
 
   return (
     <View style={styles.root}>
-      <Header title="Trail assistant" subtitle="Ask about trails near you" back />
+      <Header
+        title="Trail assistant"
+        subtitle="Ask about trails near you"
+        back
+        actions={[{ icon: 'sliders', onPress: () => setAiSheet(true), label: 'AI settings' }]}
+      />
 
       <View style={{ flex: 1, paddingBottom: keyboardVisible ? keyboardPad + 16 : 0 }} onLayout={onContainerLayout}>
         <ScrollView
@@ -228,6 +266,21 @@ export default function AssistantScreen() {
               <Text style={styles.introHint}>
                 Name a trail once and I will remember it, so you can just ask "is it shaded?" next.
               </Text>
+
+              <Pressable onPress={() => setAiSheet(true)} style={styles.aiStatusRow}>
+                <Icon
+                  name={hasAiKey(aiSettings) ? 'zap' : 'lock'}
+                  size={14}
+                  color={hasAiKey(aiSettings) ? colors.primary : colors.textLight}
+                  strokeWidth={2}
+                />
+                <Text style={styles.aiStatusText}>
+                  {hasAiKey(aiSettings)
+                    ? 'AI answers on — using your API key'
+                    : 'Works offline with no setup · add your own AI key for richer answers'}
+                </Text>
+                <Icon name="chevron-right" size={13} color={colors.textLight} strokeWidth={2} />
+              </Pressable>
 
               <View style={styles.starters}>
                 {STARTER_QUESTIONS.slice(0, 2).map((q) => (
@@ -344,7 +397,187 @@ export default function AssistantScreen() {
           </Text>
         ) : null}
       </View>
+
+      <AiKeySheet
+        visible={aiSheet}
+        onClose={() => setAiSheet(false)}
+        settings={aiSettings}
+        onSaved={setAiSettings}
+        styles={styles}
+        colors={colors}
+      />
     </View>
+  );
+}
+
+/**
+ * "Use your own AI" settings.
+ *
+ * The assistant never needs a key — this sheet only adds an optional upgrade.
+ * The key is stored on this device, sent only to the provider the user picks,
+ * and can be removed with one tap.
+ */
+function AiKeySheet({
+  visible,
+  onClose,
+  settings,
+  onSaved,
+  styles,
+  colors,
+}: {
+  visible: boolean;
+  onClose: () => void;
+  settings: AiProviderSettings;
+  onSaved: (s: AiProviderSettings) => void;
+  styles: ReturnType<typeof makeStyles>;
+  colors: ColorPalette;
+}) {
+  const [draftKey, setDraftKey] = useState(settings.apiKey);
+  const [draftBase, setDraftBase] = useState(settings.baseUrl);
+  const [draftModel, setDraftModel] = useState(settings.model);
+  const [busy, setBusy] = useState(false);
+  const [status, setStatus] = useState<{ ok: boolean; message: string } | null>(null);
+
+  // Re-sync drafts every time the sheet opens, so stale edits never linger.
+  useEffect(() => {
+    if (visible) {
+      setDraftKey(settings.apiKey);
+      setDraftBase(settings.baseUrl);
+      setDraftModel(settings.model);
+      setStatus(null);
+    }
+  }, [visible, settings]);
+
+  const activePreset = AI_PRESETS.find((p) => p.baseUrl === draftBase) ?? null;
+
+  const save = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    setStatus(null);
+    const next = await saveAiSettings({
+      apiKey: draftKey,
+      baseUrl: draftBase,
+      model: draftModel,
+    });
+    onSaved(next);
+    if (hasAiKey(next)) {
+      const result = await testAiSettings(next);
+      setStatus(result);
+    } else {
+      setStatus({ ok: true, message: 'Key removed. On-device answers stay on.' });
+    }
+    setBusy(false);
+  }, [busy, draftKey, draftBase, draftModel, onSaved]);
+
+  const removeKey = useCallback(async () => {
+    if (busy) return;
+    setBusy(true);
+    const next = await saveAiSettings({ ...settings, apiKey: '' });
+    onSaved(next);
+    setDraftKey('');
+    setStatus({ ok: true, message: 'Key removed. On-device answers stay on.' });
+    setBusy(false);
+  }, [busy, settings, onSaved]);
+
+  return (
+    <Sheet
+      visible={visible}
+      onClose={onClose}
+      title="AI answers"
+      subtitle="Optional — the assistant already works without any key"
+    >
+      <View style={{ gap: SPACING.md }}>
+        <Banner
+          tone="info"
+          icon="shield"
+          title="Your key stays on this phone"
+          message="It is saved only on this device and sent only to the AI provider you choose. Remove it any time."
+        />
+
+        <Text style={styles.aiSheetLabel}>Provider</Text>
+        <View style={styles.aiPresetRow}>
+          {AI_PRESETS.map((p) => {
+            const active = activePreset?.id === p.id;
+            return (
+              <Pressable
+                key={p.id}
+                onPress={() => {
+                  setDraftBase(p.baseUrl);
+                  setDraftModel(p.model);
+                }}
+                style={[styles.aiPreset, active && styles.aiPresetActive]}
+              >
+                <Text style={[styles.aiPresetText, active && styles.aiPresetTextActive]}>
+                  {p.label}
+                </Text>
+                <Text style={styles.aiPresetNote}>{p.note}</Text>
+              </Pressable>
+            );
+          })}
+        </View>
+        {activePreset ? (
+          <Text style={styles.aiSheetHint}>
+            Create a free account and key at {activePreset.keyUrl}, then paste the key below.
+          </Text>
+        ) : (
+          <Text style={styles.aiSheetHint}>
+            Custom endpoint — any OpenAI-compatible server works (base URL ending in /v1).
+          </Text>
+        )}
+
+        <Text style={styles.aiSheetLabel}>API key</Text>
+        <TextInput
+          value={draftKey}
+          onChangeText={setDraftKey}
+          placeholder="Paste your API key"
+          placeholderTextColor={colors.textLight}
+          style={styles.aiInput}
+          autoCapitalize="none"
+          autoCorrect={false}
+          secureTextEntry
+        />
+
+        <Text style={styles.aiSheetLabel}>Model</Text>
+        <TextInput
+          value={draftModel}
+          onChangeText={setDraftModel}
+          placeholder="Model id"
+          placeholderTextColor={colors.textLight}
+          style={styles.aiInput}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        <Text style={styles.aiSheetLabel}>Base URL</Text>
+        <TextInput
+          value={draftBase}
+          onChangeText={setDraftBase}
+          placeholder="https://api.groq.com/openai/v1"
+          placeholderTextColor={colors.textLight}
+          style={styles.aiInput}
+          autoCapitalize="none"
+          autoCorrect={false}
+        />
+
+        {status ? (
+          <Banner
+            tone={status.ok ? 'success' : 'warning'}
+            icon={status.ok ? 'check-circle' : 'alert-triangle'}
+            title={status.ok ? 'All set' : 'Not connected'}
+            message={status.message}
+          />
+        ) : null}
+
+        <Button
+          label={busy ? 'Checking…' : 'Save & test'}
+          onPress={save}
+          disabled={busy}
+        />
+        {settings.apiKey ? (
+          <Button label="Remove key" variant="ghost" onPress={removeKey} disabled={busy} />
+        ) : null}
+      </View>
+    </Sheet>
   );
 }
 
@@ -410,6 +643,47 @@ function makeStyles(c: ColorPalette, t: Typography) {
     maxWidth: 320,
     fontStyle: 'italic',
   },
+  aiStatusRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: 7,
+    marginTop: SPACING.md,
+    paddingVertical: 8,
+    paddingHorizontal: 12,
+    borderRadius: RADIUS.pill,
+    backgroundColor: c.surfaceSunken,
+    maxWidth: 340,
+  },
+  aiStatusText: { ...t.micro, color: c.textMuted, flexShrink: 1 },
+
+  aiSheetLabel: { ...t.overline, color: c.textSecondary, marginBottom: -SPACING.sm },
+  aiSheetHint: { ...t.micro, color: c.textLight, marginTop: -SPACING.sm + 2 },
+  aiPresetRow: { flexDirection: 'row', gap: SPACING.sm },
+  aiPreset: {
+    flex: 1,
+    borderWidth: 1.5,
+    borderColor: c.border,
+    borderRadius: RADIUS.md,
+    paddingVertical: 10,
+    paddingHorizontal: 10,
+    backgroundColor: c.surface,
+    gap: 2,
+  },
+  aiPresetActive: { borderColor: c.primary, backgroundColor: c.primarySurface },
+  aiPresetText: { ...t.bodyMed, color: c.text },
+  aiPresetTextActive: { color: c.primary },
+  aiPresetNote: { ...t.micro, color: c.textLight },
+  aiInput: {
+    borderWidth: 1,
+    borderColor: c.border,
+    borderRadius: RADIUS.md,
+    paddingVertical: 11,
+    paddingHorizontal: SPACING.md - 2,
+    backgroundColor: c.surfaceSunken,
+    color: c.text,
+    ...t.body,
+  },
+
   starters: { alignSelf: 'stretch', gap: SPACING.sm, marginTop: SPACING.lg },
   starter: {
     flexDirection: 'row',

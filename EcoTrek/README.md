@@ -41,7 +41,7 @@ EcoTrek requires zero cloud infrastructure to function. All activities, streak r
 
 ### Conditions & Trail Assistant
 - **Weather Safety Matrix**: Live temperature, precipitation probability, humidity, UV index, and National Weather Service advisories.
-- **Intelligent Offline Assistant**: Conversational offline guide answering queries on trail difficulty, dog-friendliness, water availability, and route distances.
+- **Intelligent Offline Assistant**: Conversational offline guide answering queries on trail difficulty, dog-friendliness, water availability, and route distances. Works with zero setup and no API key; users can optionally paste their own OpenAI-compatible key (Groq, OpenAI, OpenRouter, or any custom endpoint) in the assistant's settings for richer, model-phrased answers — the key never leaves the device.
 
 ---
 
