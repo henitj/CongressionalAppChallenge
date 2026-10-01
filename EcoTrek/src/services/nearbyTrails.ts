@@ -65,6 +65,7 @@ export function isInServiceArea(lat: number, lon: number, countryCode?: string |
 const OVERPASS_ENDPOINTS = [
   'https://overpass-api.de/api/interpreter',
   'https://overpass.kumi.systems/api/interpreter',
+  'https://overpass.private.coffee/api/interpreter',
 ];
 
 const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/reverse';
