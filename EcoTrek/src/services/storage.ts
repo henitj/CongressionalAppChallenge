@@ -65,7 +65,7 @@ export async function removeKey(key: string): Promise<void> {
 
 /**
  * Copies or merges a guest's local data without replacing existing account records.
- * Used so a guest can sign in with Google without losing walks.
+ * Used so a local profile can be replaced without losing walks.
  */
 export async function copyUserData(fromId: string, toId: string): Promise<number> {
   if (!fromId || !toId || fromId === toId) return 0;

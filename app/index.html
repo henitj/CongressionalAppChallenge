@@ -34,15 +34,306 @@
       }
     </style>
   <link rel="icon" href="/favicon.ico"/><link rel="preload" href="/_expo/static/css/leaflet-df687fead8c4838a4e6b8bcb2f176a0e.css" as="style">
-<link rel="stylesheet" href="/_expo/static/css/leaflet-df687fead8c4838a4e6b8bcb2f176a0e.css"></head>
+<link rel="stylesheet" href="/_expo/static/css/leaflet-df687fead8c4838a4e6b8bcb2f176a0e.css"><style id="ecotrek-bootstrap-style">
+  /* Shown until React paints, and if it never does. Inline on purpose: it must
+     work even when every external request fails. */
+  #ecotrek-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    color: #103024;
+    background: linear-gradient(160deg, #eaf7e6 0%, #fbfaf5 55%, #dfefe0 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    text-align: center;
+    transition: opacity .32s ease;
+  }
+  #ecotrek-splash.ecotrek-splash-hidden { opacity: 0; pointer-events: none; }
+  #ecotrek-splash svg { width: 74px; height: 74px; }
+  #ecotrek-splash strong { font-size: 27px; font-weight: 700; letter-spacing: -.03em; }
+  #ecotrek-splash small { max-width: 330px; color: #52655b; font-size: 13px; line-height: 1.55; }
+  #ecotrek-splash .ecotrek-spinner {
+    width: 22px; height: 22px; margin-top: 4px;
+    border: 3px solid rgba(23, 104, 72, .22);
+    border-top-color: #176848;
+    border-radius: 50%;
+    animation: ecotrek-spin .9s linear infinite;
+  }
+  #ecotrek-splash button {
+    min-height: 46px; padding: 0 22px; margin-top: 6px;
+    border: 0; border-radius: 12px;
+    color: #fff; background: #0d4832;
+    font: inherit; font-weight: 700; cursor: pointer;
+  }
+  #ecotrek-splash button[hidden] { display: none; }
+  @keyframes ecotrek-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    #ecotrek-splash .ecotrek-spinner { animation-duration: 2.4s; }
+  }
+</style>
+<style id="ecotrek-launcher-style">
+  html.ecotrek-launcher-open { padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; }
+  html.ecotrek-launcher-open body { box-sizing: border-box; }
+  #ecotrek-launcher {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2147483000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 50px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(16, 35, 25, .12);
+    background: rgba(255, 253, 248, .97);
+    box-shadow: 0 -6px 18px rgba(13, 72, 50, .08);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-sizing: border-box;
+  }
+  #ecotrek-launcher[hidden] { display: none; }
+  #ecotrek-launcher .ecotrek-launcher-label {
+    flex: none;
+    color: #52655b;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  #ecotrek-launcher .ecotrek-launcher-links {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #ecotrek-launcher .ecotrek-launcher-links::-webkit-scrollbar { display: none; }
+  #ecotrek-launcher a {
+    flex: none;
+    padding: 7px 12px;
+    border-radius: 999px;
+    color: #0d4832;
+    background: rgba(23, 104, 72, .08);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  #ecotrek-launcher a:hover { background: rgba(23, 104, 72, .15); }
+  #ecotrek-launcher a:focus-visible,
+  #ecotrek-launcher-close:focus-visible { outline: 3px solid rgba(13, 72, 50, .55); outline-offset: 2px; }
+  #ecotrek-launcher-close {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    color: #52655b;
+    background: rgba(16, 35, 25, .06);
+    font: inherit;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  #ecotrek-launcher-close:hover { background: rgba(16, 35, 25, .12); }
+  @media (max-width: 560px) {
+    #ecotrek-launcher { gap: 8px; padding-left: 8px; }
+    #ecotrek-launcher .ecotrek-launcher-label { display: none; }
+    #ecotrek-launcher a { padding: 7px 10px; font-size: 12.5px; }
+  }
+</style>
+<script id="ecotrek-redirect">
+(function () {
+  if (location.hostname === 'appassets.ecotrek.app') return;
+  if (location.protocol === 'file:') return;
+  var roots = ['/', '/index.html', '/app', '/app/'];
+  if (roots.indexOf(location.pathname) === -1) return;
+
+  if (/(?:^\?|&)web=1(?:&|$)/.test(location.search)) {
+    try {
+      document.cookie = 'ecotrek_web=1; path=/; max-age=31536000; SameSite=Lax';
+    } catch (error) {
+      /* cookies blocked: the query string still works for this visit */
+    }
+    if (window.history && history.replaceState) history.replaceState(null, '', location.pathname);
+    return;
+  }
+  if (/(?:^|;\s*)ecotrek_web=1/.test(document.cookie)) return;
+  try {
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return;
+  } catch (error) {
+    /* no matchMedia: fall through and offer the install page */
+  }
+  if (/Android/i.test(navigator.userAgent)) location.replace('/install/android.html');
+})();
+</script>
+</head>
 
   <body>
+    <div id="ecotrek-splash" role="status" aria-live="polite">
+  <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <circle cx="32" cy="32" r="30" fill="#dff7d7"></circle>
+    <path d="M32 12l11 17h-7l8 12H20l8-12h-7z" fill="#176848"></path>
+    <rect x="29.5" y="40" width="5" height="12" rx="2.5" fill="#0d4832"></rect>
+  </svg>
+  <strong>EcoTrek</strong>
+  <small id="ecotrek-splash-note">Getting your forest ready…</small>
+  <span class="ecotrek-spinner" aria-hidden="true"></span>
+  <button type="button" id="ecotrek-splash-retry" hidden>Try again</button>
+</div>
+    <div id="ecotrek-launcher" hidden>
+  <span class="ecotrek-launcher-label">EcoTrek</span>
+  <div class="ecotrek-launcher-links">
+    <a href="/install/android.html">Android app</a>
+    <a href="/install/ios.html">iPhone &amp; iPad</a>
+    <a href="/api-key.html">AI key</a>
+  </div>
+  <button type="button" id="ecotrek-launcher-close" aria-label="Hide this bar" title="Hide this bar">&#215;</button>
+</div>
+<script id="ecotrek-launcher-script">
+(function () {
+  // Inside the Android build the page is served from the app's own virtual
+  // origin; there is nothing to install and nothing to explain.
+  if (location.hostname === 'appassets.ecotrek.app') return;
+  if (location.protocol === 'file:') return;
+
+  var bar = document.getElementById('ecotrek-launcher');
+  if (!bar) return;
+  var storageKey = 'ecotrek.launcher.dismissed';
+  try {
+    if (window.localStorage && localStorage.getItem(storageKey) === '1') return;
+  } catch (error) {
+    /* private mode: show it anyway */
+  }
+
+  // Reserving the space is what keeps the bar off the app's own controls: the
+  // app is laid out above it instead of underneath it.
+  document.documentElement.className += ' ecotrek-launcher-open';
+  bar.hidden = false;
+
+  var close = document.getElementById('ecotrek-launcher-close');
+  if (close) {
+    close.onclick = function () {
+      bar.hidden = true;
+      document.documentElement.className = document.documentElement.className.replace(/s*ecotrek-launcher-open/, '');
+      try {
+        localStorage.setItem(storageKey, '1');
+      } catch (error) {
+        /* ignore */
+      }
+    };
+  }
+})();
+</script>
     <!-- Use static rendering with Expo Router to support running without JavaScript. -->
     <noscript>
       You need to enable JavaScript to run this app.
     </noscript>
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
-  <script src="/_expo/static/js/web/index-a9d74d721946dbaaec796229352fa193.js" defer></script>
+  <script src="/_expo/static/js/web/ecotrek-polyfills-6222020a8dac28077a86605376623116.js" defer></script>
+<script src="/_expo/static/js/web/index-bb4f3768da657edd68957cf56fcb969c.js" defer></script>
+<script id="ecotrek-bootstrap">
+/* EcoTrek boot watchdog — ES5, no dependencies.
+   Records startup failures, hides the splash once React paints, and after a
+   grace period replaces the splash with something a person can act on. */
+(function () {
+  var splash = document.getElementById('ecotrek-splash');
+  if (!splash) return;
+  var note = document.getElementById('ecotrek-splash-note');
+  var retry = document.getElementById('ecotrek-splash-retry');
+  var spinner = splash.querySelector('.ecotrek-spinner');
+  var problems = [];
+  var hidden = false;
+
+  function record(message) {
+    if (!message) return;
+    for (var i = 0; i < problems.length; i += 1) {
+      if (problems[i] === message) return;
+    }
+    problems.push(message);
+  }
+
+  window.addEventListener('error', function (event) {
+    var target = event && event.target;
+    if (target && target.tagName === 'SCRIPT') {
+      record('The app bundle could not be loaded (' + (target.getAttribute('src') || '') + ').');
+    } else if (event && event.message) {
+      record(event.message);
+    }
+  }, true);
+
+  window.addEventListener('unhandledrejection', function (event) {
+    var reason = event && event.reason;
+    record('Unhandled error: ' + ((reason && (reason.message || reason)) || 'unknown'));
+  });
+
+  function rootHasContent() {
+    var root = document.getElementById('root');
+    return !!(root && root.childElementCount > 0);
+  }
+
+  function hide(immediately) {
+    if (hidden) return;
+    hidden = true;
+    splash.className = 'ecotrek-splash-hidden';
+    window.setTimeout(function () {
+      if (splash.parentNode) splash.parentNode.removeChild(splash);
+    }, immediately ? 0 : 360);
+  }
+
+  function giveUp(detail) {
+    if (hidden) return;
+    if (spinner) spinner.style.display = 'none';
+    var lines = [];
+    if (!window.Promise || !window.Map || !window.Symbol) {
+      lines.push('This phone\u2019s web viewer is too old to run EcoTrek. Update "Android System WebView" (or Chrome) in your app store, then try again.');
+    } else {
+      lines.push(detail || 'EcoTrek could not finish starting.');
+      lines.push('Close the app completely and open it again. If it keeps happening, update your web viewer and tell us at ecotrek.support@gmail.com.');
+    }
+    if (problems.length) lines.push('Details: ' + problems.slice(0, 2).join(' '));
+    if (note) note.textContent = lines.join(' ');
+    if (retry) retry.hidden = false;
+  }
+
+  if (retry) {
+    retry.onclick = function () {
+      retry.hidden = true;
+      if (spinner) spinner.style.display = '';
+      if (note) note.textContent = 'Trying again\u2026';
+      hidden = false;
+      window.location.reload();
+    };
+  }
+
+  var started = Date.now();
+  var interval = window.setInterval(function () {
+    if (hidden) {
+      window.clearInterval(interval);
+      return;
+    }
+    if (rootHasContent()) {
+      window.clearInterval(interval);
+      hide(false);
+      return;
+    }
+    var elapsed = Date.now() - started;
+    if (elapsed > 4000 && note && !problems.length) {
+      note.textContent = 'Still starting. Slow devices and first launches can take a few seconds.';
+    }
+    if (elapsed > 15000) {
+      window.clearInterval(interval);
+      giveUp(problems.length ? null : 'EcoTrek did not finish starting.');
+    }
+  }, 200);
+})();
+</script>
 </body>
 </html>

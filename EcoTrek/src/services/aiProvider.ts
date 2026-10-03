@@ -11,7 +11,9 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
  *
  * Design rules:
  *   - The key lives ONLY in this device's local storage. It is never sent
- *     anywhere except directly to the provider the user chose.
+ *     anywhere except directly to the provider the user chose, and only over
+ *     HTTPS: the endpoint check below refuses anything else, because a key
+ *     sent over http:// is readable by every hop on the way.
  *   - Requests never throw. On any failure the caller keeps the on-device
  *     answer, so a bad key or a dead network can never break the assistant.
  *   - The model is grounded on the catalogue facts we pass it and told not
@@ -72,12 +74,22 @@ export const DEFAULT_AI_SETTINGS: AiProviderSettings = {
 
 const STORAGE_KEY = '@ecotrek/shared/ai-provider';
 
+/**
+ * The key travels in an Authorization header, so the endpoint has to be
+ * encrypted. A plain http:// endpoint would hand the key to anything on the
+ * network path, so it is refused rather than silently used. Every built-in
+ * provider (Groq, OpenAI, OpenRouter) is https.
+ */
+export function isAllowedBaseUrl(value: string): boolean {
+  return /^https:\/\/[^\s]+$/i.test((value ?? '').trim());
+}
+
 function sanitise(value: unknown): AiProviderSettings {
   const v = (value ?? {}) as Partial<AiProviderSettings>;
   return {
     apiKey: typeof v.apiKey === 'string' ? v.apiKey.trim() : '',
     baseUrl:
-      typeof v.baseUrl === 'string' && /^https?:\/\//.test(v.baseUrl.trim())
+      typeof v.baseUrl === 'string' && isAllowedBaseUrl(v.baseUrl)
         ? v.baseUrl.trim().replace(/\/+$/, '')
         : DEFAULT_AI_SETTINGS.baseUrl,
     model: typeof v.model === 'string' && v.model.trim() ? v.model.trim() : DEFAULT_AI_SETTINGS.model,

@@ -412,8 +412,10 @@ describe('screens that do not need the provider stack', () => {
         </AuthProvider>
       </SafeAreaProvider>
     );
-    await waitFor(() => expect(queryByText('Continue as guest')).toBeTruthy());
-    expect(queryByText('Continue with Google')).toBeTruthy();
+    await waitFor(() => expect(queryByText('Start walking')).toBeTruthy());
+    // The Google button is deliberately gone: without configured OAuth client
+    // IDs it could only ever fail, so the screen offers the local profile only.
+    expect(queryByText(/Google/i)).toBeNull();
     expect(queryByText('EcoTrek')).toBeTruthy();
   });
 

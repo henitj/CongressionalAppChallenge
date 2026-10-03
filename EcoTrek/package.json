@@ -3,17 +3,18 @@
   "version": "1.0.0",
   "main": "index.js",
   "scripts": {
+    "android": "expo run:android",
+    "export:web": "expo export --platform web && node scripts/postexport-web.mjs",
+    "ios": "expo run:ios",
+    "site:pages": "node scripts/rebuild-site-pages.mjs",
     "start": "expo start --tunnel",
     "start:lan": "expo start",
-    "android": "expo run:android",
-    "ios": "expo run:ios",
-    "web": "expo start --web",
-    "typecheck": "tsc --noEmit",
     "test": "tsx src/__tests__/logic.test.ts && jest",
     "test:logic": "tsx src/__tests__/logic.test.ts",
     "test:render": "jest",
+    "typecheck": "tsc --noEmit",
     "verify": "tsc --noEmit --noUnusedLocals --noUnusedParameters && npm test",
-    "export:web": "expo export --platform web && node scripts/postexport-web.mjs"
+    "web": "expo start --web"
   },
   "dependencies": {
     "@expo/metro-runtime": "~57.0.16",
@@ -23,7 +24,6 @@
     "@react-navigation/native-stack": "^7.2.0",
     "babel-preset-expo": "~57.0.12",
     "expo": "~57.0.24",
-    "expo-auth-session": "~57.0.11",
     "expo-crypto": "~57.0.2",
     "expo-device": "~57.0.1",
     "expo-file-system": "~57.0.7",
@@ -33,7 +33,6 @@
     "expo-notifications": "~57.0.17",
     "expo-status-bar": "~57.0.1",
     "expo-task-manager": "~57.0.16",
-    "expo-web-browser": "~57.0.2",
     "leaflet": "^1.9.4",
     "react": "19.2.3",
     "react-dom": "19.2.3",
@@ -48,7 +47,9 @@
   },
   "devDependencies": {
     "@babel/core": "^7.25.2",
+    "@babel/preset-env": "^7.25.2",
     "@expo/ngrok": "^4.1.0",
+    "@react-native/jest-preset": "^0.86.3",
     "@testing-library/react-native": "^13.3.3",
     "@types/jest": "^30.0.0",
     "@types/leaflet": "^1.9.22",
@@ -56,6 +57,7 @@
     "jest": "^29.7.0",
     "jest-expo": "~57.0.5",
     "react-test-renderer": "19.2.3",
+    "terser": "^5.36.0",
     "tsx": "^4.19.2",
     "typescript": "~5.9.2"
   },

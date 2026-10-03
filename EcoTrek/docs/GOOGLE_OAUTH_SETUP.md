@@ -1,5 +1,12 @@
 # Google OAuth setup
 
+> **Status: not in use.** The shipped app has no sign-in button. Walks, points
+> and settings live on the device under a local profile, and the Google flow was
+> removed because it needed the client IDs below, which were never configured.
+> This document is kept because the client IDs and the Android SHA-1 rule are
+> still what a future build would need — it is a setup guide, not a description
+> of what the app does today.
+
 Roughly 20 minutes. Do it once and never touch it again.
 
 You do **not** edit any source file — every value goes in `.env`.

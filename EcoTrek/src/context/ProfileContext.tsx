@@ -20,7 +20,7 @@ export type UserProfile = {
   weightHistory: { date: number; weight: number }[];
   /**
    * Photo the user picked themselves for their profile logo (file URI on
-   * native, data URI on web). Falls back to the Google sign-in picture when
+   * native, data URI on web). Falls back to the stored profile picture when
    * null, and to initials when that is missing too.
    */
   avatarUri?: string | null;

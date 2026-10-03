@@ -1,10 +1,9 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Linking, Platform, ScrollView, useWindowDimensions } from 'react-native';
+import { View, Text, StyleSheet, Linking, ScrollView, useWindowDimensions } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon, { IconName } from '../components/Icon';
 import Logo from '../components/Logo';
-import GoogleAccountSheet from '../components/GoogleAccountSheet';
 import { Button } from '../components/ui';
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useAuth } from '../context/AuthContext';
@@ -20,33 +19,15 @@ const FEATURES: { icon: IconName; title: string }[] = [
 export default function SignInScreen() {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
-  const { signInWithGoogle, signInAsGuest, error, googleConfigured } = useAuth();
-  const [showGoogle, setShowGoogle] = useState(false);
+  const { signInAsGuest, error } = useAuth();
   const [busy, setBusy] = useState(false);
 
-  // The gap above the sign-in buttons scales with the screen instead of
-  // collapsing: on a small phone the buttons used to slam right up against
-  // the feature list, and on a tall phone they floated with no breathing
-  // room either. 5% of the screen height, with a floor so it never touches.
+  // The gap above the button scales with the screen instead of collapsing, and
+  // tops out on a tall screen so the button does not drift to the very bottom.
   const { height: windowHeight } = useWindowDimensions();
-  const buttonGap = Math.max(SPACING.lg, Math.round(windowHeight * 0.05));
+  const buttonGap = Math.min(Math.max(SPACING.lg, Math.round(windowHeight * 0.04)), 96);
 
-  const useLocalGoogle = Platform.OS === 'web' && !googleConfigured;
-
-  const handleGoogle = async () => {
-    if (useLocalGoogle) {
-      setShowGoogle(true);
-      return;
-    }
-    setBusy(true);
-    try {
-      await signInWithGoogle();
-    } finally {
-      setBusy(false);
-    }
-  };
-
-  const handleGuest = async () => {
+  const handleStart = async () => {
     setBusy(true);
     try {
       await signInAsGuest('Guest Trekker');
@@ -63,27 +44,27 @@ export default function SignInScreen() {
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <Logo size={88} style={styles.mark} />
+          <View style={styles.column}>
+            <Logo size={80} style={styles.mark} />
 
-          <Text style={styles.title}>{APP_NAME}</Text>
-          <Text style={styles.tagline}>
-            Every mile you move under your own power grows your forest.
-          </Text>
+            <Text style={styles.title}>{APP_NAME}</Text>
+            <Text style={styles.tagline}>
+              Walks, rides and trails — recorded on this device, with nothing to sign up for.
+            </Text>
 
-          <View style={styles.features}>
-            {FEATURES.map((f) => (
-              <View key={f.title} style={styles.feature}>
-                <View style={styles.featureIcon}>
-                  <Icon name={f.icon} size={17} color={colors.primary} strokeWidth={1.9} />
+            <View style={styles.features}>
+              {FEATURES.map((f) => (
+                <View key={f.title} style={styles.feature}>
+                  <View style={styles.featureIcon}>
+                    <Icon name={f.icon} size={17} color={colors.primary} strokeWidth={1.9} />
+                  </View>
+                  <Text style={styles.featureText}>{f.title}</Text>
                 </View>
-                <Text style={styles.featureText}>{f.title}</Text>
-              </View>
-            ))}
-          </View>
+              ))}
+            </View>
 
-          <View style={{ flex: 1, minHeight: buttonGap }} />
+            <View style={{ minHeight: buttonGap }} />
 
-          <View style={{ gap: SPACING.sm + 2 }}>
             {error ? (
               <View style={styles.errorBox}>
                 <Icon name="alert-circle" size={15} color={colors.danger} strokeWidth={2} />
@@ -91,38 +72,19 @@ export default function SignInScreen() {
               </View>
             ) : null}
 
-            <Button
-              label="Continue with Google"
-              size="lg"
-              full
-              loading={busy && !useLocalGoogle}
-              onPress={handleGoogle}
-            />
-
-            <Button
-              label="Continue as guest"
-              variant="secondary"
-              size="lg"
-              full
-              loading={busy}
-              onPress={handleGuest}
-            />
+            <Button label="Start walking" size="lg" full loading={busy} onPress={handleStart} />
 
             <Text style={styles.legal}>
-              By continuing you agree to our{' '}
+              No account and no sign-in: your walks, points and settings are stored on this device.
+              Recording uses your location only while you are walking a route — see the{' '}
               <Text style={styles.legalLink} onPress={() => Linking.openURL(PRIVACY_POLICY_URL)}>
                 privacy policy
               </Text>
-              . EcoTrek uses your location only while you are recording an activity.
+              .
             </Text>
           </View>
         </ScrollView>
       </SafeAreaView>
-
-      {useLocalGoogle ? (
-        <GoogleAccountSheet visible={showGoogle} onClose={() => setShowGoogle(false)} mode="signin" />
-      ) : null}
-
     </View>
   );
 }
@@ -135,13 +97,17 @@ function makeStyles(c: ColorPalette, t: Typography) {
       paddingHorizontal: SPACING.lg,
       paddingTop: SPACING.xl,
       paddingBottom: SPACING.lg,
+      alignItems: 'center',
     },
+    // A phone-width column, centred: on a laptop the old full-bleed buttons
+    // stretched the whole window and the screen looked broken.
+    column: { width: '100%', maxWidth: 460, flexGrow: 1 },
 
     mark: {
       marginBottom: SPACING.lg,
     },
     title: { ...t.display, color: c.text },
-    tagline: { ...t.body, color: c.textSecondary, marginTop: SPACING.sm, maxWidth: 320 },
+    tagline: { ...t.body, color: c.textSecondary, marginTop: SPACING.sm, maxWidth: 360 },
 
     features: { marginTop: SPACING.xl, gap: SPACING.md + 2 },
     feature: { flexDirection: 'row', gap: SPACING.md - 2, alignItems: 'center' },
@@ -162,6 +128,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
       backgroundColor: c.dangerLight,
       borderRadius: RADIUS.md,
       padding: SPACING.sm + 4,
+      marginBottom: SPACING.sm,
     },
     errorText: { ...t.small, color: c.danger, flex: 1 },
 
@@ -169,7 +136,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
       ...t.small,
       color: c.textMuted,
       textAlign: 'center',
-      marginTop: SPACING.sm,
+      marginTop: SPACING.md,
       lineHeight: 18,
     },
     legalLink: { color: c.primary, textDecorationLine: 'underline' },

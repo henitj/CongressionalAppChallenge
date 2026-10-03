@@ -62,9 +62,15 @@ src/
 
 ---
 
-## Public landing page
+## The website is this app
 
-The repository root contains the Vercel-ready static landing page for the Android distribution (`../index.html`). It links to the signed APK at `/downloads/ecotrek.apk`, with the public privacy policy at `/privacy`. See the root README for the short release flow.
+The repository root contains the Vercel-ready site, and its front door (`../index.html`) *is* the exported app — not a landing page. The export itself lives in `../app/` (the same files the Android shell bundles), and `serve-site.mjs` at the root previews the whole thing locally with the same rewrites Vercel applies:
+
+```bash
+node ../serve-site.mjs        # http://localhost:8000
+```
+
+`npm run export:web` runs `scripts/postexport-web.mjs` after `expo export`, which transpiles the bundle for older Android System WebViews, adds the ES5 polyfill prelude and the boot watchdog, and regenerates the root page. Android visitors are sent to `../install/android.html`; iPhone and iPad visitors get `../install/ios.html`; `../api-key.html` explains the optional AI key and `../privacy.html` is the policy linked from the Play listing and the app's settings. See the root README for the release flow.
 
 ## Getting Started
 
