@@ -1,0 +1,184 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102319" />
+    <meta name="description" content="The API key EcoTrek’s assistant can use, where to get one for free, and where to paste it in the app." />
+    <title>API key — where to get it and where to paste it | EcoTrek</title>
+    <link rel="canonical" href="/api-key" />
+    <link rel="icon" href="/EcoTrek/assets/favicon.png" />
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header shell">
+      <a class="brand" href="/" aria-label="EcoTrek app">
+        <img src="/EcoTrek/assets/logo-polished.png" alt="" width="42" height="42" />
+        <span class="brand-copy">
+          <strong>EcoTrek</strong>
+          <small>MOVE · RESTORE · REPEAT</small>
+        </span>
+      </a>
+      <div class="header-actions">
+        <a class="header-link header-link-subtle" href="/install/android.html">Android app</a>
+        <a class="header-link header-link-subtle" href="/install/ios.html">iPhone</a>
+        <a class="header-link" href="/">Open the app <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <main class="page shell" id="main">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> API key · optional</p>
+      <h1>The API key you can<br /><em>paste into EcoTrek.</em></h1>
+      <p class="lede">
+        EcoTrek’s trail assistant answers from the phone itself: it works with no account, no key and no
+        connection. If you want richer, more conversational answers, you can add an API key from an AI provider.
+        This page shows where to get one and exactly where to paste it.
+      </p>
+
+      <div class="callout">
+        <strong>You never need a key to use EcoTrek.</strong> Directions, trails, weather, recording, points and
+        badges all work without one. Add a key only if you want the assistant to rephrase its answers with a
+        language model.
+      </div>
+
+      <h2>Where it goes in the app</h2>
+      <ol class="steps">
+        <li><strong>Open EcoTrek</strong> — in the Android app, in your iPhone Home Screen app, or in the browser.</li>
+        <li><strong>Go to <em>Trail assistant</em></strong> in the bottom navigation.</li>
+        <li><strong>Tap <em>AI settings</em></strong> (the sliders icon in the top right of that screen).</li>
+        <li><strong>Pick your provider</strong> — Groq, OpenAI, OpenRouter or your own server — then paste the key into the field labelled <em>“Paste your API key”</em>.</li>
+        <li><strong>Tap <em>Save &amp; test</em>.</strong> If the screen answers <em>“Connected — AI answers are on.”</em> you are done. If not, jump to <a class="inline" href="#troubleshooting">troubleshooting</a> below.</li>
+      </ol>
+      <p class="muted">
+        To switch it off again, open the same sheet and tap <em>Remove key</em>. The assistant goes straight back
+        to its on-device answers.
+      </p>
+
+      <h2 id="providers">Pick a provider and copy the key</h2>
+      <p>
+        The key itself is created on the provider’s own site — no key is ever issued by EcoTrek, and none is
+        stored on this website. Open a card below, create a key there, and copy it: the app pre-fills the
+        address and the model for the three presets, so the key is the only thing you have to paste. The
+        <span class="mono">Copy</span> buttons copy the model id or base URL if you would rather type them into
+        <em>AI settings → Model</em> and <em>Base URL</em> yourself.
+      </p>
+      <div class="grid">
+        <article class="provider" id="provider-groq">
+          <h3>Groq <span class="tag">Free tier</span></h3>
+          <p>The quickest option: a free account, no credit card, and a key that works immediately.</p>
+          <dl>
+            <div><dt>Get a key</dt><dd><a class="inline" href="https://console.groq.com/keys" rel="noopener noreferrer" target="_blank">console.groq.com/keys</a></dd></div>
+            <div><dt>Base URL</dt><dd><code>https://api.groq.com/openai/v1</code><button type="button" class="copy-button" data-copy="https://api.groq.com/openai/v1" aria-label="Copy https://api.groq.com/openai/v1">Copy</button></dd></div>
+            <div><dt>Model</dt><dd><code>llama-3.3-70b-versatile</code> (pre-filled)<button type="button" class="copy-button" data-copy="llama-3.3-70b-versatile" aria-label="Copy the Groq model id">Copy</button></dd></div>
+            <div><dt>Looks like</dt><dd><code>gsk_…</code></dd></div>
+            <div><dt>Cost</dt><dd>Free tier available; you are responsible for staying inside it.</dd></div>
+          </dl>
+          <p class="muted">Create account → <em>API Keys</em> → <em>Create API Key</em> → copy the value (it is shown once).</p>
+          <a class="get-key" href="https://console.groq.com/keys" rel="noopener noreferrer" target="_blank">Open Groq keys ↗</a>
+        </article>
+
+        <article class="provider" id="provider-openai">
+          <h3>OpenAI <span class="tag">Paid</span></h3>
+          <p>The original OpenAI-compatible API. Needs billing set up on your OpenAI account.</p>
+          <dl>
+            <div><dt>Get a key</dt><dd><a class="inline" href="https://platform.openai.com/api-keys" rel="noopener noreferrer" target="_blank">platform.openai.com/api-keys</a></dd></div>
+            <div><dt>Base URL</dt><dd><code>https://api.openai.com/v1</code><button type="button" class="copy-button" data-copy="https://api.openai.com/v1" aria-label="Copy https://api.openai.com/v1">Copy</button></dd></div>
+            <div><dt>Model</dt><dd><code>gpt-4o-mini</code> (pre-filled)<button type="button" class="copy-button" data-copy="gpt-4o-mini" aria-label="Copy the OpenAI model id">Copy</button></dd></div>
+            <div><dt>Looks like</dt><dd><code>sk-…</code></dd></div>
+            <div><dt>Cost</dt><dd>Pay per use, billed by OpenAI.</dd></div>
+          </dl>
+          <p class="muted">Sign in → <em>API keys</em> → <em>Create new secret key</em> → copy it.</p>
+          <a class="get-key" href="https://platform.openai.com/api-keys" rel="noopener noreferrer" target="_blank">Open OpenAI keys ↗</a>
+        </article>
+
+        <article class="provider" id="provider-openrouter">
+          <h3>OpenRouter <span class="tag">Free models</span></h3>
+          <p>One key, many models — including free ones. Handy if you want to try different models.</p>
+          <dl>
+            <div><dt>Get a key</dt><dd><a class="inline" href="https://openrouter.ai/keys" rel="noopener noreferrer" target="_blank">openrouter.ai/keys</a></dd></div>
+            <div><dt>Base URL</dt><dd><code>https://openrouter.ai/api/v1</code><button type="button" class="copy-button" data-copy="https://openrouter.ai/api/v1" aria-label="Copy https://openrouter.ai/api/v1">Copy</button></dd></div>
+            <div><dt>Model</dt><dd><code>meta-llama/llama-3.3-70b-instruct:free</code> (pre-filled)<button type="button" class="copy-button" data-copy="meta-llama/llama-3.3-70b-instruct:free" aria-label="Copy the OpenRouter model id">Copy</button></dd></div>
+            <div><dt>Looks like</dt><dd><code>sk-or-…</code></dd></div>
+            <div><dt>Cost</dt><dd>Free models available; paid models are billed by OpenRouter.</dd></div>
+          </dl>
+          <p class="muted">Create account → <em>Keys</em> → <em>Create Key</em> → copy it.</p>
+          <a class="get-key" href="https://openrouter.ai/keys" rel="noopener noreferrer" target="_blank">Open OpenRouter keys ↗</a>
+        </article>
+
+        <article class="provider" id="provider-custom">
+          <h3>Your own server</h3>
+          <p>Any OpenAI-compatible endpoint works, including a model you host yourself (Ollama, LM Studio, vLLM, a company gateway).</p>
+          <dl>
+            <div><dt>Base URL</dt><dd><code>https://your-server.example/v1</code> — swap in your own address. EcoTrek only accepts <code>https://</code>, so a key is never sent in clear text.</dd></div>
+            <div><dt>Model</dt><dd>the model id your server expects</dd></div>
+            <div><dt>Key</dt><dd>your server’s key, or any placeholder it accepts</dd></div>
+          </dl>
+          <p class="muted">EcoTrek calls <code>{baseUrl}/chat/completions</code>. Base URLs must use <code>https://</code> so the key is never sent in clear text.</p>
+        </article>
+      </div>
+
+      <h2>Where the key goes, and where it does not</h2>
+      <table class="kv">
+        <thead><tr><th scope="col">Question</th><th scope="col">Answer</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Where is it stored?</th><td>In EcoTrek’s private storage on your device, next to your walks. It is not part of any account and it is not uploaded to us.</td></tr>
+          <tr><th scope="row">Who receives it?</th><td>Only the provider you selected, sent as the <code>Authorization: Bearer …</code> header on requests to that provider’s own address — over HTTPS.</td></tr>
+          <tr><th scope="row">Do we see it?</th><td>No. EcoTrek has no server that your key passes through, and no analytics that could capture it.</td></tr>
+          <tr><th scope="row">Is it in a backup or a screenshot?</th><td>It lives in the app’s local storage, so a device backup that includes app data would include it. Treat it like a password and avoid sharing screenshots of the settings sheet.</td></tr>
+          <tr><th scope="row">What if it leaks?</th><td>Sign in to the provider and revoke the key. A revoked key simply stops working; nothing in EcoTrek breaks — the assistant falls back to on-device answers.</td></tr>
+        </tbody>
+      </table>
+      <p class="muted">
+        The full details are in the <a class="inline" href="/privacy">privacy policy</a>, including the exact list
+        of network requests the app makes.
+      </p>
+
+      <h2 id="troubleshooting">If the test does not pass</h2>
+      <div class="faq-list">
+        <details open>
+          <summary>“Could not reach the model.”</summary>
+          <p>Check the key, the provider and your connection — in that order. Copy the key again from the
+            provider’s page: keys are long, and a missing character is the most common cause. Also confirm the
+            base URL matches the provider (the provider cards above show the exact values the app pre-fills).</p>
+        </details>
+        <details>
+          <summary>401 / “Not connected” straight away.</summary>
+          <p>The key was rejected: it may have been revoked, or it belongs to a different provider than the one
+            selected. Create a fresh key and paste it again.</p>
+        </details>
+        <details>
+          <summary>429 or “rate limit”.</summary>
+          <p>Free tiers have per-minute limits. Wait a minute and try again, or switch to a different model in the
+            same sheet.</p>
+        </details>
+        <details>
+          <summary>The test passes but answers are still the plain ones.</summary>
+          <p>The assistant always answers from the device first, then upgrades the answer when the model responds.
+            If a request fails, you keep the on-device answer — that is deliberate. Slow connections can also make
+            the model reply after you have already read the first answer.</p>
+        </details>
+        <details>
+          <summary>Can I type the key on a computer and move it to the phone?</summary>
+          <p>Yes, but not by copying files: open the provider’s page on the phone and paste the key there, or use
+            the provider’s own key-sharing flow. Avoid emailing keys to yourself.</p>
+        </details>
+      </div>
+
+      <p class="muted">
+        Something else? <a class="inline" href="mailto:ecotrek.support@gmail.com">ecotrek.support@gmail.com</a> —
+        never send the key itself, just the message the app showed.
+      </p>
+    </main>
+
+    <footer class="site-footer shell">
+      <a class="brand footer-brand" href="/"><img src="/EcoTrek/assets/logo-polished.png" alt="" width="34" height="34" /><strong>EcoTrek</strong></a>
+      <p>Built for the Congressional App Challenge · <a href="/privacy">Privacy</a> · <a href="/install/android.html">Android install</a> · <a href="mailto:ecotrek.support@gmail.com">Support</a></p>
+      <p>© <span id="current-year">2026</span> EcoTrek</p>
+    </footer>
+
+    <script src="/site-config.js"></script>
+    <script src="/site.js" defer></script>
+  </body>
+</html>

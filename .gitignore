@@ -1,4 +1,6 @@
 node_modules/
+# also ignore the symlinked node_modules that a sandbox may drop in
+node_modules
 .expo/
 dist/
 web-build/
@@ -6,4 +8,7 @@ web-build/
 *.log
 .env
 .env.local
+__pycache__/
+*.pyc
+.venv/
 

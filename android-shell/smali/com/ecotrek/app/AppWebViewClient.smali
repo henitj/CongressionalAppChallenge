@@ -262,7 +262,12 @@
 
     move-result v3
 
-    if-eqz v3, :cond_use_index
+    # v3 == 1 only when the requested path is exactly "/". That is the one case
+    # that has to be rewritten to "/index.html"; every other path (the bundles,
+    # the icons, /favicon.ico, ...) must be served as itself. Getting this
+    # branch the wrong way round serves index.html for every request, so the
+    # script tag comes back as HTML and the app never starts: a white screen.
+    if-nez v3, :cond_use_index
 
     goto :goto_have_path
 

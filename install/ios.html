@@ -1,0 +1,123 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#102319" />
+    <meta name="description" content="EcoTrek on iPhone and iPad: run the full app in Safari and add it to your Home Screen in two taps." />
+    <title>EcoTrek on iPhone &amp; iPad</title>
+    <link rel="canonical" href="/install/ios" />
+    <link rel="icon" href="/EcoTrek/assets/favicon.png" />
+    <link rel="stylesheet" href="/site.css" />
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to content</a>
+
+    <header class="site-header shell">
+      <a class="brand" href="/" aria-label="EcoTrek app">
+        <img src="/EcoTrek/assets/logo-polished.png" alt="" width="42" height="42" />
+        <span class="brand-copy">
+          <strong>EcoTrek</strong>
+          <small>MOVE · RESTORE · REPEAT</small>
+        </span>
+      </a>
+      <div class="header-actions">
+        <a class="header-link header-link-subtle" href="/install/android.html">Android</a>
+        <a class="header-link header-link-subtle" href="/api-key.html">AI key</a>
+        <a class="header-link" href="/">Open the app <span aria-hidden="true">↗</span></a>
+      </div>
+    </header>
+
+    <main class="page shell" id="main">
+      <p class="eyebrow"><span class="eyebrow-dot"></span> iPhone &amp; iPad</p>
+      <h1>EcoTrek on your<br /><em>iPhone or iPad.</em></h1>
+      <p class="lede">
+        The complete EcoTrek app runs in Safari — the same screens, the same trails, the same offline-first
+        storage. Add it to your Home Screen and it opens full screen with its own icon, like any other app.
+      </p>
+
+      <div class="actions">
+        <a class="button button-primary" id="ios-open-button" href="/">
+          <span class="button-icon" aria-hidden="true">↗</span>
+          <span class="button-label"><strong>Open EcoTrek</strong><small>Runs in Safari</small></span>
+        </a>
+        <a class="button button-secondary" id="ios-store-button" href="#" hidden>
+          <span class="button-label"><strong>App Store</strong><small>iOS build</small></span>
+        </a>
+      </div>
+      <p class="muted" id="ios-status" role="status">
+        There is no App Store download for EcoTrek yet. The Home Screen version below is the full app, and it
+        updates itself the moment we ship a new version — nothing to re-install.
+      </p>
+
+      <h2>Add EcoTrek to your Home Screen</h2>
+      <ol class="steps">
+        <li><strong>Open Safari</strong> and go to this site (<em>not</em> Chrome or Firefox — only Safari can add a Home Screen app on iOS).</li>
+        <li><strong>Tap the Share button</strong> — the square with an arrow pointing up, in the toolbar.</li>
+        <li><strong>Scroll down and tap “Add to Home Screen”</strong>, then <strong>Add</strong>.</li>
+        <li><strong>Launch EcoTrek from the new icon.</strong> It opens full screen, keeps its own storage, and is where you record walks.</li>
+      </ol>
+
+      <div class="callout">
+        <strong>Allow location when Safari asks.</strong> EcoTrek only asks while you start a recording, and only
+        precise location makes a route accurate. Choose <em>Allow While Using the App</em>.
+      </div>
+
+      <h2>What works on iPhone</h2>
+      <table class="kv">
+        <thead><tr><th scope="col">Feature</th><th scope="col">On iPhone / iPad</th></tr></thead>
+        <tbody>
+          <tr><th scope="row">Trails, weather, map</th><td>Full support.</td></tr>
+          <tr><th scope="row">Recording walks &amp; rides</th><td>Works while EcoTrek is open on screen. iOS pauses web apps in the background, so keep it in front while recording — the Android app has the same limitation unless you keep the screen on.</td></tr>
+          <tr><th scope="row">Points, badges, streaks</th><td>Stored on your device and kept between visits.</td></tr>
+          <tr><th scope="row">Optional AI key</th><td>Works the same: paste your own key in <em>Trail assistant → AI settings</em>.</td></tr>
+          <tr><th scope="row">Google sign-in</th><td>Available in the browser version when it is configured for this address; “Continue as guest” always works.</td></tr>
+        </tbody>
+      </table>
+
+      <h2>Why not an App Store download?</h2>
+      <p>
+        An iOS build needs an Apple Developer account and App Review, which is a separate track from this
+        Android + web release. Until that store listing exists, we will not ship an unsigned IPA from this page:
+        a file like that cannot be installed on a normal iPhone, and pretending otherwise wastes your time.
+      </p>
+
+      <h2>Questions</h2>
+      <div class="faq-list">
+        <details open>
+          <summary>Do I lose my data by using the Home Screen version?</summary>
+          <p>No. Safari keeps the app’s storage per site, and the Home Screen app uses the same storage. Your
+            walks, points and settings stay on the device.</p>
+        </details>
+        <details>
+          <summary>How do I remove it?</summary>
+          <p>Long-press the icon → <em>Remove Bookmark</em> (or <em>Delete Bookmark</em>). Clearing Safari’s
+            website data for this site also removes anything EcoTrek stored.</p>
+        </details>
+        <details>
+          <summary>Can I use it offline?</summary>
+          <p>The app opens offline and your recorded activities are kept locally. Trail search and weather need a
+            connection because they come from live services.</p>
+        </details>
+        <details>
+          <summary>I have an Android phone — which page do I need?</summary>
+          <p>Use the <a class="inline" href="/install/android.html">Android install guide</a>: it covers the signed
+            APK and the Play Protect prompt.</p>
+        </details>
+      </div>
+
+      <p class="muted">
+        Questions we have not answered here? <a class="inline" href="mailto:ecotrek.support@gmail.com">ecotrek.support@gmail.com</a>.
+      </p>
+    </main>
+
+    <footer class="site-footer shell">
+      <a class="brand footer-brand" href="/"><img src="/EcoTrek/assets/logo-polished.png" alt="" width="34" height="34" /><strong>EcoTrek</strong></a>
+      <p>Built for the Congressional App Challenge · <a href="/privacy">Privacy</a> · <a href="/api-key.html">AI key</a> · <a href="mailto:ecotrek.support@gmail.com">Support</a></p>
+      <p>© <span id="current-year">2026</span> EcoTrek</p>
+    </footer>
+
+    <script src="/site-config.js"></script>
+    <script src="/site.js" defer></script>
+  </body>
+</html>
