@@ -123,7 +123,7 @@ exists, `install/ios.html` explains the Safari "Add to Home Screen" route. Paste
 a published store URL into `iosUrl` in `site-config.js` and the iPhone page
 switches to it automatically.
 
-Google sign-in and cross-device cloud progress are configured in the app and API, but they still require the owner's Google Cloud OAuth client IDs and a deployed API/Neon database. Follow `EcoTrek/docs/GOOGLE_OAUTH_SETUP.md` and `EcoTrek/docs/NEON_SETUP.md`; credentials are intentionally not committed.
+The shipped app has **no sign-in**: walks, points and settings are stored on the device under a local profile, and there is no account to create. (Google sign-in was removed — without configured OAuth client IDs the button could only fail.) Cross-device progress needs a deployed API/Neon database plus an OAuth provider; if that is ever set up, `EcoTrek/docs/GOOGLE_OAUTH_SETUP.md` and `EcoTrek/docs/NEON_SETUP.md` describe the pieces, and `EcoTrek/src/context/AuthContext.tsx` is where the provider would go back.
 
 #### Prerequisites
 - Node.js 20+

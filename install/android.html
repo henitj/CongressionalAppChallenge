@@ -30,53 +30,67 @@
 
     <main class="page shell" id="main">
       <p class="eyebrow"><span class="eyebrow-dot"></span> Android install guide</p>
-      <h1>Put EcoTrek on your<br /><em>Android phone.</em></h1>
+      <h1>EcoTrek for<br /><em>Android.</em></h1>
       <p class="lede">
-        EcoTrek for Android is a small, signed app package (an APK) that you install straight from this page.
-        This guide walks through the two prompts Android shows for any app that does not come from the Play
-        Store, and explains what each one means.
+        Download the file below and install it. Android will ask two things along the way — this page explains
+        both, in the order they appear.
       </p>
 
       <div class="actions">
         <a class="button button-primary" id="download-button" href="/downloads/ecotrek.apk" download="EcoTrek.apk">
           <span class="button-icon" aria-hidden="true">↓</span>
-          <span class="button-label"><strong>Download EcoTrek</strong><small id="download-button-meta">Android APK</small></span>
+          <span class="button-label"><strong>Download EcoTrek</strong><small id="download-button-meta">Android app package</small></span>
         </a>
         <a class="button button-secondary" id="web-app-button" href="/?web=1">
           <span class="button-label"><strong>Use it in the browser</strong><small>Nothing to install</small></span>
         </a>
       </div>
       <p class="muted" id="download-note" role="status">
-        Tip: download the file on the phone you want it on. The update replaces older EcoTrek versions and keeps your data.
+        Download it on the phone you want it on. Newer versions install straight over the old one.
       </p>
 
+      <div class="card">
+        <h3>What you are installing</h3>
+        <p>
+          EcoTrek records walks, hikes and bike rides: GPS route and distance, the trails near you, the weather
+          you would be walking in, and the points and trees you earn along the way.
+        </p>
+        <p>
+          Your walks, points and settings are stored on this phone. There is no account to create and nothing is
+          uploaded to us. The app has no ads and no trackers; it reaches the internet only for trail search,
+          weather and — if you add your own key — the assistant's optional AI answers. The
+          <a class="inline" href="/privacy">privacy policy</a> lists every request it makes, in the same plain
+          language as this page.
+        </p>
+      </div>
+
       <table class="kv" aria-label="Package details">
-        <caption class="muted" style="text-align: left; padding-bottom: 6px;">What you are downloading</caption>
+        <caption class="muted" style="text-align: left; padding-bottom: 6px;">Package details</caption>
         <tbody>
           <tr><th scope="row">Version</th><td><span data-config="apkVersion">1.2.0</span> (build <span data-config="apkVersionCode">3</span>)</td></tr>
           <tr><th scope="row">File size</th><td><span data-config="apkBytes">—</span></td></tr>
-          <tr><th scope="row">Runs on</th><td>Android 7.0 and newer (<span data-config="minAndroid">API 24</span>)</td></tr>
+          <tr><th scope="row">Runs on</th><td><span data-config="minAndroid">Android 7.0 and newer</span></td></tr>
           <tr><th scope="row">Signatures</th><td><span data-config="apkSigned">APK Signature Scheme v1 + v2 + v3</span></td></tr>
           <tr><th scope="row">SHA-256</th><td><code class="mono" data-config="apkSha256">see downloads/README.md</code></td></tr>
           <tr><th scope="row">Signing identity</th><td><code class="mono" data-config="signingCertSha256">—</code></td></tr>
         </tbody>
       </table>
 
-      <h2>Install it in four taps</h2>
+      <h2>Installing it</h2>
       <ol class="steps">
-        <li><strong>Tap “Download EcoTrek”.</strong> Chrome or your browser saves <code>EcoTrek.apk</code> to Downloads. Nothing installs yet.</li>
+        <li><strong>Tap “Download EcoTrek”.</strong> Your browser saves <code>EcoTrek.apk</code> to Downloads. Nothing installs yet.</li>
         <li><strong>Open the download.</strong> Tap the download notification, or open <em>Files → Downloads → EcoTrek.apk</em>.</li>
-        <li><strong>Allow this one install.</strong> Android may say <em>“For your security, your phone is not allowed to install unknown apps from this source.”</em> Tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong>, then go back — this permission is per-app and you can switch it off again afterwards.</li>
-        <li><strong>Tap Install, then Open.</strong> EcoTrek appears in your app drawer like any other app. Future versions install right over it.</li>
+        <li><strong>Allow this one install.</strong> Android may say your phone is not allowed to install unknown apps from this source. Tap <strong>Settings</strong>, turn on <strong>Allow from this source</strong>, then go back. It is per-app, and you can switch it off again afterwards.</li>
+        <li><strong>Tap Install, then Open.</strong> EcoTrek appears in your app drawer like any other app.</li>
       </ol>
 
-      <h2 id="play-protect">If Play Protect says it doesn’t recognise the app</h2>
+      <h2 id="play-protect">About the Play Protect message</h2>
       <div class="card card-warn">
         <p>
-          A download from a website can show a panel that reads <strong>“Unsafe app blocked”</strong>, or
-          <strong>“Play Protect doesn’t recognise this app”</strong>, with buttons <strong>More details</strong> and
-          <strong>Don’t install</strong>. Here is what that panel is actually telling you, and how to continue if you
-          want to.
+          Android may show a panel reading <strong>“Unsafe app blocked”</strong> or <strong>“Play Protect doesn’t
+          recognise this app”</strong>, with buttons like <strong>More</strong> and <strong>Don’t install</strong>.
+          It appears for any app installed outside the Play Store, because Play Protect only knows the apps it has
+          seen there. Nothing was found in the file — it just has not met this one before.
         </p>
         <ol class="steps">
           <li>Tap <strong>More</strong> — shown as <strong>More details</strong> on some phones, or as a small <strong>⋮</strong> menu.</li>
@@ -90,23 +104,14 @@
         </p>
       </div>
       <p>
-        That panel appears for <strong>every app installed from outside the Play Store</strong>, including apps
-        from F-Droid, Amazon, a company intranet, or a file a colleague sent you. Play Protect compares an app
-        against the ones it already knows from Google Play; an app distributed directly by its developers is
-        unknown to it by definition. It is a statement about where the file came from, not a report that
-        something was found in it.
-      </p>
-      <p>
-        You do not have to take our word for the file itself: the table above lists the SHA-256 of the package
-        and the identity of the certificate that signed it, and the next section shows how to check them
-        yourself in about ten seconds.
+        The same panel appears for F-Droid, Amazon, a company intranet, or a file a colleague sent you. If you
+        would rather not take it on faith, the next section checks the file itself in about ten seconds.
       </p>
 
       <h2>Check the file you downloaded</h2>
       <p>
-        Every Android app is signed by its developer before it can be installed, and the signature is what makes
-        tampering detectable. EcoTrek is signed with the same certificate for every release, using all three
-        current APK signature schemes:
+        Every Android app is signed before it can be installed. EcoTrek is signed with the same certificate for
+        every release, using all three current signature schemes:
       </p>
       <ul>
         <li><strong>v1 (JAR signing)</strong> — a per-file signature, understood by every Android version.</li>
@@ -160,9 +165,9 @@
             local data, including any AI key you pasted in.</p>
         </details>
         <details>
-          <summary>Why is the file only about a megabyte?</summary>
-          <p>The app is a native shell that hosts the same web app you can open in a browser. It ships the whole
-            app offline, which keeps the download small and lets one codebase serve Android, iPhone and desktop.</p>
+          <summary>Why is the file small?</summary>
+          <p>It is a small native shell around the same app you can open in a browser, shipped offline. One
+            codebase serves Android, iPhone and desktop, and the download stays light.</p>
         </details>
         <details>
           <summary>Is there a Play Store version?</summary>
@@ -173,7 +178,7 @@
 
       <h2>Prefer not to install anything?</h2>
       <p>
-        The full app also runs in your browser with the same features:
+        The full app also runs in your browser:
         <a class="inline" href="/?web=1">open EcoTrek in the browser</a>. You can add it to your home screen later
         without downloading a file.
       </p>

@@ -21,7 +21,9 @@
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "EcoTrek uses your location while you are recording a walk or ride, so it can measure how far you go and show weather for where you are.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "EcoTrek keeps measuring your walk or ride if you lock your phone or switch apps. It only does this while a recording is running. When you tap Finish, it stops.",
-        "UIBackgroundModes": ["location"],
+        "UIBackgroundModes": [
+          "location"
+        ],
         "ITSAppUsesNonExemptEncryption": false
       },
       "config": {
@@ -73,7 +75,6 @@
         }
       ],
       "expo-task-manager",
-      "expo-web-browser",
       [
         "expo-image-picker",
         {

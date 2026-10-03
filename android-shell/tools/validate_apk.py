@@ -318,7 +318,9 @@ def verify_web_assets(apk_path: str, report: Report) -> None:
         urls = set()
         for name in bundles:
             source = archive.read(name).decode("utf-8", "replace")
-            urls.update(re.findall(r'"(/assets/[A-Za-z0-9@._/\[\]#+-]+)"', source))
+            # Both forms the bundler emits: absolute "/assets/..." and the
+            # relative "./assets/..." used for the app's own artwork.
+            urls.update(re.findall(r'"[.]?(/assets/[A-Za-z0-9@._/\[\]#+-]+)"', source))
         # The shell maps a request for URL path P to the APK asset P[1:], and
         # AssetManager paths are relative to the APK's assets/ directory — so
         # URL /assets/x.png must exist as the zip entry assets/assets/x.png.

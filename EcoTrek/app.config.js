@@ -13,9 +13,10 @@
  *        → Enable "Maps SDK for Android" at console.cloud.google.com,
  *          create an API key, and put it in .env as GOOGLE_MAPS_ANDROID_KEY.
  *
- *   2. The iOS URL scheme for Google sign-in, which is the iOS OAuth client
- *      id with its parts reversed. Deriving it from the client id means there
- *      is only one value to keep correct instead of two that must match.
+ *   2. The iOS URL scheme for the Google sign-in redirect, if an iOS client id
+ *      is present. There is no sign-in in the current build, so this is a
+ *      no-op until one is configured; it is kept because the scheme has to be
+ *      derived from the client id rather than duplicated by hand.
  *
  * Everything else still lives in app.json, which stays readable and diffable.
  */

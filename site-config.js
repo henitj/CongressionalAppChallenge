@@ -28,8 +28,8 @@ window.ECOTREK_CONFIG = {
   // --- release facts (printed on the pages) --------------------------------
   apkVersion: '1.2.0',
   apkVersionCode: 3,
-  apkBytes: 1277979,
-  apkSha256: '88916801c64e4dd05daf181b0923640b8d2fdd0515fac10e76cb3308dfb0e2df',
+  apkBytes: 1800427,
+  apkSha256: 'b0f309a6cc02151062044704c7648ddcd8e03f4842bac9dc734d553ca6ddfcf7',
   signingCertSubject: 'CN=EcoTrek, O=EcoTrek Team, C=US',
   signingCertSha256: '74005b52c140cd4b45a1adb0e95ce31ea30e82b4e6db20197dc0c889901726d3',
   minAndroid: 'Android 7.0 (API 24)',

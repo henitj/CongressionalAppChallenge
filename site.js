@@ -62,8 +62,8 @@
 
     if (downloadNote && !isAndroid) {
       downloadNote.textContent = isAppleMobile
-        ? 'This page is for Android phones. On iPhone or iPad, use the Home Screen guide instead.'
-        : 'Open this page on the Android phone you want to install it on — the download link works there, too.';
+        ? 'This page is for Android phones. On an iPhone or iPad, use the Home Screen guide instead.'
+        : 'Open this page on the Android phone you want it on.';
     }
     if (downloadNote && isAndroid) {
       downloadNote.textContent = 'When the download finishes, open EcoTrek.apk from your notifications or Downloads, then follow the prompts below.';

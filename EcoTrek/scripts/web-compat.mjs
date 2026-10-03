@@ -189,85 +189,6 @@ const BOOTSTRAP_SCRIPT = `<script id="${BOOTSTRAP_MARKER}">
 </script>`;
 
 /*
- * The site launcher: a small, dismissible pill in the corner of the app page
- * that opens the three things the app itself cannot show — the Android install
- * page, the iPhone/iPad install page and the AI-key walkthrough.
- *
- * It is switched off inside the Android APK, where the app is served from the
- * virtual origin https://appassets.ecotrek.app; there, "install the app" would
- * be nonsense. On the public website it is the only bit of chrome in front of
- * the app.
- */
-const LAUNCHER_STYLE = `<style id="ecotrek-launcher-style">
-  #ecotrek-launcher {
-    position: fixed;
-    left: 14px;
-    bottom: 14px;
-    z-index: 2147483000;
-    display: flex;
-    flex-direction: column;
-    align-items: flex-start;
-    gap: 8px;
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  }
-  #ecotrek-launcher-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 8px;
-    min-height: 40px;
-    padding: 0 14px;
-
-    border: 1px solid rgba(16, 35, 25, .12);
-    border-radius: 999px;
-    color: #103024;
-    background: rgba(255, 253, 248, .93);
-    box-shadow: 0 6px 20px rgba(13, 72, 50, .16);
-    font: 600 13px/1 inherit;
-    cursor: pointer;
-    backdrop-filter: blur(6px);
-  }
-  #ecotrek-launcher-toggle:focus-visible,
-  #ecotrek-launcher-panel a:focus-visible,
-  #ecotrek-launcher-close:focus-visible { outline: 3px solid rgba(47, 178, 119, .5); outline-offset: 2px; }
-  #ecotrek-launcher-toggle svg { width: 16px; height: 16px; }
-  #ecotrek-launcher-panel {
-    width: min(272px, calc(100vw - 28px));
-    padding: 14px;
-    border: 1px solid rgba(16, 35, 25, .12);
-    border-radius: 16px;
-    background: #fffdf8;
-    box-shadow: 0 18px 40px rgba(13, 72, 50, .2);
-  }
-  #ecotrek-launcher-panel[hidden] { display: none; }
-  #ecotrek-launcher-panel p { margin: 0 0 10px; color: #52655b; font-size: 12px; line-height: 1.5; }
-  #ecotrek-launcher-panel a {
-    display: block;
-    padding: 10px 12px;
-    margin-top: 7px;
-    border-radius: 11px;
-    color: #0d4832;
-    background: rgba(23, 104, 72, .08);
-    font-size: 13px;
-    font-weight: 700;
-    text-decoration: none;
-  }
-  #ecotrek-launcher-panel a:hover { background: rgba(23, 104, 72, .15); }
-  #ecotrek-launcher-panel a small { display: block; margin-top: 3px; color: #63756a; font-size: 11px; font-weight: 500; }
-  #ecotrek-launcher-close {
-    width: 100%;
-    margin-top: 10px;
-    padding: 7px;
-    border: 0;
-    border-radius: 9px;
-    color: #63756a;
-    background: transparent;
-    font: inherit;
-    font-size: 12px;
-    cursor: pointer;
-  }
-</style>`;
-
-/*
  * Android visitors to the public app pages get moved to the install guide:
  * they came for an app, and a browser tab is not the same thing. It runs in
  * <head>, before the first paint, and it steps aside for
@@ -302,18 +223,100 @@ const APP_REDIRECT_SCRIPT = `<script id="ecotrek-redirect">
 })();
 </script>`;
 
+/*
+ * The site bar: a slim strip at the bottom of the public app pages with the
+ * three things the app itself cannot show — the Android install guide, the
+ * iPhone/iPad guide and the AI-key walkthrough — plus a dismiss button.
+ *
+ * It is a *bar*, not a floating pill, on purpose. The app owns the whole
+ * viewport, and anything floating over it covers a tab, a button or (on the
+ * sign-in screen) a line of text. This reserves its own height instead: the
+ * app is laid out above it, so nothing overlaps anything.
+ *
+ * It is switched off inside the Android APK, where the app is served from the
+ * virtual origin https://appassets.ecotrek.app.
+ */
+const LAUNCHER_STYLE = `<style id="ecotrek-launcher-style">
+  html.ecotrek-launcher-open { padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; }
+  html.ecotrek-launcher-open body { box-sizing: border-box; }
+  #ecotrek-launcher {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2147483000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 50px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(16, 35, 25, .12);
+    background: rgba(255, 253, 248, .97);
+    box-shadow: 0 -6px 18px rgba(13, 72, 50, .08);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-sizing: border-box;
+  }
+  #ecotrek-launcher[hidden] { display: none; }
+  #ecotrek-launcher .ecotrek-launcher-label {
+    flex: none;
+    color: #52655b;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  #ecotrek-launcher .ecotrek-launcher-links {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #ecotrek-launcher .ecotrek-launcher-links::-webkit-scrollbar { display: none; }
+  #ecotrek-launcher a {
+    flex: none;
+    padding: 7px 12px;
+    border-radius: 999px;
+    color: #0d4832;
+    background: rgba(23, 104, 72, .08);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  #ecotrek-launcher a:hover { background: rgba(23, 104, 72, .15); }
+  #ecotrek-launcher a:focus-visible,
+  #ecotrek-launcher-close:focus-visible { outline: 3px solid rgba(13, 72, 50, .55); outline-offset: 2px; }
+  #ecotrek-launcher-close {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    color: #52655b;
+    background: rgba(16, 35, 25, .06);
+    font: inherit;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  #ecotrek-launcher-close:hover { background: rgba(16, 35, 25, .12); }
+  @media (max-width: 560px) {
+    #ecotrek-launcher { gap: 8px; padding-left: 8px; }
+    #ecotrek-launcher .ecotrek-launcher-label { display: none; }
+    #ecotrek-launcher a { padding: 7px 10px; font-size: 12.5px; }
+  }
+</style>`;
+
 const LAUNCHER_MARKUP = `<div id="ecotrek-launcher" hidden>
-  <div id="ecotrek-launcher-panel" role="dialog" aria-label="EcoTrek install and setup">
-    <p>Keep EcoTrek on your phone, or set up an optional AI key.</p>
-    <a href="/install/android.html">Install for Android<small>Signed APK, one tap to download</small></a>
-    <a href="/install/ios.html">iPhone &amp; iPad<small>Add to your Home Screen</small></a>
-    <a href="/api-key.html">AI key help<small>Optional — bring your own key</small></a>
-    <button type="button" id="ecotrek-launcher-close">Close</button>
+  <span class="ecotrek-launcher-label">EcoTrek</span>
+  <div class="ecotrek-launcher-links">
+    <a href="/install/android.html">Android app</a>
+    <a href="/install/ios.html">iPhone &amp; iPad</a>
+    <a href="/api-key.html">AI key</a>
   </div>
-  <button type="button" id="ecotrek-launcher-toggle" aria-expanded="false" aria-controls="ecotrek-launcher-panel">
-    <svg viewBox="0 0 24 24" aria-hidden="true" focusable="false"><path d="M12 3l7 10h-4.4L19 19H5l4.4-6H5z" fill="#176848"></path></svg>
-    Get the app
-  </button>
+  <button type="button" id="ecotrek-launcher-close" aria-label="Hide this bar" title="Hide this bar">&#215;</button>
 </div>
 <script id="ecotrek-launcher-script">
 (function () {
@@ -322,32 +325,25 @@ const LAUNCHER_MARKUP = `<div id="ecotrek-launcher" hidden>
   if (location.hostname === 'appassets.ecotrek.app') return;
   if (location.protocol === 'file:') return;
 
-  var launcher = document.getElementById('ecotrek-launcher');
-  if (!launcher) return;
+  var bar = document.getElementById('ecotrek-launcher');
+  if (!bar) return;
   var storageKey = 'ecotrek.launcher.dismissed';
   try {
     if (window.localStorage && localStorage.getItem(storageKey) === '1') return;
   } catch (error) {
     /* private mode: show it anyway */
   }
-  var toggle = document.getElementById('ecotrek-launcher-toggle');
-  var panel = document.getElementById('ecotrek-launcher-panel');
+
+  // Reserving the space is what keeps the bar off the app's own controls: the
+  // app is laid out above it instead of underneath it.
+  document.documentElement.className += ' ecotrek-launcher-open';
+  bar.hidden = false;
+
   var close = document.getElementById('ecotrek-launcher-close');
-  launcher.hidden = false;
-  panel.hidden = true;
-
-  function setOpen(open) {
-    panel.hidden = !open;
-    toggle.setAttribute('aria-expanded', open ? 'true' : 'false');
-    if (open && close) close.focus();
-  }
-
-  toggle.onclick = function () { setOpen(panel.hidden); };
   if (close) {
     close.onclick = function () {
-      panel.hidden = true;
-      toggle.setAttribute('aria-expanded', 'false');
-      launcher.hidden = true;
+      bar.hidden = true;
+      document.documentElement.className = document.documentElement.className.replace(/\s*ecotrek-launcher-open/, '');
       try {
         localStorage.setItem(storageKey, '1');
       } catch (error) {
@@ -355,9 +351,6 @@ const LAUNCHER_MARKUP = `<div id="ecotrek-launcher" hidden>
       }
     };
   }
-  document.addEventListener('keydown', function (event) {
-    if (event.key === 'Escape' && !panel.hidden) setOpen(false);
-  });
 })();
 </script>`;
 
@@ -477,7 +470,7 @@ export async function patchIndexHtml(distDirectory, { bundleName, polyfillsName,
   html = html.replace(/^\s*<script[^>]*id="ecotrek-redirect"[\s\S]*?<\/script>\n?/m, '');
   html = html.replace(/^\s*<style id="ecotrek-(bootstrap|launcher)-style"[\s\S]*?<\/style>\n?/gm, '');
   html = html.replace(/^\s*<div id="ecotrek-splash"[\s\S]*?\n<\/div>\n?/m, '');
-  html = html.replace(/^\s*<div id="ecotrek-launcher"[\s\S]*?\n<\/div>\n?/m, '');
+  html = html.replace(/^\s*<div id="ecotrek-launcher"[\s\S]*?\n<\/div>\n?<script id="ecotrek-launcher-script"[\s\S]*?<\/script>\n?/m, '');
 
   // Any previous bundle tag is replaced, whatever it is called.
   // Every previous bundle/polyfill tag goes, not just the first one: re-running

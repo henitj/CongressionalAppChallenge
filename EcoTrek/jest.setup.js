@@ -43,8 +43,6 @@ jest.mock('expo-task-manager', () => ({
   isTaskDefined: jest.fn(() => false),
 }));
 
-jest.mock('expo-web-browser', () => ({ maybeCompleteAuthSession: jest.fn() }));
-
 // Scheduling is a no-op under test; the real module warns about Expo Go.
 jest.mock('expo-notifications', () => ({
   setNotificationHandler: jest.fn(),
@@ -56,10 +54,6 @@ jest.mock('expo-notifications', () => ({
   cancelAllScheduledNotificationsAsync: jest.fn(async () => {}),
   AndroidImportance: { DEFAULT: 3, HIGH: 4 },
   SchedulableTriggerInputTypes: { DAILY: 'daily', WEEKLY: 'weekly' },
-}));
-
-jest.mock('expo-auth-session/providers/google', () => ({
-  useAuthRequest: () => [null, null, jest.fn()],
 }));
 
 // view-shot is a native module (and ships ESM source Jest won't transform).

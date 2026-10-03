@@ -92,7 +92,28 @@ const assetUrls = new Set(
     value.slice(1, -1).replace(/^\.?\//, '')
   )
 );
-const missing = [...assetUrls].filter((url) => !fs.existsSync(path.join(dist, url)));
+// Metro copies hashed assets into dist/assets/**, but the app's own artwork
+// (icon, splash, favicon) is referenced by bare name from the app config and is
+// never emitted — those three used to 404 on the site and inside the APK. Copy
+// them across when the bundle asks for them.
+const appAssetDirectory = path.join(process.cwd(), 'assets');
+const repaired = [];
+const missing = [];
+for (const url of assetUrls) {
+  const target = path.join(dist, url);
+  if (fs.existsSync(target)) continue;
+  const candidate = path.join(appAssetDirectory, path.basename(url));
+  if (fs.existsSync(candidate)) {
+    fs.mkdirSync(path.dirname(target), { recursive: true });
+    fs.copyFileSync(candidate, target);
+    repaired.push(url);
+  } else {
+    missing.push(url);
+  }
+}
+if (repaired.length) {
+  console.log(`assets: copied ${repaired.length} app asset(s) the bundler does not emit: ${repaired.join(', ')}`);
+}
 if (missing.length) {
   console.warn(
     `\nWarning: ${missing.length} asset file(s) the bundle requests are missing from dist/.\n` +

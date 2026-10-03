@@ -1,27 +1,24 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import AsyncStorage from '@react-native-async-storage/async-storage';
-import * as WebBrowser from 'expo-web-browser';
-import * as Google from 'expo-auth-session/providers/google';
-import {
-  GOOGLE_AUTH,
-  GOOGLE_PLACEHOLDER_CLIENT_ID,
-  isGoogleConfigured,
-  looksReal,
-} from '../constants/authConfig';
-import { api, isBackendConfigured, ROUTES, setAuthTokenProvider } from '../services/api';
-import { copyUserData } from '../services/storage';
+import { setAuthTokenProvider } from '../services/api';
 
-WebBrowser.maybeCompleteAuthSession();
-
+/**
+ * There is exactly one kind of account in this build: a local profile.
+ *
+ * Google sign-in used to sit behind a button here, but the OAuth client IDs it
+ * needs belong to a Google Cloud project that is not configured — so all it
+ * could ever do was fail with a message about missing configuration. The button
+ * is gone rather than left broken; `provider` stays in the stored shape so
+ * profiles written by an earlier version still load.
+ */
 export type User = {
   id: string;
   name: string;
   email: string;
   picture?: string;
-  provider: 'google' | 'guest';
-  /** Google access token, used to read the profile. */
+  provider: 'guest' | 'google';
+  /** Kept for profiles stored by earlier versions that signed in with Google. */
   accessToken?: string;
-  /** Google ID token. Preferred for authenticating with our own API. */
   idToken?: string;
 };
 
@@ -29,17 +26,6 @@ type AuthState = {
   user: User | null;
   loading: boolean;
   error: string | null;
-  googleConfigured: boolean;
-  /** Real Google OAuth (native). May open an external browser flow. */
-  signInWithGoogle: () => Promise<void>;
-  /**
-   * Sign in with a local "Google" account. Used on the web demo where the
-   * OAuth redirect cannot come back to this origin. Same result as the real
-   * flow: existing account → signed in; new name+email → account created.
-   */
-  signInWithLocalGoogle: (name: string, email: string) => Promise<void>;
-  /** Google accounts signed in on this device before (for the account sheet). */
-  localGoogleAccounts: { name: string; email: string }[];
   signInAsGuest: (name?: string) => Promise<void>;
   updateUser: (updates: Partial<Pick<User, 'name' | 'picture'>>) => Promise<void>;
   signOut: () => Promise<void>;
@@ -47,14 +33,6 @@ type AuthState = {
 
 const AuthContext = createContext<AuthState | null>(null);
 const STORAGE_KEY = '@ecotrek/auth_user';
-/** Google accounts signed in on this device, for the web account sheet. */
-const LOCAL_GOOGLE_KEY = '@ecotrek/local_google_accounts';
-
-function stableId(email: string): string {
-  let h = 5381;
-  for (let i = 0; i < email.length; i++) h = (h * 33 + email.charCodeAt(i)) >>> 0;
-  return `google-${h.toString(36)}`;
-}
 
 /**
  * One stable guest identity per device, so signing out and back in as a guest
@@ -88,33 +66,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
-  const [localGoogleAccounts, setLocalGoogleAccounts] = useState<{ name: string; email: string }[]>([]);
-  const guestToMigrate = React.useRef<string | null>(null);
-
-  const googleConfigured = isGoogleConfigured();
-
-  // expo-auth-session Google provider — wires up PKCE + redirect URIs
-  // automatically for iOS, Android, web, and Expo Go.
-  // expo-auth-session throws *during render* if the client ID for the current
-  // platform is undefined, and hooks cannot be skipped — so with an empty .env
-  // the whole app died behind the error boundary before anyone could even hit
-  // "Continue as guest". Every slot is therefore always filled: real IDs when
-  // configured, an inert placeholder otherwise. Nothing is ever sent to Google
-  // with the placeholder because signInWithGoogle bails on !googleConfigured.
-  const googleConfig = useMemo(() => {
-    const pick = (id: string, fallback: string) =>
-      looksReal(id) ? id : fallback;
-    const web = pick(GOOGLE_AUTH.webClientId, GOOGLE_PLACEHOLDER_CLIENT_ID);
-    return {
-      clientId: pick(GOOGLE_AUTH.expoClientId, web),
-      webClientId: web,
-      iosClientId: pick(GOOGLE_AUTH.iosClientId, web),
-      androidClientId: pick(GOOGLE_AUTH.androidClientId, web),
-      scopes: ['openid', 'profile', 'email'],
-    };
-  }, []);
-
-  const [, response, promptAsync] = Google.useAuthRequest(googleConfig);
 
   // Load any persisted session on cold start
   useEffect(() => {
@@ -129,131 +80,6 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     })();
   }, []);
-
-  useEffect(() => {
-    (async () => {
-      try {
-        const raw = await AsyncStorage.getItem(LOCAL_GOOGLE_KEY);
-        if (raw) setLocalGoogleAccounts(JSON.parse(raw));
-      } catch {
-        /* ignore */
-      }
-    })();
-  }, []);
-
-  // React to the OAuth flow result
-  useEffect(() => {
-    if (!response) return;
-    if (response.type === 'success') {
-      const accessToken =
-        (response as any).authentication?.accessToken ??
-        (response as any).params?.access_token;
-      const idToken =
-        (response as any).authentication?.idToken ?? (response as any).params?.id_token;
-
-      // Some Google responses contain only an ID token. That is enough for
-      // our API, but it is not enough to call Google's userinfo endpoint, so
-      // read the standard profile claims from the signed token instead.
-      if (accessToken || idToken) {
-        const profilePromise = accessToken
-          ? fetchGoogleProfile(accessToken)
-          : Promise.resolve().then(() => profileFromIdToken(idToken));
-        profilePromise
-          .then(async (profile) => {
-            const fromGuest = guestToMigrate.current;
-            guestToMigrate.current = null;
-            if (fromGuest) {
-              await copyUserData(fromGuest, profile.id);
-            }
-            const u: User = {
-              id: profile.id,
-              name: profile.name ?? profile.email,
-              email: profile.email,
-              picture: profile.picture,
-              provider: 'google',
-              accessToken,
-              idToken,
-            };
-            // Install the token immediately as well as through the effect
-            // below. The first cloud sync must not race the React render that
-            // publishes the new user.
-            setAuthTokenProvider(() => idToken ?? accessToken ?? null);
-            setUser(u);
-            await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-            setLocalGoogleAccounts((prev) => {
-              const next = [
-                { name: u.name, email: u.email },
-                ...prev.filter((a) => a.email !== u.email),
-              ].slice(0, 6);
-              AsyncStorage.setItem(LOCAL_GOOGLE_KEY, JSON.stringify(next));
-              return next;
-            });
-            // This upserts the account before the feature providers begin
-            // loading. Every later request is still independently authorized.
-            if (isBackendConfigured()) await api.post(ROUTES.syncUser);
-          })
-          .catch((e) => setError(e.message ?? 'Sign-in failed'));
-      } else {
-        setError('Google did not return a usable sign-in token.');
-      }
-    } else if (response.type === 'error') {
-      setError(response.error?.message ?? 'Sign-in cancelled');
-    }
-  }, [response]);
-
-  const signInWithGoogle = useCallback(async () => {
-    setError(null);
-    if (user?.provider === 'guest') guestToMigrate.current = user.id;
-    if (!googleConfigured) {
-      setError(
-        'Google sign-in is not set up yet. Copy EcoTrek/.env.example to .env and paste your Google client IDs. Guest still works.'
-      );
-      return;
-    }
-    try {
-      await promptAsync({
-        // useProxy: true is the default for Expo Go on native, and
-        // expo-auth-session picks the correct redirect URI for the web.
-      });
-    } catch (e: any) {
-      setError(e?.message ?? 'Could not start Google sign-in');
-    }
-  }, [promptAsync, googleConfigured, user]);
-
-  const signInWithLocalGoogle = useCallback(
-    async (name: string, email: string) => {
-      const cleanName = name.trim();
-      const cleanEmail = email.trim().toLowerCase();
-      if (!cleanName || !cleanEmail) {
-        setError('Enter a name and an email.');
-        return;
-      }
-      const id = stableId(cleanEmail);
-      const fromGuest = user?.provider === 'guest' ? user.id : null;
-      if (fromGuest) {
-        try {
-          await copyUserData(fromGuest, id);
-        } catch {
-          /* keep going — the account still works */
-        }
-      }
-      const u: User = {
-        id,
-        name: cleanName,
-        email: cleanEmail,
-        provider: 'google',
-      };
-      setUser(u);
-      setError(null);
-      await AsyncStorage.setItem(STORAGE_KEY, JSON.stringify(u));
-      setLocalGoogleAccounts((prev) => {
-        const next = [{ name: cleanName, email: cleanEmail }, ...prev.filter((a) => a.email !== cleanEmail)].slice(0, 6);
-        AsyncStorage.setItem(LOCAL_GOOGLE_KEY, JSON.stringify(next));
-        return next;
-      });
-    },
-    [user]
-  );
 
   const signInAsGuest = useCallback(async (name = 'Guest Trekker') => {
     const id = await getGuestId();
@@ -284,12 +110,9 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Hands the API client the current token.
-   *
-   * Without this every authenticated request went out with no Authorization
-   * header, so the backend rejected all of them. The ID token is preferred
-   * because the server can verify its signature; the access token is a
-   * fallback the server validates against Google's tokeninfo endpoint.
+   * Hands the API client the current token. Local profiles have none, so this
+   * publishes `null` — the client then sends no Authorization header, which is
+   * exactly right for a deployment that is not configured.
    */
   useEffect(() => {
     setAuthTokenProvider(() => user?.idToken ?? user?.accessToken ?? null);
@@ -300,26 +123,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       user,
       loading,
       error,
-      googleConfigured,
-      signInWithGoogle,
-      signInWithLocalGoogle,
-      localGoogleAccounts,
       signInAsGuest,
       updateUser,
       signOut,
     }),
-    [
-      user,
-      loading,
-      error,
-      googleConfigured,
-      signInWithGoogle,
-      signInWithLocalGoogle,
-      localGoogleAccounts,
-      signInAsGuest,
-      updateUser,
-      signOut,
-    ]
+    [user, loading, error, signInAsGuest, updateUser, signOut]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
@@ -329,43 +137,4 @@ export function useAuth() {
   const ctx = useContext(AuthContext);
   if (!ctx) throw new Error('useAuth must be used inside <AuthProvider />');
   return ctx;
-}
-
-function profileFromIdToken(idToken: string): {
-  id: string;
-  name?: string;
-  email: string;
-  picture?: string;
-} {
-  try {
-    const payload = idToken.split('.')[1];
-    if (!payload) throw new Error('Google ID token is malformed.');
-    const normalized = payload.replace(/-/g, '+').replace(/_/g, '/');
-    const padded = normalized + '='.repeat((4 - (normalized.length % 4)) % 4);
-    const decode = (globalThis as any).atob;
-    if (typeof decode !== 'function') throw new Error('This device cannot read the Google sign-in response.');
-    const claims = JSON.parse(decode(padded));
-    if (!claims.sub || !claims.email) throw new Error('Google ID token has no account profile.');
-    return {
-      id: String(claims.sub),
-      name: claims.name ? String(claims.name) : undefined,
-      email: String(claims.email),
-      picture: claims.picture ? String(claims.picture) : undefined,
-    };
-  } catch (error: any) {
-    throw new Error(error?.message ?? 'Google ID token is invalid.');
-  }
-}
-
-async function fetchGoogleProfile(accessToken: string): Promise<{
-  id: string;
-  name?: string;
-  email: string;
-  picture?: string;
-}> {
-  const res = await fetch('https://www.googleapis.com/userinfo/v2/me', {
-    headers: { Authorization: `Bearer ${accessToken}` },
-  });
-  if (!res.ok) throw new Error(`Google profile fetch failed (${res.status})`);
-  return res.json();
 }
