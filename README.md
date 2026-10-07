@@ -109,9 +109,10 @@ The website download route can be smoke-tested locally with
 APK bytes, release size and SHA-256.
 
 The APK validator re-derives the v2/v3 content digests from the file on disk,
-verifies the signatures and the v1 JAR chain, checks that v1/v2/v3 agree, that
-every asset the web bundle asks for is bundled, and that uncompressed entries
-are aligned.
+verifies the signatures and the v1 JAR chain, checks that v1/v2/v3 agree and
+that the two v3 SDK ranges match, confirms every web-bundle asset is bundled,
+and checks that uncompressed entries are aligned. The Android build also runs
+a v3 signer-format regression test before publishing the APK.
 
 > **Play Protect.** Sideloaded apps are signed by a key Google has never
 > attested, so Android may show *“Play Protect doesn’t recognise this app”* or

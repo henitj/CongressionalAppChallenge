@@ -58,6 +58,9 @@ test('the website serves a fresh, complete APK from /download', async (t) => {
 
   assert.equal(downloadRewrite?.destination, '/downloads/ecotrek.apk');
   assert.match(siteConfig, /apkUrl:\s*'\/download'/);
+  assert.match(siteConfig, new RegExp(`apkBytes:\\s*${releaseInfo.bytes}\\b`));
+  assert.match(siteConfig, new RegExp(`apkSha256:\\s*'${releaseInfo.sha256}'`));
+  assert.match(installPage, /package appears to be invalid/);
   assert.match(installPage, /id="download-button" href="\/download"/);
   assert.match(installPage, /href="\/\?web=1"/);
   assert.match(installPage, /Install from the website instead/);

@@ -60,9 +60,11 @@ Useful switches:
 | `OUT=...` | write the APK somewhere other than `downloads/ecotrek.apk` |
 | `JAVA=...`, `PYTHON=...`, `APKTOOL=...` | tool paths (a pip-installed JDK via `jdk4py` is detected automatically) |
 
-Every build ends by running `tools/validate_apk.py` (which re-derives the
-signatures and content digests from the finished file) and
-`tools/apk_release_info.py` (which writes `../downloads/ecotrek-apk.json` and
+Every build runs the v3 signer-format regression tests, then
+`tools/validate_apk.py` (which re-derives the signatures and content digests,
+checks that the v3 SDK range outside the signed data matches its signed copy,
+and validates the finished file) and `tools/apk_release_info.py` (which writes
+`../downloads/ecotrek-apk.json` and
 `../downloads/ecotrek.apk.sha256`). Copy the printed `size`, `sha-256` and
 certificate fingerprint into `../site-config.js` and the facts on the install
 page update with them.

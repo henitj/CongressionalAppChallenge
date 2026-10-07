@@ -90,7 +90,8 @@ echo "==> 4/5 Aligning + signing (v1 + v2 + v3)"
 "$PYTHON" tools/sign_apk.py "$BUILD/unsigned.apk" "$OUT" \
   signing/ecotrek-release.key.pem signing/ecotrek-release.cert.pem
 
-echo "==> 5/5 Verifying signatures and writing the release facts"
+echo "==> 5/5 Verifying signer regression tests, signatures and release facts"
+"$PYTHON" -m unittest discover -s tests -p 'test_*.py'
 "$PYTHON" tools/validate_apk.py "$OUT"
 "$PYTHON" tools/apk_release_info.py "$OUT" "${OUT%.apk}-apk.json" \
   signing/ecotrek-release.cert.pem "${OUT}.sha256"
