@@ -44,29 +44,93 @@ EcoTrek has been optimized for speed, battery life, and crash resilience:
 
 ---
 
-## Vercel landing page and Android download
+## The website *is* the app
 
-The repository root now contains a one-page, static EcoTrek landing page (`index.html`) that is ready to deploy on Vercel. It uses the existing app artwork, includes a public privacy policy at `/privacy`, and wires both install buttons to `/downloads/ecotrek.apk`.
+There is no separate marketing page. `index.html` at the repository root is the
+full EcoTrek app (the same Expo web build that ships inside the Android APK), so
+opening the site puts the actual product in front of the visitor.
 
-The downloadable package is provided at `downloads/ecotrek.apk` for direct installation. You can also build an updated release binary from `EcoTrek/` with the included EAS profile:
+| URL | What it is |
+| --- | --- |
+| `/` | The full app. |
+| `/app/` | The same app with a permanent address (also the PWA `start_url`). |
+| `/install/android.html` | Android install guide: the signed APK, the Play Protect prompts, hashes and permissions. |
+| `/install/ios.html` | iPhone / iPad guide: run the app in Safari and add it to the Home Screen. |
+| `/api-key.html` | The API-key page: where to get a key for the assistant's optional AI upgrade, and where it goes in the app. |
+| `/privacy` | Privacy policy, including the AI-key section. |
+
+**Platform routing.** Android visitors to `/` are sent to the Android install
+guide (a Vercel redirect rule on the User-Agent, with the same logic repeated in
+the page, so it also works on static hosts that ignore `vercel.json`). Apple and
+desktop visitors get the app itself. Nobody is trapped: `/install/android.html`
+links to `/?web=1`, which sets an `ecotrek_web` cookie that the redirect respects
+from then on.
+
+**Deployment.** The site is plain static files (no build step) with routing in
+`vercel.json`:
+
+- `/assets/*` is rewritten to `/app/assets/*`, because the app bundle addresses
+  its own images with root-absolute URLs;
+- `/privacy`, `/app`, `/apk` are rewritten to their files;
+- `/_expo/*` and `/assets/*` are served `immutable`, `/downloads/*` with the
+  APK content type;
+- `Permissions-Policy` allows geolocation for the site itself — the app cannot
+  record a walk without it.
+
+### Android APK
+
+`downloads/ecotrek.apk` is the direct-download package, built by
+`android-shell/build.sh` (see `android-shell/README.md`). It is signed with
+**APK Signature Scheme v1 + v2 + v3**, 4-byte aligned, and targets API 34:
 
 ```bash
-cd EcoTrek
-npx eas build --platform android --profile apk
+APKTOOL=/path/to/apktool.jar android-shell/build.sh
 ```
 
-After the build finishes, either upload the signed file as `downloads/ecotrek.apk` or set its public URL in `site-config.js`. The file also has an `installMode` switch: leave it as `apk` for the direct download, or change it to `play` after the package is live in Google Play. Then import this repository into Vercel with the project root as the root directory. The static page needs no build command.
+The build prints the release facts and writes them next to the download, where
+the install page reads them:
 
-> Android still requires the user to open the downloaded APK and confirm Install. A web page can start the download, but it cannot silently install an Android app. For iPhone, build the iOS app with EAS and distribute it through the App Store or TestFlight, then paste that public URL into `iosUrl` in `site-config.js`. The page automatically detects iPhone/iPad visitors and opens the iOS link. iOS does not allow an arbitrary IPA from a normal website to install as a general app.
+- `downloads/ecotrek-apk.json` — version, size, SHA-256, signing certificate
+  fingerprint, signature schemes;
+- `downloads/ecotrek.apk.sha256` — a `sha256sum`-format line for manual checks.
 
-Google sign-in and cross-device cloud progress are configured in the app and API, but they still require the owner's Google Cloud OAuth client IDs and a deployed API/Neon database. Follow `EcoTrek/docs/GOOGLE_OAUTH_SETUP.md` and `EcoTrek/docs/NEON_SETUP.md`; credentials are intentionally not committed.
+Verify a published APK at any time (no Android SDK required):
 
-### Prerequisites
+```bash
+python3 android-shell/tools/validate_apk.py downloads/ecotrek.apk
+```
+
+It re-derives the v2/v3 content digests from the file on disk, verifies the
+signatures and the v1 JAR chain, checks that v1/v2/v3 agree, that every asset
+the web bundle asks for is bundled, and that uncompressed entries are aligned.
+
+> **Play Protect.** Sideloaded apps are signed by a key Google has never
+> attested, so Android may show *“Play Protect doesn’t recognise this app”* or
+> *“Unsafe app blocked”* with **More details → Install anyway**. That prompt is
+> inherent to distributing outside Google Play; `install/android.html` walks
+> through it and documents exactly what is in the file. What *can* be fixed is
+> has been: modern signature schemes, a current `targetSdk`, no cleartext
+> traffic, no debug flag, no compressed resource table.
+
+For a Google Play release, build the native app instead:
+
+```bash
+cd EcoTrek && npx eas build --platform android --profile production
+```
+
+For iPhone, distribute through the App Store / TestFlight; until that listing
+exists, `install/ios.html` explains the Safari "Add to Home Screen" route. Paste
+a published store URL into `iosUrl` in `site-config.js` and the iPhone page
+switches to it automatically.
+
+The shipped app has **no sign-in**: walks, points and settings are stored on the device under a local profile, and there is no account to create. (Google sign-in was removed — without configured OAuth client IDs the button could only fail.) Cross-device progress needs a deployed API/Neon database plus an OAuth provider; if that is ever set up, `EcoTrek/docs/GOOGLE_OAUTH_SETUP.md` and `EcoTrek/docs/NEON_SETUP.md` describe the pieces, and `EcoTrek/src/context/AuthContext.tsx` is where the provider would go back.
+
+#### Prerequisites
 - Node.js 20+
 - npm (or yarn / pnpm)
 - Expo Go app on mobile (optional, for physical device preview)
 
-### Installation
+#### Installation
 
 ```bash
 # Clone the repository
@@ -81,7 +145,7 @@ npm start          # Expo interactive CLI (scan QR code with Expo Go)
 npm run web        # Run in browser
 ```
 
-### Validation & Testing
+#### Validation & Testing
 
 ```bash
 # Type check with strict TypeScript
@@ -101,6 +165,13 @@ npm run verify
 ```text
 CongressionalAppChallenge/
 ├── README.md                  # Project overview and quick start
+├── index.html                 # The website: the full app (generated from the export)
+├── install/                   # Android / iOS install guides
+├── api-key.html               # Where to get an AI key and where it goes
+├── site.css / site.js         # Shared styling + release details for those pages
+├── app/                       # The exported web app (assets the site root points at)
+├── android-shell/             # APK build project + signing/validation tools
+├── downloads/                 # The published APK + release facts
 └── EcoTrek/                   # Main Expo / React Native application
     ├── assets/                # App icons, splash screens, and vector artwork
     ├── db/                    # PostgreSQL schemas and seed datasets
@@ -125,6 +196,9 @@ CongressionalAppChallenge/
 - Location permissions are requested solely for trail proximity and active activity recording.
 - GPS data remains strictly on your device unless you explicitly connect to a sync backend.
 - Account-isolated local storage prevents cross-profile data leaks.
+- An optional AI key is stored only in the app's local storage, is sent only to
+  the provider the user picked, and only over HTTPS; it can be removed at any
+  time. See `/api-key.html` and the privacy policy's AI-key section.
 - Refer to [`EcoTrek/docs/PRIVACY_POLICY.md`](EcoTrek/docs/PRIVACY_POLICY.md) for our full privacy commitment.
 
 ---

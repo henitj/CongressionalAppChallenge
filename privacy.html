@@ -15,16 +15,16 @@
         <img src="/EcoTrek/assets/logo-polished.png" alt="" width="44" height="44" />
         <span class="brand-copy"><strong>EcoTrek</strong><small>MOVE · RESTORE · REPEAT</small></span>
       </a>
-      <a class="header-link" href="/">Back to home <span aria-hidden="true">↗</span></a>
+      <a class="header-link" href="/">Open the app <span aria-hidden="true">↗</span></a>
     </header>
 
     <main class="policy-shell shell">
       <p class="eyebrow">EcoTrek · privacy</p>
-      <h1>Your data should stay<br /><em>your data.</em></h1>
-      <p><strong>Last updated: September 27, 2026</strong></p>
-      <p>EcoTrek is an outdoor activity tracker and conservation companion built for the Congressional App Challenge. This policy explains what the app collects and what it does with it.</p>
+      <h1>Your data stays<br /><em>on your device.</em></h1>
+      <p><strong>Last updated: October 3, 2026</strong></p>
+      <p>EcoTrek is an outdoor activity tracker built for the Congressional App Challenge. This page says what the app keeps, where it keeps it, and what (very little) leaves your device.</p>
 
-      <blockquote><strong>The short version:</strong> Guest data stays on your phone. Location is used only while you record an activity. If you choose Google sign-in and cloud sync is enabled, we use your Google identity to save supported progress to your account. We do not sell data, show advertising, or use advertising trackers.</blockquote>
+      <blockquote><strong>The short version:</strong> Your data stays on your phone. Location is used only while you record an activity. There is no account to create and nothing is uploaded to us. We do not sell data, show advertising, or use advertising trackers.</blockquote>
 
       <h2>What we collect</h2>
       <h3>If you continue as a guest</h3>
@@ -39,6 +39,16 @@
       <h2>Where your data goes</h2>
       <p>In a cloud-enabled build, account data is stored in a Postgres database hosted by <a href="https://neon.com">Neon</a> and is reached only through the EcoTrek API. Requests require a valid Google-issued token. The API does not trust a user ID supplied by the app, so accounts cannot read or modify one another's records.</p>
       <p>For local conditions, EcoTrek may request weather and safety data from <a href="https://open-meteo.com">Open-Meteo</a> and the <a href="https://www.weather.gov">National Weather Service</a>. The request uses approximate coordinates and does not include your name, email, or account ID.</p>
+
+      <h2>If you add your own AI key</h2>
+      <p>The trail assistant works without any key, using the on-device engine. Optionally, you can paste an API key from an AI provider (for example Groq, OpenAI or OpenRouter) so answers are rephrased by that provider's model. <a href="/api-key">Where to get a key</a>.</p>
+      <ul>
+        <li><strong>Stored on your device.</strong> The key is kept in the app's private local storage. It is never uploaded to us, never included in error reports, and never written to logs.</li>
+        <li><strong>Sent only to the provider you chose.</strong> Requests go directly from your device to that provider's own address over HTTPS, with the key in the standard <code>Authorization: Bearer …</code> header. There is no EcoTrek server in between.</li>
+        <li><strong>What the provider sees.</strong> Your question and the trail and weather facts needed to answer it are sent with that request, under that provider's privacy terms. Review them before adding a key, and prefer a free-tier or limited key.</li>
+        <li><strong>You stay in control.</strong> Remove the key at any time in <em>Trail assistant → AI settings → Remove key</em>. If a key is ever exposed, revoke it in the provider's dashboard; EcoTrek keeps working with its on-device answers.</li>
+        <li><strong>Base URLs must use HTTPS.</strong> A custom endpoint is rejected unless it starts with <code>https://</code>, so a key can never be sent in clear text.</li>
+      </ul>
 
       <h2>What we do not do</h2>
       <ul>
@@ -68,9 +78,11 @@
 
     <footer class="site-footer shell">
       <a class="brand footer-brand" href="/"><img src="/EcoTrek/assets/logo-polished.png" alt="" width="36" height="36" /><strong>EcoTrek</strong></a>
-      <p><a href="/">Home</a> · <a href="mailto:ecotrek.support@gmail.com">Support</a></p>
+      <p><a href="/">App</a> · <a href="/install/android.html">Android install</a> · <a href="/install/ios.html">iPhone</a> · <a href="/api-key.html">AI key</a> · <a href="mailto:ecotrek.support@gmail.com">Support</a></p>
       <p>© <span id="current-year">2026</span> EcoTrek</p>
     </footer>
-    <script>document.getElementById('current-year').textContent = String(new Date().getFullYear());</script>
+    <script>
+      document.getElementById('current-year').textContent = String(new Date().getFullYear());
+    </script>
   </body>
 </html>

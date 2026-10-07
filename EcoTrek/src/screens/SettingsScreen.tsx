@@ -1,9 +1,8 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable, Platform } from 'react-native';
+import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
-import GoogleAccountSheet from '../components/GoogleAccountSheet';
 import Icon, { IconName } from '../components/Icon';
 import { Screen, Card, SectionHeader, Segmented, Divider, Banner, Button } from '../components/ui';
 
@@ -17,7 +16,6 @@ import { useNotifications } from '../context/NotificationContext';
 import { useApp } from '../context/AppContext';
 import { clearUserData } from '../services/storage';
 import { isBackendConfigured } from '../services/api';
-import { googleConfigProblems } from '../constants/authConfig';
 import { PRIVACY_POLICY_URL, SUPPORT_EMAIL, APP_VERSION } from '../constants/appInfo';
 
 export default function SettingsScreen() {
@@ -32,8 +30,7 @@ export default function SettingsScreen() {
     textSize,
     setTextSize,
   } = useSettings();
-  const [showGoogleSheet, setShowGoogleSheet] = useState(false);
-  const { user, signOut, signInWithGoogle, googleConfigured } = useAuth();
+  const { user, signOut } = useAuth();
   const { resetPoints } = useEcoPoints();
   const { clearHistory } = useActivity();
   const { permission, requestLocation } = useApp();
@@ -42,11 +39,6 @@ export default function SettingsScreen() {
   const [busy, setBusy] = useState(false);
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
-
-  // Setup problems are shown during development only. A real user cannot act
-  // on "the Android client ID is missing", but the team needs to see it before
-  // they ship a build where sign-in silently fails.
-  const configProblems = __DEV__ ? googleConfigProblems() : [];
 
   const enableNotifications = async (on: boolean) => {
     if (on) {
@@ -64,14 +56,6 @@ export default function SettingsScreen() {
     } else {
       await notif.disable();
     }
-  };
-
-  const handleGoogleUpgrade = async () => {
-    if (Platform.OS === 'web' && !googleConfigured) {
-      setShowGoogleSheet(true);
-      return;
-    }
-    await signInWithGoogle();
   };
 
   const confirmReset = () => {
@@ -99,7 +83,7 @@ export default function SettingsScreen() {
   const confirmDeleteAccount = () => {
     Alert.alert(
       'Delete your account?',
-      'This removes this account’s local data and signs you out. It does not delete your Google account or any data previously sent to a configured EcoTrek server.',
+      'This removes this profile’s local data and signs you out. Nothing is deleted anywhere else, because nothing was ever uploaded.',
       [
         { text: 'Cancel', style: 'cancel' },
         {
@@ -136,23 +120,13 @@ export default function SettingsScreen() {
                 </Text>
               </View>
             </View>
-            {user?.provider === 'guest' ? (
-              <>
-                <Banner
-                  tone="neutral"
-                  icon="info"
-                  title="Your progress is saved locally"
-                  message="Signing in identifies you. It does not enable Google Drive backup."
-                  style={{ marginTop: SPACING.md - 2 }}
-                />
-                <Button
-                  label="Use Google"
-                  full
-                  style={{ marginTop: SPACING.sm }}
-                  onPress={handleGoogleUpgrade}
-                />
-              </>
-            ) : null}
+            <Banner
+              tone="neutral"
+              icon="info"
+              title="Your progress is saved locally"
+              message="This build keeps everything on this device — there is no account to create and nothing is uploaded."
+              style={{ marginTop: SPACING.md - 2 }}
+            />
           </Card>
         </View>
 
@@ -335,19 +309,10 @@ export default function SettingsScreen() {
           </Card>
         </View>
 
-        {configProblems.length > 0 ? (
-          <Banner
-            tone="warning"
-            icon="alert-triangle"
-            title="Setup incomplete (development only)"
-            message={configProblems.join(' ')}
-          />
-        ) : null}
-
         {/* Data */}
         <View>
           <SectionHeader title="Your data" />
-          <Text style={styles.note}>Height, weight, age, step length, walks, rides, streaks and rewards are saved on this device for your account. Signing out keeps them. Clearing app or browser storage removes local data. Google Drive backup is not enabled.</Text>
+          <Text style={styles.note}>Height, weight, age, step length, walks, rides, streaks and rewards are saved on this device for this profile. Signing out keeps them. Clearing app or browser storage removes local data. There is no cloud backup.</Text>
           <Card padded={false}>
             <Pressable
               onPress={confirmReset}
@@ -372,7 +337,7 @@ export default function SettingsScreen() {
               </View>
               <View style={{ flex: 1, minWidth: 0 }}>
                 <Text style={[styles.rowTitle, { color: colors.danger }]} numberOfLines={1}>Delete account</Text>
-                <Text style={styles.rowSub} numberOfLines={1}>Erases everything and signs you out</Text>
+                <Text style={styles.rowSub} numberOfLines={1}>Erases everything on this device and signs you out</Text>
               </View>
             </Pressable>
           </Card>
@@ -381,13 +346,6 @@ export default function SettingsScreen() {
         <Button label="Sign out" variant="secondary" icon="log-out" full onPress={signOut} />
       </View>
 
-      {Platform.OS === 'web' ? (
-        <GoogleAccountSheet
-          visible={showGoogleSheet}
-          onClose={() => setShowGoogleSheet(false)}
-          mode="upgrade"
-        />
-      ) : null}
     </Screen>
   );
 }

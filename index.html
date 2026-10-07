@@ -1,197 +1,347 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="en">
   <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <meta name="theme-color" content="#102319" />
-    <meta name="description" content="EcoTrek is the outdoor activity tracker that turns your miles into a greener habit." />
-    <meta property="og:title" content="EcoTrek — Move with purpose" />
-    <meta property="og:description" content="Track walks and rides, discover trails, and grow your personal forest." />
-    <meta property="og:image" content="/EcoTrek/assets/logo-polished.png" />
-    <meta name="twitter:card" content="summary" />
-    <link rel="icon" href="/EcoTrek/assets/favicon.png" />
-    <link rel="manifest" href="/manifest.webmanifest" />
-    <link rel="stylesheet" href="/site.css" />
-    <title>EcoTrek — Move with purpose</title>
+    <meta charset="utf-8" />
+    <meta httpEquiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover, shrink-to-fit=no" />
+    <title>EcoTrek</title>
+    <!-- ecotrek-app-host: written by EcoTrek/scripts/postexport-web.mjs — edit the script, not this file -->
+    <!-- The `react-native-web` recommended style reset: https://necolas.github.io/react-native-web/docs/setup/#root-element -->
+    <style id="expo-reset">
+      /* These styles make the body full-height */
+      html,
+      body {
+        height: 100%;
+      }
+      /* These styles disable body scrolling if you are using <ScrollView> */
+      body {
+        overflow: hidden;
+      }
+      /* These styles make the root element full-height */
+      #root {
+        display: flex;
+        height: 100%;
+        flex: 1;
+      }
+    
+      /* EcoTrek: keep mobile engines from inflating text ("stretched" UI) */
+      html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+      }
+      body {
+        overscroll-behavior: none;
+        -webkit-tap-highlight-color: transparent;
+      }
+    </style>
+  <link rel="icon" href="/app/favicon.ico"/><link rel="preload" href="/app/_expo/static/css/leaflet-df687fead8c4838a4e6b8bcb2f176a0e.css" as="style">
+<link rel="stylesheet" href="/app/_expo/static/css/leaflet-df687fead8c4838a4e6b8bcb2f176a0e.css"><style id="ecotrek-bootstrap-style">
+  /* Shown until React paints, and if it never does. Inline on purpose: it must
+     work even when every external request fails. */
+  #ecotrek-splash {
+    position: fixed;
+    inset: 0;
+    z-index: 2147483647;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 14px;
+    padding: 24px;
+    color: #103024;
+    background: linear-gradient(160deg, #eaf7e6 0%, #fbfaf5 55%, #dfefe0 100%);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    text-align: center;
+    transition: opacity .32s ease;
+  }
+  #ecotrek-splash.ecotrek-splash-hidden { opacity: 0; pointer-events: none; }
+  #ecotrek-splash svg { width: 74px; height: 74px; }
+  #ecotrek-splash strong { font-size: 27px; font-weight: 700; letter-spacing: -.03em; }
+  #ecotrek-splash small { max-width: 330px; color: #52655b; font-size: 13px; line-height: 1.55; }
+  #ecotrek-splash .ecotrek-spinner {
+    width: 22px; height: 22px; margin-top: 4px;
+    border: 3px solid rgba(23, 104, 72, .22);
+    border-top-color: #176848;
+    border-radius: 50%;
+    animation: ecotrek-spin .9s linear infinite;
+  }
+  #ecotrek-splash button {
+    min-height: 46px; padding: 0 22px; margin-top: 6px;
+    border: 0; border-radius: 12px;
+    color: #fff; background: #0d4832;
+    font: inherit; font-weight: 700; cursor: pointer;
+  }
+  #ecotrek-splash button[hidden] { display: none; }
+  @keyframes ecotrek-spin { to { transform: rotate(360deg); } }
+  @media (prefers-reduced-motion: reduce) {
+    #ecotrek-splash .ecotrek-spinner { animation-duration: 2.4s; }
+  }
+</style>
+<style id="ecotrek-launcher-style">
+  html.ecotrek-launcher-open { padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; }
+  html.ecotrek-launcher-open body { box-sizing: border-box; }
+  #ecotrek-launcher {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 2147483000;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    min-height: 50px;
+    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
+    border-top: 1px solid rgba(16, 35, 25, .12);
+    background: rgba(255, 253, 248, .97);
+    box-shadow: 0 -6px 18px rgba(13, 72, 50, .08);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    box-sizing: border-box;
+  }
+  #ecotrek-launcher[hidden] { display: none; }
+  #ecotrek-launcher .ecotrek-launcher-label {
+    flex: none;
+    color: #52655b;
+    font-size: 11px;
+    font-weight: 600;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  #ecotrek-launcher .ecotrek-launcher-links {
+    display: flex;
+    flex: 1 1 auto;
+    gap: 6px;
+    min-width: 0;
+    overflow-x: auto;
+    scrollbar-width: none;
+  }
+  #ecotrek-launcher .ecotrek-launcher-links::-webkit-scrollbar { display: none; }
+  #ecotrek-launcher a {
+    flex: none;
+    padding: 7px 12px;
+    border-radius: 999px;
+    color: #0d4832;
+    background: rgba(23, 104, 72, .08);
+    font-size: 13px;
+    font-weight: 700;
+    text-decoration: none;
+    white-space: nowrap;
+  }
+  #ecotrek-launcher a:hover { background: rgba(23, 104, 72, .15); }
+  #ecotrek-launcher a:focus-visible,
+  #ecotrek-launcher-close:focus-visible { outline: 3px solid rgba(13, 72, 50, .55); outline-offset: 2px; }
+  #ecotrek-launcher-close {
+    flex: none;
+    width: 32px;
+    height: 32px;
+    border: 0;
+    border-radius: 50%;
+    color: #52655b;
+    background: rgba(16, 35, 25, .06);
+    font: inherit;
+    font-size: 15px;
+    line-height: 1;
+    cursor: pointer;
+  }
+  #ecotrek-launcher-close:hover { background: rgba(16, 35, 25, .12); }
+  @media (max-width: 560px) {
+    #ecotrek-launcher { gap: 8px; padding-left: 8px; }
+    #ecotrek-launcher .ecotrek-launcher-label { display: none; }
+    #ecotrek-launcher a { padding: 7px 10px; font-size: 12.5px; }
+  }
+</style>
+<script id="ecotrek-redirect">
+(function () {
+  if (location.hostname === 'appassets.ecotrek.app') return;
+  if (location.protocol === 'file:') return;
+  var roots = ['/', '/index.html', '/app', '/app/'];
+  if (roots.indexOf(location.pathname) === -1) return;
+
+  if (/(?:^\?|&)web=1(?:&|$)/.test(location.search)) {
+    try {
+      document.cookie = 'ecotrek_web=1; path=/; max-age=31536000; SameSite=Lax';
+    } catch (error) {
+      /* cookies blocked: the query string still works for this visit */
+    }
+    if (window.history && history.replaceState) history.replaceState(null, '', location.pathname);
+    return;
+  }
+  if (/(?:^|;\s*)ecotrek_web=1/.test(document.cookie)) return;
+  try {
+    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return;
+  } catch (error) {
+    /* no matchMedia: fall through and offer the install page */
+  }
+  if (/Android/i.test(navigator.userAgent)) location.replace('/install/android.html');
+})();
+</script>
+  <meta name="theme-color" content="#102319">
+    <link rel="manifest" href="/manifest.webmanifest">
+    <link rel="apple-touch-icon" href="/EcoTrek/assets/icon.png">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-title" content="EcoTrek">
+    <meta name="apple-mobile-web-app-status-bar-style" content="default">
   </head>
+
   <body>
-    <div class="page-glow page-glow-top" aria-hidden="true"></div>
-    <div class="page-glow page-glow-bottom" aria-hidden="true"></div>
+    <div id="ecotrek-splash" role="status" aria-live="polite">
+  <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
+    <circle cx="32" cy="32" r="30" fill="#dff7d7"></circle>
+    <path d="M32 12l11 17h-7l8 12H20l8-12h-7z" fill="#176848"></path>
+    <rect x="29.5" y="40" width="5" height="12" rx="2.5" fill="#0d4832"></rect>
+  </svg>
+  <strong>EcoTrek</strong>
+  <small id="ecotrek-splash-note">Getting your forest ready…</small>
+  <span class="ecotrek-spinner" aria-hidden="true"></span>
+  <button type="button" id="ecotrek-splash-retry" hidden>Try again</button>
+</div>
+    <div id="ecotrek-launcher" hidden>
+  <span class="ecotrek-launcher-label">EcoTrek</span>
+  <div class="ecotrek-launcher-links">
+    <a href="/install/android.html">Android app</a>
+    <a href="/install/ios.html">iPhone &amp; iPad</a>
+    <a href="/api-key.html">AI key</a>
+  </div>
+  <button type="button" id="ecotrek-launcher-close" aria-label="Hide this bar" title="Hide this bar">&#215;</button>
+</div>
+<script id="ecotrek-launcher-script">
+(function () {
+  // Inside the Android build the page is served from the app's own virtual
+  // origin; there is nothing to install and nothing to explain.
+  if (location.hostname === 'appassets.ecotrek.app') return;
+  if (location.protocol === 'file:') return;
 
-    <header class="site-header shell">
-      <a class="brand" href="#top" aria-label="EcoTrek home">
-        <img src="/EcoTrek/assets/logo-polished.png" alt="" width="44" height="44" />
-        <span class="brand-copy">
-          <strong>EcoTrek</strong>
-          <small>MOVE · RESTORE · REPEAT</small>
-        </span>
-      </a>
-      <div class="header-actions">
-        <a class="header-link header-link-subtle" href="/app">Launch App <span aria-hidden="true">↗</span></a>
-        <a class="header-link" href="#install">Get APK <span aria-hidden="true">↓</span></a>
-      </div>
-    </header>
+  var bar = document.getElementById('ecotrek-launcher');
+  if (!bar) return;
+  var storageKey = 'ecotrek.launcher.dismissed';
+  try {
+    if (window.localStorage && localStorage.getItem(storageKey) === '1') return;
+  } catch (error) {
+    /* private mode: show it anyway */
+  }
 
-    <main id="top">
-      <section class="hero shell" aria-labelledby="hero-title">
-        <div class="hero-copy">
-          <p class="eyebrow"><span class="eyebrow-dot"></span> Your outdoor companion</p>
-          <h1 id="hero-title">Move with purpose.<br /><em>Leave a lighter trail.</em></h1>
-          <p class="hero-lede">
-            Track the walks and rides that make you feel good, discover nearby trails, and turn every mile under your own power into a greener habit.
-          </p>
-          <div class="hero-actions" id="install">
-            <a class="button button-primary" id="download-button" href="/downloads/ecotrek.apk" download="EcoTrek.apk">
-              <span class="button-icon" aria-hidden="true">↓</span>
-              <span class="button-label"><strong>Install EcoTrek</strong><small>Android APK</small></span>
-            </a>
-            <a class="button button-secondary" id="launch-app-button" href="/app">
-              <span class="button-label"><strong>Open Web App</strong><small>Run in Browser</small></span>
-            </a>
-            <a class="text-link" href="#how-it-works">See how it works <span aria-hidden="true">↓</span></a>
-          </div>
-          <p class="download-note" id="download-note" role="status">
-            Download the APK, open it on your Android phone, then tap Install. Your progress stays on your device.
-          </p>
-          <div class="hero-proof" aria-label="EcoTrek highlights">
-            <span><b>GPS</b> activity tracking</span>
-            <span><b>Offline-first</b> progress</span>
-            <span><b>No ads</b> ever</span>
-          </div>
-        </div>
+  // Reserving the space is what keeps the bar off the app's own controls: the
+  // app is laid out above it instead of underneath it.
+  document.documentElement.className += ' ecotrek-launcher-open';
+  bar.hidden = false;
 
-        <div class="hero-visual" aria-label="EcoTrek activity preview">
-          <div class="visual-orbit orbit-one" aria-hidden="true"></div>
-          <div class="visual-orbit orbit-two" aria-hidden="true"></div>
-          <div class="phone-card">
-            <div class="phone-topline"><span class="live-dot"></span> ACTIVE TREK <span class="phone-time">09:41</span></div>
-            <div class="route-map">
-              <span class="map-contour contour-a" aria-hidden="true"></span>
-              <span class="map-contour contour-b" aria-hidden="true"></span>
-              <svg class="route-line" viewBox="0 0 270 198" fill="none" aria-hidden="true">
-                <path d="M18 170C47 157 42 113 77 115C113 117 108 154 137 146C164 139 151 89 182 85C206 82 205 57 250 30" stroke="currentColor" stroke-width="4" stroke-linecap="round" stroke-linejoin="round" />
-                <circle cx="18" cy="170" r="6" fill="currentColor" />
-                <circle cx="250" cy="30" r="7" fill="#dff7d7" stroke="currentColor" stroke-width="4" />
-              </svg>
-              <span class="map-label label-start">START</span>
-              <span class="map-label label-finish">TRAILHEAD</span>
-              <span class="map-tree tree-a" aria-hidden="true">♧</span>
-              <span class="map-tree tree-b" aria-hidden="true">♧</span>
-            </div>
-            <div class="phone-stats">
-              <div><strong>3.84</strong><span>miles</span></div>
-              <div><strong>52:18</strong><span>duration</span></div>
-              <div><strong>+ 2</strong><span>trees</span></div>
-            </div>
-            <div class="phone-footer"><span>West Austin Greenbelt</span><span class="pulse-bars"><i></i><i></i><i></i><i></i></span></div>
-          </div>
-          <div class="float-chip chip-tree"><span class="chip-symbol">✦</span><span><strong>Forest growing</strong><small>+2 symbolic trees</small></span></div>
-          <div class="float-chip chip-weather"><span class="chip-symbol">☼</span><span><strong>Good to go</strong><small>72° · clear skies</small></span></div>
-        </div>
-      </section>
+  var close = document.getElementById('ecotrek-launcher-close');
+  if (close) {
+    close.onclick = function () {
+      bar.hidden = true;
+      document.documentElement.className = document.documentElement.className.replace(/s*ecotrek-launcher-open/, '');
+      try {
+        localStorage.setItem(storageKey, '1');
+      } catch (error) {
+        /* ignore */
+      }
+    };
+  }
+})();
+</script>
+    <!-- Use static rendering with Expo Router to support running without JavaScript. -->
+    <noscript>
+      You need to enable JavaScript to run this app.
+    </noscript>
+    <!-- The root element for your Expo app. -->
+    <div id="root"></div>
+  <script src="/app/_expo/static/js/web/ecotrek-polyfills-6222020a8dac28077a86605376623116.js" defer></script>
+<script src="/app/_expo/static/js/web/index-bb4f3768da657edd68957cf56fcb969c.js" defer></script>
+<script id="ecotrek-bootstrap">
+/* EcoTrek boot watchdog — ES5, no dependencies.
+   Records startup failures, hides the splash once React paints, and after a
+   grace period replaces the splash with something a person can act on. */
+(function () {
+  var splash = document.getElementById('ecotrek-splash');
+  if (!splash) return;
+  var note = document.getElementById('ecotrek-splash-note');
+  var retry = document.getElementById('ecotrek-splash-retry');
+  var spinner = splash.querySelector('.ecotrek-spinner');
+  var problems = [];
+  var hidden = false;
 
-      <section class="feature-section shell" id="how-it-works" aria-labelledby="features-title">
-        <div class="section-heading">
-          <p class="eyebrow">More than a step counter</p>
-          <h2 id="features-title">A better reason to<br /><em>go outside.</em></h2>
-          <p>Simple tools for showing up, staying safe, and taking care of the places you love.</p>
-        </div>
-        <div class="feature-grid">
-          <article class="feature-card feature-card-green">
-            <div class="feature-number">01</div>
-            <div class="feature-icon icon-route" aria-hidden="true"><span></span><i></i><b></b></div>
-            <h3>Track your way</h3>
-            <p>Record walks, hikes, and bike rides with distance, pace, elevation, and a route you can revisit.</p>
-          </article>
-          <article class="feature-card feature-card-sand">
-            <div class="feature-number">02</div>
-            <div class="feature-icon icon-sun" aria-hidden="true">☼</div>
-            <h3>Know before you go</h3>
-            <p>See nearby trails, plain-language weather, and safety conditions before you head out.</p>
-          </article>
-          <article class="feature-card feature-card-dark">
-            <div class="feature-number">03</div>
-            <div class="feature-icon icon-sprout" aria-hidden="true">♧</div>
-            <h3>Grow your impact</h3>
-            <p>Build streaks, earn EcoPoints, complete challenges, and grow a forest that represents your miles.</p>
-          </article>
-        </div>
-      </section>
+  function record(message) {
+    if (!message) return;
+    for (var i = 0; i < problems.length; i += 1) {
+      if (problems[i] === message) return;
+    }
+    problems.push(message);
+  }
 
-      <section class="progress-section shell" aria-labelledby="progress-title">
-        <div class="progress-copy">
-          <p class="eyebrow">Your progress, your way</p>
-          <h2 id="progress-title">Start anywhere.<br /><em>Keep everything.</em></h2>
-          <p>
-            EcoTrek is local-first, so your activities, badges, streaks, and settings are saved on your phone even when you are out of service. Sign in with Google when you want progress to follow you to another device.
-          </p>
-          <div class="progress-list">
-            <div><span class="check">✓</span><span><strong>Works without a signal</strong><small>Record first. Sync when you are back online.</small></span></div>
-            <div><span class="check">✓</span><span><strong>Built for your privacy</strong><small>Your route is yours. No ads. No selling your data.</small></span></div>
-            <div><span class="check">✓</span><span><strong>Made for real habits</strong><small>Streaks and challenges that encourage, never shame.</small></span></div>
-          </div>
-        </div>
-        <div class="forest-card" aria-label="Example EcoTrek progress card">
-          <div class="forest-header"><span>MY FOREST</span><span class="forest-menu">•••</span></div>
-          <div class="forest-score"><strong>24</strong><span>trees earned</span></div>
-          <div class="forest-illustration" aria-hidden="true">
-            <span class="cloud cloud-one"></span><span class="cloud cloud-two"></span>
-            <span class="hill hill-back"></span><span class="hill hill-front"></span>
-            <span class="forest-tree ft-one">♧</span><span class="forest-tree ft-two">♧</span><span class="forest-tree ft-three">♧</span><span class="forest-tree ft-four">♧</span><span class="forest-tree ft-five">♧</span>
-          </div>
-          <div class="forest-bottom"><span><b>18.6</b> miles this month</span><span class="streak-pill">4 week streak</span></div>
-        </div>
-      </section>
+  window.addEventListener('error', function (event) {
+    var target = event && event.target;
+    if (target && target.tagName === 'SCRIPT') {
+      record('The app bundle could not be loaded (' + (target.getAttribute('src') || '') + ').');
+    } else if (event && event.message) {
+      record(event.message);
+    }
+  }, true);
 
-      <section class="install-section shell" aria-labelledby="install-title">
-        <div class="install-panel">
-          <div class="install-copy">
-            <p class="eyebrow eyebrow-light">Ready when you are</p>
-            <h2 id="install-title">Your next good<br /><em>mile starts here.</em></h2>
-            <p id="install-description">Download EcoTrek and keep your outdoor log in your pocket.</p>
-            <a class="button button-light" id="download-button-bottom" href="/downloads/ecotrek.apk" download="EcoTrek.apk">
-              <span class="button-icon" aria-hidden="true">↓</span>
-              <span class="button-label"><strong>Download the app</strong><small>Android APK</small></span>
-            </a>
-            <p class="install-helper" id="install-helper">Android may ask you to allow installs from this browser once. That is a normal Android security step.</p>
-          </div>
-          <div class="install-mark" aria-hidden="true"><img src="/EcoTrek/assets/logo-polished.png" alt="" width="220" height="220" /></div>
-        </div>
-      </section>
+  window.addEventListener('unhandledrejection', function (event) {
+    var reason = event && event.reason;
+    record('Unhandled error: ' + ((reason && (reason.message || reason)) || 'unknown'));
+  });
 
-      <section class="faq-section shell" aria-labelledby="faq-title">
-        <div class="section-heading faq-heading">
-          <p class="eyebrow">A few good-to-knows</p>
-          <h2 id="faq-title">Questions, answered.</h2>
-        </div>
-        <div class="faq-list">
-          <details open>
-            <summary>How do I install EcoTrek?</summary>
-            <p>On Android, tap download, open EcoTrek.apk when it finishes, review the permission prompt, and tap Install. On iPhone, the button opens the App Store or TestFlight, where Apple asks you to confirm with Get or Install.</p>
-          </details>
-          <details>
-            <summary>Will my progress be saved?</summary>
-            <p>Yes. EcoTrek saves activities, points, badges, streaks, and settings locally on your phone. If Google sign-in and cloud sync are enabled for the build, signing in lets your account restore supported progress on another device.</p>
-          </details>
-          <details>
-            <summary>Does EcoTrek track me all the time?</summary>
-            <p>No. Location is requested only when you start recording an activity. Read the <a href="/privacy">privacy policy</a> for the full details.</p>
-          </details>
-          <details>
-            <summary>Can I install this on an iPhone?</summary>
-            <p>The downloadable package on this page is an Android APK. APK files cannot be installed on iPhone. An iOS build needs Apple distribution through the App Store or TestFlight.</p>
-          </details>
-        </div>
-      </section>
-    </main>
+  function rootHasContent() {
+    var root = document.getElementById('root');
+    return !!(root && root.childElementCount > 0);
+  }
 
-    <footer class="site-footer shell">
-      <a class="brand footer-brand" href="#top"><img src="/EcoTrek/assets/logo-polished.png" alt="" width="36" height="36" /><strong>EcoTrek</strong></a>
-      <p>Built for the Congressional App Challenge · <a href="/privacy">Privacy</a> · <a href="mailto:ecotrek.support@gmail.com">Support</a></p>
-      <p>© <span id="current-year">2026</span> EcoTrek</p>
-    </footer>
+  function hide(immediately) {
+    if (hidden) return;
+    hidden = true;
+    splash.className = 'ecotrek-splash-hidden';
+    window.setTimeout(function () {
+      if (splash.parentNode) splash.parentNode.removeChild(splash);
+    }, immediately ? 0 : 360);
+  }
 
-    <script src="/site-config.js"></script>
-    <script src="/site.js" defer></script>
-  </body>
+  function giveUp(detail) {
+    if (hidden) return;
+    if (spinner) spinner.style.display = 'none';
+    var lines = [];
+    if (!window.Promise || !window.Map || !window.Symbol) {
+      lines.push('This phone\u2019s web viewer is too old to run EcoTrek. Update "Android System WebView" (or Chrome) in your app store, then try again.');
+    } else {
+      lines.push(detail || 'EcoTrek could not finish starting.');
+      lines.push('Close the app completely and open it again. If it keeps happening, update your web viewer and tell us at ecotrek.support@gmail.com.');
+    }
+    if (problems.length) lines.push('Details: ' + problems.slice(0, 2).join(' '));
+    if (note) note.textContent = lines.join(' ');
+    if (retry) retry.hidden = false;
+  }
+
+  if (retry) {
+    retry.onclick = function () {
+      retry.hidden = true;
+      if (spinner) spinner.style.display = '';
+      if (note) note.textContent = 'Trying again\u2026';
+      hidden = false;
+      window.location.reload();
+    };
+  }
+
+  var started = Date.now();
+  var interval = window.setInterval(function () {
+    if (hidden) {
+      window.clearInterval(interval);
+      return;
+    }
+    if (rootHasContent()) {
+      window.clearInterval(interval);
+      hide(false);
+      return;
+    }
+    var elapsed = Date.now() - started;
+    if (elapsed > 4000 && note && !problems.length) {
+      note.textContent = 'Still starting. Slow devices and first launches can take a few seconds.';
+    }
+    if (elapsed > 15000) {
+      window.clearInterval(interval);
+      giveUp(problems.length ? null : 'EcoTrek did not finish starting.');
+    }
+  }, 200);
+})();
+</script>
+</body>
 </html>

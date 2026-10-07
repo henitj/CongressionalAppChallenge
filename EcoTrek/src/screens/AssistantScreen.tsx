@@ -7,6 +7,7 @@ import {
   Pressable,
   ScrollView,
   ActivityIndicator,
+  Linking,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -28,6 +29,7 @@ import {
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 import {
   AI_PRESETS,
+  isAllowedBaseUrl,
   AiProviderSettings,
   DEFAULT_AI_SETTINGS,
   askUserModel,
@@ -37,6 +39,7 @@ import {
   testAiSettings,
 } from '../services/aiProvider';
 import { useTheme, Typography } from '../context/ThemeContext';
+import { AI_KEY_GUIDE_URL } from '../constants/appInfo';
 import { useKeyboardGap } from '../hooks/useKeyboardHeight';
 
 type Message = {
@@ -452,6 +455,13 @@ function AiKeySheet({
 
   const save = useCallback(async () => {
     if (busy) return;
+    if (draftKey.trim() && !isAllowedBaseUrl(draftBase)) {
+      setStatus({
+        ok: false,
+        message: 'That base URL is not encrypted. Use an https:// address — a plain http:// endpoint would send your key in the clear.',
+      });
+      return;
+    }
     setBusy(true);
     setStatus(null);
     const next = await saveAiSettings({
@@ -516,14 +526,42 @@ function AiKeySheet({
           })}
         </View>
         {activePreset ? (
-          <Text style={styles.aiSheetHint}>
-            Create a free account and key at {activePreset.keyUrl}, then paste the key below.
-          </Text>
+          <Pressable
+            onPress={() => {
+              // The providers publish keys behind https; the keyUrl values are
+              // bare host paths, so give them a scheme before opening.
+              Linking.openURL(`https://${activePreset.keyUrl.replace(/^https?:\/\//, '')}`).catch(() => {
+                /* no browser available — the address is still on screen */
+              });
+            }}
+            accessibilityRole="link"
+            accessibilityLabel={`Open ${activePreset.keyUrl} to create a key`}
+          >
+            <Text style={styles.aiSheetHint}>
+              Create a free account and key at <Text style={styles.aiSheetLink}>{activePreset.keyUrl}</Text>, then paste the key below.
+            </Text>
+          </Pressable>
         ) : (
           <Text style={styles.aiSheetHint}>
             Custom endpoint — any OpenAI-compatible server works (base URL ending in /v1).
           </Text>
         )}
+
+        {AI_KEY_GUIDE_URL ? (
+          <Pressable
+            onPress={() => {
+              Linking.openURL(AI_KEY_GUIDE_URL).catch(() => {
+                /* no browser available */
+              });
+            }}
+            accessibilityRole="link"
+            accessibilityLabel="Open the step-by-step AI key guide"
+          >
+            <Text style={styles.aiSheetHint}>
+              Step-by-step guide: <Text style={styles.aiSheetLink}>{AI_KEY_GUIDE_URL.replace(/^https?:\/\//, '')}</Text>
+            </Text>
+          </Pressable>
+        ) : null}
 
         <Text style={styles.aiSheetLabel}>API key</Text>
         <TextInput
@@ -658,6 +696,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
 
   aiSheetLabel: { ...t.overline, color: c.textSecondary, marginBottom: -SPACING.sm },
   aiSheetHint: { ...t.micro, color: c.textLight, marginTop: -SPACING.sm + 2 },
+  aiSheetLink: { color: c.primary, fontWeight: '700' },
   aiPresetRow: { flexDirection: 'row', gap: SPACING.sm },
   aiPreset: {
     flex: 1,

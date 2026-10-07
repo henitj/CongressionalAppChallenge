@@ -1,20 +1,21 @@
 /**
- * Regression test for the Google sign-in crash.
+ * Boot tests for the auth layer.
  *
- * With an empty `.env`, `expo-auth-session`'s Google provider used to throw
- * *during render* — "Client Id property `androidClientId` must be defined to
- * use Google auth on this platform." Because AuthProvider wraps the whole
- * tree, that single throw took the entire app down to the ErrorBoundary's
- * "Something went wrong" screen on launch.
+ * These used to guard a real crash: `expo-auth-session`'s Google provider threw
+ * *during render* when no client IDs were configured ("Client Id property
+ * `androidClientId` must be defined to use Google auth on this platform"), and
+ * because AuthProvider wraps the whole tree that throw took the app straight to
+ * the ErrorBoundary's "Something went wrong" screen on launch.
  *
- * The rest of the suite mocks the Google provider away, so it could never
- * catch this. This file deliberately runs against the REAL module.
+ * The Google flow is gone — the button could never work without a configured
+ * Google Cloud project, so it was removed rather than left failing. What these
+ * tests protect now is the replacement: a provider that boots on every
+ * platform with no configuration at all, a sign-in screen that only offers the
+ * local profile, and no leftover Google button anywhere in the tree.
  */
 import React from 'react';
 import { Text } from 'react-native';
 import { render, waitFor } from '@testing-library/react-native';
-
-jest.unmock('expo-auth-session/providers/google');
 
 // SafeAreaProvider measures itself via a native layout event that never fires
 // under Jest, so the real one renders nothing and the tree below it never
@@ -52,14 +53,13 @@ jest.mock('expo-linking', () => ({
 }));
 
 import { AuthProvider, useAuth } from '../context/AuthContext';
-import { isGoogleConfigured } from '../constants/authConfig';
 
 function Probe() {
-  const { loading, googleConfigured } = useAuth();
-  return <Text>{loading ? 'loading' : `ready:${googleConfigured}`}</Text>;
+  const { loading, user } = useAuth();
+  return <Text>{loading ? 'loading' : `ready:${user ? user.id : 'signed-out'}`}</Text>;
 }
 
-describe('AuthProvider with no Google client IDs configured', () => {
+describe('AuthProvider with no configuration at all', () => {
   const platforms = ['android', 'ios', 'web'] as const;
   const { Platform } = require('react-native');
   const realOS = Platform.OS;
@@ -77,19 +77,13 @@ describe('AuthProvider with no Google client IDs configured', () => {
       </AuthProvider>
     );
 
-    // Renders at all -> the client-id invariant no longer throws.
-    await waitFor(() => expect(screen.getByText('ready:false')).toBeTruthy());
-  });
-
-  it('reports Google as not configured so the UI can offer guest instead', () => {
-    expect(isGoogleConfigured()).toBe(false);
+    await waitFor(() => expect(screen.getByText('ready:signed-out')).toBeTruthy());
   });
 });
 
 /**
- * The end-to-end version of the same guarantee: boot the real <App />, with
- * the real Google provider, and confirm the user lands on the sign-in screen
- * rather than the ErrorBoundary's "Something went wrong" fallback.
+ * The end-to-end version: boot the real <App /> and confirm the user lands on
+ * the sign-in screen rather than the ErrorBoundary's fallback.
  */
 describe('cold launch with an empty .env', () => {
   it('reaches the sign-in screen instead of the error fallback', async () => {
@@ -99,9 +93,17 @@ describe('cold launch with an empty .env', () => {
     await waitFor(
       () => {
         expect(screen.queryByText(/Something went wrong/i)).toBeNull();
-        expect(screen.getByText(/Continue as guest/i)).toBeTruthy();
+        expect(screen.getByText(/Start walking/i)).toBeTruthy();
       },
       { timeout: 8000 }
     );
+  }, 20000);
+
+  it('offers no Google sign-in at all', async () => {
+    const App = require('../../App').default;
+    const screen = render(<App />);
+
+    await waitFor(() => expect(screen.getByText(/Start walking/i)).toBeTruthy(), { timeout: 8000 });
+    expect(screen.queryByText(/Google/i)).toBeNull();
   }, 20000);
 });
