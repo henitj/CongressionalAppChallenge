@@ -1,7 +1,7 @@
 /*
  * EcoTrek site configuration.
  *
- * One place for the facts the install and API-key pages print, so a new build
+ * One place for the release facts the install page prints, so a new build
  * only has to be described once. android-shell/build.sh prints the matching
  * values (version, size, SHA-256, certificate fingerprint) after every build —
  * copy them here when you publish.

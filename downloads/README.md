@@ -26,8 +26,8 @@ APKTOOL=/path/to/apktool.jar ../android-shell/build.sh
 `sha256sum -c` expects. Every build rewrites all three, so these values move
 whenever the shell or the web export does.
 
-Verify the published file yourself — no Android SDK or apktool needed, just
-Python with `cryptography`:
+Verify the published file yourself — no Android SDK or apktool needed. Install
+the Python helpers first (`python3 -m pip install -r ../android-shell/requirements.txt`):
 
 ```bash
 python3 ../android-shell/tools/validate_apk.py ecotrek.apk

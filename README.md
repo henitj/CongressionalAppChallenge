@@ -94,9 +94,11 @@ the install page reads them:
   fingerprint, signature schemes;
 - `downloads/ecotrek.apk.sha256` — a `sha256sum`-format line for manual checks.
 
-Verify a published APK at any time (no Android SDK required):
+Verify a published APK at any time (no Android SDK required). Install the
+Python helpers once, then run the validator:
 
 ```bash
+python3 -m pip install -r android-shell/requirements.txt
 python3 android-shell/tools/validate_apk.py downloads/ecotrek.apk
 ```
 

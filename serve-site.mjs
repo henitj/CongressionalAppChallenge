@@ -76,12 +76,19 @@ const server = createServer((request, response) => {
     );
     return;
   }
+  const size = statSync(file).size;
   const headers = {
     'Content-Type': types[path.extname(file).toLowerCase()] || 'application/octet-stream',
+    'Content-Length': String(size),
     'X-Content-Type-Options': 'nosniff',
   };
+  if (path.extname(file).toLowerCase() === '.apk') {
+    // Make Android browsers treat this as a real package download and hand it
+    // to the system installer after the user opens the saved file.
+    headers['Content-Disposition'] = 'attachment; filename="EcoTrek.apk"';
+    headers['Cache-Control'] = 'public, max-age=3600';
+  }
   if (request.method === 'HEAD') {
-    headers['Content-Length'] = String(statSync(file).size);
     response.writeHead(200, headers);
     response.end();
     return;

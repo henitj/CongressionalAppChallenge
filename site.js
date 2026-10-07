@@ -27,14 +27,9 @@
   // --- release details ------------------------------------------------------
   const values = {
     apkVersion: config.apkVersion,
-    apkVersionCode: config.apkVersionCode ? String(config.apkVersionCode) : '',
     apkBytes: formatBytes(config.apkBytes),
     apkSha256: config.apkSha256,
-    signingCertSubject: config.signingCertSubject,
-    signingCertSha256: config.signingCertSha256,
     minAndroid: config.minAndroid,
-    targetSdk: config.targetSdk ? String(config.targetSdk) : '',
-    apkSigned: config.apkSigned,
   };
   queryAll('[data-config]').forEach((element) => {
     const key = element.dataset.config;
@@ -66,7 +61,7 @@
         : 'Open this page on the Android phone you want it on.';
     }
     if (downloadNote && isAndroid) {
-      downloadNote.textContent = 'When the download finishes, open EcoTrek.apk from your notifications or Downloads, then follow the prompts below.';
+      downloadNote.textContent = 'When it finishes, tap the download notification or open EcoTrek.apk from Files → Downloads. If Android does not show Install, follow the steps below to allow this source.';
     }
   }
 
@@ -95,49 +90,6 @@
         ? 'EcoTrek for iPhone is available. You can also add the web app to your Home Screen below.'
         : 'The iPhone build opens in the App Store; the Home Screen steps below work on any iPhone or iPad.';
     }
-  }
-
-  // --- copy buttons ---------------------------------------------------------
-  const copyButtons = queryAll('[data-copy]');
-  if (copyButtons.length) {
-    const copyText = async (text) => {
-      if (navigator.clipboard && navigator.clipboard.writeText) {
-        try {
-          await navigator.clipboard.writeText(text);
-          return true;
-        } catch (error) {
-          /* blocked (http, permissions): fall through to the textarea trick */
-        }
-      }
-      const area = document.createElement('textarea');
-      area.value = text;
-      area.setAttribute('readonly', '');
-      area.style.position = 'fixed';
-      area.style.top = '-1000px';
-      document.body.appendChild(area);
-      area.select();
-      let ok = false;
-      try {
-        ok = document.execCommand('copy');
-      } catch (error) {
-        ok = false;
-      }
-      area.remove();
-      return ok;
-    };
-    copyButtons.forEach((button) => {
-      const original = button.textContent;
-      button.addEventListener('click', async () => {
-        const value = button.dataset.copy || '';
-        const ok = await copyText(value);
-        button.textContent = ok ? 'Copied ✓' : 'Select it';
-        button.disabled = true;
-        window.setTimeout(() => {
-          button.textContent = original;
-          button.disabled = false;
-        }, 1600);
-      });
-    });
   }
 
   // --- release year ---------------------------------------------------------

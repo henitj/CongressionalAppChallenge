@@ -23,7 +23,8 @@
 #   - node + the EcoTrek npm install (for `expo export`, step 1 only)
 #   - a Java runtime (java) for apktool
 #   - apktool.jar (https://apktool.org, 2.4+)
-#   - python3 with `cryptography` (pip install cryptography) for signing
+#   - python3 dependencies in requirements.txt (`cryptography` for signing and
+#     `asn1crypto` for the independent v1 signature check)
 #
 # Usage:
 #   APKTOOL=/path/to/apktool.jar ./build.sh
@@ -40,6 +41,11 @@ OUT="${OUT:-../downloads/ecotrek.apk}"
 PYTHON="${PYTHON:-python3}"
 EXPORT_DIR="${EXPORT_DIR:-../EcoTrek/dist}"
 ASSETS_DIR="${ASSETS_DIR:-../app}"
+
+if ! "$PYTHON" -c 'import cryptography, asn1crypto' >/dev/null 2>&1; then
+  echo "Missing APK Python dependencies. Run: $PYTHON -m pip install -r requirements.txt" >&2
+  exit 1
+fi
 
 # apktool only needs *a* JVM; jdk4py (a pip-installable JDK) is fine.
 if [ -z "${JAVA:-}" ]; then
