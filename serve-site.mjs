@@ -21,6 +21,7 @@ const port = Number(process.env.PORT || 8000);
 const rewrites = [
   [/^\/privacy$/, '/privacy.html'],
   [/^\/app\/?$/, '/app/index.html'],
+  [/^\/download$/, '/downloads/ecotrek.apk'],
   [/^\/apk$/, '/downloads/ecotrek.apk'],
   [/^\/_expo\//, (p) => `/app${p}`],
   [/^\/favicon\.ico$/, '/app/favicon.ico'],
@@ -86,7 +87,8 @@ const server = createServer((request, response) => {
     // Make Android browsers treat this as a real package download and hand it
     // to the system installer after the user opens the saved file.
     headers['Content-Disposition'] = 'attachment; filename="EcoTrek.apk"';
-    headers['Cache-Control'] = 'public, max-age=3600';
+    // Avoid a browser/CDN silently reusing a stale or transformed APK after a release.
+    headers['Cache-Control'] = 'public, max-age=0, must-revalidate, no-transform';
   }
   if (request.method === 'HEAD') {
     response.writeHead(200, headers);

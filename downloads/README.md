@@ -1,6 +1,7 @@
 # EcoTrek Android download
 
-`ecotrek.apk` is the direct-download Android package. It is a small, signed
+`ecotrek.apk` is the direct-download Android package, served from the short
+website URL `/download` (as an `EcoTrek.apk` attachment). It is a small, signed
 WebView shell around the same Expo web build the website serves — see
 [`/android-shell/README.md`](../android-shell/README.md) for how it works and
 how to rebuild it:

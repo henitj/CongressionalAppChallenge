@@ -31,12 +31,12 @@
       </p>
 
       <div class="actions">
-        <a class="button button-primary" id="download-button" href="/downloads/ecotrek.apk" download="EcoTrek.apk">
+        <a class="button button-primary" id="download-button" href="/download" download="EcoTrek.apk">
           <span class="button-icon" aria-hidden="true">↓</span>
           <span class="button-label"><strong>Download EcoTrek</strong><small id="download-button-meta">Android app · APK</small></span>
         </a>
         <a class="button button-secondary" href="/?web=1">
-          <span class="button-label"><strong>Use in browser</strong><small>No install needed</small></span>
+          <span class="button-label"><strong>Open web app</strong><small>Install from Chrome—no APK</small></span>
         </a>
       </div>
       <p class="muted" id="download-note" role="status" aria-live="polite">
@@ -52,13 +52,23 @@
         </ol>
       </section>
 
+      <section class="guide-card" aria-labelledby="web-install-title">
+        <h2 id="web-install-title">Install from the website instead</h2>
+        <p>If Android rejects the APK, EcoTrek also runs as an installable web app—no APK or sideloading required.</p>
+        <ol class="steps">
+          <li><strong>Tap “Open web app” above</strong><p>Open it in Chrome on your Android phone.</p></li>
+          <li><strong>Open Chrome’s menu.</strong><p>Tap <em>⋮ → Install app</em> or <em>Add to Home screen</em> (the wording varies by Android version).</p></li>
+          <li><strong>Launch EcoTrek from your Home screen.</strong><p>Your activities are saved in that browser on this device. Live trail and weather features need internet.</p></li>
+        </ol>
+      </section>
+
       <details class="disclosure">
         <summary>Android does not show Install, or says “App not installed”</summary>
         <div class="disclosure-body">
           <ul>
             <li>If nothing opens, allow <em>Install unknown apps</em> for the browser or Files app you used, then open <code>EcoTrek.apk</code> again.</li>
             <li>Make sure the download completed. This file is about 1.8 MB and needs Android 7.0 or newer.</li>
-            <li>If an older EcoTrek copy was signed with a different key, Android may refuse to update it. Removing the old app can fix that, but <strong>will erase its locally saved walks and settings</strong>. Try this only if you are comfortable losing that data.</li>
+            <li>If EcoTrek is already installed from another APK, Android may refuse an update signed with a different key. Uninstalling that older copy may allow this one to install, but <strong>will erase its locally saved walks and settings</strong>. Do not uninstall it unless you are prepared to lose that data; use the web app above instead if unsure.</li>
           </ul>
           <p>If it still fails, email us the exact error text, your phone model and Android version: <a class="inline" href="mailto:ecotrek.support@gmail.com">ecotrek.support@gmail.com</a>.</p>
         </div>

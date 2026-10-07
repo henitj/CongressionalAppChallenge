@@ -87,21 +87,42 @@
       ]
     },
     {
-      "source": "/downloads/ecotrek\\.apk",
+      "source": "/download",
       "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/vnd.android.package-archive"
+        },
         {
           "key": "Content-Disposition",
           "value": "attachment; filename=\"EcoTrek.apk\""
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate, no-transform"
+        }
+      ]
+    },
+    {
+      "source": "/downloads/ecotrek\\.apk",
+      "headers": [
+        {
+          "key": "Content-Type",
+          "value": "application/vnd.android.package-archive"
+        },
+        {
+          "key": "Content-Disposition",
+          "value": "attachment; filename=\"EcoTrek.apk\""
+        },
+        {
+          "key": "Cache-Control",
+          "value": "public, max-age=0, must-revalidate, no-transform"
         }
       ]
     },
     {
       "source": "/downloads/(.*)",
       "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/vnd.android.package-archive"
-        },
         {
           "key": "Cache-Control",
           "value": "public, max-age=3600"
@@ -139,6 +160,10 @@
     {
       "source": "/app/",
       "destination": "/app/index.html"
+    },
+    {
+      "source": "/download",
+      "destination": "/downloads/ecotrek.apk"
     },
     {
       "source": "/apk",

@@ -11,7 +11,9 @@ window.ECOTREK_CONFIG = {
   // 'apk' serves the signed file from this site; switch to 'play' once a Play
   // Store listing exists.
   installMode: 'apk',
-  apkUrl: '/downloads/ecotrek.apk',
+  // Stable, short URL. The hosting config rewrites this to the APK artifact,
+  // while keeping the response as a binary attachment.
+  apkUrl: '/download',
   playStoreUrl: 'https://play.google.com/store/apps/details?id=com.ecotrek.app',
 
   // Paste the public App Store or TestFlight URL here after the iOS build is

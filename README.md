@@ -54,7 +54,8 @@ opening the site puts the actual product in front of the visitor.
 | --- | --- |
 | `/` | The full app. |
 | `/app/` | The same app with a permanent address (also the PWA `start_url`). |
-| `/install/android.html` | Android install guide: the signed APK, the Play Protect prompts, hashes and permissions. |
+| `/install/android.html` | Android install guide: the signed APK, the Play Protect prompts, hashes and permissions, plus a browser-install fallback. |
+| `/download` | Short, direct URL that downloads the Android APK as `EcoTrek.apk`. |
 | `/install/ios.html` | iPhone / iPad guide: run the app in Safari and add it to the Home Screen. |
 | `/api-key.html` | The API-key page: where to get a key for the assistant's optional AI upgrade, and where it goes in the app. |
 | `/privacy` | Privacy policy, including the AI-key section. |
@@ -71,9 +72,10 @@ from then on.
 
 - `/assets/*` is rewritten to `/app/assets/*`, because the app bundle addresses
   its own images with root-absolute URLs;
-- `/privacy`, `/app`, `/apk` are rewritten to their files;
-- `/_expo/*` and `/assets/*` are served `immutable`, `/downloads/*` with the
-  APK content type;
+- `/privacy`, `/app`, `/download`, and `/apk` are rewritten to their files;
+- `/download` returns the APK as a no-transform attachment with revalidation
+  headers, while `/downloads/*` exposes the release facts;
+- `/_expo/*` and `/assets/*` are served `immutable`;
 - `Permissions-Policy` allows geolocation for the site itself — the app cannot
   record a walk without it.
 
@@ -102,9 +104,14 @@ python3 -m pip install -r android-shell/requirements.txt
 python3 android-shell/tools/validate_apk.py downloads/ecotrek.apk
 ```
 
-It re-derives the v2/v3 content digests from the file on disk, verifies the
-signatures and the v1 JAR chain, checks that v1/v2/v3 agree, that every asset
-the web bundle asks for is bundled, and that uncompressed entries are aligned.
+The website download route can be smoke-tested locally with
+`node --test tests/site-download.test.mjs`; it checks the attachment headers,
+APK bytes, release size and SHA-256.
+
+The APK validator re-derives the v2/v3 content digests from the file on disk,
+verifies the signatures and the v1 JAR chain, checks that v1/v2/v3 agree, that
+every asset the web bundle asks for is bundled, and that uncompressed entries
+are aligned.
 
 > **Play Protect.** Sideloaded apps are signed by a key Google has never
 > attested, so Android may show *“Play Protect doesn’t recognise this app”* or
