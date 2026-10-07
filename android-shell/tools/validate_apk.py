@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import base64
 import hashlib
+import struct
 import sys
 import zipfile
 from typing import Dict, List, Optional, Tuple
@@ -238,12 +239,40 @@ def verify_scheme(apk_path: str, report: Report, data: bytes, block_id: int, lab
         return None
 
     eocd = apksig.find_eocd(data)
-    signers = apksig.parse_signers(block.find(block_id), v3=(block_id == apksig.APK_SIGNATURE_SCHEME_V3_BLOCK_ID))
+    try:
+        signers = apksig.parse_signers(
+            block.find(block_id),
+            v3=(block_id == apksig.APK_SIGNATURE_SCHEME_V3_BLOCK_ID),
+        )
+    except (ValueError, IndexError, struct.error) as error:
+        report.add(f"{label}: signer structure is valid", False, str(error))
+        report.add(
+            f"{label}: content digests + signatures verify",
+            False,
+            "signer structure could not be parsed",
+        )
+        return None
 
     failures: List[str] = []
     first_certificate: Optional[bytes] = None
     for index, signer in enumerate(signers):
         tag = f"signer {index + 1}"
+
+        if block_id == apksig.APK_SIGNATURE_SCHEME_V3_BLOCK_ID:
+            sdk_ranges_match = (
+                signer.min_sdk is not None
+                and signer.max_sdk is not None
+                and signer.signed_min_sdk is not None
+                and signer.signed_max_sdk is not None
+                and signer.min_sdk == signer.signed_min_sdk
+                and signer.max_sdk == signer.signed_max_sdk
+            )
+            if not sdk_ranges_match:
+                failures.append(
+                    f"{tag}: unsigned SDK range "
+                    f"{signer.min_sdk}-{signer.max_sdk} does not match signed range "
+                    f"{signer.signed_min_sdk}-{signer.signed_max_sdk}"
+                )
 
         # Every digest must re-derive from the APK bytes.
         for algorithm, expected in signer.digests:
@@ -293,7 +322,11 @@ def verify_scheme(apk_path: str, report: Report, data: bytes, block_id: int, lab
     detail = f"{len(signers)} signer(s)"
     if signers and signers[0].min_sdk is not None:
         detail += f", SDK range {signers[0].min_sdk}-{signers[0].max_sdk}"
-    report.add(f"{label}: content digests + signatures verify", not failures, "\n".join(failures) or detail)
+    report.add(
+        f"{label}: content digests + signatures verify",
+        bool(signers) and not failures,
+        "\n".join(failures) or (detail if signers else "no signers in the scheme block"),
+    )
     return first_certificate
 
 

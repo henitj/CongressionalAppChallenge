@@ -19,7 +19,8 @@ three schemes, byte-for-byte compatible with AOSP's `apksig`:
   * chunked content digests (1 MiB chunks, 0xa5-prefixed; 0x5a-prefixed digest
     of digests)
   * v2 / v3 signed-data layout (signature algorithm ID + length-prefixed
-    digest, certificates, additional attributes, SDK range for v3)
+    digest, certificates, additional attributes, SDK range for v3; v3 also
+    repeats that range in the outer signer record, as the platform requires)
   * v1 JAR signature (MANIFEST.MF / CERT.SF / CERT.RSA), unchanged from the
     original `sign_v1.py`
 
@@ -333,8 +334,13 @@ class ParsedSigner:
     signatures: List[Tuple[int, bytes]]
     public_key: bytes
     certificates: List[bytes]
+    # v3 carries this SDK range outside signed_data. Android uses it to select
+    # a signer before it verifies the signature.
     min_sdk: Optional[int] = None
     max_sdk: Optional[int] = None
+    # The same range is also inside signed_data and covered by the signature.
+    signed_min_sdk: Optional[int] = None
+    signed_max_sdk: Optional[int] = None
     additional_attributes: List[Tuple[int, bytes]] = field(default_factory=list)
 
 
@@ -348,8 +354,24 @@ def parse_signers(block_value: bytes, v3: bool) -> List[ParsedSigner]:
         signer, offset = read_length_prefixed(block_value, offset)
         cursor = 0
         signed_data, cursor = read_length_prefixed(signer, cursor)
+
+        # APK Signature Scheme v3 has an unsigned SDK range between signedData
+        # and signatures. It is deliberately duplicated inside signedData,
+        # where the copy is cryptographically covered. Omitting this outer
+        # range makes the v3 signer malformed to Android Package Manager even
+        # when its v2 signature and the v3 signature over signedData verify.
+        min_sdk = max_sdk = None
+        if v3:
+            if cursor + 8 > len(signer):
+                raise ValueError("v3 signer is missing its outer SDK range")
+            min_sdk = u32(signer, cursor)
+            max_sdk = u32(signer, cursor + 4)
+            cursor += 8
+
         signatures_field, cursor = read_length_prefixed(signer, cursor)
         public_key, cursor = read_length_prefixed(signer, cursor)
+        if cursor != len(signer):
+            raise ValueError("trailing data in APK signer")
 
         # Signed data field 1: sequence of (signature algorithm ID, content digest).
         digests_sequence, next_cursor = read_length_prefixed(signed_data, 0)
@@ -367,14 +389,18 @@ def parse_signers(block_value: bytes, v3: bool) -> List[ParsedSigner]:
             certificate, inner = read_length_prefixed(certificates_sequence, inner)
             certificates.append(certificate)
 
-        min_sdk = max_sdk = None
+        signed_min_sdk = signed_max_sdk = None
         if v3:
-            min_sdk = u32(signed_data, next_cursor)
-            max_sdk = u32(signed_data, next_cursor + 4)
+            if next_cursor + 8 > len(signed_data):
+                raise ValueError("v3 signed data is missing its SDK range")
+            signed_min_sdk = u32(signed_data, next_cursor)
+            signed_max_sdk = u32(signed_data, next_cursor + 4)
             next_cursor += 8
 
         # Field 3: sequence of additional attributes.
-        attributes_sequence, _ = read_length_prefixed(signed_data, next_cursor)
+        attributes_sequence, end_cursor = read_length_prefixed(signed_data, next_cursor)
+        if end_cursor != len(signed_data):
+            raise ValueError("trailing data in APK signed data")
         attributes: List[Tuple[int, bytes]] = []
         inner = 0
         while inner < len(attributes_sequence):
@@ -396,6 +422,8 @@ def parse_signers(block_value: bytes, v3: bool) -> List[ParsedSigner]:
                 certificates=certificates,
                 min_sdk=min_sdk,
                 max_sdk=max_sdk,
+                signed_min_sdk=signed_min_sdk,
+                signed_max_sdk=signed_max_sdk,
                 additional_attributes=attributes,
             )
         )
@@ -477,6 +505,9 @@ def build_signer_block_v3(
     min_sdk_version: int,
     max_sdk_version: int = 0x7FFFFFFF,
 ) -> bytes:
+    # The SDK range occurs twice in a v3 signer: inside signed_data (so it is
+    # covered by the signature) and immediately after signed_data (so the
+    # platform can select the applicable signer before verification).
     signed_data = (
         _digest_field(content_digests, signature_algorithms)
         + _certificate_field(certificate)
@@ -484,9 +515,11 @@ def build_signer_block_v3(
         + p32(max_sdk_version)
         + sequence_of_length_prefixed([])
     )
-    signer = encode_signer_block(
-        signed_data,
-        _signatures_field(signed_data, private_key, signature_algorithms),
-        certificate.public_key(),
+    signer = (
+        length_prefixed(signed_data)
+        + p32(min_sdk_version)
+        + p32(max_sdk_version)
+        + _signatures_field(signed_data, private_key, signature_algorithms)
+        + length_prefixed(encode_public_key(certificate.public_key()))
     )
     return sequence_of_length_prefixed([signer])
