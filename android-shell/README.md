@@ -47,7 +47,9 @@ transpiles the bundle for older Android System WebViews and adds the ES5
 polyfill prelude and boot watchdog (that work lives in
 `../EcoTrek/scripts/postexport-web.mjs` + `web-compat.mjs`), copies the export
 to `../app`, assembles this project with apktool, then aligns and signs with
-`signing/ecotrek-release.key.pem` using **v1 + v2 + v3**.
+`signing/ecotrek-release.key.pem` using **v1 + v2 + v3**. Install the Python
+helpers once with `python3 -m pip install -r requirements.txt`; the release
+validator needs both `cryptography` and `asn1crypto`.
 
 Useful switches:
 
