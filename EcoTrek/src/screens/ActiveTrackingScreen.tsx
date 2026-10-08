@@ -16,20 +16,13 @@ import { SafeAreaView } from 'react-native-safe-area-context';
 import LiveMap from '../components/LiveMap';
 import CleanupSheet from '../components/CleanupSheet';
 import Confetti from '../components/Confetti';
-import FeedbackSheet from '../components/FeedbackSheet';
 import TrailRatingSheet from '../components/TrailRatingSheet';
 import Icon, { IconName } from '../components/Icon';
 import { Button } from '../components/ui';
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
-import {
-  Coord,
-  getCurrentPosition,
-  instantMph,
-  smoothDelta,
-  startTracking,
-  Subscription,
-} from '../services/location';
+import { getCurrentPosition, startTracking, Subscription } from '../services/location';
+import { advanceTrack, Coord, EMPTY_TRACK, TrackState } from '../services/geo';
 import { computeTrees, useActivity } from '../context/ActivityContext';
 import { useSettings } from '../context/SettingsContext';
 import { useEcoPoints } from '../context/EcoPointsContext';
@@ -84,19 +77,27 @@ export default function ActiveTrackingScreen() {
   const [saving, setSaving] = useState(false);
   const [showRest, setShowRest] = useState(false);
   const [showCleanup, setShowCleanup] = useState(false);
-  const [showFeedback, setShowFeedback] = useState(false);
   const [showTrailRating, setShowTrailRating] = useState(false);
   const [showDetails, setShowDetails] = useState(false);
   const [confettiDone, setConfettiDone] = useState(false);
-  const pendingFeedback = useRef(false);
 
   const subRef = useRef<Subscription | null>(null);
-  const lastRef = useRef<Coord | undefined>(undefined);
+  const stoppedRef = useRef(false);
+  // Filter state for the GPS stream: anchor point, distance, and altitude.
+  const trackRef = useRef<TrackState>(EMPTY_TRACK);
   const pausedRef = useRef(false);
   pausedRef.current = paused;
   const pausedTotalRef = useRef(0);
   const pausedAtRef = useRef<number | null>(null);
   const strikesRef = useRef(0);
+
+  // Ending the walk always wins. If the GPS watch is still starting, it is
+  // removed as soon as it arrives instead of recording behind the summary.
+  const stopTracking = useCallback(() => {
+    stoppedRef.current = true;
+    subRef.current?.remove();
+    subRef.current = null;
+  }, []);
 
   const nearbyTrail: Trail | null = useMemo(
     () => detectCurrentTrail(current, trails.length ? trails : undefined),
@@ -114,17 +115,19 @@ export default function ActiveTrackingScreen() {
   }, [elapsed, paused, showRest]);
 
   const togglePause = () => {
-    setPaused((p) => {
-      if (!p) {
-        pausedAtRef.current = Date.now();
-        return true;
-      }
-      if (pausedAtRef.current) {
-        pausedTotalRef.current += Date.now() - pausedAtRef.current;
-        pausedAtRef.current = null;
-      }
-      return false;
-    });
+    if (!paused) {
+      pausedAtRef.current = Date.now();
+      setPaused(true);
+      return;
+    }
+    if (pausedAtRef.current) {
+      pausedTotalRef.current += Date.now() - pausedAtRef.current;
+      pausedAtRef.current = null;
+    }
+    // Distance walked while paused is not counted, so resume from a new anchor.
+    trackRef.current = { ...trackRef.current, anchor: null, elevationRef: null };
+    setCurrentMph(0);
+    setPaused(false);
   };
 
   // Timer — pause must not keep adding seconds.
@@ -145,59 +148,61 @@ export default function ActiveTrackingScreen() {
     return () => sub.remove();
   }, []);
 
-  // Start tracking immediately
+  // Start tracking immediately.
   useEffect(() => {
     let cancelled = false;
+    stoppedRef.current = false;
     (async () => {
       const coords = await getCurrentPosition();
-      if (!cancelled && coords) {
-        setCurrent(coords);
-        lastRef.current = coords;
-      }
+      if (!cancelled && !stoppedRef.current && coords) setCurrent(coords);
 
-      subRef.current = await startTracking(
+      const sub = await startTracking(
         (coord) => {
           if (pausedRef.current) return;
 
-          // Calculate instant speed
-          const mph = instantMph(lastRef.current, coord);
-          setCurrentMph(mph);
+          const step = advanceTrack(trackRef.current, coord);
+          trackRef.current = step.state;
+          if (step.status === 'ignored') return;
+          if (step.status === 'still' || !step.point) {
+            setCurrentMph(0);
+            return;
+          }
 
-          // Speed limit check
-          if (mph > speedLimit && lastRef.current) {
+          setCurrentMph(step.mph);
+          setCurrent(step.point);
+          setPath((p) => [...p, step.point as Coord]);
+          setMiles(step.state.miles);
+          setElevationGain(step.state.gainFt);
+          setElevationLoss(step.state.lossFt);
+
+          // Only counted movement can be too fast. Three strikes warn; more
+          // than three and the activity is not counted (validateActivity).
+          if (step.status === 'moved' && step.mph > speedLimit) {
             strikesRef.current += 1;
             if (strikesRef.current >= 3) setShowSpeedAlert(true);
           }
-
-          // Track elevation
-          if (lastRef.current?.altitude != null && coord.altitude != null) {
-            const diff = (coord.altitude - lastRef.current.altitude) * 3.28084;
-            if (diff > 1) setElevationGain((g) => g + diff);
-            else if (diff < -1) setElevationLoss((l) => l + Math.abs(diff));
-          }
-
-          const delta = smoothDelta(lastRef.current, coord);
-          if (delta > 0) setMiles((m) => m + delta);
-          lastRef.current = coord;
-          setCurrent(coord);
-          setPath((p) => [...p, coord]);
         },
         {
           onError: (err) => console.warn('[track]', err),
           allowBackground: true,
         }
       );
+
+      if (cancelled || stoppedRef.current) {
+        sub.remove();
+        return;
+      }
+      subRef.current = sub;
     })();
 
     return () => {
       cancelled = true;
-      subRef.current?.remove();
+      stopTracking();
     };
-  }, [speedLimit]);
+  }, [speedLimit, stopTracking]);
 
   const handleFinish = useCallback(async () => {
-    subRef.current?.remove();
-    subRef.current = null;
+    stopTracking();
     setSaving(true);
     setConfettiDone(false);
 
@@ -235,23 +240,16 @@ export default function ActiveTrackingScreen() {
       // walk is over, it was long enough to have passed some litter, and it
       // actually counted. Feedback comes after that, as a popup — not a
       // button buried on the summary.
-      // Feedback is available from More; saving does not trigger a second popup.
-      pendingFeedback.current = false;
       // Every valid trail ends with the honesty question. Do not gate it on
       // duration: a short named route still deserves the same chance to leave
-      // the trail cleaner than you found it.
-      if (shouldAskCleanupAfterTrail(res.rejected)) {
-        setShowCleanup(true);
-      } else if (pendingFeedback.current) {
-        pendingFeedback.current = false;
-        setShowFeedback(true);
-      }
+      // the trail cleaner than you found it. Feedback lives under More.
+      if (shouldAskCleanupAfterTrail(res.rejected)) setShowCleanup(true);
     } catch (e: any) {
       Alert.alert('Could not save', e?.message ?? 'Something went wrong saving that activity.');
     } finally {
       setSaving(false);
     }
-  }, [addActivity, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss, totalActivities]);
+  }, [addActivity, stopTracking, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss, totalActivities]);
 
   /**
    * Answering the cleanup question: the pieces are already logged by the
@@ -294,7 +292,7 @@ export default function ActiveTrackingScreen() {
         text: 'Discard',
         style: 'destructive',
         onPress: () => {
-          subRef.current?.remove();
+          stopTracking();
           navigation.goBack();
         },
       },
@@ -349,7 +347,7 @@ export default function ActiveTrackingScreen() {
                 <ResultStat label="Distance" value={`${formatDistance(result.miles)} ${formatDistanceUnit()}`} />
                 <ResultStat
                   label="Time"
-                  value={formatTime(result.durationSec + result.cleanupSeconds)}
+                  value={formatTime(result.durationSec)}
                 />
                 <ResultStat label="Trees" value={String(result.trees)} icon="tree" />
                 <ResultStat label="Points" value={`+${result.points}`} icon="star" />
@@ -409,12 +407,7 @@ export default function ActiveTrackingScreen() {
             visible={showCleanup}
             onClose={() => {
               setShowCleanup(false);
-              if (result.trailCompleted && result.trailId) {
-                setShowTrailRating(true);
-              } else if (pendingFeedback.current) {
-                pendingFeedback.current = false;
-                setShowFeedback(true);
-              }
+              if (result.trailCompleted && result.trailId) setShowTrailRating(true);
             }}
             title="How many pieces of trash do you pick up?"
             subtitle={`Nice ${result.kind === 'bike' ? 'ride' : 'walk'} — enter 0 to 99 for extra points`}
@@ -426,11 +419,6 @@ export default function ActiveTrackingScreen() {
             trailId={result.trailId}
             trailName={result.trailName}
             onClose={() => setShowTrailRating(false)}
-          />
-          <FeedbackSheet
-            visible={showFeedback}
-            onClose={() => setShowFeedback(false)}
-            kind={result.kind}
           />
         </SafeAreaView>
       </View>
@@ -569,7 +557,7 @@ export default function ActiveTrackingScreen() {
           <View style={styles.alertOverlay}>
             <View style={styles.alertBox}>
               <Icon name="alert-circle" size={32} color={colors.danger} strokeWidth={2} />
-              <Text style={styles.alertTitle}>Activity paused</Text>
+              <Text style={styles.alertTitle}>Speed warning</Text>
               <Text style={styles.alertText}>
                 We detected several moments where your speed exceeded what's expected for{' '}
                 {mode === 'hike' ? 'hiking' : 'biking'}. For fairness, this activity may not be counted toward your totals.

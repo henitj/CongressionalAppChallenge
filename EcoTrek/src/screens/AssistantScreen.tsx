@@ -39,7 +39,6 @@ import {
   testAiSettings,
 } from '../services/aiProvider';
 import { useTheme, Typography } from '../context/ThemeContext';
-import { AI_KEY_GUIDE_URL } from '../constants/appInfo';
 import { useKeyboardGap } from '../hooks/useKeyboardHeight';
 
 type Message = {
@@ -51,12 +50,22 @@ type Message = {
   upgrading?: boolean;
 };
 
+/** What to say when no trails are on the device yet. */
+function noTrailsAnswer(loading: boolean, needsLocation: boolean) {
+  const text = loading
+    ? 'I am still looking for trails near you. Give it a moment, then ask again.'
+    : needsLocation
+      ? 'I can only see trails once I know where you are. Turn on location in the Trails page, then ask again.'
+      : 'I could not find trails in this area yet. Pull to refresh on the Trails page, then ask again.';
+  return { text, trail: null, results: [], suggestions: ['Which trail is best for beginners?'] };
+}
+
 export default function AssistantScreen() {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { trails, coords } = useApp();
+  const { trails, coords, trailsLoading, locating, usingFallbackLocation } = useApp();
   const { report } = useWeather();
   const { history } = useActivity();
   const { units, formatTemp } = useSettings();
@@ -129,7 +138,12 @@ export default function AssistantScreen() {
 
       // Answer locally first — instant, offline, and never wrong about the data.
       const ctx = buildContext();
-      const local = answerQuestion(question, ctx);
+      let local = answerQuestion(question, ctx);
+      // With no trails loaded, "nothing in the catalogue matches" is the wrong
+      // answer: the list is simply not here yet. Say what is missing.
+      if (trails.length === 0 && local.results.length === 0 && local.text.startsWith('Nothing in the catalogue')) {
+        local = noTrailsAnswer(trailsLoading || locating, usingFallbackLocation);
+      }
       if (local.trail) focusRef.current = local.trail;
 
       const answerId = `a-${Date.now()}`;
@@ -216,7 +230,7 @@ export default function AssistantScreen() {
         );
       }
     },
-    [thinking, buildContext, trails, report, aiSettings]
+    [thinking, buildContext, trails, trailsLoading, locating, usingFallbackLocation, report, aiSettings]
   );
 
   const showStarters = messages.filter((m) => m.role === 'user').length === 0;
@@ -324,9 +338,7 @@ export default function AssistantScreen() {
                       {m.trails.map((t) => (
                         <Card
                           key={t.id}
-                          onPress={() =>
-                            navigation.navigate('Tabs', { screen: 'Trails', params: { focusTrailId: t.id } })
-                          }
+                          onPress={() => navigation.navigate('Trails', { focusTrailId: t.id })}
                           style={styles.trailCard}
                         >
                           <View style={styles.trailIcon}>
@@ -547,21 +559,6 @@ function AiKeySheet({
           </Text>
         )}
 
-        {AI_KEY_GUIDE_URL ? (
-          <Pressable
-            onPress={() => {
-              Linking.openURL(AI_KEY_GUIDE_URL).catch(() => {
-                /* no browser available */
-              });
-            }}
-            accessibilityRole="link"
-            accessibilityLabel="Open the step-by-step AI key guide"
-          >
-            <Text style={styles.aiSheetHint}>
-              Step-by-step guide: <Text style={styles.aiSheetLink}>{AI_KEY_GUIDE_URL.replace(/^https?:\/\//, '')}</Text>
-            </Text>
-          </Pressable>
-        ) : null}
 
         <Text style={styles.aiSheetLabel}>API key</Text>
         <TextInput

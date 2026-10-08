@@ -10,6 +10,7 @@ import {
   Modal,
   ScrollView,
   Image,
+  Platform,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { NavigationContext } from '@react-navigation/native';
@@ -19,6 +20,16 @@ import { useKeyboardGap } from '../hooks/useKeyboardHeight';
 import { useTheme } from '../context/ThemeContext';
 import { AVATAR_COLORS, RADIUS, SHADOWS, SPACING } from '../constants/theme';
 
+
+/**
+ * "on-drag" means "dismiss the keyboard when the list scrolls". On native that
+ * is a deliberate user drag. react-native-web implements it as "blur the
+ * focused input on ANY scroll event", so a browser scrolling the focused
+ * field into view (which is exactly what the Android WebView does when the
+ * keyboard opens) or a programmatic scrollTo closed the keyboard the moment it
+ * opened. The web build therefore never dismisses on scroll.
+ */
+export const SCROLL_KEYBOARD_DISMISS: 'none' | 'on-drag' = Platform.OS === 'web' ? 'none' : 'on-drag';
 
 export function Screen({
   children,
@@ -76,7 +87,7 @@ export function Screen({
         refreshControl={refreshControl}
         nestedScrollEnabled
         keyboardShouldPersistTaps="handled"
-        keyboardDismissMode="on-drag"
+        keyboardDismissMode={SCROLL_KEYBOARD_DISMISS}
         stickyHeaderIndices={hasHeader ? [0] : undefined}
       >
         {hasHeader ? (
