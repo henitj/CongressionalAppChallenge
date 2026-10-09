@@ -1,10 +1,10 @@
 import { Platform } from 'react-native';
 
-import { Coord, haversineMiles, instantMph, smoothDelta } from './geo';
+import { Coord, haversineMiles } from './geo';
 import { addLocationListener, emitLocation, LOCATION_TASK } from './locationTask';
 
 export type { Coord };
-export { haversineMiles, instantMph, smoothDelta };
+export { haversineMiles };
 
 export type Subscription = { remove: () => void };
 
@@ -131,7 +131,6 @@ export async function startTracking(
 
     const unlisten = addLocationListener(onCoord);
     let usedBackgroundTask = false;
-    let watch: { remove: () => void } | null = null;
 
     if (opts.allowBackground) {
       try {
@@ -171,48 +170,42 @@ export async function startTracking(
     unlisten();
     const unlistenAll = addLocationListener(deliver);
 
-    if (!usedBackgroundTask) {
-      watch = await Location.watchPositionAsync(
-        {
-          accuracy: Location.Accuracy.BestForNavigation,
-          timeInterval: 1000,
-          distanceInterval: 2,
-          mayShowUserSettingsDialog: false,
-        },
-        (loc) =>
-          emitLocation({
-            latitude: loc.coords.latitude,
-            longitude: loc.coords.longitude,
-            timestamp: loc.timestamp,
-            accuracy: loc.coords.accuracy ?? undefined,
-            speed: loc.coords.speed ?? undefined,
-            altitude: loc.coords.altitude ?? undefined,
-          })
-      );
-    } else {
-      // Still watch in the foreground so the map updates every second while
-      // the app is open. Background updates keep coming from the task.
-      try {
-        watch = await Location.watchPositionAsync(
-          {
-            accuracy: Location.Accuracy.BestForNavigation,
-            timeInterval: 1000,
-            distanceInterval: 2,
-            mayShowUserSettingsDialog: false,
-          },
-          (loc) =>
-            emitLocation({
-              latitude: loc.coords.latitude,
-              longitude: loc.coords.longitude,
-              timestamp: loc.timestamp,
-              accuracy: loc.coords.accuracy ?? undefined,
-              speed: loc.coords.speed ?? undefined,
-              altitude: loc.coords.altitude ?? undefined,
-            })
-        );
-      } catch {
-        /* task alone is enough */
+    const watchOptions = {
+      accuracy: Location.Accuracy.BestForNavigation,
+      timeInterval: 1000,
+      distanceInterval: 2,
+      mayShowUserSettingsDialog: false,
+    };
+    const onFix = (loc: any) =>
+      emitLocation({
+        latitude: loc.coords.latitude,
+        longitude: loc.coords.longitude,
+        timestamp: loc.timestamp,
+        accuracy: loc.coords.accuracy ?? undefined,
+        speed: loc.coords.speed ?? undefined,
+        altitude: loc.coords.altitude ?? undefined,
+      });
+
+    let watch: { remove: () => void } | null = null;
+    try {
+      // Without the background task the live watch is the only source, so its
+      // failure is a real failure. With the task, the watch only adds
+      // on-screen updates while the app is open, so its failure is harmless.
+      if (!usedBackgroundTask) {
+        watch = await Location.watchPositionAsync(watchOptions, onFix);
+      } else {
+        try {
+          watch = await Location.watchPositionAsync(watchOptions, onFix);
+        } catch {
+          /* the background task alone is enough */
+        }
       }
+    } catch (e) {
+      // Release everything this call acquired, so a failed start leaves no
+      // listener or background task behind.
+      unlistenAll();
+      if (usedBackgroundTask) Location.stopLocationUpdatesAsync(LOCATION_TASK).catch(() => {});
+      throw e;
     }
 
     return {

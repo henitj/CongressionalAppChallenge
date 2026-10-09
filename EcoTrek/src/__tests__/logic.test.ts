@@ -15,7 +15,7 @@ import { dayKey, addDays, daysBetween, weekKey, weekStart, weekEnd } from '../se
 import { challengesForWeek, CHALLENGE_CATALOG, CHALLENGES_PER_WEEK } from '../constants/challenges';
 import { detectTrail, evaluateCompletion, validateActivity } from '../services/trailDetection';
 import { AUSTIN_TRAILS, getTrailById } from '../constants/austinTrails';
-import { Coord, haversineMiles, instantMph, smoothDelta } from '../services/geo';
+import { advanceTrack, Coord, EMPTY_TRACK, haversineMiles } from '../services/geo';
 import { computeTrees, speciesFor, TREES_DISCLAIMER } from '../services/trees';
 import { firstNameOf, fullNameOf } from '../services/displayName';
 import { LEVELS, TREE_RULES, fontScaleFor } from '../constants/theme';
@@ -863,7 +863,8 @@ test('cleanup points reward the bend, then stop rewarding exaggeration', () => {
   assert.equal(cleanupBonusPoints(1), 17);
   assert.equal(cleanupBonusPoints(5), 25);
   // Capped, so typing 999 is not a shortcut to a level up.
-  assert.equal(cleanupBonusPoints(999), 60);
+  assert.equal(cleanupBonusPoints(999), cleanupBonusPoints(99), 'above the cap earns the cap');
+  assert.ok(cleanupBonusPoints(100) >= cleanupBonusPoints(99), 'reward never falls as the count grows');
 });
 
 test('cleanup time credited back is small and capped', () => {
@@ -941,21 +942,80 @@ test('weather icons follow WMO codes and flip sun to moon at night', () => {
   assert.equal(iconForCode(999, true), 'cloud');
 });
 
-test('GPS smoothing drops noise, glitches, and bad accuracy', () => {
-  const t = 1_760_000_000_000;
-  const a = { latitude: 30.26, longitude: -97.75, timestamp: t };
-  const near = { latitude: 30.260001, longitude: -97.75, timestamp: t + 1000 };
-  assert.equal(smoothDelta(undefined, a), 0);
-  assert.equal(smoothDelta(a, near), 0, 'sub-2m wander is noise');
-  const far = { latitude: 31.26, longitude: -97.75, timestamp: t + 1000 };
-  assert.equal(smoothDelta(a, far), 0, '100+ mph is a glitch');
-  const ok = { latitude: 30.261, longitude: -97.75, timestamp: t + 30_000 };
-  const delta = smoothDelta(a, ok);
-  assert.ok(delta > 0.05 && delta < 0.2, `unexpected delta ${delta}`);
-  const inaccurate = { ...ok, accuracy: 80 };
-  assert.equal(smoothDelta(a, inaccurate), 0);
-  assert.ok(instantMph(a, ok) > 0);
-  assert.equal(instantMph(undefined, ok), 0);
+const T0 = 1_760_000_000_000;
+const M_PER_DEG_LAT = 111_200;
+/** A fix `northM` metres north of the start, `sec` seconds after it. */
+function fixAt(sec: number, northM: number, extra: Partial<Coord> = {}): Coord {
+  return {
+    latitude: 30.26 + northM / M_PER_DEG_LAT,
+    longitude: -97.75,
+    timestamp: T0 + sec * 1000,
+    accuracy: 6,
+    ...extra,
+  };
+}
+
+test('GPS filter: standing still counts no distance and no speed strikes', () => {
+  // Wander of a few metres, all inside the accuracy radius, for ten minutes.
+  const wobble = [0, 3, -2, 4, -3, 1, 2, -4, 0, 3];
+  let state = EMPTY_TRACK;
+  for (let i = 0; i < 600; i++) {
+    const r = advanceTrack(state, fixAt(i, wobble[i % wobble.length]));
+    assert.notEqual(r.status, 'moved', `wobble counted as movement at ${i}s`);
+    state = r.state;
+  }
+  assert.equal(state.miles, 0);
+});
+
+test('GPS filter: walking counts the distance walked, without speed spikes', () => {
+  const mps = 1.34; // about 3 mph
+  let state = EMPTY_TRACK;
+  let maxMph = 0;
+  for (let i = 0; i <= 600; i++) {
+    const r = advanceTrack(state, fixAt(i, mps * i));
+    state = r.state;
+    if (r.status === 'moved') maxMph = Math.max(maxMph, r.mph);
+  }
+  const truth = (mps * 600) / 1609.344;
+  assert.ok(Math.abs(state.miles - truth) / truth < 0.03, `counted ${state.miles}, walked ${truth}`);
+  assert.ok(maxMph < 6, `walking should not look fast (max ${maxMph} mph)`);
+});
+
+test('GPS filter: poor fixes are ignored and leave the state untouched', () => {
+  const first = advanceTrack(EMPTY_TRACK, fixAt(0, 0));
+  const bad = advanceTrack(first.state, fixAt(1, 40, { accuracy: 80 }));
+  assert.equal(bad.status, 'ignored');
+  assert.equal(bad.state, first.state);
+  assert.equal(bad.point, null);
+});
+
+test('GPS filter: a jump is ignored, and a long gap starts afresh without losing miles', () => {
+  let state = EMPTY_TRACK;
+  for (let i = 0; i <= 30; i++) state = advanceTrack(state, fixAt(i, 1.34 * i)).state;
+  const before = state.miles;
+  const jump = advanceTrack(state, fixAt(31, 5000));
+  assert.equal(jump.status, 'ignored', 'five kilometres in a second is a glitch');
+  assert.equal(jump.state.miles, before);
+  const later = advanceTrack(state, fixAt(150, 5000));
+  assert.equal(later.status, 'started', 'two minutes later it is a new start, not a jump');
+  assert.equal(later.state.miles, before);
+});
+
+test('GPS filter: the path points are the smoothed anchors, and altitude wobble adds nothing', () => {
+  let state = EMPTY_TRACK;
+  let anchors = 0;
+  for (let i = 0; i < 300; i++) {
+    const r = advanceTrack(state, fixAt(i, 1.34 * i, { altitude: 200 + [0, 2, -2, 1, -1][i % 5] }));
+    state = r.state;
+    if (r.point) anchors++;
+  }
+  assert.equal(state.gainFt, 0, 'wobble below the step must not count');
+  assert.equal(state.lossFt, 0);
+  assert.ok(anchors > 0 && anchors < 300, 'the path gets anchor points, not every raw fix');
+  for (let i = 300; i < 600; i++) {
+    state = advanceTrack(state, fixAt(i, 1.34 * i, { altitude: 200 + (i - 300) * 0.1 })).state;
+  }
+  assert.ok(state.gainFt > 80 && state.gainFt < 100, `a 30 m climb should be about 98 ft, got ${state.gainFt}`);
 });
 
 test('assistant starter questions are non-empty', () => {

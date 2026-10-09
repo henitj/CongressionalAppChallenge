@@ -11,7 +11,7 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context';
 
 import Icon from '../components/Icon';
-import { Button } from '../components/ui';
+import { Button, SCROLL_KEYBOARD_DISMISS } from '../components/ui';
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useProfile } from '../context/ProfileContext';
 import { useAuth } from '../context/AuthContext';
@@ -110,7 +110,7 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
             contentContainerStyle={styles.scroll}
             showsVerticalScrollIndicator={false}
             keyboardShouldPersistTaps="handled"
-            keyboardDismissMode="on-drag"
+            keyboardDismissMode={SCROLL_KEYBOARD_DISMISS}
             automaticallyAdjustKeyboardInsets
           >
             {step === 'name' ? (

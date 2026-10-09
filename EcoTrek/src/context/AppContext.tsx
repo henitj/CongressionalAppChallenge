@@ -143,6 +143,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     (async () => {
       if (Platform.OS === 'web') {
         setPermission('unknown');
+        // A browser that already allowed location can be asked quietly, so the
+        // trail list (and the assistant that reads it) is ready without a visit
+        // to Trails first. Without a grant we never prompt on start-up.
+        try {
+          const status = await navigator.permissions?.query({ name: 'geolocation' });
+          if (status?.state === 'granted') requestLocation({ silent: true });
+        } catch {
+          /* no Permissions API: Trails asks the first time it opens */
+        }
         return;
       }
       try {

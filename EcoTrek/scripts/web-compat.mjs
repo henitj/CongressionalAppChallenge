@@ -189,13 +189,18 @@ const BOOTSTRAP_SCRIPT = `<script id="${BOOTSTRAP_MARKER}">
 </script>`;
 
 /*
- * Android visitors to the public app pages get moved to the install guide:
- * they came for an app, and a browser tab is not the same thing. It runs in
- * <head>, before the first paint, and it steps aside for
+ * Phone visitors to the public app pages are moved to the install guide for
+ * their platform: Android to /install/android.html, iPhone, iPod and iPad
+ * (iPadOS in desktop mode included) to /install/ios.html. They came for an
+ * app, and a browser tab is not the same thing. It runs in <head>, before the
+ * first paint, and it steps aside for
  *   - the APK itself (virtual origin), where there is nothing to install;
  *   - "?web=1" and the cookie it sets, i.e. "I want the browser version";
- *   - an installed PWA (display-mode: standalone), which would otherwise be
- *     sent to the install page on every single launch.
+ *   - an installed app (standalone display mode, or iOS navigator.standalone),
+ *     which would otherwise be sent to the install page on every launch.
+ * vercel.json (user-agent redirects) and serve-site.mjs carry the same rules,
+ * so the local preview routes exactly like the live site. The script has no
+ * backslashes on purpose: it lives in a template literal.
  */
 const APP_REDIRECT_SCRIPT = `<script id="ecotrek-redirect">
 (function () {
@@ -204,7 +209,7 @@ const APP_REDIRECT_SCRIPT = `<script id="ecotrek-redirect">
   var roots = ['/', '/index.html', '/app', '/app/'];
   if (roots.indexOf(location.pathname) === -1) return;
 
-  if (/(?:^\\?|&)web=1(?:&|$)/.test(location.search)) {
+  if (/(^|[?&])web=1(&|$)/.test(location.search)) {
     try {
       document.cookie = 'ecotrek_web=1; path=/; max-age=31536000; SameSite=Lax';
     } catch (error) {
@@ -213,20 +218,27 @@ const APP_REDIRECT_SCRIPT = `<script id="ecotrek-redirect">
     if (window.history && history.replaceState) history.replaceState(null, '', location.pathname);
     return;
   }
-  if (/(?:^|;\\s*)ecotrek_web=1/.test(document.cookie)) return;
+  if (/(^|; ?)ecotrek_web=1/.test(document.cookie)) return;
+
   try {
     if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return;
   } catch (error) {
-    /* no matchMedia: fall through and offer the install page */
+    /* no matchMedia: carry on */
   }
-  if (/Android/i.test(navigator.userAgent)) location.replace('/install/android.html');
+  if (navigator.standalone === true) return;
+
+  var ua = navigator.userAgent || '';
+  // iPadOS 13+ asks for the desktop site and reports itself as a touch Mac.
+  var touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+  if (/iPhone|iPad|iPod/.test(ua) || touchMac) location.replace('/install/ios.html');
+  else if (/Android/i.test(ua)) location.replace('/install/android.html');
 })();
 </script>`;
 
 /*
  * The site bar: a slim strip at the bottom of the public app pages with the
- * three things the app itself cannot show — the Android install guide, the
- * iPhone/iPad guide and the AI-key walkthrough — plus a dismiss button.
+ * two things the app itself cannot show — the Android install guide and the
+ * iPhone/iPad guide — plus a dismiss button.
  *
  * It is a *bar*, not a floating pill, on purpose. The app owns the whole
  * viewport, and anything floating over it covers a tab, a button or (on the
@@ -244,7 +256,9 @@ const LAUNCHER_STYLE = `<style id="ecotrek-launcher-style">
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 2147483000;
+    /* Above the app, but below RN-web modals (z-index 9999): a sheet must never
+       open underneath the bar, or its lower fields and Save button are lost. */
+    z-index: 9000;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -314,7 +328,6 @@ const LAUNCHER_MARKUP = `<div id="ecotrek-launcher" hidden>
   <div class="ecotrek-launcher-links">
     <a href="/install/android.html">Android app</a>
     <a href="/install/ios.html">iPhone &amp; iPad</a>
-    <a href="/api-key.html">AI key</a>
   </div>
   <button type="button" id="ecotrek-launcher-close" aria-label="Hide this bar" title="Hide this bar">&#215;</button>
 </div>
@@ -343,7 +356,7 @@ const LAUNCHER_MARKUP = `<div id="ecotrek-launcher" hidden>
   if (close) {
     close.onclick = function () {
       bar.hidden = true;
-      document.documentElement.className = document.documentElement.className.replace(/\s*ecotrek-launcher-open/, '');
+      document.documentElement.className = document.documentElement.className.replace(' ecotrek-launcher-open', '');
       try {
         localStorage.setItem(storageKey, '1');
       } catch (error) {

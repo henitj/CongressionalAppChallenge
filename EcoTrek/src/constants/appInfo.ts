@@ -13,14 +13,6 @@ export const APP_VERSION = '1.0.0';
 export const PRIVACY_POLICY_URL =
   process.env.EXPO_PUBLIC_PRIVACY_URL ?? 'https://henitj.github.io/CongressionalAppChallenge/privacy';
 
-/**
- * Optional: the public page that walks through getting an AI key (the
- * website's /api-key page). Set EXPO_PUBLIC_API_KEY_GUIDE_URL to show a
- * "step-by-step guide" line in the assistant's settings sheet; when it is
- * empty the line is simply not rendered.
- */
-export const AI_KEY_GUIDE_URL = process.env.EXPO_PUBLIC_API_KEY_GUIDE_URL ?? '';
-
 /** Shown in Settings and required on the Play listing. */
 export const SUPPORT_EMAIL = process.env.EXPO_PUBLIC_SUPPORT_EMAIL ?? 'ecotrek.support@gmail.com';
 

@@ -28,13 +28,12 @@ export function normalizeCleanupPieces(value: unknown): number {
 }
 
 /**
- * More collected pieces always earn more points through the supported 0–99
- * range. Values outside that range are treated as legacy/invalid input and
- * receive only the old safe cap; the UI never submits them.
+ * Points rise with every piece up to the 99 cap. Anything above the cap is
+ * capped first, so it earns exactly what 99 earns: the reward never falls as
+ * the count grows, and a runaway count is not a leaderboard shortcut.
  */
 export function cleanupBonusPoints(pieces: number): number {
   if (!Number.isFinite(pieces) || pieces <= 0) return 0;
-  if (pieces > MAX_CLEANUP_PIECES) return CLEANUP_BASE_POINTS + 45;
   return CLEANUP_BASE_POINTS + normalizeCleanupPieces(pieces) * 2;
 }
 
