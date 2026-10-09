@@ -5,6 +5,7 @@ import { useAuth } from '../context/AuthContext';
 import { isArray, keyFor, loadJSON, saveJSON } from '../services/storage';
 import { api, isBackendConfigured, ROUTES } from '../services/api';
 import { CLEANUP_BASE_POINTS } from '../services/cleanup';
+import { useGems } from './GemsContext';
 
 export type EcoAction =
   | 'hike_mile'
@@ -203,6 +204,7 @@ const EcoPointsContext = createContext<EcoPointsState | null>(null);
 
 export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
+  const { earn: earnGems } = useGems();
   const userId = user?.id ?? null;
 
   const [history, setHistory] = useState<PointEvent[]>([]);
@@ -382,11 +384,12 @@ export function EcoPointsProvider({ children }: { children: React.ReactNode }) {
       badgesRef.current = next;
       setBadges(next);
       const pts = await award('badge_claimed', { label: `Badge unlocked: ${badge.name}`, eventId: `badge-claim:${badge.id}` });
+      earnGems('badge_claimed', { label: `Badge unlocked: ${badge.name}`, eventId: `badge-claim:${badge.id}` });
       await saveJSON(badgeKey, next);
 
       return pts;
     },
-    [award, badgeKey]
+    [award, earnGems, badgeKey]
   );
 
   const pointsSince = useCallback(

@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Switch, Alert, Linking, Pressable } from 'react-native';
+import { View, Text, StyleSheet, Switch, Linking, Platform, Pressable } from 'react-native';
+import { alert } from '../services/alert';
 import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
@@ -44,7 +45,7 @@ export default function SettingsScreen() {
     if (on) {
       const ok = await notif.enable();
       if (!ok) {
-        Alert.alert(
+        alert(
           'Notifications are off',
           'Turn on notifications for EcoTrek in your phone settings to get streak and challenge reminders.',
           [
@@ -59,7 +60,7 @@ export default function SettingsScreen() {
   };
 
   const confirmReset = () => {
-    Alert.alert(
+    alert(
       'Erase all your data?',
       'This deletes your activities, points, badges and streaks from this device. It cannot be undone.',
       [
@@ -73,7 +74,7 @@ export default function SettingsScreen() {
             await clearUserData(user?.id);
             await signOut();
             setBusy(false);
-            Alert.alert('Done', 'Your data has been erased from this device.');
+            alert('Done', 'Your data has been erased from this device.');
           },
         },
       ]
@@ -81,7 +82,7 @@ export default function SettingsScreen() {
   };
 
   const confirmDeleteAccount = () => {
-    Alert.alert(
+    alert(
       'Delete your account?',
       'This removes this profile’s local data and signs you out. Nothing is deleted anywhere else, because nothing was ever uploaded.',
       [
@@ -257,7 +258,24 @@ export default function SettingsScreen() {
           <SectionHeader title="Permissions" />
           <Card padded={false}>
             <Pressable
-              onPress={() => (permission === 'granted' ? Linking.openSettings() : requestLocation())}
+              onPress={() => {
+                if (permission !== 'granted') {
+                  requestLocation({ explain: true });
+                  return;
+                }
+                // Linking.openSettings() does not exist on web — react-native-web
+                // has no "open this PWA's permission page" API, and there's no
+                // one URL that works across browsers, so tell the person
+                // exactly where to look instead of silently doing nothing.
+                if (Platform.OS === 'web') {
+                  alert(
+                    'Manage location access',
+                    'This lives outside the app: open your phone\u2019s Settings → Apps → EcoTrek → Permissions → Location (or your browser\u2019s site settings for this page) to change it.'
+                  );
+                } else {
+                  Linking.openSettings();
+                }
+              }}
               style={({ pressed }) => [styles.row, pressed && { opacity: 0.7 }]}
             >
               <View style={styles.rowIcon}>

@@ -6,6 +6,7 @@ import { useAuth } from './AuthContext';
 import { useStreak } from './StreakContext';
 import { useClub } from '../context/ClubContext';
 import { useEcoPoints } from '../context/EcoPointsContext';
+import { useGems } from '../context/GemsContext';
 import { useProfile, estimateCalories, estimateElevation } from './ProfileContext';
 import { useApp } from './AppContext';
 import { isArray, keyFor, loadJSON, saveJSON } from '../services/storage';
@@ -90,6 +91,7 @@ function thinPath(path: Coord[], maxPoints = 400): Coord[] {
 export function ActivityProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
   const { award } = useEcoPoints();
+  const { earn: earnGems } = useGems();
   const { recordActivity } = useStreak();
   const { contribute, myClub } = useClub();
   const { profile } = useProfile();
@@ -191,15 +193,19 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         const wholeMiles = Math.floor(input.miles);
         if (wholeMiles > 0) {
           pointsAwarded += await award(mileAction, { multiplier: wholeMiles });
+          // Gems — a separate, spendable currency you water your tree with.
+          earnGems(mileAction, { multiplier: wholeMiles });
         }
         if (trees > 0) {
           pointsAwarded += await award('tree_earned', { multiplier: trees });
+          earnGems('tree_earned', { multiplier: trees });
         }
         if (activity.trailCompleted && completion.trail) {
           pointsAwarded += await award('trail_completed', {
             points: completion.trail.ecoPoints ?? 25,
             label: `Completed ${completion.trail.name}`,
           });
+          earnGems('trail_completed', { label: `Completed ${completion.trail.name}` });
         }
       }
 
@@ -230,7 +236,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         rejectionReason: validation.flagReason,
       };
     },
-    [persist, award, recordActivity, contribute, myClub, userId, profile, trails]
+    [persist, award, earnGems, recordActivity, contribute, myClub, userId, profile, trails]
   );
 
   // Multiple Finish taps share one operation; previously they paid rewards twice.

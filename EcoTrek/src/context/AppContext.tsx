@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Platform } from 'react-native';
+import { Linking, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import {
   AUSTIN_TRAILS,
@@ -8,6 +8,7 @@ import {
   type TrailSource,
 } from '../constants/austinTrails';
 import { isNearAustin, withDistances } from '../services/nearbyTrails';
+import { alert } from '../services/alert';
 
 /**
  * Location + trail catalogue.
@@ -45,8 +46,16 @@ type AppContextType = {
   usingFallbackLocation: boolean;
   permission: PermissionState;
   locating: boolean;
-  /** Prompts for permission if needed, then resolves coordinates. */
-  requestLocation: (opts?: { silent?: boolean; permissionOnly?: boolean }) => Promise<Coords | null>;
+  /**
+   * Prompts for permission if needed, then resolves coordinates.
+   *
+   * `explain: true` marks this as a call the person made on purpose (tapping
+   * an "Enable location" button) — if the browser/OS permission is already
+   * denied, or the fix fails, we surface a plain-language alert so tapping
+   * the button does *something* visible instead of quietly failing again
+   * the way a bare permission re-request does once it has been refused.
+   */
+  requestLocation: (opts?: { silent?: boolean; permissionOnly?: boolean; explain?: boolean }) => Promise<Coords | null>;
 };
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -169,7 +178,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   }, []);
 
   const requestLocation = useCallback(
-    async (opts: { silent?: boolean; permissionOnly?: boolean } = {}): Promise<Coords | null> => {
+    async (
+      opts: { silent?: boolean; permissionOnly?: boolean; explain?: boolean } = {}
+    ): Promise<Coords | null> => {
       if (inFlight.current && !opts.permissionOnly) return inFlight.current;
 
       const run = (async (): Promise<Coords | null> => {
@@ -178,8 +189,47 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           if (Platform.OS === 'web') {
             if (typeof navigator === 'undefined' || !navigator.geolocation) {
               setPermission('unavailable');
+              if (opts.explain) {
+                alert(
+                  'Location is not available',
+                  'This browser or device cannot provide a location. Distance tracking still works from your motion once a walk or ride starts.'
+                );
+              }
               return opts.permissionOnly ? DEFAULT_LOCATION : null;
             }
+
+            // A browser (and the Android WebView shell this app also ships
+            // as — see android-shell/README.md) will show the real "Allow
+            // location?" system prompt only the first time, or while the
+            // permission is still in the undecided "prompt" state. Once it
+            // has been denied, calling getCurrentPosition again is silently
+            // refused with NO prompt at all — which is exactly why tapping
+            // "Enable location" over and over used to look like it did
+            // nothing. Checking the state first lets us tell the person what
+            // is actually going on instead of repeating a request the
+            // platform has already decided to ignore.
+            if (opts.explain && navigator.permissions?.query) {
+              try {
+                const state = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+                if (state.state === 'denied') {
+                  setPermission('denied');
+                  setLocating(false);
+                  alert(
+                    'Location is blocked for EcoTrek',
+                    Platform.select({
+                      android:
+                        'Your phone already said no to this request, so it won\u2019t ask again on its own. Open your phone\u2019s Settings → Apps → EcoTrek → Permissions → Location and set it to Allow, then come back and try again.',
+                      default:
+                        'Your browser already said no to this request, so it won\u2019t ask again on its own. Open your browser\u2019s site settings for this page, allow Location, then reload and try again.',
+                    }) as string
+                  );
+                  return opts.permissionOnly ? DEFAULT_LOCATION : null;
+                }
+              } catch {
+                /* Permissions API unsupported here — fall through and just ask. */
+              }
+            }
+
             return await new Promise<Coords | null>((resolve) => {
               navigator.geolocation.getCurrentPosition(
                 (pos) => {
@@ -191,8 +241,32 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   setCoords(c);
                   resolve(c);
                 },
-                () => {
+                (err) => {
                   setPermission('denied');
+                  if (opts.explain) {
+                    // code 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT.
+                    if (err?.code === 2) {
+                      alert(
+                        'Can\u2019t find a location fix',
+                        'Your phone\u2019s Location/GPS service may be turned off. Turn it on from your phone\u2019s quick settings, then try again.'
+                      );
+                    } else if (err?.code === 3) {
+                      alert(
+                        'That took too long',
+                        'Could not get a location fix in time. Try again somewhere with a clearer view of the sky or a steadier signal.'
+                      );
+                    } else {
+                      alert(
+                        'Location permission needed',
+                        Platform.select({
+                          android:
+                            'EcoTrek needs Location access to measure your walks and rides. Allow it in the prompt, or in your phone\u2019s Settings → Apps → EcoTrek → Permissions if you don\u2019t see one.',
+                          default:
+                            'EcoTrek needs Location access to measure your walks and rides. Allow it when your browser asks, or turn it on in your browser\u2019s site settings for this page.',
+                        }) as string
+                      );
+                    }
+                  }
                   resolve(opts.permissionOnly ? DEFAULT_LOCATION : null);
                 },
                 { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
@@ -214,6 +288,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
           if (status !== 'granted') {
             setPermission('denied');
+            if (opts.explain) {
+              alert(
+                'Location permission needed',
+                existing.canAskAgain === false
+                  ? 'EcoTrek can\u2019t ask again automatically. Open Settings → Apps → EcoTrek → Permissions → Location and allow it, then come back.'
+                  : 'EcoTrek needs Location access to measure your walks and rides. Allow it in the prompt to continue.',
+                existing.canAskAgain === false
+                  ? [
+                      { text: 'Not now', style: 'cancel' },
+                      { text: 'Open settings', onPress: () => Linking.openSettings() },
+                    ]
+                  : undefined
+              );
+            }
             return null;
           }
 

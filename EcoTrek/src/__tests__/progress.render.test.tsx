@@ -4,6 +4,8 @@ import { act, render, waitFor } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider } from '../context/AuthContext';
 import { EcoPointsProvider, useEcoPoints } from '../context/EcoPointsContext';
+import { GemsProvider } from '../context/GemsContext';
+import { TreeGrowthProvider } from '../context/TreeGrowthContext';
 import { StreakProvider, useStreak } from '../context/StreakContext';
 import { currentWeeklyStreak, freezeTarget, activeMilestones, weekOffset, WeekMap } from '../services/weeklyStreaks';
 import { weekKey } from '../services/dates';
@@ -16,7 +18,7 @@ function Probe() {
   return <Text>ready</Text>;
 }
 function App() {
-  return <AuthProvider><EcoPointsProvider><StreakProvider><Probe /></StreakProvider></EcoPointsProvider></AuthProvider>;
+  return <AuthProvider><GemsProvider><TreeGrowthProvider><EcoPointsProvider><StreakProvider><Probe /></StreakProvider></EcoPointsProvider></TreeGrowthProvider></GemsProvider></AuthProvider>;
 }
 beforeEach(async () => { await AsyncStorage.clear(); });
 async function boot() {

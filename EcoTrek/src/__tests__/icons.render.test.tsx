@@ -8,10 +8,10 @@ import Icon, { ICON_NAMES } from '../components/Icon';
  * dropped out, every screen that uses it would draw a blank.
  */
 describe('icon catalogue', () => {
-  it('still has the full 76-icon set', () => {
-    // 74 originals + `sparkles` (AI chat button) + `image` (trail photos).
-    expect(ICON_NAMES).toHaveLength(76);
-    expect(new Set(ICON_NAMES).size).toBe(76);
+  it('still has the full 77-icon set', () => {
+    // 74 originals + `sparkles` (AI chat button) + `image` (trail photos) + `gem` (gem economy / tree page).
+    expect(ICON_NAMES).toHaveLength(77);
+    expect(new Set(ICON_NAMES).size).toBe(77);
   });
 
   it('renders every icon, including filled variants', () => {

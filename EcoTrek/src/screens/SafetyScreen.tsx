@@ -1,5 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet, Linking, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, Linking, Pressable } from 'react-native';
+import { alert } from '../services/alert';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
@@ -114,7 +115,7 @@ export default function SafetyScreen() {
                 {i > 0 ? <Divider style={{ marginLeft: 58 }} /> : null}
                 <Pressable
                   onPress={() => Linking.openURL(`tel:${e.tel}`).catch(() => {
-                    Alert.alert('Could not open the phone app', `Call ${e.value} from another phone if needed.`);
+                    alert('Could not open the phone app', `Call ${e.value} from another phone if needed.`);
                   })}
                   style={({ pressed }) => [styles.callRow, pressed && { opacity: 0.7 }]}
                 >

@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { alert } from '../services/alert';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
 import Header from '../components/Header';
@@ -113,7 +114,7 @@ export default function ActivityDetailScreen() {
   const paceMinPerMile = activity.miles > 0 ? activity.durationSec / 60 / activity.miles : 0;
 
   const confirmDelete = () => {
-    Alert.alert('Delete this activity?', 'It is removed from your history and your totals.', [
+    alert('Delete this activity?', 'It is removed from your history and your totals.', [
       { text: 'Cancel', style: 'cancel' },
       {
         text: 'Delete',

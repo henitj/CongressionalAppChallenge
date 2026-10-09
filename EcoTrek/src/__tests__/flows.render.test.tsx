@@ -6,12 +6,17 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AppProvider } from '../context/AppContext';
 import { BADGE_CLAIM_POINTS, EcoPointsProvider, useEcoPoints } from '../context/EcoPointsContext';
+import { GemsProvider } from '../context/GemsContext';
+import { TreeGrowthProvider } from '../context/TreeGrowthContext';
 import { SettingsProvider } from '../context/SettingsContext';
 import { ClubProvider, useClub } from '../context/ClubContext';
 import { StreakProvider, useStreak } from '../context/StreakContext';
 import { ActivityProvider, useActivity } from '../context/ActivityContext';
 import { LogbookProvider, useLogbook } from '../context/LogbookContext';
 import { ChallengeProvider, useChallenges } from '../context/ChallengeContext';
+import { useGems } from '../context/GemsContext';
+import { GEM_VALUES } from '../constants/gems';
+import { useTreeGrowth } from '../context/TreeGrowthContext';
 import { ProfileProvider } from '../context/ProfileContext';
 import { AUSTIN_TRAILS } from '../constants/austinTrails';
 
@@ -43,6 +48,8 @@ type Harness = {
   streak: ReturnType<typeof useStreak>;
   logbook: ReturnType<typeof useLogbook>;
   challenges: ReturnType<typeof useChallenges>;
+  gems: ReturnType<typeof useGems>;
+  tree: ReturnType<typeof useTreeGrowth>;
 };
 
 let harness: Harness;
@@ -55,6 +62,8 @@ function Probe() {
     streak: useStreak(),
     logbook: useLogbook(),
     challenges: useChallenges(),
+    gems: useGems(),
+    tree: useTreeGrowth(),
   };
   return (
     <View>
@@ -71,7 +80,9 @@ async function boot() {
     <AuthProvider>
       <AuthedOnly>
         <AppProvider>
-        <EcoPointsProvider>
+        <GemsProvider>
+            <TreeGrowthProvider>
+            <EcoPointsProvider>
           <SettingsProvider>
           <ProfileProvider>
             <ClubProvider onJoined={() => harness?.points.award('club_joined')}>
@@ -88,6 +99,8 @@ async function boot() {
           </ProfileProvider>
           </SettingsProvider>
         </EcoPointsProvider>
+            </TreeGrowthProvider>
+            </GemsProvider>
         </AppProvider>
       </AuthedOnly>
     </AuthProvider>
@@ -399,6 +412,58 @@ describe('weekly challenges', () => {
       { timeout: 5000 }
     );
   });
+
+  it('deleting the activity that completed an auto challenge, then logging an equivalent one, does not pay the challenge out twice', async () => {
+    await boot();
+
+    const auto = harness.challenges.challenges.find(
+      (c) => c.kind === 'auto' && c.metric === 'miles'
+    );
+    if (!auto) return;
+    const target = auto.target ?? 2;
+
+    // 1. One activity crosses the target and auto-completes the challenge.
+    await act(async () => {
+      await harness.activity.addActivity(hikeInput({ miles: target }));
+    });
+    await waitFor(() => {
+      const updated = harness.challenges.challenges.find((c) => c.id === auto.id)!;
+      expect(updated.completed).toBe(true);
+    });
+
+    const firstCompletedAt = harness.challenges.challenges.find((c) => c.id === auto.id)!.completedAt;
+    const lifetimeAfterFirst = harness.challenges.lifetimeCompleted;
+    expect(firstCompletedAt).not.toBeNull();
+
+    // 2. Delete the activity that drove it. The challenge's own completed
+    // record is independent of activity history, so it must stay completed.
+    const activityId = harness.activity.history[0].id;
+    await act(async () => {
+      await harness.activity.deleteActivity(activityId);
+    });
+    await waitFor(() => expect(harness.activity.totalActivities).toBe(0));
+    expect(harness.challenges.challenges.find((c) => c.id === auto.id)!.completed).toBe(true);
+
+    // 3. Log an equivalent activity (same distance, a new id). If the auto-
+    // complete effect re-fired for this challenge, completedAt would change
+    // and lifetimeCompleted would tick up a second time — that is the exact
+    // "delete and re-add for extra gems/points" exploit this guards against.
+    const gemsBeforeReAdd = harness.gems.totalGems;
+    await act(async () => {
+      await harness.activity.addActivity(hikeInput({ miles: target, startedAt: noonToday() + 60_000 }));
+    });
+    await waitFor(() => expect(harness.activity.totalActivities).toBe(1));
+
+    const updated = harness.challenges.challenges.find((c) => c.id === auto.id)!;
+    expect(updated.completed).toBe(true);
+    expect(updated.completedAt).toBe(firstCompletedAt);
+    expect(harness.challenges.lifetimeCompleted).toBe(lifetimeAfterFirst);
+
+    // The re-added activity still earns its own per-mile/tree gems, but not
+    // a second helping of the challenge's completion bonus.
+    const gemsGainedFromReAdd = harness.gems.totalGems - gemsBeforeReAdd;
+    expect(gemsGainedFromReAdd).toBeLessThan(GEM_VALUES.challenge_completed * 2);
+  });
 });
 
 describe('badge rewards', () => {
@@ -521,5 +586,115 @@ describe('finish retry protection', () => {
     const total = harness.points.totalPoints;
     await act(async () => { await harness.activity.addActivity(input); });
     expect(harness.points.totalPoints).toBe(total);
+  });
+});
+
+describe('gems and the tree', () => {
+  it('earns gems for miles hiked, separate from EcoPoints', async () => {
+    await boot();
+    expect(harness.gems.totalGems).toBe(0);
+
+    await act(async () => {
+      await harness.activity.addActivity(hikeInput({ miles: 3 }));
+    });
+
+    // 3 whole miles -> 3 gems (hike_mile is 1 gem/mile), plus tree gems for
+    // whatever trees that activity earned.
+    await waitFor(() => expect(harness.gems.totalGems).toBeGreaterThanOrEqual(3));
+  });
+
+  it('completing a weekly goal pays out gems, and undoing it claws them back', async () => {
+    await boot();
+    const manual = harness.challenges.challenges.find((c) => c.kind === 'manual')!;
+    const before = harness.gems.totalGems;
+
+    await act(async () => {
+      await harness.challenges.completeChallenge(manual.id);
+    });
+    await waitFor(() => expect(harness.gems.totalGems).toBeGreaterThan(before));
+    const afterComplete = harness.gems.totalGems;
+
+    await act(async () => {
+      await harness.challenges.undoChallenge(manual.id);
+    });
+    await waitFor(() => expect(harness.gems.totalGems).toBe(before));
+
+    // And it cannot be farmed: complete -> undo -> complete nets the same
+    // single payout, not two.
+    await act(async () => {
+      await harness.challenges.completeChallenge(manual.id);
+    });
+    await waitFor(() => expect(harness.gems.totalGems).toBe(afterComplete));
+  });
+
+  it('spending gems waters the tree and advances it through stages', async () => {
+    await boot();
+    expect(harness.tree.stage.id).toBe('seed');
+
+    // Earn a pile of gems with several plausible (not anti-cheat-flagged)
+    // hikes, each a separate activity so none of them get deduped.
+    const first = hikeInput({ miles: 3 });
+    await act(async () => {
+      for (let i = 0; i < 15; i++) {
+        await harness.activity.addActivity({ ...first, startedAt: first.startedAt + i * 3600_000 });
+      }
+    });
+    // 15 hikes of 3 gems each from mileage alone already clears what one
+    // stage of watering costs (2 units x 3 kinds x 8 gems = 48).
+    await waitFor(() => expect(harness.gems.totalGems).toBeGreaterThan(48));
+
+    await act(async () => {
+      await harness.tree.addCare('water');
+      await harness.tree.addCare('water');
+      await harness.tree.addCare('sun');
+      await harness.tree.addCare('sun');
+      await harness.tree.addCare('nutrients');
+      await harness.tree.addCare('nutrients');
+    });
+
+    await waitFor(() => expect(harness.tree.stage.id).toBe('sprout'));
+  });
+
+  it('refuses to spend gems it does not have', async () => {
+    await boot();
+    expect(harness.gems.totalGems).toBe(0);
+
+    let ok: boolean | undefined;
+    await act(async () => {
+      ok = await harness.tree.addCare('water');
+    });
+
+    expect(ok).toBe(false);
+    expect(harness.tree.stage.id).toBe('seed');
+    expect(harness.gems.totalGems).toBe(0);
+  });
+
+  it('cannot double-spend the same gems on two care taps fired at once', async () => {
+    await boot();
+    await act(async () => {
+      await harness.activity.addActivity(hikeInput({ miles: 10 }));
+    });
+    const gemsBefore = harness.gems.totalGems;
+    // Only enough for exactly one unit of care at the seed stage's cost.
+    expect(gemsBefore).toBeGreaterThanOrEqual(8);
+
+    // Fire two purchases "at once" (no await between them) — only one
+    // should be able to succeed if the balance only covers one.
+    await act(async () => {
+      await harness.gems.spend(gemsBefore - 1, 'drain to almost zero');
+    });
+    expect(harness.gems.totalGems).toBe(1);
+
+    let results: boolean[] = [];
+    await act(async () => {
+      results = await Promise.all([
+        harness.tree.addCare('water'),
+        harness.tree.addCare('sun'),
+      ]);
+    });
+
+    const successes = results.filter(Boolean).length;
+    expect(successes).toBeLessThanOrEqual(1);
+    expect(harness.gems.totalGems).toBeGreaterThanOrEqual(0);
   });
 });

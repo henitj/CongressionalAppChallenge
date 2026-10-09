@@ -138,15 +138,20 @@ const STRAP = '#C47A28';
 function Walker({ dark, pack, skin }: { dark: string; pack: string; skin: string }) {
   return (
     <G strokeLinecap="round" strokeLinejoin="round">
-      <Ellipse cx="158" cy="354" rx="26" ry="3" fill={dark} opacity={0.12} />
+      <Ellipse cx="160" cy="352" rx="30" ry="3" fill={dark} opacity={0.12} />
 
-      {/* Rear leg: hip → knee swung back → foot, with a boot. */}
-      <Path d="M157 321 L149 335 L141 347" stroke={FAR_LIMB} strokeWidth="6" fill="none" />
-      <Path d="M141 347 L135 351" stroke={BOOT} strokeWidth="5" fill="none" />
+      {/*
+        Rear leg: hip → knee (bent sharply back, trailing) → toe pushing
+        off the ground. The knee sits well off the straight hip-to-foot
+        line so the bend actually reads instead of looking like one
+        rigid stick.
+      */}
+      <Path d="M157 320 L144 328 L139 346" stroke={FAR_LIMB} strokeWidth="6.2" fill="none" />
+      <Path d="M139 346 L130 350" stroke={BOOT} strokeWidth="5.2" fill="none" />
 
-      {/* Front leg: hip → knee forward → foot planted. */}
-      <Path d="M160 321 L169 334 L173 348" stroke={dark} strokeWidth="6" fill="none" />
-      <Path d="M173 348 L181 350" stroke={BOOT} strokeWidth="5" fill="none" />
+      {/* Front leg: hip → knee bent forward → foot planted ahead. */}
+      <Path d="M160 320 L171 332 L168 350" stroke={dark} strokeWidth="6.2" fill="none" />
+      <Path d="M168 350 L178 352" stroke={BOOT} strokeWidth="5.2" fill="none" />
 
       {/* Backpack sits snug behind the torso. */}
       <Rect x="142" y="301" width="11" height="19" rx="4.5" fill={pack} transform="rotate(6 147 310)" />
@@ -204,20 +209,25 @@ function Biker({ dark, pack, skin }: { dark: string; pack: string; skin: string 
       <Path d="M143 316.5 L153 316.5" stroke={dark} strokeWidth="3.5" fill="none" />
       <Path d="M176 325 L173.5 313.5 L180 311.5" stroke={dark} strokeWidth="2.6" fill="none" />
 
-      {/* Cranks and pedals. */}
-      <Path d="M157 353 L163 359 M157 353 L151 347" stroke={dark} strokeWidth="2.5" fill="none" />
+      {/* Crank arms: one down to the near pedal, one up-back to the far pedal. */}
+      <Path d="M157 353 L159 357 M157 353 L152 335" stroke={dark} strokeWidth="2.5" fill="none" />
       <Circle cx="157" cy="353" r="2.6" fill={dark} />
 
-      {/* Far leg: hip → knee → rear pedal. */}
-      <Path d="M148 319 L141 333 L150 346" stroke={FAR_LIMB} strokeWidth="5" fill="none" />
-      <Path d="M148 346.5 L153 347.5" stroke={BOOT} strokeWidth="4" fill="none" />
+      {/*
+        Far leg: hip → knee lifted up and forward → far pedal near the
+        top of its stroke. The knee is pushed well clear of the hip-to-
+        pedal line so the leg reads as folded/bent, not a straight rod
+        floating behind the seat.
+      */}
+      <Path d="M150 318 L138 328 L152 335" stroke={FAR_LIMB} strokeWidth="5" fill="none" />
+      <Path d="M152 335 L159 332" stroke={BOOT} strokeWidth="4" fill="none" />
 
       {/* Torso: capsule leaning toward the bars. */}
       <Path d="M150 317 L164 302" stroke={dark} strokeWidth="11" fill="none" />
 
-      {/* Near leg: hip → knee → front pedal, with a shoe. */}
-      <Path d="M151 317 L163 336 L162 357" stroke={dark} strokeWidth="5.5" fill="none" />
-      <Path d="M160 358.5 L166 359.5" stroke={BOOT} strokeWidth="4" fill="none" />
+      {/* Near leg: hip → knee → pedal near the bottom of its stroke, extended but still visibly jointed at the knee. */}
+      <Path d="M152 318 L160 337 L159 357" stroke={dark} strokeWidth="5.5" fill="none" />
+      <Path d="M159 357 L166 359" stroke={BOOT} strokeWidth="4" fill="none" />
 
       {/* Arm reaching the handlebar; the hand rests on the grip. */}
       <Path d="M163.5 303.5 L170 309 L176 311" stroke={FAR_SLEEVE} strokeWidth="4.6" fill="none" />

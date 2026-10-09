@@ -268,7 +268,7 @@ export default function ConditionsScreen() {
           {usingFallbackLocation ? (
             <Text style={[styles.sourceText, typography.small, { color: colors.textMuted, marginTop: SPACING.sm }]}>
               Showing a default location because location access is off.{' '}
-              <Text style={[{ color: colors.primary, fontWeight: '600', textDecorationLine: 'underline' }]} onPress={() => requestLocation()}>
+              <Text style={[{ color: colors.primary, fontWeight: '600', textDecorationLine: 'underline' }]} onPress={() => requestLocation({ explain: true })}>
                 Use my location
               </Text>
             </Text>

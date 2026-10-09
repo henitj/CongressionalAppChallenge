@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Alert } from 'react-native';
+import { View, Text, StyleSheet } from 'react-native';
+import { alert } from '../services/alert';
 
 import Header from '../components/Header';
 import Icon from '../components/Icon';
@@ -30,7 +31,7 @@ export default function StreakScreen() {
 
   const handleUseFreeze = async () => {
     if (availableFreezes === 0) {
-      Alert.alert(
+      alert(
         'No freezes available',
         'Earn more freezes by maintaining a 4-week streak. You get 1 freeze for every 4 consecutive active weeks, up to 4 stored.'
       );

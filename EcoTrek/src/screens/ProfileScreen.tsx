@@ -1,5 +1,6 @@
 import React, { useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert, TextInput } from 'react-native';
+import { View, Text, StyleSheet, Pressable, TextInput } from 'react-native';
+import { alert } from '../services/alert';
 import { useNavigation } from '@react-navigation/native';
 
 import Confetti from '../components/Confetti';
@@ -85,7 +86,7 @@ export default function ProfileScreen() {
   };
 
   const confirmSignOut = () => {
-    Alert.alert('Sign out?', 'Your progress stays saved on this device.', [
+    alert('Sign out?', 'Your progress stays saved on this device.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Sign out', style: 'destructive', onPress: signOut },
     ]);

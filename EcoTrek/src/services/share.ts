@@ -1,4 +1,5 @@
-import { Alert, Platform, Share } from 'react-native';
+import { Platform, Share } from 'react-native';
+import { alert } from './alert';
 
 /**
  * Share a plain-text message.
@@ -17,10 +18,10 @@ export async function shareText(message: string, title = 'EcoTrek'): Promise<boo
       }
       if (nav?.clipboard?.writeText) {
         await nav.clipboard.writeText(message);
-        Alert.alert('Copied', 'Your message was copied. Paste it into a text or email to share it.');
+        alert('Copied', 'Your message was copied. Paste it into a text or email to share it.');
         return true;
       }
-      Alert.alert(title, message);
+      alert(title, message);
       return true;
     }
 

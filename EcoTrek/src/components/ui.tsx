@@ -82,7 +82,14 @@ export function Screen({
       <ScrollView
         ref={scrollRef}
         style={{ flex: 1 }}
-        contentContainerStyle={[ui.scrollContent, ui.scrollContentGrow, contentStyle]}
+        // No flexGrow:1 here. It used to stretch the content container to
+        // fill the screen on short pages (like More), and then the fixed
+        // bottom padding below was tacked on *after* that stretch — so a
+        // short page scrolled past its last row into a stretch of plain
+        // background with nothing in it. Sizing the container to its real
+        // content (plus the clearance padding) means the scrollable area
+        // never extends further than the content actually needs.
+        contentContainerStyle={[ui.scrollContent, contentStyle]}
         showsVerticalScrollIndicator={false}
         refreshControl={refreshControl}
         nestedScrollEnabled
@@ -676,10 +683,16 @@ export function Metric({
 */
 const ui = StyleSheet.create({
   screen: { flex: 1 },
+  // `screen` above already paints the full-viewport background behind this
+  // ScrollView, so a short page never shows through to the wrong color —
+  // which means the content container does not need flexGrow:1 to "fill
+  // the viewport" too. It used to have it, which on a short page (More is
+  // the clearest example) stretched the scrollable area to the full screen
+  // height and then added this padding on top of that stretch, leaving a
+  // stretch of empty background you could scroll down into below the real
+  // content. Sizing to content + this one clearance padding keeps the
+  // scrollable range exactly as long as it needs to be.
   scrollContent: { paddingBottom: 140 },
-  // Give short pages a full viewport while still allowing long pages to grow
-  // and scroll on web and native.
-  scrollContentGrow: { flexGrow: 1 },
 
   pressed: { opacity: 0.72 },
 

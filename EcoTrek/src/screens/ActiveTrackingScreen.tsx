@@ -4,7 +4,6 @@ import {
   Text,
   StyleSheet,
   Pressable,
-  Alert,
   AppState,
   AppStateStatus,
   ScrollView,
@@ -12,6 +11,7 @@ import {
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import { alert } from '../services/alert';
 
 import LiveMap from '../components/LiveMap';
 import CleanupSheet from '../components/CleanupSheet';
@@ -245,7 +245,7 @@ export default function ActiveTrackingScreen() {
       // the trail cleaner than you found it. Feedback lives under More.
       if (shouldAskCleanupAfterTrail(res.rejected)) setShowCleanup(true);
     } catch (e: any) {
-      Alert.alert('Could not save', e?.message ?? 'Something went wrong saving that activity.');
+      alert('Could not save', e?.message ?? 'Something went wrong saving that activity.');
     } finally {
       setSaving(false);
     }
@@ -286,7 +286,7 @@ export default function ActiveTrackingScreen() {
   );
 
   const handleDiscard = () => {
-    Alert.alert('Discard this activity?', 'Your progress will not be saved.', [
+    alert('Discard this activity?', 'Your progress will not be saved.', [
       { text: 'Keep going', style: 'cancel' },
       {
         text: 'Discard',
