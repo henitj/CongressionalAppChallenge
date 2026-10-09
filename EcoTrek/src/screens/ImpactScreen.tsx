@@ -1,5 +1,6 @@
 import React, { useEffect, useMemo, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, Alert } from 'react-native';
+import { View, Text, StyleSheet, Pressable } from 'react-native';
+import { alert } from '../services/alert';
 import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
@@ -55,7 +56,7 @@ export default function ImpactScreen() {
       : 'Your forest is waiting for its first symbolic tree.';
 
   const confirmDelete = (id: string) => {
-    Alert.alert('Delete this activity?', 'It will be removed from your history and totals.', [
+    alert('Delete this activity?', 'It will be removed from your history and totals.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deleteActivity(id) },
     ]);

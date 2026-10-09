@@ -7,16 +7,19 @@ import { useTheme } from './src/context/ThemeContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
 import { NavigationContainer } from '@react-navigation/native';
 
-import RootNavigator from './src/navigation/RootNavigator';
+import RootNavigator, { linking } from './src/navigation/RootNavigator';
 import SignInScreen from './src/screens/SignInScreen';
 import OnboardingGate from './src/components/OnboardingGate';
 import ErrorBoundary from './src/components/ErrorBoundary';
+import AlertHost from './src/components/AlertHost';
 import Icon from './src/components/Icon';
 import { APP_NAME } from './src/constants/appInfo';
 
 import { AuthProvider, useAuth } from './src/context/AuthContext';
 import { AppProvider } from './src/context/AppContext';
 import { EcoPointsProvider, useEcoPoints } from './src/context/EcoPointsContext';
+import { GemsProvider } from './src/context/GemsContext';
+import { TreeGrowthProvider } from './src/context/TreeGrowthContext';
 import { SettingsProvider } from './src/context/SettingsContext';
 import { ThemeProvider } from './src/context/ThemeContext';
 import { ClubProvider, useClub } from './src/context/ClubContext';
@@ -152,32 +155,36 @@ function Gate() {
   if (!user) return <SignInScreen />;
 
   return (
-    <EcoPointsProvider>
-      <ProfileProvider>
-        <ClubLayer>
-          <StreakProvider>
-            <ActivityProvider>
-              <LogbookProvider>
-                <ChallengeProvider>
-                  <NotificationProvider>
-                    <WeatherLayer>
-                      <AnalyticsProvider>
-                        <ProgressSync />
-                        <OnboardingGate>
-                          <NavigationContainer>
-                            <RootNavigator />
-                          </NavigationContainer>
-                        </OnboardingGate>
-                      </AnalyticsProvider>
-                    </WeatherLayer>
-                  </NotificationProvider>
-                </ChallengeProvider>
-              </LogbookProvider>
-            </ActivityProvider>
-          </StreakProvider>
-        </ClubLayer>
-      </ProfileProvider>
-    </EcoPointsProvider>
+    <GemsProvider>
+      <TreeGrowthProvider>
+        <EcoPointsProvider>
+          <ProfileProvider>
+            <ClubLayer>
+              <StreakProvider>
+                <ActivityProvider>
+                  <LogbookProvider>
+                    <ChallengeProvider>
+                      <NotificationProvider>
+                        <WeatherLayer>
+                          <AnalyticsProvider>
+                            <ProgressSync />
+                            <OnboardingGate>
+                              <NavigationContainer linking={linking}>
+                                <RootNavigator />
+                              </NavigationContainer>
+                            </OnboardingGate>
+                          </AnalyticsProvider>
+                        </WeatherLayer>
+                      </NotificationProvider>
+                    </ChallengeProvider>
+                  </LogbookProvider>
+                </ActivityProvider>
+              </StreakProvider>
+            </ClubLayer>
+          </ProfileProvider>
+        </EcoPointsProvider>
+      </TreeGrowthProvider>
+    </GemsProvider>
   );
 }
 
@@ -202,6 +209,7 @@ export default function App() {
             <AuthProvider>
               <AppProvider>
                 <ThemedStatusBar />
+                <AlertHost />
                 <Gate />
               </AppProvider>
             </AuthProvider>

@@ -53,17 +53,46 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const { width } = useWindowDimensions();
   const [page, setPage] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
+  // `page` state can only be trusted once React has re-rendered with it, but
+  // the "Next" button can be tapped the instant a swipe settles — so we also
+  // keep a ref that is updated synchronously on every scroll event and never
+  // goes stale, and use that (not the possibly-one-tick-behind state) to
+  // decide where "Next" should land.
+  const pageRef = useRef(0);
+  const widthRef = useRef(width);
+  widthRef.current = width;
   const last = page === PAGES.length - 1;
+
+  const setCurrentPage = (next: number) => {
+    if (pageRef.current !== next) {
+      pageRef.current = next;
+      setPage(next);
+    }
+  };
 
   const goTo = (index: number) => {
     const clamped = Math.max(0, Math.min(PAGES.length - 1, index));
-    setPage(clamped);
-    scrollRef.current?.scrollTo({ x: clamped * width, animated: true });
+    setCurrentPage(clamped);
+    scrollRef.current?.scrollTo({ x: clamped * widthRef.current, animated: true });
   };
 
+  // Fires continuously while dragging (not just once momentum settles — on
+  // web a trackpad/mouse drag often never raises onMomentumScrollEnd at
+  // all), so `pageRef`/`page` always reflect exactly where the user actually
+  // is, never the page the component *thinks* it last snapped to.
   const onScroll = (e: NativeSyntheticEvent<NativeScrollEvent>) => {
-    const next = Math.round(e.nativeEvent.contentOffset.x / width);
-    if (next !== page) setPage(next);
+    const w = widthRef.current || 1;
+    const next = Math.round(e.nativeEvent.contentOffset.x / w);
+    const clamped = Math.max(0, Math.min(PAGES.length - 1, next));
+    setCurrentPage(clamped);
+  };
+
+  const handleNext = () => {
+    if (pageRef.current >= PAGES.length - 1) {
+      onDone();
+      return;
+    }
+    goTo(pageRef.current + 1);
   };
 
   return (
@@ -81,19 +110,31 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
           horizontal
           pagingEnabled
           showsHorizontalScrollIndicator={false}
+          onScroll={onScroll}
+          scrollEventThrottle={32}
           onMomentumScrollEnd={onScroll}
+          onScrollEndDrag={onScroll}
           style={{ flex: 1 }}
         >
-          {PAGES.map((p, index) => (
+          {PAGES.map((p, index) => {
+            // This page alone carries an extra block (the honesty-policy
+            // demo) below the usual title/body. Without shrinking the icon
+            // circle to make room, the panel's total content was taller
+            // than its own `maxHeight`, and because the panel centres its
+            // children, the overflow split both ways — pushing the icon
+            // circle up past the panel's own top edge on shorter phones.
+            // That is what read as "the trash icon pops out of its box."
+            const hasDemo = p.icon === 'trash';
+            return (
             <View key={p.title} style={[styles.page, { width }]}>
               <View style={styles.tourPanel}>
                 <Text style={[styles.stepLabel, typography.overline]}>INTRODUCTION · {index + 1} OF {PAGES.length}</Text>
-                <View style={styles.picture}>
-                  <Icon name={p.icon} size={72} color={colors.primaryGlow} strokeWidth={1.5} />
+                <View style={[styles.picture, hasDemo && styles.pictureCompact]}>
+                  <Icon name={p.icon} size={hasDemo ? 56 : 72} color={colors.primaryGlow} strokeWidth={1.5} />
                 </View>
                 <Text style={[styles.title, typography.h1]}>{p.title}</Text>
                 <Text style={[styles.body, typography.body]}>{p.body}</Text>
-                {p.icon === 'trash' ? (
+                {hasDemo ? (
                   <View style={styles.trashDemo} accessibilityLabel="Trash count tutorial: enter 0 to 99 pieces">
                   <Text style={[styles.trashDemoLabel, typography.smallMed]}>Honesty policy</Text>
                   <View style={styles.trashDemoInput}>
@@ -105,7 +146,8 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
                 ) : null}
               </View>
             </View>
-          ))}
+            );
+          })}
         </ScrollView>
 
         <View style={styles.footer}>
@@ -122,7 +164,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
             size="lg"
             full
             variant="secondary"
-            onPress={() => (last ? onDone() : goTo(page + 1))}
+            onPress={handleNext}
           />
         </View>
       </SafeAreaView>
@@ -143,10 +185,13 @@ function makeStyles(c: ColorPalette) {
   },
   skip: { color: 'rgba(255,255,255,0.8)' },
   page: {
-    paddingLeft: SPACING.xl,
-    paddingRight: SPACING.md,
+    // Equal left/right padding with the panel centred on this axis — this
+    // used to be flex-end with mismatched padding (32 vs 16), which shoved
+    // the whole panel, and every icon inside it, ~36px right of centre on a
+    // typical phone. That read as "the icons look shifted right."
+    paddingHorizontal: SPACING.lg,
     justifyContent: 'center',
-    alignItems: 'flex-end',
+    alignItems: 'center',
     flex: 1,
   },
   tourPanel: {
@@ -172,6 +217,15 @@ function makeStyles(c: ColorPalette) {
     justifyContent: 'center',
     marginBottom: SPACING.xl,
   },
+  // The trash page has an extra block below (the honesty-policy demo), so
+  // its icon circle is smaller to keep total panel height in line with
+  // every other page instead of overflowing the panel's own bounds.
+  pictureCompact: {
+    width: 120,
+    height: 120,
+    borderRadius: 60,
+    marginBottom: SPACING.md,
+  },
   title: {
     color: '#fff',
     textAlign: 'center',
@@ -187,8 +241,8 @@ function makeStyles(c: ColorPalette) {
   trashDemo: {
     width: '100%',
     maxWidth: 300,
-    marginTop: SPACING.lg,
-    padding: SPACING.md,
+    marginTop: SPACING.md,
+    padding: SPACING.sm + 4,
     borderRadius: 16,
     backgroundColor: 'rgba(255,255,255,0.1)',
     borderWidth: 1,

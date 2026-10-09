@@ -5,10 +5,10 @@ import {
   StyleSheet,
   Pressable,
   TextInput,
-  Alert,
   Switch,
   RefreshControl,
 } from 'react-native';
+import { alert } from '../services/alert';
 
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
@@ -157,14 +157,14 @@ export default function LeaderboardScreen() {
   };
 
   const confirmLeave = () => {
-    Alert.alert('Leave this club?', 'Your contribution stays with the club, but you drop off the roster.', [
+    alert('Leave this club?', 'Your contribution stays with the club, but you drop off the roster.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Leave', style: 'destructive', onPress: () => leaveClub().then(() => setTab('ranking')) },
     ]);
   };
 
   const confirmDelete = () => {
-    Alert.alert('Delete this club?', 'This removes it for every member. It cannot be undone.', [
+    alert('Delete this club?', 'This removes it for every member. It cannot be undone.', [
       { text: 'Cancel', style: 'cancel' },
       { text: 'Delete', style: 'destructive', onPress: () => deleteClub().then(() => setTab('ranking')) },
     ]);

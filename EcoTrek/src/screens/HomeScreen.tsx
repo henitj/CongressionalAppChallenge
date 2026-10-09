@@ -14,6 +14,7 @@ import { useActivity } from '../context/ActivityContext';
 import { useStreak } from '../context/StreakContext';
 import { useProfile } from '../context/ProfileContext';
 import { useSettings } from '../context/SettingsContext';
+import { useGems } from '../context/GemsContext';
 import { weekStart } from '../services/dates';
 import { firstNameOf } from '../services/displayName';
 import { useTheme, Typography } from '../context/ThemeContext';
@@ -24,6 +25,7 @@ export default function HomeScreen() {
   const { profile } = useProfile();
   const { history } = useActivity();
   const { currentStreak } = useStreak();
+  const { totalGems } = useGems();
   const { formatDistance, formatDistanceUnit } = useSettings();
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
@@ -130,6 +132,14 @@ export default function HomeScreen() {
               title="Weekly goals"
               hint="See this week’s challenges"
               onPress={() => navigation.navigate('Challenges')}
+              styles={styles}
+              colors={colors}
+            />
+            <QuickAction
+              icon="gem"
+              title="Your tree"
+              hint={`${totalGems} gems to spend`}
+              onPress={() => navigation.navigate('Tree')}
               styles={styles}
               colors={colors}
             />

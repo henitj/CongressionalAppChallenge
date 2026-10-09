@@ -78,6 +78,97 @@ button, a { -webkit-tap-highlight-color: transparent; }
 }
 .header-link:hover, .button-primary:hover { background: #0c3927; }
 
+/* Back navigation, shown on every page that is not the home page. */
+.back-link {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  margin: 26px 0 0;
+  padding: 0;
+  border: 0;
+  background: none;
+  color: var(--forest);
+  font: inherit;
+  font-size: 14px;
+  font-weight: 750;
+  text-decoration: none;
+  cursor: pointer;
+}
+.back-link:hover { text-decoration: underline; text-underline-offset: 4px; }
+.back-link-arrow { font-size: 16px; line-height: 1; transition: transform .16s ease; }
+.back-link:hover .back-link-arrow { transform: translateX(-3px); }
+
+/* Platform picker: a persistent "traveling" illustration plus Android / Apple /
+   API tabs. The illustration lives outside the tab panels on purpose — it is a
+   sibling of the tablist, not a child of any one panel, so switching tabs can
+   never remove it from the page. */
+.platform-hero { margin: 22px 0 6px; }
+.hero-trail {
+  position: relative;
+  height: 38px;
+  margin: 10px 0 8px;
+  overflow: hidden;
+}
+.hero-trail-line {
+  position: absolute;
+  top: 50%;
+  left: 1%;
+  right: 1%;
+  height: 0;
+  border-top: 3px dashed rgba(23, 104, 72, .3);
+  transform: translateY(-50%);
+}
+.hero-trail-walker {
+  position: absolute;
+  top: 50%;
+  left: 1%;
+  transform: translate(-50%, -58%);
+  font-size: 23px;
+  animation: ecotrek-travel 7s ease-in-out infinite alternate;
+  will-change: left;
+}
+@keyframes ecotrek-travel {
+  from { left: 1%; }
+  to { left: 96%; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .hero-trail-walker { animation: none; left: 46%; }
+}
+
+.tabs {
+  display: inline-flex;
+  gap: 4px;
+  padding: 4px;
+  margin: 4px 0 30px;
+  border-radius: 999px;
+  background: var(--mint);
+}
+.tab {
+  min-height: 44px;
+  padding: 0 22px;
+  border: 0;
+  border-radius: 999px;
+  color: var(--ink-soft);
+  background: transparent;
+  font: inherit;
+  font-size: 14px;
+  font-weight: 750;
+  cursor: pointer;
+  transition: background .16s ease, color .16s ease;
+}
+.tab:hover { color: var(--ink); }
+.tab[aria-selected="true"] {
+  color: #fff;
+  background: var(--forest-deep);
+  box-shadow: 0 5px 14px rgba(16, 69, 47, .18);
+}
+
+@media (max-width: 680px) {
+  .tabs { display: flex; width: 100%; }
+  .tab { flex: 1; padding: 0 8px; font-size: 13px; }
+  .back-link { margin-top: 20px; }
+}
+
 /* Page typography */
 .page { padding: 34px 0 72px; }
 .page > :where(p, ul, ol, blockquote) { max-width: 72ch; }

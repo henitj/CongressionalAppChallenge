@@ -33,6 +33,7 @@ const SECTIONS: Section[] = [
     rows: [
       { icon: 'map', label: 'Trails', hint: 'Walks and rides near you', to: 'Trails' },
       { icon: 'target', label: 'Weekly goals', hint: 'Five small things this week', to: 'Challenges' },
+      { icon: 'gem', label: 'Your tree', hint: 'Spend gems to grow it', to: 'Tree' },
     ],
   },
   {

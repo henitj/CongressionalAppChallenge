@@ -1,6 +1,7 @@
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
 import * as ImagePicker from 'expo-image-picker';
 import { File, Paths } from 'expo-file-system';
+import { alert } from './alert';
 
 /**
  * Profile photo (the "profile logo").
@@ -36,7 +37,7 @@ async function pick(source: 'library' | 'camera'): Promise<ImagePicker.ImagePick
   if (source === 'camera') {
     const perm = await ImagePicker.requestCameraPermissionsAsync();
     if (!perm.granted) {
-      Alert.alert('Camera off', 'Allow camera access to take a photo, or pick one from your library.');
+      alert('Camera off', 'Allow camera access to take a photo, or pick one from your library.');
       return null;
     }
     return ImagePicker.launchCameraAsync({
@@ -105,5 +106,5 @@ export function chooseAvatarAction(hasPhoto: boolean, onChoice: (c: 'library' | 
     ...(hasPhoto ? [{ text: 'Remove photo', style: 'destructive' as const, onPress: () => onChoice('remove') }] : []),
     { text: 'Cancel', style: 'cancel' as const },
   ];
-  Alert.alert('Your photo', 'Pick a picture of yourself for your profile.', actions);
+  alert('Your photo', 'Pick a picture of yourself for your profile.', actions);
 }

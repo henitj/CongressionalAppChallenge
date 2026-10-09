@@ -247,8 +247,8 @@ export const CHALLENGE_CATALOG: ChallengeTemplate[] = [
   },
   {
     id: 'community-cheer',
-    title: 'Cheer on a club member',
-    description: 'Message someone in your club about their week.',
+    title: 'Cheer someone on',
+    description: 'Tell a friend or family member something you noticed outside this week.',
     icon: 'award',
     points: 15,
     kind: 'manual',
@@ -256,8 +256,8 @@ export const CHALLENGE_CATALOG: ChallengeTemplate[] = [
   },
   {
     id: 'community-invite',
-    title: 'Invite one person to your club',
-    description: 'Share your club code with someone new.',
+    title: 'Invite someone outside',
+    description: 'Ask a friend or family member to join you on a walk or ride this week.',
     icon: 'plus',
     points: 25,
     kind: 'manual',

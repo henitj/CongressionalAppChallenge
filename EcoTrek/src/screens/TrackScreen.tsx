@@ -24,7 +24,7 @@ import { Typography, useTheme } from '../context/ThemeContext';
 export default function TrackScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { permission } = useApp();
+  const { permission, requestLocation } = useApp();
   const { report } = useWeather();
   const { mode, setMode, start, starting } = useStartActivity('hike');
   const { colors, typography } = useTheme();
@@ -102,9 +102,11 @@ export default function TrackScreen() {
         </Pressable>
 
         {permission === 'denied' ? (
-          <Text style={styles.permissionNote} numberOfLines={2}>
-            Location is off, so we cannot measure distance. Turn it on for EcoTrek in your phone settings.
-          </Text>
+          <Pressable onPress={() => requestLocation({ explain: true })} hitSlop={8}>
+            <Text style={styles.permissionNote} numberOfLines={2}>
+              Location is off, so we cannot measure distance. Tap to see how to turn it on.
+            </Text>
+          </Pressable>
         ) : null}
       </View>
     </Screen>

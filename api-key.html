@@ -23,73 +23,211 @@
       </nav>
     </header>
 
-    <main class="page shell" id="main">
-      <p class="eyebrow"><span class="eyebrow-dot"></span> Optional setup</p>
-      <h1>The assistant works <em>without a key.</em></h1>
-      <p class="lede">
-        EcoTrek already answers trail questions on your device. Add an AI key only if you want a model to polish
-        those answers. Walks, trails, weather, points and badges do not need one.
-      </p>
+<main class="page shell" id="main">
+      <a class="back-link" href="/"><span class="back-link-arrow" aria-hidden="true">←</span> Back to EcoTrek</a>
 
-      <div class="note">
-        <strong>Just want to use EcoTrek?</strong> Skip this page. Nothing is locked, and you can add a key later.
+      <div class="platform-hero">
+        <p class="eyebrow"><span class="eyebrow-dot"></span> Get EcoTrek</p>
+        <h1>Take EcoTrek <em>wherever you walk.</em></h1>
+        <p class="lede">Pick a platform below — switching never reloads the page, so you can flip between them freely.</p>
+
+        <div class="hero-trail" aria-hidden="true">
+          <span class="hero-trail-line"></span>
+          <span class="hero-trail-walker">🚶</span>
+        </div>
+
+        <div class="tabs" role="tablist" aria-label="Choose your platform" data-default-tab="api">
+          <button type="button" class="tab" id="tab-android" role="tab" aria-selected="false" tabindex="-1" aria-controls="panel-android" data-tab-key="android">Android</button>
+          <button type="button" class="tab" id="tab-ios" role="tab" aria-selected="false" tabindex="-1" aria-controls="panel-ios" data-tab-key="ios">Apple</button>
+          <button type="button" class="tab" id="tab-api" role="tab" aria-selected="true" aria-controls="panel-api" data-tab-key="api">API</button>
+        </div>
       </div>
 
-      <section class="guide-card" aria-labelledby="quick-setup-title">
-        <p class="eyebrow">Three simple steps</p>
-        <h2 id="quick-setup-title">Want to turn on AI answers?</h2>
-        <p class="muted">
-          Groq is the quickest setup. It offers a free tier; check its current limits and terms before creating a key.
+      <section id="panel-android" role="tabpanel" aria-labelledby="tab-android" tabindex="0" hidden>
+        <p class="eyebrow"><span class="eyebrow-dot"></span> Android app</p>
+        <h2>Install EcoTrek <em>on Android.</em></h2>
+        <p class="lede">
+          Download the app on your phone, open the file, then tap Install. Android may ask you to allow the install once.
         </p>
-        <ol class="steps">
-          <li class="step-action">
-            <div><strong>Create a Groq key</strong><p>Make a key on Groq’s website, then copy it.</p></div>
-            <a class="button button-primary" href="https://console.groq.com/keys" rel="noopener noreferrer" target="_blank">Get a key ↗</a>
-          </li>
-          <li><strong>Open AI settings</strong><p>In EcoTrek, tap the sparkle button to open <em>Trail Assistant</em>, then tap the sliders icon and choose Groq.</p></li>
-          <li><strong>Paste and test</strong><p>Paste your key and tap <em>Save &amp; test</em>. The provider address and model are filled in for you.</p></li>
-        </ol>
+
+        <div class="actions">
+          <a class="button button-primary" id="download-button" href="/download" download="EcoTrek.apk">
+            <span class="button-icon" aria-hidden="true">↓</span>
+            <span class="button-label"><strong>Download EcoTrek</strong><small id="download-button-meta">Android app · APK</small></span>
+          </a>
+          <a class="button button-secondary" href="/?web=1">
+            <span class="button-label"><strong>Open web app</strong><small>Install from Chrome—no APK</small></span>
+          </a>
+        </div>
+        <p class="muted" id="download-note" role="status" aria-live="polite">
+          Download the file on the Android phone where you want to use the app.
+        </p>
+
+        <section class="guide-card" aria-labelledby="install-steps-title">
+          <h2 id="install-steps-title">Install in three steps</h2>
+          <ol class="steps">
+            <li><strong>Open the download.</strong><p>When it finishes, tap the download notification or open <em>Files → Downloads → EcoTrek.apk</em>.</p></li>
+            <li><strong>Allow the install, if asked.</strong><p>Tap <em>Settings</em>, allow installs from this browser or Files app, then go back and open the APK again.</p></li>
+            <li><strong>Tap Install, then Open.</strong><p>EcoTrek will appear with your other apps.</p></li>
+          </ol>
+        </section>
+
+        <section class="guide-card" aria-labelledby="web-install-title">
+          <h2 id="web-install-title">Install from the website instead</h2>
+          <p>If Android rejects the APK, EcoTrek also runs as an installable web app—no APK or sideloading required.</p>
+          <ol class="steps">
+            <li><strong>Tap “Open web app” above</strong><p>Open it in Chrome on your Android phone.</p></li>
+            <li><strong>Open Chrome’s menu.</strong><p>Tap <em>⋮ → Install app</em> or <em>Add to Home screen</em> (the wording varies by Android version).</p></li>
+            <li><strong>Launch EcoTrek from your Home screen.</strong><p>Your activities are saved in that browser on this device. Live trail and weather features need internet.</p></li>
+          </ol>
+        </section>
+
+        <details class="disclosure">
+          <summary>Android does not show Install, or says “App not installed”</summary>
+          <div class="disclosure-body">
+            <ul>
+              <li>If nothing opens, allow <em>Install unknown apps</em> for the browser or Files app you used, then open <code>EcoTrek.apk</code> again.</li>
+              <li>If Android says <em>“App not installed”</em> or <em>“package appears to be invalid”</em>, delete any saved <code>EcoTrek.apk</code> and download it again from this page. A copy downloaded before this release keeps its old package metadata.</li>
+              <li>Make sure the download completed. This file is about 1.8 MB and needs Android 7.0 or newer.</li>
+              <li>If EcoTrek is already installed from another APK, Android may refuse an update signed with a different key. Uninstalling that older copy may allow this one to install, but <strong>will erase its locally saved walks and settings</strong>. Do not uninstall it unless you are prepared to lose that data; use the web app above instead if unsure.</li>
+            </ul>
+            <p>If it still fails, email us the exact error text, your phone model and Android version: <a class="inline" href="mailto:ecotrek.support@gmail.com">ecotrek.support@gmail.com</a>.</p>
+          </div>
+        </details>
+
+        <details class="disclosure">
+          <summary>Play Protect says it does not recognize the app</summary>
+          <div class="disclosure-body">
+            <p>This can happen with apps installed outside Google Play. If you choose to continue, tap <em>More details → Install anyway</em> when Android offers that choice. Keep Play Protect on. If Android blocks the install without that option, use the browser version instead.</p>
+          </div>
+        </details>
+
+        <details class="disclosure">
+          <summary>About this download</summary>
+          <div class="disclosure-body">
+            <p>The APK is signed and its contents are checked during release. For most people, no verification is needed.</p>
+            <div class="facts" aria-label="APK details">
+              <div class="fact"><span>Version</span><strong data-config="apkVersion">1.2.0</strong></div>
+              <div class="fact"><span>File size</span><strong data-config="apkBytes">1.72 MB</strong></div>
+              <div class="fact"><span>Android</span><strong data-config="minAndroid">Android 7.0 and newer</strong></div>
+              <div class="fact"><span>SHA-256</span><code data-config="apkSha256">f1927810c06e38dca6efe5fecbfe1fcdf2955ecefe22acbe5147382a70779272</code></div>
+            </div>
+            <p class="muted">The app uses internet access for trail and weather information, and location to find nearby trails and record an activity. Your saved activities stay on this device. See the <a class="inline" href="/privacy">privacy policy</a>.</p>
+          </div>
+        </details>
       </section>
 
-      <div class="note note-neutral">
-        <strong>Keep your key private.</strong> It stays on your device and is sent directly to the AI provider you choose over HTTPS. EcoTrek does not receive it.
-      </div>
+      <section id="panel-ios" role="tabpanel" aria-labelledby="tab-ios" tabindex="0" hidden>
+        <p class="eyebrow"><span class="eyebrow-dot"></span> iPhone &amp; iPad</p>
+        <h2>EcoTrek in <em>Safari.</em></h2>
+        <p class="lede">
+          Use the full app in Safari. Add it to your Home Screen for an app icon and a full-screen view. There is no App Store version yet.
+        </p>
 
-      <details class="disclosure">
-        <summary>I want to use a different provider</summary>
-        <div class="disclosure-body provider-options">
-          <div class="provider-option">
-            <strong>OpenAI</strong>
-            <p>Choose OpenAI in AI settings, create a key, and paste it into EcoTrek. Billing may apply.</p>
-            <a class="inline" href="https://platform.openai.com/api-keys" rel="noopener noreferrer" target="_blank">Create an OpenAI key ↗</a>
-          </div>
-          <div class="provider-option">
-            <strong>OpenRouter</strong>
-            <p>Choose OpenRouter in AI settings, create a key, and paste it in. It offers both free and paid models.</p>
-            <a class="inline" href="https://openrouter.ai/keys" rel="noopener noreferrer" target="_blank">Create an OpenRouter key ↗</a>
-          </div>
-          <div class="provider-option">
-            <strong>Your own server</strong>
-            <p>Choose Custom in AI settings and enter your OpenAI-compatible server, model name and key. The address must use HTTPS.</p>
-          </div>
+        <div class="actions">
+          <a class="button button-primary" id="ios-open-button" href="/">
+            <span class="button-icon" aria-hidden="true">↗</span>
+            <span class="button-label"><strong>Open EcoTrek</strong><small>Best opened in Safari</small></span>
+          </a>
+          <a class="button button-secondary" id="ios-store-button" href="#" hidden>
+            <span class="button-label"><strong>App Store</strong><small>iPhone app</small></span>
+          </a>
         </div>
-      </details>
+        <p class="muted" id="ios-status" role="status" aria-live="polite">
+          Open this page in Safari to add EcoTrek to your Home Screen.
+        </p>
 
-      <details class="disclosure">
-        <summary>What happens to my key and my questions?</summary>
-        <div class="disclosure-body">
-          <p>The key is saved in the app’s local storage. When you ask for an AI answer, EcoTrek sends your question and relevant trail or weather facts, with the key, directly to your selected provider over HTTPS. The provider’s own privacy terms apply to that request.</p>
-          <p>EcoTrek does not send the key to our server. You can remove it at any time in <em>Trail Assistant → AI settings → Remove key</em>. If you think it was exposed, revoke it on the provider’s website.</p>
-        </div>
-      </details>
+        <section class="guide-card" aria-labelledby="home-screen-title">
+          <h2 id="home-screen-title">Add it to your Home Screen</h2>
+          <ol class="steps">
+            <li><strong>Open this site in Safari.</strong><p>Other iPhone browsers cannot add the Home Screen app.</p></li>
+            <li><strong>Tap Share</strong><p>It is the square with an arrow pointing up.</p></li>
+            <li><strong>Tap “Add to Home Screen”, then Add.</strong></li>
+          </ol>
+        </section>
 
-      <details class="disclosure">
-        <summary>My key will not connect</summary>
-        <div class="disclosure-body">
-          <p>Check that you selected the same provider that issued the key, then copy and paste it again. A provider may also reject an expired key or apply a usage limit. The assistant will keep working with its on-device answers either way.</p>
-          <p>If you still need help, email <a class="inline" href="mailto:ecotrek.support@gmail.com">ecotrek.support@gmail.com</a>. Do not include your key.</p>
+        <div class="note note-warning">
+          <strong>While recording, keep EcoTrek open on screen.</strong> iPhone may pause a web app in the background. Allow location when Safari asks so your route can be recorded.
         </div>
-      </details>
+
+        <details class="disclosure">
+          <summary>Will my walks and settings be saved?</summary>
+          <div class="disclosure-body"><p>Yes. They are saved on this device in Safari. Clearing Safari’s website data for EcoTrek also clears its saved app data.</p></div>
+        </details>
+        <details class="disclosure">
+          <summary>Can I use it offline?</summary>
+          <div class="disclosure-body"><p>The app can open offline and locally saved activities remain available. Live trail search and weather need an internet connection.</p></div>
+        </details>
+      </section>
+
+      <section id="panel-api" role="tabpanel" aria-labelledby="tab-api" tabindex="0">
+        <p class="eyebrow">Optional setup</p>
+        <h2>The assistant works <em>without a key.</em></h2>
+        <p class="lede">
+          EcoTrek already answers trail questions on your device. Add an AI key only if you want a model to polish
+          those answers. Walks, trails, weather, points and badges do not need one.
+        </p>
+
+        <div class="note">
+          <strong>Just want to use EcoTrek?</strong> Skip this tab. Nothing is locked, and you can add a key later.
+        </div>
+
+        <section class="guide-card" aria-labelledby="quick-setup-title">
+          <p class="eyebrow">Three simple steps</p>
+          <h2 id="quick-setup-title">Want to turn on AI answers?</h2>
+          <p class="muted">
+            Groq is the quickest setup. It offers a free tier; check its current limits and terms before creating a key.
+          </p>
+          <ol class="steps">
+            <li class="step-action">
+              <div><strong>Create a Groq key</strong><p>Make a key on Groq’s website, then copy it.</p></div>
+              <a class="button button-primary" href="https://console.groq.com/keys" rel="noopener noreferrer" target="_blank">Get a key ↗</a>
+            </li>
+            <li><strong>Open AI settings</strong><p>In EcoTrek, tap the sparkle button to open <em>Trail Assistant</em>, then tap the sliders icon and choose Groq.</p></li>
+            <li><strong>Paste and test</strong><p>Paste your key and tap <em>Save &amp; test</em>. The provider address and model are filled in for you.</p></li>
+          </ol>
+        </section>
+
+        <div class="note note-neutral">
+          <strong>Keep your key private.</strong> It stays on your device and is sent directly to the AI provider you choose over HTTPS. EcoTrek does not receive it.
+        </div>
+
+        <details class="disclosure">
+          <summary>I want to use a different provider</summary>
+          <div class="disclosure-body provider-options">
+            <div class="provider-option">
+              <strong>OpenAI</strong>
+              <p>Choose OpenAI in AI settings, create a key, and paste it into EcoTrek. Billing may apply.</p>
+              <a class="inline" href="https://platform.openai.com/api-keys" rel="noopener noreferrer" target="_blank">Create an OpenAI key ↗</a>
+            </div>
+            <div class="provider-option">
+              <strong>OpenRouter</strong>
+              <p>Choose OpenRouter in AI settings, create a key, and paste it in. It offers both free and paid models.</p>
+              <a class="inline" href="https://openrouter.ai/keys" rel="noopener noreferrer" target="_blank">Create an OpenRouter key ↗</a>
+            </div>
+            <div class="provider-option">
+              <strong>Your own server</strong>
+              <p>Choose Custom in AI settings and enter your OpenAI-compatible server, model name and key. The address must use HTTPS.</p>
+            </div>
+          </div>
+        </details>
+
+        <details class="disclosure">
+          <summary>What happens to my key and my questions?</summary>
+          <div class="disclosure-body">
+            <p>The key is saved in the app’s local storage. When you ask for an AI answer, EcoTrek sends your question and relevant trail or weather facts, with the key, directly to your selected provider over HTTPS. The provider’s own privacy terms apply to that request.</p>
+            <p>EcoTrek does not send the key to our server. You can remove it at any time in <em>Trail Assistant → AI settings → Remove key</em>. If you think it was exposed, revoke it on the provider’s website.</p>
+          </div>
+        </details>
+
+        <details class="disclosure">
+          <summary>My key will not connect</summary>
+          <div class="disclosure-body">
+            <p>Check that you selected the same provider that issued the key, then copy and paste it again. A provider may also reject an expired key or apply a usage limit. The assistant will keep working with its on-device answers either way.</p>
+            <p>If you still need help, email <a class="inline" href="mailto:ecotrek.support@gmail.com">ecotrek.support@gmail.com</a>. Do not include your key.</p>
+          </div>
+        </details>
+      </section>
     </main>
 
     <footer class="site-footer shell">
@@ -98,6 +236,7 @@
       <p>© <span id="current-year">2026</span> EcoTrek</p>
     </footer>
 
+    <script src="/site-config.js"></script>
     <script src="/site.js" defer></script>
   </body>
 </html>

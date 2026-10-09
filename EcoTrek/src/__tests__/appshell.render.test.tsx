@@ -8,6 +8,8 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import { AuthProvider, useAuth } from '../context/AuthContext';
 import { AppProvider } from '../context/AppContext';
 import { EcoPointsProvider } from '../context/EcoPointsContext';
+import { GemsProvider } from '../context/GemsContext';
+import { TreeGrowthProvider } from '../context/TreeGrowthContext';
 import { SettingsProvider } from '../context/SettingsContext';
 import { ThemeProvider, useTheme } from '../context/ThemeContext';
 import { ClubProvider } from '../context/ClubContext';
@@ -77,6 +79,8 @@ function Providers({ children }: { children: React.ReactNode }) {
       <AuthProvider>
         <AuthedOnly>
           <AppProvider>
+            <GemsProvider>
+            <TreeGrowthProvider>
             <EcoPointsProvider>
               <SettingsProvider>
                 <ThemeProvider>
@@ -100,6 +104,8 @@ function Providers({ children }: { children: React.ReactNode }) {
                 </ThemeProvider>
               </SettingsProvider>
             </EcoPointsProvider>
+            </TreeGrowthProvider>
+            </GemsProvider>
           </AppProvider>
         </AuthedOnly>
       </AuthProvider>

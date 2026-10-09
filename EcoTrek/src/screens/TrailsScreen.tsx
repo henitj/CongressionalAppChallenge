@@ -303,7 +303,7 @@ export default function TrailsScreen() {
             title="See trails near you"
             message="Turn on location and we will look up walks and rides around you in the US, Canada, and Mexico."
             right={
-              <Pressable onPress={() => requestLocation()} hitSlop={8}>
+              <Pressable onPress={() => requestLocation({ explain: true })} hitSlop={8}>
                 <Text style={styles.bannerAction}>Enable</Text>
               </Pressable>
             }
@@ -385,7 +385,7 @@ export default function TrailsScreen() {
                 : 'We could not find named trails in this area. Pull to refresh, or try again in a moment.'
             }
             action={usingFallbackLocation ? 'Enable location' : 'Try again'}
-            onAction={() => (usingFallbackLocation ? requestLocation() : refreshTrails())}
+            onAction={() => (usingFallbackLocation ? requestLocation({ explain: true }) : refreshTrails())}
           />
         ) : filtered.length === 0 ? (
           <EmptyState

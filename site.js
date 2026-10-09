@@ -96,4 +96,67 @@
   queryAll('#current-year').forEach((element) => {
     element.textContent = String(new Date().getFullYear());
   });
+
+  // --- platform tabs (Android / Apple / API) --------------------------------
+  // The three install/API pages share this tablist. Switching tabs only ever
+  // toggles the `hidden` attribute on the panels below it — it never touches
+  // the hero illustration above it, so that illustration can't vanish no
+  // matter how many times you switch tabs or which one you land on.
+  const tabList = query('.tabs[role="tablist"]');
+  if (tabList) {
+    const tabs = queryAll('[role="tab"]', tabList);
+    const panelFor = (tab) => document.getElementById(tab.getAttribute('aria-controls'));
+    const byKey = (key) => tabs.find((tab) => tab.dataset.tabKey === key);
+
+    const activate = (tab, { focus = false, updateHash = true } = {}) => {
+      if (!tab) return;
+      tabs.forEach((candidate) => {
+        const selected = candidate === tab;
+        candidate.setAttribute('aria-selected', String(selected));
+        candidate.tabIndex = selected ? 0 : -1;
+        const panel = panelFor(candidate);
+        if (panel) panel.hidden = !selected;
+      });
+      if (focus) tab.focus();
+      if (updateHash) {
+        const hash = `#${tab.dataset.tabKey}`;
+        if (location.hash !== hash && window.history && history.replaceState) {
+          history.replaceState(null, '', hash);
+        }
+      }
+    };
+
+    tabs.forEach((tab) => {
+      tab.addEventListener('click', () => activate(tab));
+    });
+
+    // Left/Right/Home/End move focus and activate, per the standard tabs
+    // keyboard pattern — Tab key still exits the tablist as usual.
+    tabList.addEventListener('keydown', (event) => {
+      const currentIndex = tabs.indexOf(document.activeElement);
+      if (currentIndex === -1) return;
+      let nextIndex = null;
+      if (event.key === 'ArrowRight') nextIndex = (currentIndex + 1) % tabs.length;
+      else if (event.key === 'ArrowLeft') nextIndex = (currentIndex - 1 + tabs.length) % tabs.length;
+      else if (event.key === 'Home') nextIndex = 0;
+      else if (event.key === 'End') nextIndex = tabs.length - 1;
+      if (nextIndex !== null) {
+        event.preventDefault();
+        activate(tabs[nextIndex], { focus: true });
+      }
+    });
+
+    // Deep links and the browser's own Back/Forward buttons both work: the
+    // hash is the single source of truth for which tab is showing.
+    window.addEventListener('hashchange', () => {
+      const key = location.hash.replace('#', '');
+      const tab = byKey(key);
+      if (tab) activate(tab, { updateHash: false });
+    });
+
+    const requestedKey = location.hash.replace('#', '');
+    const defaultKey = tabList.dataset.defaultTab || (isAppleMobile ? 'ios' : 'android');
+    const initialTab = byKey(requestedKey) || byKey(defaultKey) || tabs[0];
+    activate(initialTab, { updateHash: false });
+  }
 })();

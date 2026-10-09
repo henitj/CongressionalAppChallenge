@@ -3,6 +3,8 @@ import { useAuth } from './AuthContext';
 import { useActivity } from './ActivityContext';
 import { useStreak } from './StreakContext';
 import { useEcoPoints } from '../context/EcoPointsContext';
+import { useGems } from '../context/GemsContext';
+import { GEM_VALUES } from '../constants/gems';
 import { useClub } from '../context/ClubContext';
 import {
   challengesForWeek,
@@ -107,6 +109,7 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
   const { history } = useActivity();
   const { days: streakDays } = useStreak();
   const { award } = useEcoPoints();
+  const { earn: earnGems, adjust: adjustGems } = useGems();
   const { contribute, myClub } = useClub();
 
   const userId = user?.id ?? null;
@@ -261,6 +264,9 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
       // 1. Personal points
       await award('challenge_completed', { points: t.points, label: t.title });
 
+      // 1b. Gems — every finished weekly goal waters your tree a little.
+      earnGems('challenge_completed', { label: t.title });
+
       // 2. Club points — this is how challenges lift your team's score.
       if (myClub) {
         await contribute({ points: t.points, trees: 0, miles: 0 });
@@ -272,7 +278,7 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
 
       return { points: t.points, title: t.title };
     },
-    [templates, store, weekId, storeKey, award, contribute, myClub]
+    [templates, store, weekId, storeKey, award, earnGems, contribute, myClub]
   );
 
   const undoChallenge = useCallback(
@@ -291,9 +297,14 @@ export function ChallengeProvider({ children }: { children: React.ReactNode }) {
       saveJSON(storeKey, next);
 
       await award('challenge_completed', { points: -t.points, label: `Undid: ${t.title}` });
+      // Claw back exactly the gems this completion paid out, so you cannot
+      // farm gems by completing a challenge, undoing it, and completing it
+      // again — net points already come back to zero via the award above,
+      // gems need to follow the same rule.
+      await adjustGems(-GEM_VALUES.challenge_completed, `Undid: ${t.title}`);
       if (myClub) await contribute({ points: -t.points, trees: 0, miles: 0 });
     },
-    [templates, store, storeKey, award, contribute, myClub]
+    [templates, store, storeKey, award, adjustGems, contribute, myClub]
   );
 
   useEffect(() => {

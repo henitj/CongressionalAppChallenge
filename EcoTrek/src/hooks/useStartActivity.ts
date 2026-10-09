@@ -1,5 +1,6 @@
 import { useCallback, useState } from 'react';
-import { Alert, Platform } from 'react-native';
+import { Platform } from 'react-native';
+import { alert } from '../services/alert';
 import { useNavigation } from '@react-navigation/native';
 
 import { useApp } from '../context/AppContext';
@@ -20,7 +21,7 @@ export function useStartActivity(initial: ActivityMode = 'hike') {
       const coords = await requestLocation({ permissionOnly: true });
       setStarting(false);
       if (!coords) {
-        Alert.alert(
+        alert(
           'Location needed',
           'Turn on location for EcoTrek in your phone settings so we can measure how far you go.',
           [{ text: 'OK' }]
@@ -30,7 +31,7 @@ export function useStartActivity(initial: ActivityMode = 'hike') {
     }
 
     if (report?.level === 'danger') {
-      Alert.alert('Stay inside today', `${report.headline}\n\n${report.summary}`, [
+      alert('Stay inside today', `${report.headline}\n\n${report.summary}`, [
         { text: 'Not today', style: 'cancel' },
         {
           text: 'I understand',
