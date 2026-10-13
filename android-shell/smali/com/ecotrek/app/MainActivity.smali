@@ -55,19 +55,19 @@
 .end method
 
 .method public onBackPressed()V
-    .locals 2
+    .locals 3
 
     iget-object v0, p0, Lcom/ecotrek/app/MainActivity;->webView:Landroid/webkit/WebView;
 
     if-eqz v0, :cond_0
 
-    invoke-virtual {v0}, Landroid/webkit/WebView;->canGoBack()Z
+    new-instance v1, Lcom/ecotrek/app/MainActivity$BackCallback;
 
-    move-result v1
+    invoke-direct {v1, p0}, Lcom/ecotrek/app/MainActivity$BackCallback;-><init>(Lcom/ecotrek/app/MainActivity;)V
 
-    if-eqz v1, :cond_0
+    const-string v2, "(function(){var b=window.__ecotrekAndroidBack;if(typeof b==='function')return b()?'handled':'unhandled';return 'missing';})()"
 
-    invoke-virtual {v0}, Landroid/webkit/WebView;->goBack()V
+    invoke-virtual {v0, v2, v1}, Landroid/webkit/WebView;->evaluateJavascript(Ljava/lang/String;Landroid/webkit/ValueCallback;)V
 
     return-void
 
@@ -169,6 +169,22 @@
     invoke-virtual {v0, v2}, Landroid/webkit/WebView;->loadUrl(Ljava/lang/String;)V
 
     invoke-virtual {p0, v0}, Lcom/ecotrek/app/MainActivity;->setContentView(Landroid/view/View;)V
+
+    return-void
+.end method
+
+.method protected onResume()V
+    .locals 2
+
+    invoke-super {p0}, Landroid/app/Activity;->onResume()V
+
+    invoke-static {}, Landroid/webkit/GeolocationPermissions;->getInstance()Landroid/webkit/GeolocationPermissions;
+
+    move-result-object v0
+
+    const-string v1, "https://appassets.ecotrek.app"
+
+    invoke-virtual {v0, v1}, Landroid/webkit/GeolocationPermissions;->clear(Ljava/lang/String;)V
 
     return-void
 .end method

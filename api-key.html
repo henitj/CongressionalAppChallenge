@@ -107,10 +107,10 @@
           <div class="disclosure-body">
             <p>The APK is signed and its contents are checked during release. For most people, no verification is needed.</p>
             <div class="facts" aria-label="APK details">
-              <div class="fact"><span>Version</span><strong data-config="apkVersion">1.2.0</strong></div>
-              <div class="fact"><span>File size</span><strong data-config="apkBytes">1.72 MB</strong></div>
+              <div class="fact"><span>Version</span><strong data-config="apkVersion">1.2.1</strong></div>
+              <div class="fact"><span>File size</span><strong data-config="apkBytes">1.69 MB</strong></div>
               <div class="fact"><span>Android</span><strong data-config="minAndroid">Android 7.0 and newer</strong></div>
-              <div class="fact"><span>SHA-256</span><code data-config="apkSha256">f1927810c06e38dca6efe5fecbfe1fcdf2955ecefe22acbe5147382a70779272</code></div>
+              <div class="fact"><span>SHA-256</span><code data-config="apkSha256">bd1f6553404427bd223fbd2397bda0e6feb7a5619d914fb0dd8e4970d9a0bbf0</code></div>
             </div>
             <p class="muted">The app uses internet access for trail and weather information, and location to find nearby trails and record an activity. Your saved activities stay on this device. See the <a class="inline" href="/privacy">privacy policy</a>.</p>
           </div>
@@ -164,32 +164,31 @@
         <p class="eyebrow">Optional setup</p>
         <h2>The assistant works <em>without a key.</em></h2>
         <p class="lede">
-          EcoTrek already answers trail questions on your device. Add an AI key only if you want a model to polish
-          those answers. Walks, trails, weather, points and badges do not need one.
+          EcoTrek uses Grok through Puter for online custom questions on the website and Android APK. No personal key is required. A local trail-data answer is available if the network or model is unavailable.
         </p>
 
         <div class="note">
-          <strong>Just want to use EcoTrek?</strong> Skip this tab. Nothing is locked, and you can add a key later.
+          <strong>Just want to use EcoTrek?</strong> Skip this setup. Grok works without a personal key; ask the assistant from Trails.
         </div>
 
         <section class="guide-card" aria-labelledby="quick-setup-title">
           <p class="eyebrow">Three simple steps</p>
-          <h2 id="quick-setup-title">Want to turn on AI answers?</h2>
+          <h2 id="quick-setup-title">Want to use your own provider?</h2>
           <p class="muted">
-            Groq is the quickest setup. It offers a free tier; check its current limits and terms before creating a key.
+            This is optional. Groq offers a free tier; check its current limits and terms before creating a key.
           </p>
           <ol class="steps">
             <li class="step-action">
               <div><strong>Create a Groq key</strong><p>Make a key on Groq’s website, then copy it.</p></div>
               <a class="button button-primary" href="https://console.groq.com/keys" rel="noopener noreferrer" target="_blank">Get a key ↗</a>
             </li>
-            <li><strong>Open AI settings</strong><p>In EcoTrek, tap the sparkle button to open <em>Trail Assistant</em>, then tap the sliders icon and choose Groq.</p></li>
+            <li><strong>Open AI settings</strong><p>Open <em>Trails</em>, tap the sparkle button to open Trail Assistant, then tap the sliders icon and choose Groq. The assistant entry point is on Trails.</p></li>
             <li><strong>Paste and test</strong><p>Paste your key and tap <em>Save &amp; test</em>. The provider address and model are filled in for you.</p></li>
           </ol>
         </section>
 
         <div class="note note-neutral">
-          <strong>Keep your key private.</strong> It stays on your device and is sent directly to the AI provider you choose over HTTPS. EcoTrek does not receive it.
+          <strong>Keep your key private.</strong> It stays on your device and is used before Puter when you ask a question. It is sent directly to the provider you chose over HTTPS; EcoTrek does not receive it.
         </div>
 
         <details class="disclosure">
@@ -215,15 +214,15 @@
         <details class="disclosure">
           <summary>What happens to my key and my questions?</summary>
           <div class="disclosure-body">
-            <p>The key is saved in the app’s local storage. When you ask for an AI answer, EcoTrek sends your question and relevant trail or weather facts, with the key, directly to your selected provider over HTTPS. The provider’s own privacy terms apply to that request.</p>
-            <p>EcoTrek does not send the key to our server. You can remove it at any time in <em>Trail Assistant → AI settings → Remove key</em>. If you think it was exposed, revoke it on the provider’s website.</p>
+            <p>Without a personal key, the website and Android APK send your question, up to eight recent conversation turns, and relevant trail/weather facts to Puter for Grok. The prompt does not include GPS coordinates or profile details. Puter’s own privacy terms apply.</p>
+            <p>If you add a key, it is saved in the app’s local storage and sent directly to your selected provider over HTTPS. EcoTrek does not send that key to our server. Remove it in <em>Trail Assistant → AI settings → Remove key</em>; revoke an exposed key with its provider.</p>
           </div>
         </details>
 
         <details class="disclosure">
           <summary>My key will not connect</summary>
           <div class="disclosure-body">
-            <p>Check that you selected the same provider that issued the key, then copy and paste it again. A provider may also reject an expired key or apply a usage limit. The assistant will keep working with its on-device answers either way.</p>
+            <p>Check that you selected the same provider that issued the key, then copy and paste it again. A provider may reject an expired key or apply a usage limit. On the website and APK, EcoTrek then tries Grok through Puter; if online AI is unavailable, it labels and shows the local trail-data fallback.</p>
             <p>If you still need help, email <a class="inline" href="mailto:ecotrek.support@gmail.com">ecotrek.support@gmail.com</a>. Do not include your key.</p>
           </div>
         </details>

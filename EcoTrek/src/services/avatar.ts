@@ -17,6 +17,44 @@ import { alert } from './alert';
 
 const BASE64_PREFIX = 'data:image/jpeg;base64,';
 
+/** Crop to a small square before storing; this also makes WebView uploads stable. */
+function compressWebAvatar(uri: string): Promise<string | null> {
+  return new Promise((resolve) => {
+    if (typeof document === 'undefined' || typeof Image === 'undefined') {
+      resolve(uri.startsWith('data:image/') ? uri : null);
+      return;
+    }
+    const image = new Image();
+    image.onload = () => {
+      try {
+        const edge = Math.min(image.naturalWidth, image.naturalHeight);
+        if (!edge) return resolve(null);
+        const canvas = document.createElement('canvas');
+        canvas.width = 512;
+        canvas.height = 512;
+        const context = canvas.getContext('2d');
+        if (!context) return resolve(null);
+        context.drawImage(
+          image,
+          (image.naturalWidth - edge) / 2,
+          (image.naturalHeight - edge) / 2,
+          edge,
+          edge,
+          0,
+          0,
+          512,
+          512
+        );
+        resolve(canvas.toDataURL('image/jpeg', 0.75));
+      } catch {
+        resolve(null);
+      }
+    };
+    image.onerror = () => resolve(null);
+    image.src = uri;
+  });
+}
+
 function avatarFile(timestamp: number): File | null {
   if (Platform.OS === 'web') return null;
   return new File(Paths.document, `avatar-${timestamp}.jpg`);
@@ -70,14 +108,26 @@ export async function pickAndStoreAvatarPhoto(
     const asset = result.assets[0];
 
     if (Platform.OS === 'web') {
-      if (asset.base64) return BASE64_PREFIX + asset.base64;
-      return null;
+      const source = asset.uri || (asset.base64 ? BASE64_PREFIX + asset.base64.replace(/^data:[^,]+,/, '') : '');
+      if (!source) {
+        alert('Photo not saved', 'The selected image could not be opened. Please choose another photo.');
+        return null;
+      }
+      const compressed = await compressWebAvatar(source);
+      if (!compressed || compressed.length > 2_000_000) {
+        alert('Photo not saved', 'EcoTrek could not prepare that image. Please choose another photo and try again.');
+        return null;
+      }
+      return compressed;
     }
 
     // ImagePicker can return an empty URI on a cancelled/partially failed
     // picker result. Passing that value to File throws a rather unhelpful
     // "file upload"/invalid URI exception on Android.
-    if (!asset.uri) return null;
+    if (!asset.uri) {
+      alert('Photo not saved', 'The selected image could not be opened. Please choose another photo.');
+      return null;
+    }
 
     const dest = avatarFile(Date.now());
     if (!dest) return asset.uri;
@@ -91,6 +141,7 @@ export async function pickAndStoreAvatarPhoto(
     return dest.uri;
   } catch (e) {
     console.warn('[avatar] could not store photo', e);
+    alert('Photo not saved', 'EcoTrek could not save that photo. Check app storage and photo permissions, then try again.');
     return null;
   }
 }

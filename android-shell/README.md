@@ -11,7 +11,7 @@ the app in `../EcoTrek`. It contains three tiny classes (readable sources in
 
 | Class | Job |
 | --- | --- |
-| `MainActivity` | Creates the WebView, locks `textZoom` to 100, enables standard viewport behaviour, handles back navigation, permission results and file-chooser results. |
+| `MainActivity` | Creates the WebView, locks `textZoom` to 100, enables standard viewport behaviour, sends Android back presses to React Navigation before exiting at Home, clears cached WebView location permission on resume, and handles permission/file-picker results. |
 | `AppWebViewClient` | Serves the bundled web app from `assets/` on the **virtual secure origin** `https://appassets.ecotrek.app`, and opens external links in the browser. |
 | `AppChromeClient` | Bridges web geolocation to the Android permission dialog, and `<input type="file">` to the system photo picker. |
 
@@ -27,6 +27,14 @@ network calls, GPS, and localStorage all work.
 It also fixes the "stretched / shifted" rendering: `setTextZoom(100)`
 disables Android's font boosting and `setUseWideViewPort(true)` makes the
 WebView honour the page's `<meta name="viewport">`.
+
+The WebView uses Google Maps JavaScript API when
+`EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` is set before `npm run export:web`. That key
+is public in the web bundle; restrict it to the website and
+`appassets.ecotrek.app` referrers. If it is missing or Maps is unreachable, the
+recorded route remains visible as a local sketch. The Trails assistant uses
+Grok through Puter online without an app-owned key; questions and relevant
+trail/weather facts are sent to Puter as described in the privacy policy.
 
 > **One branch, one white screen.** The interceptor rewrites the requested path
 > to `/index.html` for *one* case only — a request for `/`. If that comparison

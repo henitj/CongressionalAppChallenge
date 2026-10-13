@@ -3,7 +3,7 @@
     "name": "EcoTrek",
     "slug": "ecotrek",
     "scheme": "ecotrek",
-    "version": "1.0.0",
+    "version": "1.2.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.ecotrek.app",
-      "buildNumber": "1",
+      "buildNumber": "2",
       "infoPlist": {
         "NSLocationWhenInUseUsageDescription": "EcoTrek uses your location while you are recording a walk or ride, so it can measure how far you go and show weather for where you are.",
         "NSLocationAlwaysAndWhenInUseUsageDescription": "EcoTrek keeps measuring your walk or ride if you lock your phone or switch apps. It only does this while a recording is running. When you tap Finish, it stops.",
@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "com.ecotrek.app",
-      "versionCode": 1,
+      "versionCode": 4,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "ACCESS_FINE_LOCATION",

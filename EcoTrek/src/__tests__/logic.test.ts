@@ -36,6 +36,7 @@ import { answerQuestion, AssistantContext, resolveTrail, STARTER_QUESTIONS } fro
 import {
   CLEANUP_PROMPT_SEC,
   MAX_CLEANUP_PIECES,
+  MAX_CLEANUP_POINTS,
   cleanupBonusPoints,
   cleanupBonusSeconds,
   normalizeCleanupPieces,
@@ -857,14 +858,15 @@ test('the trash question waits for a ten minute walk', () => {
   assert.equal(shouldAskCleanup(120, true, 'bike'), false);
 });
 
-test('cleanup points reward the bend, then stop rewarding exaggeration', () => {
+test('cleanup rewards stay small and cap at ten points', () => {
   assert.equal(cleanupBonusPoints(0), 0);
   assert.equal(cleanupBonusPoints(-4), 0);
-  assert.equal(cleanupBonusPoints(1), 17);
-  assert.equal(cleanupBonusPoints(5), 25);
-  // Capped, so typing 999 is not a shortcut to a level up.
-  assert.equal(cleanupBonusPoints(999), cleanupBonusPoints(99), 'above the cap earns the cap');
-  assert.ok(cleanupBonusPoints(100) >= cleanupBonusPoints(99), 'reward never falls as the count grows');
+  assert.equal(cleanupBonusPoints(1), 3);
+  assert.equal(cleanupBonusPoints(5), 7);
+  assert.equal(cleanupBonusPoints(10), MAX_CLEANUP_POINTS);
+  // Self-reported counts cannot be used as a shortcut to a level up.
+  assert.equal(cleanupBonusPoints(99), MAX_CLEANUP_POINTS);
+  assert.equal(cleanupBonusPoints(999), cleanupBonusPoints(99), 'above the cap earns the same small reward');
 });
 
 test('cleanup time credited back is small and capped', () => {
@@ -873,14 +875,14 @@ test('cleanup time credited back is small and capped', () => {
   assert.equal(cleanupBonusSeconds(999), 600);
 });
 
-test('every trail asks once and accepts an honest 0–99 answer', () => {
+test('every trail asks once; full 0–99 counts log correctly without inflating the reward', () => {
   assert.equal(MAX_CLEANUP_PIECES, 99);
   assert.equal(normalizeCleanupPieces('99'), 99);
   assert.equal(normalizeCleanupPieces('999'), 99);
   assert.equal(normalizeCleanupPieces(''), 0);
   assert.equal(shouldAskCleanupAfterTrail(false), true);
   assert.equal(shouldAskCleanupAfterTrail(true), false);
-  assert.ok(cleanupBonusPoints(99) > cleanupBonusPoints(10));
+  assert.equal(cleanupBonusPoints(99), cleanupBonusPoints(10));
 });
 
 
@@ -963,6 +965,19 @@ test('GPS filter: standing still counts no distance and no speed strikes', () =>
     const r = advanceTrack(state, fixAt(i, wobble[i % wobble.length]));
     assert.notEqual(r.status, 'moved', `wobble counted as movement at ${i}s`);
     state = r.state;
+  }
+  assert.equal(state.miles, 0);
+});
+
+test('GPS filter: slow indoor GPS drift is not accumulated into phantom miles', () => {
+  let state = EMPTY_TRACK;
+  const noise = [0, 4, -3, 7, -5, 2, -1, 5, -4, 1];
+  for (let i = 0; i <= 600; i++) {
+    // A gentle 30 m drift over ten minutes, plus jitter from a marginal fix.
+    const northM = i * 0.05 + noise[i % noise.length];
+    const result = advanceTrack(state, fixAt(i, northM, { accuracy: 18 }));
+    assert.notEqual(result.status, 'moved', `slow drift counted as movement at ${i}s`);
+    state = result.state;
   }
   assert.equal(state.miles, 0);
 });

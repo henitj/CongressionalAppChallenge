@@ -14,9 +14,9 @@ APKTOOL=/path/to/apktool.jar ../android-shell/build.sh
 
 | | |
 | --- | --- |
-| Version | 1.2.0 (versionCode 3) |
-| Size | 1,800,435 bytes |
-| SHA-256 | `f1927810c06e38dca6efe5fecbfe1fcdf2955ecefe22acbe5147382a70779272` |
+| Version | 1.2.1 (versionCode 4) |
+| Size | 1,766,743 bytes |
+| SHA-256 | `bd1f6553404427bd223fbd2397bda0e6feb7a5619d914fb0dd8e4970d9a0bbf0` |
 | Signing certificate | `CN=EcoTrek, O=EcoTrek Team, C=US` |
 | Certificate SHA-256 | `74005b52c140cd4b45a1adb0e95ce31ea30e82b4e6db20197dc0c889901726d3` |
 | Signatures | APK Signature Scheme **v1 + v2 + v3** (4-byte aligned) |

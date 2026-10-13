@@ -5,7 +5,8 @@ import { useNavigation, useRoute } from '@react-navigation/native';
 import Header from '../components/Header';
 import Icon from '../components/Icon';
 import TrailScene from '../components/TrailScene';
-import { Screen, Segmented, Banner } from '../components/ui';
+import ActivityCharacter from '../components/ActivityCharacter';
+import { Screen, Banner } from '../components/ui';
 import { ColorPalette, RADIUS, SPACING, TREE_RULES } from '../constants/theme';
 import { useApp } from '../context/AppContext';
 import { useWeather } from '../context/WeatherContext';
@@ -24,7 +25,7 @@ import { Typography, useTheme } from '../context/ThemeContext';
 export default function TrackScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
-  const { permission, requestLocation } = useApp();
+  const { permission, usingFallbackLocation, requestLocation } = useApp();
   const { report } = useWeather();
   const { mode, setMode, start, starting } = useStartActivity('hike');
   const { colors, typography } = useTheme();
@@ -73,14 +74,37 @@ export default function TrackScreen() {
           </View>
         </View>
 
-        <Segmented
-          options={[
-            { value: 'hike', label: 'Walk', icon: 'boot' },
-            { value: 'bike', label: 'Bike', icon: 'bike' },
-          ]}
-          value={mode}
-          onChange={setMode}
-        />
+        <View style={styles.modeRow} accessibilityRole="radiogroup">
+          {([
+            { value: 'hike' as const, title: 'Walk', subtitle: 'On foot' },
+            { value: 'bike' as const, title: 'Bike', subtitle: 'Ride' },
+          ]).map((option) => {
+            const selected = mode === option.value;
+            return (
+              <Pressable
+                key={option.value}
+                onPress={() => setMode(option.value)}
+                accessibilityRole="radio"
+                accessibilityState={{ checked: selected }}
+                accessibilityLabel={`${option.title}, ${option.subtitle}`}
+                style={({ pressed }) => [
+                  styles.modeCard,
+                  selected && styles.modeCardSelected,
+                  pressed && { opacity: 0.84 },
+                ]}
+              >
+                <ActivityCharacter mode={option.value} size={56} />
+                <View style={styles.modeCopy}>
+                  <Text style={styles.modeTitle}>{option.title}</Text>
+                  <Text style={styles.modeSubtitle}>{option.subtitle}</Text>
+                </View>
+                <View style={[styles.modeCheck, selected && styles.modeCheckSelected]}>
+                  {selected ? <Icon name="check" size={13} color="#fff" strokeWidth={3} /> : null}
+                </View>
+              </Pressable>
+            );
+          })}
+        </View>
 
         <Pressable
           onPress={start}
@@ -101,10 +125,12 @@ export default function TrackScreen() {
           </Text>
         </Pressable>
 
-        {permission === 'denied' ? (
+        {usingFallbackLocation || permission !== 'granted' ? (
           <Pressable onPress={() => requestLocation({ explain: true })} hitSlop={8}>
-            <Text style={styles.permissionNote} numberOfLines={2}>
-              Location is off, so we cannot measure distance. Tap to see how to turn it on.
+            <Text style={styles.permissionNote} numberOfLines={3}>
+              {permission === 'denied'
+                ? 'Location access is off. Tap to see how to restore permission.'
+                : 'No GPS fix yet. Check that device Location is on, then tap to retry.'}
             </Text>
           </Pressable>
         ) : null}
@@ -147,6 +173,36 @@ function makeStyles(c: ColorPalette, t: Typography) {
       borderWidth: 0,
     },
     heroCaptionText: { ...t.smallMed, color: c.text, flexShrink: 1 },
+
+    modeRow: { flexDirection: 'row', gap: SPACING.sm },
+    modeCard: {
+      flex: 1,
+      minWidth: 0,
+      minHeight: 82,
+      flexDirection: 'row',
+      alignItems: 'center',
+      gap: SPACING.xs,
+      paddingVertical: SPACING.xs,
+      paddingHorizontal: SPACING.xs,
+      borderRadius: RADIUS.xl,
+      borderWidth: 1.5,
+      borderColor: c.border,
+      backgroundColor: c.surface,
+    },
+    modeCardSelected: { borderColor: c.primary, backgroundColor: c.primarySurface },
+    modeCopy: { flex: 1, minWidth: 0, gap: 2 },
+    modeTitle: { ...t.bodyMed, color: c.text },
+    modeSubtitle: { ...t.micro, color: c.textMuted },
+    modeCheck: {
+      width: 20,
+      height: 20,
+      borderRadius: 10,
+      borderWidth: 1.5,
+      borderColor: c.border,
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    modeCheckSelected: { borderColor: c.primary, backgroundColor: c.primary },
 
     startBtn: {
       borderRadius: RADIUS.xxl,

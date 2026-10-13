@@ -12,8 +12,8 @@
  *      System WebViews, adds the ES5 polyfill prelude, and injects the boot
  *      watchdog (a branded splash that turns into an explanation if the app
  *      ever fails to start, instead of a white screen).
- *   5. Writes the repository-root page — the same app, served from "/" — so
- *      the website front door *is* the app instead of a landing page.
+ *   5. Writes the repository-root page for the full site. A standalone Vercel
+ *      build skips that side effect and omits install-page redirects/links.
  *   6. Checks that every asset the bundle asks for exists in the export; a
  *      missing icon is a silent 404 on the site and inside the APK.
  *
@@ -32,6 +32,7 @@ import {
 const dist = path.join(process.cwd(), 'dist');
 const indexPath = path.join(dist, 'index.html');
 const repoRoot = path.resolve(process.cwd(), '..');
+const standalone = process.env.ECOTREK_STANDALONE_WEB === '1';
 
 if (!fs.existsSync(indexPath)) {
   console.error('dist/index.html not found — run `npx expo export --platform web` first.');
@@ -75,12 +76,21 @@ if (!bundleName) {
   console.error('No web bundle found in dist — the export looks incomplete.');
   process.exit(1);
 }
-await patchIndexHtml(dist, { bundleName, polyfillsName: polyfills.name });
-console.log(`compat: polyfills ${polyfills.name} (${polyfills.bytes.toLocaleString()} bytes), splash + watchdog injected.`);
+await patchIndexHtml(dist, { bundleName, polyfillsName: polyfills.name, standalone });
+console.log(
+  `compat: polyfills ${polyfills.name} (${polyfills.bytes.toLocaleString()} bytes), splash + watchdog injected.`
+);
+if (standalone) {
+  const standaloneHtml = fs.readFileSync(indexPath, 'utf8');
+  if (standaloneHtml.includes('id="ecotrek-redirect"') || standaloneHtml.includes('id="ecotrek-launcher"')) {
+    throw new Error('Standalone export must not redirect to or link to repository install pages.');
+  }
+  console.log('standalone: omitted repository install redirect and launcher.');
+}
 
-// --- 5. the website front door is the app ----------------------------------
+// --- 5. the repository website front door is the app ------------------------
 const rootPage = path.join(repoRoot, 'index.html');
-if (await pathExists(path.join(repoRoot, '.git')) || await pathExists(path.join(repoRoot, 'vercel.json'))) {
+if (!standalone && (await pathExists(path.join(repoRoot, '.git')) || await pathExists(path.join(repoRoot, 'vercel.json')))) {
   await writeRootAppPage(dist, { destination: rootPage });
   console.log(`wrote ${path.relative(process.cwd(), rootPage)} (the site root serves this app build).`);
 }

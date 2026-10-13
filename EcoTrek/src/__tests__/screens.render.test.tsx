@@ -1,6 +1,6 @@
 import React from 'react';
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
-import { Linking, Alert } from 'react-native';
+import { Linking, Alert, View, Text, Pressable } from 'react-native';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -24,6 +24,10 @@ import { AnalyticsProvider } from '../context/AnalyticsContext';
 import { ProfileProvider } from '../context/ProfileContext';
 
 import HomeScreen from '../screens/HomeScreen';
+import Header from '../components/Header';
+import { TrailCover, TrailPhotoGallery } from '../components/TrailPhotos';
+import { AUSTIN_TRAILS } from '../constants/austinTrails';
+import * as TrailPhotosService from '../services/trailPhotos';
 import TrackScreen from '../screens/TrackScreen';
 import TrailsScreen from '../screens/TrailsScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
@@ -46,6 +50,7 @@ import MoreScreen from '../screens/MoreScreen';
 import ActiveTrackingScreen from '../screens/ActiveTrackingScreen';
 import CleanupSheet from '../components/CleanupSheet';
 import FeedbackSheet from '../components/FeedbackSheet';
+import { askPuterModel, extractPuterReply } from '../services/aiProvider';
 
 /**
  * Render smoke tests.
@@ -166,9 +171,9 @@ describe('every screen renders on an empty account', () => {
 });
 
 describe('trail discovery upgrades', () => {
-  it('Home shows the floating AI chat button', async () => {
+  it('Home does not expose the AI entry point', async () => {
     const utils = await mount(HomeScreen, 'Your last walk');
-    expect(utils.getByTestId('assistant-fab')).toBeTruthy();
+    expect(utils.queryByTestId('assistant-fab')).toBeNull();
   });
 
   it('Trails shows the floating AI chat button', async () => {
@@ -235,6 +240,63 @@ describe('trail discovery upgrades', () => {
       nativeEvent: { actionName: 'increment' },
     });
     expect(utils.getByText('Any length')).toBeTruthy();
+  });
+});
+
+describe('navigation and trail imagery fixes', () => {
+  it('the Trails header back button returns to the previous screen', async () => {
+    const TestHome = ({ navigation }: any) => (
+      <View>
+        <Header title="Home" />
+        <Pressable onPress={() => navigation.navigate('Trails')}><Text>Open Trails</Text></Pressable>
+        <Text>Home screen visible</Text>
+      </View>
+    );
+    const TestTrails = () => (
+      <View>
+        <Header title="Trails" back />
+        <Text>Trails test screen</Text>
+      </View>
+    );
+    const utils = render(
+      <Providers>
+        <Stack.Navigator initialRouteName="Home" screenOptions={{ headerShown: false }}>
+          <Stack.Screen name="Home" component={TestHome} />
+          <Stack.Screen name="Trails" component={TestTrails} />
+        </Stack.Navigator>
+      </Providers>
+    );
+    await waitFor(() => expect(utils.queryByText('Home screen visible')).toBeTruthy());
+    fireEvent.press(utils.getByText('Open Trails'));
+    await waitFor(() => expect(utils.queryByText('Trails test screen')).toBeTruthy());
+    fireEvent.press(utils.getByLabelText('Go back'));
+    await waitFor(() => expect(utils.queryByText('Trails test screen')).toBeNull());
+    expect(utils.queryByText('Home screen visible')).toBeTruthy();
+  });
+
+  it('trail cards/details show an illustrated fallback when community photos are unavailable', async () => {
+    const cover = jest.spyOn(TrailPhotosService, 'getTrailCover').mockResolvedValue(null);
+    const gallery = jest.spyOn(TrailPhotosService, 'getTrailPhotos').mockResolvedValue({
+      scenery: [],
+      path: [],
+      all: [],
+    });
+    try {
+      const trail = { ...AUSTIN_TRAILS[0], imageUrl: undefined };
+      const TrailPreview = () => (
+        <View>
+          <TrailCover trail={trail} />
+          <TrailPhotoGallery trail={trail} />
+          <Text>Photos preview test ready</Text>
+        </View>
+      );
+      const utils = await mount(TrailPreview, 'Photos preview test ready');
+      await waitFor(() => expect(utils.queryByText(/Photos are unavailable offline/i)).toBeTruthy());
+      expect(utils.queryByText('Trail photos')).toBeFalsy();
+    } finally {
+      cover.mockRestore();
+      gallery.mockRestore();
+    }
   });
 });
 
@@ -310,6 +372,40 @@ describe('the post-walk feedback popup', () => {
   });
 });
 
+describe('online Grok assistant provider', () => {
+  it('accepts Puter text response shapes and rejects empty/oversized replies', () => {
+    expect(extractPuterReply({ message: { content: '  A custom answer.  ' } })).toBe('A custom answer.');
+    expect(extractPuterReply({ message: { content: [{ text: 'Hello' }, { text: 'there' }] } })).toBe('Hello there');
+    expect(extractPuterReply({ message: { content: '' } })).toBeNull();
+    expect(extractPuterReply({ text: 'x'.repeat(2001) })).toBeNull();
+  });
+
+  it('sends custom questions and relevant trail facts to Puter Grok', async () => {
+    const previousWindow = (globalThis as any).window;
+    const chat = jest.fn().mockResolvedValue({ message: { content: 'A real model answer.' } });
+    Object.defineProperty(globalThis, 'window', {
+      configurable: true,
+      writable: true,
+      value: { puter: { ai: { chat } } },
+    });
+    try {
+      const answer = await askPuterModel(
+        'Can you invent a funny name for a hiking club?',
+        { trail: { name: 'Walnut Creek' }, allTrails: [], weather: null }
+      );
+      expect(answer).toBe('A real model answer.');
+      expect(chat).toHaveBeenCalledTimes(1);
+      const [messages, options] = chat.mock.calls[0];
+      expect(messages[messages.length - 1].content).toContain('funny name');
+      expect(messages[0].content).toContain('Walnut Creek');
+      expect(options.model).toBe('x-ai/grok-4.7');
+    } finally {
+      if (previousWindow === undefined) delete (globalThis as any).window;
+      else Object.defineProperty(globalThis, 'window', { configurable: true, writable: true, value: previousWindow });
+    }
+  });
+});
+
 describe('the trash question at the end of a walk', () => {
   function PostWalkQuestion({ onLogged }: { onLogged?: (n: number) => void }) {
     return (
@@ -328,9 +424,10 @@ describe('the trash question at the end of a walk', () => {
     const utils = await mount(PostWalkQuestion, 'How many pieces of trash do you pick up?');
     expect(utils.queryByText('How many pieces of trash do you pick up?')).toBeTruthy();
     expect(utils.queryByText('None this time')).toBeTruthy();
-    // Presets are there so nobody has to type on a phone after a walk.
+    // Small presets are quick to tap; the full honest range remains available in the field.
     expect(utils.getByLabelText('10 pieces')).toBeTruthy();
-    expect(utils.getByLabelText('99 pieces')).toBeTruthy();
+    expect(utils.getByLabelText('5 pieces')).toBeTruthy();
+    expect(utils.getByLabelText('Number of pieces collected, 0 to 99')).toBeTruthy();
   });
 
   it('logging pieces hands the count back so points can be awarded', async () => {
@@ -482,7 +579,7 @@ describe('screens that do not need the provider stack', () => {
     }
     await waitFor(() => expect(utils.queryByText('Every piece counts.')).toBeTruthy());
     expect(utils.queryByText(/0 to 99/i)).toBeTruthy();
-    expect(utils.queryByText('More pieces = more points')).toBeTruthy();
+    expect(utils.queryByText('Small reward, capped at 10 points')).toBeTruthy();
   });
 });
 

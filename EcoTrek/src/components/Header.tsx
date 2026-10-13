@@ -39,7 +39,7 @@ export default function Header({
   // deep link) fall back to the home tabs instead of a dead tap.
   const goBack = () => {
     if (navigation.canGoBack?.()) navigation.goBack();
-    else navigation.navigate('Tabs');
+    else navigation.navigate('Tabs', { screen: 'Home' });
   };
 
   return (
@@ -50,6 +50,7 @@ export default function Header({
             onPress={goBack}
             hitSlop={12}
             style={[styles.iconBtn, { backgroundColor: colors.surface }]}
+            accessibilityRole="button"
             accessibilityLabel="Go back"
           >
             <Icon name="chevron-left" size={20} color={colors.text} strokeWidth={2.1} />

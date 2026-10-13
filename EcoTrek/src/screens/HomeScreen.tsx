@@ -4,7 +4,6 @@ import { useNavigation } from '@react-navigation/native';
 
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
-import AssistantFab from '../components/AssistantFab';
 import ConditionsCard from '../components/ConditionsCard';
 import StreakStrip from '../components/StreakStrip';
 import { Screen, Card, Button, SectionHeader } from '../components/ui';
@@ -190,8 +189,6 @@ export default function HomeScreen() {
       </View>
     </Screen>
 
-    {/* Floating AI chat — ask about trails, weather, anything hiking. */}
-    <AssistantFab />
     </View>
   );
 }

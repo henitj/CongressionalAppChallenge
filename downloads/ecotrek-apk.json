@@ -1,16 +1,16 @@
 {
-  "bytes": 1800435,
+  "bytes": 1766743,
   "minSdkVersion": 24,
   "schemes": [
     "v1",
     "v2",
     "v3"
   ],
-  "sha256": "f1927810c06e38dca6efe5fecbfe1fcdf2955ecefe22acbe5147382a70779272",
+  "sha256": "bd1f6553404427bd223fbd2397bda0e6feb7a5619d914fb0dd8e4970d9a0bbf0",
   "signingCertificateSha256": "74005b52c140cd4b45a1adb0e95ce31ea30e82b4e6db20197dc0c889901726d3",
   "signingCertificateSubject": "C=US,O=EcoTrek Team,CN=EcoTrek",
   "signingCertificateValidUntil": "2055-12-25",
   "targetSdkVersion": 34,
-  "versionCode": 3,
-  "versionName": "1.2.0"
+  "versionCode": 4,
+  "versionName": "1.2.1"
 }

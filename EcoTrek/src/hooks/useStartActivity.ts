@@ -1,5 +1,4 @@
 import { useCallback, useState } from 'react';
-import { Platform } from 'react-native';
 import { alert } from '../services/alert';
 import { useNavigation } from '@react-navigation/native';
 
@@ -10,25 +9,23 @@ export type ActivityMode = 'hike' | 'bike';
 
 export function useStartActivity(initial: ActivityMode = 'hike') {
   const navigation = useNavigation<any>();
-  const { permission, requestLocation } = useApp();
+  const { requestLocation } = useApp();
   const { report } = useWeather();
   const [mode, setMode] = useState<ActivityMode>(initial);
   const [starting, setStarting] = useState(false);
 
   const start = useCallback(async () => {
-    if (permission !== 'granted' && Platform.OS !== 'web') {
-      setStarting(true);
-      const coords = await requestLocation({ permissionOnly: true });
+    // Re-check on every deliberate Start tap. This handles a permission or
+    // device-location switch changed in Settings while EcoTrek was open, and
+    // ensures the web APK gets the real browser/WebView permission prompt.
+    setStarting(true);
+    let coords: { latitude: number; longitude: number } | null = null;
+    try {
+      coords = await requestLocation({ permissionOnly: true, explain: true });
+    } finally {
       setStarting(false);
-      if (!coords) {
-        alert(
-          'Location needed',
-          'Turn on location for EcoTrek in your phone settings so we can measure how far you go.',
-          [{ text: 'OK' }]
-        );
-        return;
-      }
     }
+    if (!coords) return; // requestLocation already explains how to restore access.
 
     if (report?.level === 'danger') {
       alert('Stay inside today', `${report.headline}\n\n${report.summary}`, [
@@ -43,7 +40,7 @@ export function useStartActivity(initial: ActivityMode = 'hike') {
     }
 
     navigation.navigate('ActiveTracking', { mode });
-  }, [permission, requestLocation, report, navigation, mode]);
+  }, [requestLocation, report, navigation, mode]);
 
   return { mode, setMode, start, starting };
 }

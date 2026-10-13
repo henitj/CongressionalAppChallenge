@@ -27,42 +27,46 @@
       <a class="back-link" href="/"><span class="back-link-arrow" aria-hidden="true">←</span> Back to EcoTrek</a>
       <p class="eyebrow"><span class="eyebrow-dot"></span> Privacy</p>
       <h1>Your outdoor data <em>stays yours.</em></h1>
-      <p><strong>Last updated: October 7, 2026</strong></p>
-      <p>EcoTrek is an outdoor activity tracker made for the Congressional App Challenge. This policy explains what is saved on your device and what is sent to other services.</p>
+      <p><strong>Last updated: October 13, 2026</strong></p>
+      <p>EcoTrek is an outdoor activity tracker made for the Congressional App Challenge. This policy covers the website and the Android WebView APK.</p>
 
       <div class="note">
-        <strong>The short version:</strong> The version on this site does not require an account. Your profile, walks and settings are saved on your device, not uploaded to EcoTrek. There are no ads or third-party tracking tools.
+        <strong>The short version:</strong> Your profile, photo, walks, points and settings are saved on your device by default; the current release has no sign-in. Location is used for nearby-trail discovery and while an activity is recording. Online features contact their providers as described below. EcoTrek does not sell data or show ads.
       </div>
 
       <h2>What is saved on your device</h2>
-      <p>Your profile name, activity routes and stats, points, badges, streaks, settings and a small app-usage log are stored locally. The usage log helps the app keep track of feature use; it is not sent to us. Uninstalling the app or clearing the website’s data can remove this information.</p>
+      <p>Your local profile may include your name, age, height, weight and optional profile photo. Activity records can include route coordinates, distance, duration, elevation, timestamps, trail completion and cleanup counts. Points, badges, streaks, settings and a small app-usage log are also stored locally. The profile photo is resized and stored on-device; EcoTrek does not upload it. Uninstalling the app or clearing website data can remove local information.</p>
 
       <h2>Location and online features</h2>
-      <p>EcoTrek may use your location to find nearby trails, show local conditions and record a walk, hike or ride. Location is used while you are using those features; the Android app does not request background location access.</p>
-      <p>To provide live information, your device may contact:</p>
+      <p>EcoTrek requests foreground location when you open Trails or tap Start. It uses location for nearby-trail lookup, local weather, map centering and route recording while an activity is running. The website and Android WebView APK do not request background location. You can deny or revoke access in browser or Android settings.</p>
+      <p>When you use these features, your device may send request information directly to:</p>
       <ul>
-        <li><strong>OpenStreetMap services</strong> for nearby trails and place names. A location is included in a nearby-trails lookup.</li>
-        <li><strong>Open-Meteo and the U.S. National Weather Service</strong> for weather and safety information. The request uses your location to find local conditions.</li>
-        <li><strong>Wikimedia Commons</strong> for some trail photos, searched by trail or place name.</li>
+        <li><strong>OpenStreetMap Overpass and Nominatim</strong> receive nearby or reverse-geocoding coordinates to find trail records and a region label.</li>
+        <li><strong>Open-Meteo and the U.S. National Weather Service</strong> receive coordinates for local forecasts, air quality or alerts.</li>
+        <li><strong>Google Maps Platform</strong>, when its client key is configured, receives map viewport/center and map-rendering requests. The key is visible in the website/APK client and should be referrer-restricted. Without a key, EcoTrek shows a local route sketch instead.</li>
+        <li><strong>Wikimedia Commons</strong> receives trailhead coordinates or trail-name searches to find community photos.</li>
       </ul>
-      <p>These services receive the information needed to answer each request under their own privacy policies. EcoTrek does not send your name or saved route history with these lookups.</p>
+      <p>These services apply their own privacy policies and retention practices. EcoTrek does not send your name or saved activity history with trail, weather or photo lookups.</p>
 
-      <h2>Optional AI key</h2>
-      <p>The Trail Assistant works without a key. If you add your own key, it is stored on your device and sent directly over HTTPS to the AI provider you select. For an AI request, that provider receives your question and relevant trail or weather facts. Its privacy terms apply. EcoTrek does not receive the key.</p>
-      <p>You can remove the key in <em>Trail Assistant → AI settings → Remove key</em>. If it may have been exposed, revoke it through the provider. See the <a href="/api-key.html">simple AI setup guide</a>.</p>
+      <h2>Online assistant</h2>
+      <p>On the website and Android WebView APK, EcoTrek uses Grok through Puter by default; no personal AI key is required. Puter receives your question, up to eight recent user/assistant turns, and relevant trail/weather facts. The prompt does not include your precise GPS coordinates, profile details or recorded route history. Do not include sensitive personal information in a prompt. Puter may require its own consent or account flow, and its privacy terms apply.</p>
+      <p>If Grok cannot be reached, EcoTrek labels the local trail-data answer as an offline fallback. Native builds can optionally use a backend or a personal OpenAI-compatible provider key. A personal key is stored in local app storage and sent over HTTPS to the provider selected by the user; it can be removed in Trail Assistant settings. The provider's privacy terms apply.</p>
+
+      <h2>Optional backend</h2>
+      <p>The current release does not require a server or account. A custom deployment may enable an EcoTrek API/database for cross-device features. Its operator must describe the information it collects and its retention; do not assume a custom deployment is local-only.</p>
 
       <h2>Your choices</h2>
       <ul>
-        <li>Choose whether to allow location in your phone or browser settings.</li>
-        <li>Erase your saved app data in <em>Settings → Your data</em>, or remove the app.</li>
-        <li>Use the assistant without an AI key, or remove a key at any time.</li>
+        <li>Choose whether to allow location in browser or Android settings.</li>
+        <li>Remove your profile photo, or erase locally saved data in the app's data settings or through browser storage.</li>
+        <li>Stay offline to avoid online assistant requests; local trail-data fallback remains available. Avoid entering sensitive information in prompts.</li>
+        <li>Restrict Google Maps browser keys to the production site and the Android WebView origin, <code>appassets.ecotrek.app</code>. Treat client keys as public, not secret.</li>
       </ul>
 
-      <h2>Children</h2>
-      <p>EcoTrek is intended for people age 13 and older and is not designed for children under 13. We do not knowingly collect personal information from children under 13.</p>
+      <h2>Children and security</h2>
+      <p>EcoTrek is intended for people age 13 and older and is not designed for children under 13. Requests use HTTPS where supported. No system is perfectly secure.</p>
 
-      <h2>Future versions and contact</h2>
-      <p>The release offered on this site stores app data locally and has no sign-in or cloud sync. A separately configured build could add online account features; its privacy information should explain any changes before use.</p>
+      <h2>Contact</h2>
       <p>Questions or privacy concerns? Email <a href="mailto:ecotrek.support@gmail.com">ecotrek.support@gmail.com</a>.</p>
     </main>
 
