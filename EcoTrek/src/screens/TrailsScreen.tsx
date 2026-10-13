@@ -14,6 +14,7 @@ import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
 import AssistantFab from '../components/AssistantFab';
 import Slider from '../components/Slider';
+import { TrailCover, TrailPhotoGallery } from '../components/TrailPhotos';
 import { Screen, Card, Pill, EmptyState, Sheet, Button, Banner, Divider } from '../components/ui';
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
@@ -296,15 +297,19 @@ export default function TrailsScreen() {
           </Pressable>
         </View>
 
-        {usingFallbackLocation && permission !== 'granted' ? (
+        {usingFallbackLocation ? (
           <Banner
             tone="neutral"
             icon="map-pin"
-            title="See trails near you"
-            message="Turn on location and we will look up walks and rides around you in the US, Canada, and Mexico."
+            title={permission === 'denied' ? 'Location permission is off' : 'Location is unavailable'}
+            message={
+              permission === 'granted'
+                ? 'EcoTrek has access, but has not received a GPS fix yet. Turn on device Location, then try again.'
+                : 'Allow location access so EcoTrek can find trails near you and measure routes only while you record.'
+            }
             right={
               <Pressable onPress={() => requestLocation({ explain: true })} hitSlop={8}>
-                <Text style={styles.bannerAction}>Enable</Text>
+                <Text style={styles.bannerAction}>{permission === 'denied' ? 'Settings' : 'Enable'}</Text>
               </Pressable>
             }
           />
@@ -594,6 +599,8 @@ function TrailDetail({
         />
       ) : null}
 
+      <TrailPhotoGallery trail={trail} />
+
       {/* Key numbers — length, climb, average time, rating */}
       <View style={styles.detailStats}>
         <DetailStat
@@ -723,6 +730,7 @@ const TrailCard = React.memo(function TrailCard({
 
   return (
     <Card onPress={onPress} style={styles.trailCard}>
+      <TrailCover trail={trail} />
       <View style={styles.trailHead}>
         <View style={[styles.trailIcon, completed && styles.trailIconDone]}>
           <Icon

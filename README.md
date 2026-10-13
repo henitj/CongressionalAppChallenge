@@ -1,9 +1,9 @@
 # EcoTrek
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.3-blue.svg)](https://www.typescriptlang.org/)
-[![Expo](https://img.shields.io/badge/Expo-SDK%2052-black.svg)](https://expo.dev/)
-[![React Native](https://img.shields.io/badge/React%20Native-0.76-61dafb.svg)](https://reactnative.dev/)
-[![Tests](https://img.shields.io/badge/Tests-120%20passed-success.svg)](https://jestjs.io/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
+[![Expo](https://img.shields.io/badge/Expo-SDK%2057-black.svg)](https://expo.dev/)
+[![React Native](https://img.shields.io/badge/React%20Native-0.86-61dafb.svg)](https://reactnative.dev/)
+[![Tests](https://img.shields.io/badge/Tests-238%20passing-success.svg)](https://jestjs.io/)
 
 EcoTrek is a local-first, high-performance React Native / Expo outdoor activity tracker and conservation companion for iOS, Android, and web. It enables users to record GPS walks, hikes, and bike rides, discover nearby trails, assess live weather safety, track environmental impact, and build healthy outdoor habits.
 
@@ -13,12 +13,13 @@ Built for the **Congressional App Challenge** by Henit Jain, Matan Heber, Arjun 
 
 ## Key Features
 
-- **GPS Activity Tracking**: High-accuracy walk, hike, and bike ride recording with background location tracking, live pace/elevation calculation, and route smoothing.
-- **Smart Trail Discovery & Completion**: Curated trail catalogue with distance filtering, difficulty levels, route previews, elevation profiles, user ratings, and automatic completion detection.
-- **Live Trail Conditions & Weather Safety**: Real-time hourly weather forecast, US National Weather Service safety advisories, and outdoor condition ratings powered by Open-Meteo.
-- **EcoPoints & Environmental Impact**: Log carbon offset, trail cleanups, wildlife sightings, and unlock symbolic trees and badges for sustainable recreation.
+- **GPS Activity Tracking**: Walk, hike, and bike recording with accuracy-weighted GPS smoothing, stationary-drift rejection, speed-jump checks, and a clear retry flow for location permissions/settings.
+- **Google Maps & Trail Discovery**: Google Maps JavaScript tiles on web/the WebView APK and Google Maps on native Android when configured; trail discovery still uses OpenStreetMap data with a route-sketch fallback when maps are unavailable.
+- **Trail Photos & Completion**: Wikimedia Commons/admin-approved trail photos with a local illustrated fallback, trail details, ratings, and automatic completion detection.
+- **EcoPoints & Environmental Impact**: Log cleanups and wildlife sightings, and unlock symbolic trees and badges; self-reported cleanup rewards are capped at 10 points per activity.
 - **Streaks & Challenges**: Weekly streaks with freeze protection, community leaderboards, and rotating weekly challenges.
 - **Offline-First & Local-First**: Zero required server dependencies — all user data, activity logs, streaks, and settings are saved locally with bounded storage retention.
+- **Trail assistant**: Available from Trails (not Home). The website and WebView APK call Grok through Puter for custom questions; trail/weather facts are supplied when relevant, with an explicit offline fallback. A personal OpenAI-compatible key remains optional.
 - **Accessible & Responsive Design**: Dynamic light and dark themes, scalable typography, reduced motion support, tablet and phone responsive layouts, and hardware keyboard clearance.
 
 ---
@@ -57,8 +58,8 @@ opening the site puts the actual product in front of the visitor.
 | `/install/android.html` | Android install guide: the signed APK, the Play Protect prompts, hashes and permissions, plus a browser-install fallback. |
 | `/download` | Short, direct URL that downloads the Android APK as `EcoTrek.apk`. |
 | `/install/ios.html` | iPhone / iPad guide: run the app in Safari and add it to the Home Screen. |
-| `/api-key.html` | The API-key page: where to get a key for the assistant's optional AI upgrade, and where it goes in the app. |
-| `/privacy` | Privacy policy, including the AI-key section. |
+| `/api-key.html` | Optional bring-your-own-key instructions. The website and Android WebView APK use Grok through Puter without a personal AI key. |
+| `/privacy` | Privacy policy, including Google Maps, trail/photo providers, and online assistant data flow. |
 
 **Platform routing.** Android visitors to `/` are sent to the Android install
 guide (a Vercel redirect rule on the User-Agent, with the same logic repeated in
@@ -78,6 +79,11 @@ from then on.
 - `/_expo/*` and `/assets/*` are served `immutable`;
 - `Permissions-Policy` allows geolocation for the site itself — the app cannot
   record a walk without it.
+
+To deploy only the Expo app rather than the full website/install pages, set
+Vercel **Root Directory** to `EcoTrek`. That folder has its own `vercel.json`,
+standalone export command, SPA fallback, and environment-variable guidance in
+[`EcoTrek/README.md`](EcoTrek/README.md#deploy-this-folder-to-vercel).
 
 ### Android APK
 
@@ -133,7 +139,13 @@ exists, `install/ios.html` explains the Safari "Add to Home Screen" route. Paste
 a published store URL into `iosUrl` in `site-config.js` and the iPhone page
 switches to it automatically.
 
-The shipped app has **no sign-in**: walks, points and settings are stored on the device under a local profile, and there is no account to create. (Google sign-in was removed — without configured OAuth client IDs the button could only fail.) Cross-device progress needs a deployed API/Neon database plus an OAuth provider; if that is ever set up, `EcoTrek/docs/GOOGLE_OAUTH_SETUP.md` and `EcoTrek/docs/NEON_SETUP.md` describe the pieces, and `EcoTrek/src/context/AuthContext.tsx` is where the provider would go back.
+The shipped app has **no sign-in**: walks, points and settings are stored on the device under a local profile. Cross-device progress needs a deployed API/Neon database plus an OAuth provider; see `EcoTrek/docs/GOOGLE_OAUTH_SETUP.md` and `EcoTrek/docs/NEON_SETUP.md` before enabling that.
+
+### Maps and trail API configuration
+
+Copy `EcoTrek/.env.example` to an untracked `EcoTrek/.env` before a release. Set `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` for the website and Android WebView APK (Maps JavaScript API); this browser key is included in the client bundle, so restrict it to the production website and `appassets.ecotrek.app` referrer. Native Android builds use `GOOGLE_MAPS_ANDROID_KEY` for the Android Maps SDK. Never commit `.env` or an unrestricted key.
+
+Nearby trail catalogue searches still use OpenStreetMap's Overpass service. A TrailSplits adapter is **not** wired in: this checkout contains no TrailSplits API schema/endpoint or configured key, so no TrailSplits request is being made. The linked API must be verified and configured before claiming that integration.
 
 #### Prerequisites
 - Node.js 20+
@@ -203,12 +215,10 @@ CongressionalAppChallenge/
 
 ## Privacy & Security
 
-- Location permissions are requested solely for trail proximity and active activity recording.
-- GPS data remains strictly on your device unless you explicitly connect to a sync backend.
-- Account-isolated local storage prevents cross-profile data leaks.
-- An optional AI key is stored only in the app's local storage, is sent only to
-  the provider the user picked, and only over HTTPS; it can be removed at any
-  time. See `/api-key.html` and the privacy policy's AI-key section.
+- Location is used for nearby trail discovery and while recording; EcoTrek does not request background location.
+- The local profile and recorded activity log stay on-device by default. Approximate coordinates are sent to the selected trail/weather/map services when those features are used.
+- Online Grok answers send the question and relevant trail/weather facts to Puter; the app does not include GPS coordinates or profile details in that prompt. A personal provider key is optional and stored locally.
+- See `EcoTrek/docs/PRIVACY_POLICY.md` for the provider-by-provider data flow and `/api-key.html` for optional key setup.
 - Refer to [`EcoTrek/docs/PRIVACY_POLICY.md`](EcoTrek/docs/PRIVACY_POLICY.md) for our full privacy commitment.
 
 ---

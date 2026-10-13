@@ -1,148 +1,114 @@
 # EcoTrek privacy policy
 
-**Last updated: 16 August 2026**
+**Last updated: 13 October 2026**
 
-EcoTrek is a hiking and cycling app built by a student team for the
-Congressional App Challenge. This policy explains, in plain language, exactly
-what the app collects and what it does with it.
-
-> **Before you publish:** replace the contact email at the bottom with a real
-> address you check, publish this page at a public URL, and paste that URL into
-> `EXPO_PUBLIC_PRIVACY_URL` in `.env` and into the Google Play listing. Play
-> will not approve the app without a working privacy policy link.
-
----
+EcoTrek is an outdoor activity app built by a student team for the
+Congressional App Challenge. This policy describes the current website and
+Android WebView APK, plus the optional native/backend configurations.
 
 ## The short version
 
-- EcoTrek reads your location **only while you are recording an activity**, and
-  only while the app is open. It never tracks you in the background.
-- If you use EcoTrek as a guest, **nothing leaves your phone at all**.
-- If you sign in with Google, we store your name, email and profile picture so
-  your progress follows you between devices.
-- We do not sell your data. We do not run advertising. There are no third-party
-  analytics or tracking SDKs in this app.
+- Your profile, profile photo, recorded activities, points, and settings are
+  stored locally by default. There is no sign-in in the current release.
+- EcoTrek requests foreground location when you use nearby-trail discovery or
+  start an activity. It does not request background location in the website or
+  WebView APK.
+- When you use maps, trail search, weather, trail photos, or the online
+  assistant, those features contact their respective providers. Details are
+  below.
+- Website and APK assistant questions use Grok through Puter by default. The
+  question and recent conversation (up to eight turns), plus relevant trail
+  and weather facts, are sent to Puter. GPS coordinates, profile data, and
+  recorded route history are not included in that prompt.
+- EcoTrek does not sell personal data or show advertising.
 
----
+## Information stored on your device
 
-## What we collect
+The local profile can include your name, age, height, weight, and an optional
+profile photo. Activity records can include route coordinates, distance,
+duration, elevation, timestamps, trail completion and self-reported cleanup
+counts. Preferences, points, badges, and streaks are stored locally as well.
 
-### If you continue as a guest
+The profile photo is resized and saved on the device; it is not uploaded by
+EcoTrek. Removing the app or clearing its site data can erase locally stored
+information. If an optional backend is configured by a deployment, its own
+storage and deletion terms also apply.
 
-Nothing. Every activity, point, badge and streak is stored in the app's own
-storage on your device. There is no account and no server involved. Deleting
-the app deletes the data.
+## Location and external services
 
-### If you sign in with Google
+EcoTrek uses foreground location after you open Trails or tap Start. Location
+is used to look up nearby trails, fetch local weather, center the tracking map,
+and record a route while an activity is running. The website and WebView APK
+do not ask for background location. You can deny or revoke location access in
+browser or Android settings; nearby features and distance tracking then have
+limited functionality.
 
-Google sends us three things from your account:
+When these features are used, the following services may receive request
+information:
 
-| Data | Why |
-|---|---|
-| Name | Shown on your profile and your club roster |
-| Email address | Identifies your account across devices |
-| Profile picture | Shown on your profile and club roster |
+| Service | Information sent | Purpose |
+|---|---|---|
+| OpenStreetMap Overpass / Nominatim | Nearby coordinates or reverse-geocoding coordinates | Find nearby trail records and a region label. |
+| Open-Meteo and the U.S. National Weather Service | Coordinates for local forecast, air quality, or alerts | Show weather and safety conditions. |
+| Google Maps Platform, when a valid key is configured | Map viewport, center/location, and map-rendering requests; the browser key is included in the client request | Display the Google basemap and route. Google Maps is not loaded when its key is absent; EcoTrek then shows a local route sketch. |
+| Wikimedia Commons | Coordinates of a listed trailhead and trail-name search terms | Find community trail photos. |
 
-We never receive your Google password, and we cannot see anything else in your
-Google account.
+These providers receive the requests directly from the app/browser, not from an
+EcoTrek account. Their own privacy policies and retention practices apply.
 
-### Activity data
+## Online assistant
 
-When you record a hike or ride, EcoTrek stores:
+On the website and Android WebView APK, EcoTrek loads the Puter JavaScript SDK
+and asks its hosted Grok model for a response. Puter receives the user's
+question, up to eight recent user/assistant turns, and relevant trail/weather
+facts. The prompt does not include the user's precise coordinates, profile
+photo, name, or activity history. Do not include sensitive personal
+information in a question. Puter may require its own consent or account flow;
+Puter's terms and privacy policy apply to those requests.
 
-- the GPS route you covered, as a list of coordinates
-- distance, duration and average speed
-- which trail (if any) the route matched
-- the date and time
+If the online request fails, EcoTrek says so and shows its local trail-data
+answer instead. Native builds can optionally use a project backend or an
+OpenAI-compatible provider key entered by the user. Such a personal key is
+stored in local app storage and sent over HTTPS directly to the provider the
+user selected. It can be removed in Trail Assistant settings. The provider's
+own terms apply.
 
-Location is read from your device only while a recording is running. EcoTrek
-does not request background location permission, and the Android manifest
-explicitly blocks it.
+## Optional backend
 
-### Usage data
+A deployment may configure an EcoTrek API and database for cross-device
+features. The current release does not require that backend or sign-in. If a
+server is enabled, data sent to it and its retention must be described by that
+deployment and its operator; local-only behavior should not be assumed for a
+custom deployment.
 
-The app keeps a basic count of screens opened and features used, stored on your
-device, to help us understand which parts of the app are worth improving. It is
-not tied to advertising and is not shared.
+## What EcoTrek does not do
 
----
+- It does not sell or rent personal data.
+- It does not show advertising or use advertising identifiers.
+- It does not share your recorded route with other users.
+- It does not claim that a trail, map, weather report, or AI answer is a
+  guarantee of current conditions. Check official local information before
+  you go.
 
-## Where your data goes
+## Your choices
 
-If the app is configured with a backend, your data is stored in a Postgres
-database hosted by [Neon](https://neon.com) in the United States, reachable only
-by our API. Requests are authenticated with a Google-signed token, so one
-account cannot read or modify another's data.
+- Deny or revoke location in your browser or Android system settings.
+- Remove your profile photo from Profile, and clear local activity/data from
+  the app's data settings or your browser storage.
+- Disable online assistant use by staying offline; the local trail-data
+  fallback remains available. Avoid entering sensitive information in prompts.
+- Restrict the Google Maps browser key to the deployed website and the
+  Android WebView origin (`appassets.ecotrek.app`). The key is client-visible
+  by design and must not be treated as a secret.
 
-Weather and safety information is fetched from two public services:
+## Children and security
 
-- **Open-Meteo** (open-meteo.com) — conditions and forecast
-- **National Weather Service** (weather.gov) — official watches and warnings
-
-To get local conditions, EcoTrek sends these services your approximate
-coordinates, rounded. Neither service receives your name, email or any account
-identifier, and neither is able to link a request to you.
-
----
-
-## What we never do
-
-- We do not sell or rent personal data to anyone.
-- We do not show advertising or use advertising identifiers.
-- We do not include third-party trackers, social SDKs or analytics services.
-- We do not share your location with other users. Club members see your name,
-  points, distance and trees — never your routes or where you were.
-
----
-
-## Your control
-
-- **See your data.** Everything the app knows about you is visible in the app:
-  Profile, Impact and Clubs.
-- **Erase your data.** Settings → Your data → *Erase my data* clears activities,
-  points, badges and streaks from the device.
-- **Delete your account.** Settings → Your data → *Delete account* erases
-  everything and signs you out. If a backend is connected, your rows are removed
-  from the database too.
-- **Turn off location.** Your phone's system settings control this. The app will
-  keep working; distance tracking will not.
-- **Turn off notifications.** Settings → Notifications, or your phone's system
-  settings.
-
----
-
-## Children
-
-EcoTrek is rated for ages 13 and up and is not directed at children under 13. We
-do not knowingly collect personal information from children under 13. If you
-believe a child under 13 has created an account, email us and we will delete it.
-
----
-
-## Security
-
-Data in transit uses HTTPS. Access to the database requires a valid, unexpired
-Google-issued token that we verify server-side on every request. We keep the
-amount of personal data we hold deliberately small — the less we store, the less
-there is to lose.
-
-No system is perfectly secure, and we will not pretend otherwise. If you find a
-security problem, please email us rather than disclosing it publicly.
-
----
-
-## Changes
-
-If this policy changes in a way that affects what we collect or how we use it,
-we will update the date at the top and note the change in the app's release
-notes.
-
----
+EcoTrek is not directed at children under 13. Requests use HTTPS where the
+provider supports it. No system is perfectly secure; if you discover a
+security issue, contact the team privately.
 
 ## Contact
 
-Questions, requests, or a data deletion you cannot do in the app:
-
-**ecotrek.support@gmail.com**
+Questions or privacy requests: **ecotrek.support@gmail.com**
 
 EcoTrek — Congressional App Challenge entry, Austin, Texas.

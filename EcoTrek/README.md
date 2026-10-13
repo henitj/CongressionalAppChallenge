@@ -20,7 +20,7 @@ EcoTrek requires zero cloud infrastructure to function. All activities, streak r
 - **Division-by-Zero & Math Bounds Guards**: All pace, speed, elevation gain, and percentage calculation functions are shielded with fallback guards against non-finite values (`NaN`, `Infinity`).
 - **Safe Serialization**: Structured JSON storage handlers (`safeParse` / `safeStringify`) validate data integrity and gracefully recover from corrupted storage keys.
 - **Comprehensive Error Boundaries**: React error boundaries isolate screen exceptions, offering users an instant "Try Again" recovery action without terminating the app.
-- **Safe Teardown**: Map rendering engines (Leaflet for Web, native views for mobile) use guarded unmounting routines to prevent asynchronous memory leaks or null-pointer dereferences.
+- **Safe Teardown**: Google Maps on web and native map views use guarded cleanup; the recorded route still renders as a local sketch if a map key or network is unavailable.
 
 ### 4. Natural Vector Illustrations
 - Built with React Native SVG, the interactive `TrailScene` showcases anatomically proportioned walkers and cyclists with natural stride physics, lifelike limb extension angles, and adaptive environment elements.
@@ -30,18 +30,20 @@ EcoTrek requires zero cloud infrastructure to function. All activities, streak r
 ## Product Features
 
 ### Active Recording & Smart Trails
-- **GPS Recording**: Track distance, duration, elevation, live pace, splits, and route polylines.
-- **Auto Trail Completion**: Compares active route points against catalog trail bounding polygons to automatically detect trail completions.
-- **Trail Ratings & Bookmarks**: Save favorite trails, record ratings, and get smart recommendations based on difficulty and past ratings.
+- **GPS Recording**: Track distance, duration, elevation, live pace, splits, and route polylines. Accuracy-weighted smoothing, speed checks, and a sustained movement window reduce phantom distance while stationary.
+- **Google Maps**: Web and Android WebView use the Google Maps JavaScript API when `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` is set; the local route sketch is a graceful fallback. Nearby trail discovery currently uses OpenStreetMap/Overpass data.
+- **Trail Photos & Completion**: Commons/admin-approved photos with illustrated fallbacks; route points are compared with the catalogue to detect trail completions.
+- **Trail Ratings & Bookmarks**: Save favorite trails, record ratings, and get recommendations based on difficulty and past ratings.
 
 ### Environmental Impact & Gamification
-- **EcoPoints**: Earn points for zero-emission travel (walking, running, cycling) and environmental cleanups.
+- **EcoPoints**: Earn points for walks, rides, and environmental cleanups. Cleanup count remains in the log, while its self-reported reward is capped at 10 points per activity.
 - **Streaks & Freezes**: 4-week milestones award streak freezes to protect active streaks during rest periods.
 - **Community & Leaderboards**: Track personal milestones, club standings, and weekly challenges.
 
 ### Conditions & Trail Assistant
 - **Weather Safety Matrix**: Live temperature, precipitation probability, humidity, UV index, and National Weather Service advisories.
-- **Intelligent Offline Assistant**: Conversational offline guide answering queries on trail difficulty, dog-friendliness, water availability, and route distances. Works with zero setup and no API key; users can optionally paste their own OpenAI-compatible key (Groq, OpenAI, OpenRouter, or any custom endpoint) in the assistant's settings for richer, model-phrased answers — the key never leaves the device.
+- **Online Grok assistant**: The website and Android WebView APK call Grok through Puter by default, with relevant trail/weather facts and conversation history. It can answer custom questions rather than only preset trail questions; when offline, EcoTrek labels its local answer as a fallback.
+- **AI privacy and optional keys**: Questions and relevant trail/weather facts are sent to Puter; GPS coordinates, profile details, and activity history are not included. A personal OpenAI-compatible provider key is optional and stored locally; see the privacy policy.
 
 ---
 
@@ -49,7 +51,7 @@ EcoTrek requires zero cloud infrastructure to function. All activities, streak r
 
 ```text
 src/
-├── __tests__/       # Comprehensive Jest test suite (120+ unit and component tests)
+├── __tests__/       # Logic and render suites (238 tests at this release)
 ├── components/      # UI primitives, error boundary, headers, cards, and SVG illustrations
 ├── constants/       # Color palettes, typography, spacing, trail datasets, and badge criteria
 ├── context/         # App context providers (Auth, Activity, Theme, Weather, Streak, etc.)
@@ -70,7 +72,22 @@ The repository root contains the Vercel-ready site, and its front door (`../inde
 node ../serve-site.mjs        # http://localhost:8000
 ```
 
-`npm run export:web` runs `scripts/postexport-web.mjs` after `expo export`, which transpiles the bundle for older Android System WebViews, adds the ES5 polyfill prelude and the boot watchdog, and regenerates the root page. Android visitors are sent to `../install/android.html`; iPhone and iPad visitors get `../install/ios.html`; `../api-key.html` explains the optional AI key and `../privacy.html` is the policy linked from the Play listing and the app's settings. See the root README for the release flow.
+`npm run export:web` runs `scripts/postexport-web.mjs` after `expo export`, which transpiles the bundle for older Android System WebViews, adds the ES5 polyfill prelude and the boot watchdog, and (for a full-repository build) regenerates the repository-root app page. The standalone EcoTrek app can also be deployed directly from this folder to Vercel; its configured build skips that side effect and omits install-page redirects/links. See the section below.
+
+## Deploy this folder to Vercel
+
+Create a Vercel project from the repository and set **Root Directory** to `EcoTrek` (or run the Vercel CLI from this folder). `vercel.json` in this folder explicitly configures:
+
+- install: `npm ci --no-audit --no-fund`
+- build: `ECOTREK_STANDALONE_WEB=1 npm run export:web`
+- output: `dist/`
+- client-side navigation fallback to `index.html`
+- geolocation permission and immutable cache headers for hashed assets
+- app-only output (no redirect or links to the repository's separate install pages)
+
+For map tiles, add `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` to the Vercel project's Production, Preview, and Development environment variables before deploying. It is a **public client key** compiled into the site, not a server secret; enable Maps JavaScript API and restrict its HTTP referrers to your deployed Vercel/custom domains and `appassets.ecotrek.app` for the Android WebView. Without the key the app still builds and records routes, but it displays the illustrated route fallback rather than Google Maps. Grok via Puter needs no app-owned key; online answers still require a network connection.
+
+The root `vercel.json` is for the full repository website/install pages. When deploying the `EcoTrek` folder, Vercel uses this folder's separate `vercel.json` instead.
 
 ## Getting Started
 
@@ -108,7 +125,7 @@ npm run verify
 
 ## Environment Variables (Optional)
 
-EcoTrek works completely out of the box without any `.env` configuration. To enable optional Google OAuth or external API synchronization:
+The app retains local-route fallbacks without `.env`, but Google map tiles and default online Grok answers require a network. Copy the example file before a release:
 
 ```bash
 cp .env.example .env
@@ -116,10 +133,12 @@ cp .env.example .env
 
 | Variable | Description |
 | :--- | :--- |
-| `EXPO_PUBLIC_API_URL` | Base URL for optional Node.js / Neon PostgreSQL backend |
-| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_WEB` | Google OAuth Client ID for Web |
-| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_IOS` | Google OAuth Client ID for iOS |
-| `EXPO_PUBLIC_GOOGLE_CLIENT_ID_ANDROID` | Google OAuth Client ID for Android |
+| `EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` | Google Maps JavaScript API key for the website and Android WebView APK. Public in the bundle; restrict by HTTP referrer. |
+| `GOOGLE_MAPS_ANDROID_KEY` | Optional native Android Maps SDK key for EAS/native builds; restrict by package and signing certificate. |
+| `EXPO_PUBLIC_PUTER_GROK_MODEL` | Optional Puter Grok model override; defaults to `x-ai/grok-4.7`. No application-owned AI key is required. |
+| `EXPO_PUBLIC_API_URL` | Optional base URL for the Node.js / Neon PostgreSQL backend. |
+
+Trail discovery currently queries OpenStreetMap/Overpass. TrailSplits is not configured: no API schema, endpoint, or key is present in this checkout. Do not claim it is active until those are verified.
 
 ---
 

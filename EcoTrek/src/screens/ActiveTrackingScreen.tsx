@@ -30,6 +30,7 @@ import { useClub } from '../context/ClubContext';
 import {
   cleanupBonusPoints,
   cleanupBonusSeconds,
+  MAX_CLEANUP_POINTS,
   shouldAskCleanupAfterTrail,
 } from '../services/cleanup';
 import { useApp } from '../context/AppContext';
@@ -410,7 +411,7 @@ export default function ActiveTrackingScreen() {
               if (result.trailCompleted && result.trailId) setShowTrailRating(true);
             }}
             title="How many pieces of trash do you pick up?"
-            subtitle={`Nice ${result.kind === 'bike' ? 'ride' : 'walk'} — enter 0 to 99 for extra points`}
+            subtitle={`Nice ${result.kind === 'bike' ? 'ride' : 'walk'} — earn up to ${MAX_CLEANUP_POINTS} cleanup points`}
             allowNone
             onLogged={handleCleanupLogged}
           />

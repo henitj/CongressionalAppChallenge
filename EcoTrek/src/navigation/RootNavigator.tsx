@@ -30,23 +30,10 @@ const Tab = createBottomTabNavigator();
 const Stack = createNativeStackNavigator();
 
 /**
- * URL-based linking — this is what makes the Android (hardware/gesture)
- * back button work at all.
- *
- * The phone app ships as a native WebView shell around this app's web
- * export (see android-shell/README.md). That shell's back button handler
- * already does the right thing: `webView.goBack()` if there is WebView
- * history, otherwise let the activity close. But without a `linking`
- * config, React Navigation on web never calls `history.pushState` when you
- * move between screens — every screen change is pure in-memory state, the
- * browser URL never changes, and the WebView never gains a single extra
- * history entry. So `canGoBack()` was always false and the very first back
- * press on *any* screen fell straight through to closing the app.
- *
- * Giving every screen a path means each `navigate(...)` call pushes real
- * browser history, which the native shell's `webView.canGoBack()` can then
- * walk back through one screen at a time — and only exits once that
- * history is actually exhausted (i.e. you are back at the first screen).
+ * URL-based linking keeps web deep links and browser history working. The
+ * Android WebView shell also calls the navigation ref exposed by App.tsx for
+ * native back/gesture events, so React Navigation returns through screens
+ * before the shell closes at Home.
  */
 export const linking: LinkingOptions<any> = {
   prefixes: ['https://appassets.ecotrek.app', 'ecotrek://'],

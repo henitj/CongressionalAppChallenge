@@ -49,19 +49,21 @@ export function haversineMiles(
 // A phone that stays put therefore never moves its anchor and counts nothing.
 
 /** Fixes less accurate than this are ignored outright. */
-export const MAX_FIX_ACCURACY_M = 50;
-/** A raw step faster than this is a GPS jump, not a walk (same as validation). */
-export const MAX_STEP_MPH = 45;
+export const MAX_FIX_ACCURACY_M = 20;
+/** A raw step faster than this is a GPS jump, not a walk or ride. */
+export const MAX_STEP_MPH = 35;
 /** Fixes averaged together to damp GPS wobble. */
 export const SMOOTH_FIXES = 5;
 /** How far back the "is it moving?" test looks. */
 export const MOVING_WINDOW_MS = 20_000;
-/** Displacement over the moving window that counts as movement (about 1.3 mph), or the fix's accuracy if larger. */
-export const MOVING_MIN_M = 12;
+/** A fix stream must show movement across this much time before distance can accrue. */
+export const MIN_MOVING_WINDOW_MS = 10_000;
+/** Displacement over the moving window that counts as movement; poor fixes require more. */
+export const MOVING_MIN_M = 20;
 /** Smallest anchor step that is ever counted. */
-export const MIN_STEP_M = 10;
+export const MIN_STEP_M = 15;
 /** Largest anchor step threshold, however poor the fix. */
-export const MAX_STEP_THRESHOLD_M = 25;
+export const MAX_STEP_THRESHOLD_M = 40;
 /** Altitude must move this far before it counts toward gain or loss. */
 export const ELEVATION_STEP_M = 3;
 /** Without a usable point for this long, the next fix starts afresh. */
@@ -127,10 +129,22 @@ function metresBetween(a: { latitude: number; longitude: number }, b: { latitude
 function smoothOf(recent: Coord[]): SmoothPoint {
   const n = recent.length;
   const last = recent[n - 1];
+  const weighted = recent.reduce(
+    (acc, c) => {
+      // An accurate fix should influence the route more than a noisy one.
+      const accuracy = Number.isFinite(c.accuracy) ? Math.max(3, c.accuracy as number) : 12;
+      const weight = 1 / (accuracy * accuracy);
+      acc.weight += weight;
+      acc.latitude += c.latitude * weight;
+      acc.longitude += c.longitude * weight;
+      return acc;
+    },
+    { weight: 0, latitude: 0, longitude: 0 }
+  );
   const accs = recent.map((c) => c.accuracy).filter((a): a is number => a != null);
   return {
-    latitude: recent.reduce((sum, c) => sum + c.latitude, 0) / n,
-    longitude: recent.reduce((sum, c) => sum + c.longitude, 0) / n,
+    latitude: weighted.weight ? weighted.latitude / weighted.weight : recent[n - 1].latitude,
+    longitude: weighted.weight ? weighted.longitude / weighted.weight : recent[n - 1].longitude,
     timestamp: timeOf(last, Date.now()),
     accuracy: accs.length ? accs.reduce((a, b) => a + b, 0) / accs.length : undefined,
   };
@@ -164,6 +178,7 @@ export function advanceTrack(prev: TrackState, fix: Coord): TrackStepResult {
   const lastRaw = prev.recent[prev.recent.length - 1];
   if (lastRaw) {
     const elapsedMs = fixAt - timeOf(lastRaw, fixAt);
+    if (elapsedMs <= 0) return ignored();
     const rawMph = metresBetween(lastRaw, fix) / METRES_PER_MILE / (Math.max(0.1, elapsedMs / 1000) / 3600);
     if (rawMph > MAX_STEP_MPH) {
       if (elapsedMs <= STALE_ANCHOR_MS) return ignored();
@@ -192,7 +207,9 @@ export function advanceTrack(prev: TrackState, fix: Coord): TrackStepResult {
   const movedInWindow = metresBetween(oldest, point);
   // A noisier fix has to move further before it counts as movement.
   const movingNeed = Math.min(MAX_STEP_THRESHOLD_M, Math.max(MOVING_MIN_M, point.accuracy ?? 0));
-  const moving = windowAgeMs >= 5000 && movedInWindow >= movingNeed;
+  // A short five-second burst can be plain GPS jitter on a stationary phone.
+  // Wait for a sustained window before moving the distance anchor.
+  const moving = windowAgeMs >= MIN_MOVING_WINDOW_MS && movedInWindow >= movingNeed;
 
   const metres = metresBetween(base.anchor, point);
   const threshold = Math.min(

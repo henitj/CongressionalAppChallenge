@@ -1,11 +1,11 @@
 import './src/services/locationTask';
 
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { View, ActivityIndicator, StyleSheet, Text } from 'react-native';
+import { View, ActivityIndicator, StyleSheet, Text, Platform } from 'react-native';
 import { StatusBar } from 'expo-status-bar';
 import { useTheme } from './src/context/ThemeContext';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
-import { NavigationContainer } from '@react-navigation/native';
+import { NavigationContainer, useNavigationContainerRef } from '@react-navigation/native';
 
 import RootNavigator, { linking } from './src/navigation/RootNavigator';
 import SignInScreen from './src/screens/SignInScreen';
@@ -34,6 +34,8 @@ import { LogbookProvider, useLogbook } from './src/context/LogbookContext';
 import { dayKey } from './src/services/dates';
 import { activeDaysInLast, perfectWeeks, hasComeback, DayMap } from './src/services/streaks';
 import { useClubGoalRewards } from './src/hooks/useClubGoalRewards';
+
+type AndroidBackWindow = Window & { __ecotrekAndroidBack?: () => boolean };
 
 /**
  * Provider order:
@@ -139,6 +141,32 @@ function ClubLayer({ children }: { children: React.ReactNode }) {
 function Gate() {
   const { user, loading } = useAuth();
   const { colors } = useTheme();
+  const navigationRef = useNavigationContainerRef<any>();
+
+  useEffect(() => {
+    if (Platform.OS !== 'web' || typeof window === 'undefined') return;
+    const target = window as AndroidBackWindow;
+    const handleAndroidBack = () => {
+      if (!navigationRef.isReady()) return false;
+      if (navigationRef.canGoBack()) {
+        navigationRef.goBack();
+        return true;
+      }
+      const route = navigationRef.getCurrentRoute()?.name;
+      if (route && route !== 'Home') {
+        navigationRef.navigate('Tabs', { screen: 'Home' });
+        return true;
+      }
+      // Home is the root: let the Android shell close the Activity.
+      return false;
+    };
+    target.__ecotrekAndroidBack = handleAndroidBack;
+    return () => {
+      if (target.__ecotrekAndroidBack === handleAndroidBack) {
+        delete target.__ecotrekAndroidBack;
+      }
+    };
+  }, [navigationRef]);
 
   if (loading) {
     return (
@@ -169,7 +197,7 @@ function Gate() {
                           <AnalyticsProvider>
                             <ProgressSync />
                             <OnboardingGate>
-                              <NavigationContainer linking={linking}>
+                              <NavigationContainer ref={navigationRef} linking={linking}>
                                 <RootNavigator />
                               </NavigationContainer>
                             </OnboardingGate>

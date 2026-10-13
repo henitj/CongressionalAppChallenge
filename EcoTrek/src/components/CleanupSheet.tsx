@@ -7,9 +7,9 @@ import { useLogbook } from '../context/LogbookContext';
 import { useApp } from '../context/AppContext';
 import { detectCurrentTrail } from '../services/trailDetection';
 import { useTheme, Typography } from '../context/ThemeContext';
-import { MAX_CLEANUP_PIECES, normalizeCleanupPieces } from '../services/cleanup';
+import { MAX_CLEANUP_PIECES, MAX_CLEANUP_POINTS, normalizeCleanupPieces } from '../services/cleanup';
 
-const PRESETS = [1, 10, 50, MAX_CLEANUP_PIECES];
+const PRESETS = [1, 3, 5, 10];
 
 /**
  * Logs a trail cleanup.
@@ -81,7 +81,7 @@ export default function CleanupSheet({
       <View style={{ gap: SPACING.md }}>
         <View style={{ gap: 8 }}>
           <Text style={styles.label}>How many pieces did you pick up?</Text>
-          <Text style={styles.policy}>Honesty policy · enter 0 to 99. More pieces earn more points.</Text>
+          <Text style={styles.policy}>Honesty policy · enter 0 to {MAX_CLEANUP_PIECES}. Earn up to {MAX_CLEANUP_POINTS} points per cleanup.</Text>
           <View style={styles.presets}>
             {PRESETS.map((n) => (
               <Pressable

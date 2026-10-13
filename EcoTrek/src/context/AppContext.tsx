@@ -1,5 +1,5 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
-import { Linking, Platform } from 'react-native';
+import { AppState, Linking, Platform } from 'react-native';
 import * as Location from 'expo-location';
 import {
   AUSTIN_TRAILS,
@@ -27,6 +27,14 @@ export type Coords = { latitude: number; longitude: number };
 
 /** Fallback so weather and trails still work if permission is refused. */
 export const DEFAULT_LOCATION: Coords = { latitude: 30.2672, longitude: -97.7431 }; // Austin
+
+function openDeviceLocationSettings() {
+  if (Platform.OS === 'android' && typeof Linking.sendIntent === 'function') {
+    Linking.sendIntent('android.settings.LOCATION_SOURCE_SETTINGS').catch(() => Linking.openSettings());
+    return;
+  }
+  Linking.openSettings().catch(() => {});
+}
 
 export type PermissionState = 'unknown' | 'granted' | 'denied' | 'unavailable';
 
@@ -195,7 +203,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   'This browser or device cannot provide a location. Distance tracking still works from your motion once a walk or ride starts.'
                 );
               }
-              return opts.permissionOnly ? DEFAULT_LOCATION : null;
+              return null;
+            }
+
+            // A silent retry is only valid after an explicit browser grant;
+            // never let lifecycle refreshes unexpectedly trigger a permission
+            // prompt. Recheck on return from Settings so a new grant is picked
+            // up without forcing the user to reopen the app.
+            if (opts.silent && navigator.permissions?.query) {
+              try {
+                const state = await navigator.permissions.query({ name: 'geolocation' as PermissionName });
+                if (state.state !== 'granted') {
+                  setPermission(state.state === 'denied' ? 'denied' : 'unknown');
+                  return null;
+                }
+              } catch {
+                /* no Permissions API: keep the retry silent and do not guess */
+                return null;
+              }
             }
 
             // A browser (and the Android WebView shell this app also ships
@@ -203,10 +228,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
             // location?" system prompt only the first time, or while the
             // permission is still in the undecided "prompt" state. Once it
             // has been denied, calling getCurrentPosition again is silently
-            // refused with NO prompt at all — which is exactly why tapping
-            // "Enable location" over and over used to look like it did
-            // nothing. Checking the state first lets us tell the person what
-            // is actually going on instead of repeating a request the
+            // refused with NO prompt at all. Checking the state first lets us
+            // explain how to restore access instead of repeating a request the
             // platform has already decided to ignore.
             if (opts.explain && navigator.permissions?.query) {
               try {
@@ -223,7 +246,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                         'Your browser already said no to this request, so it won\u2019t ask again on its own. Open your browser\u2019s site settings for this page, allow Location, then reload and try again.',
                     }) as string
                   );
-                  return opts.permissionOnly ? DEFAULT_LOCATION : null;
+                  return null;
                 }
               } catch {
                 /* Permissions API unsupported here — fall through and just ask. */
@@ -242,13 +265,15 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   resolve(c);
                 },
                 (err) => {
-                  setPermission('denied');
+                  // code 1 = permission denied, 2 = device/browser location is
+                  // unavailable, 3 = timeout. Do not mislabel a disabled GPS
+                  // switch as an app-permission denial.
+                  setPermission(err?.code === 1 ? 'denied' : 'unavailable');
                   if (opts.explain) {
-                    // code 1 = PERMISSION_DENIED, 2 = POSITION_UNAVAILABLE, 3 = TIMEOUT.
                     if (err?.code === 2) {
                       alert(
-                        'Can\u2019t find a location fix',
-                        'Your phone\u2019s Location/GPS service may be turned off. Turn it on from your phone\u2019s quick settings, then try again.'
+                        'Turn on location services',
+                        'EcoTrek has access, but your phone or browser could not get a location fix. Turn on the device Location switch, allow precise location for this site or app, then try again.'
                       );
                     } else if (err?.code === 3) {
                       alert(
@@ -267,7 +292,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                       );
                     }
                   }
-                  resolve(opts.permissionOnly ? DEFAULT_LOCATION : null);
+                  resolve(opts.permissionOnly && Platform.OS !== 'web' ? DEFAULT_LOCATION : null);
                 },
                 { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
               );
@@ -303,6 +328,28 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               );
             }
             return null;
+          }
+
+          if (typeof Location.hasServicesEnabledAsync === 'function') {
+            try {
+              const enabled = await Location.hasServicesEnabledAsync();
+              if (!enabled) {
+                setPermission('unavailable');
+                if (opts.explain) {
+                  alert(
+                    'Turn on your device location',
+                    'EcoTrek already has app permission, but Location Services are off. Turn on Location on your phone to find trails and record a route.',
+                    [
+                      { text: 'Not now', style: 'cancel' },
+                      { text: 'Open location settings', onPress: openDeviceLocationSettings },
+                    ]
+                  );
+                }
+                return null;
+              }
+            } catch {
+              /* Some Expo runtimes do not expose the device service state. */
+            }
           }
 
           setPermission('granted');
@@ -365,6 +412,48 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     },
     [getPositionFix]
   );
+
+  // When a person returns from Android/browser settings, refresh both the
+  // permission and GPS-service states. The Trails page should recover without
+  // requiring a force-quit or a second install.
+  useEffect(() => {
+    const refreshWhenActive = async () => {
+      if (Platform.OS === 'web') {
+        try {
+          const state = await navigator.permissions?.query({ name: 'geolocation' });
+          if (state?.state === 'granted') {
+            setPermission('granted');
+            void requestLocation({ silent: true });
+          } else if (state?.state === 'denied') {
+            setPermission('denied');
+          }
+        } catch {
+          /* Browser without the Permissions API: the Enable button can retry. */
+        }
+        return;
+      }
+
+      try {
+        const { status } = await Location.getForegroundPermissionsAsync();
+        if (status !== 'granted') {
+          setPermission(status === 'denied' ? 'denied' : 'unknown');
+          return;
+        }
+        const servicesEnabled =
+          typeof Location.hasServicesEnabledAsync !== 'function' ||
+          (await Location.hasServicesEnabledAsync());
+        setPermission(servicesEnabled ? 'granted' : 'unavailable');
+        if (servicesEnabled) void requestLocation({ silent: true });
+      } catch {
+        setPermission('unavailable');
+      }
+    };
+
+    const subscription = AppState.addEventListener('change', (state) => {
+      if (state === 'active') void refreshWhenActive();
+    });
+    return () => subscription.remove();
+  }, [requestLocation]);
 
   const value = useMemo<AppContextType>(
     () => ({

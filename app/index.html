@@ -33,8 +33,7 @@
         -webkit-tap-highlight-color: transparent;
       }
     </style>
-  <link rel="icon" href="/favicon.ico"/><link rel="preload" href="/_expo/static/css/leaflet-df687fead8c4838a4e6b8bcb2f176a0e.css" as="style">
-<link rel="stylesheet" href="/_expo/static/css/leaflet-df687fead8c4838a4e6b8bcb2f176a0e.css"><style id="ecotrek-bootstrap-style">
+  <link rel="icon" href="/favicon.ico"/><style id="ecotrek-bootstrap-style">
   /* Shown until React paints, and if it never does. Inline on purpose: it must
      work even when every external request fails. */
   #ecotrek-splash {
@@ -84,7 +83,9 @@
     left: 0;
     right: 0;
     bottom: 0;
-    z-index: 2147483000;
+    /* Above the app, but below RN-web modals (z-index 9999): a sheet must never
+       open underneath the bar, or its lower fields and Save button are lost. */
+    z-index: 9000;
     display: flex;
     align-items: center;
     gap: 10px;
@@ -155,7 +156,7 @@
   var roots = ['/', '/index.html', '/app', '/app/'];
   if (roots.indexOf(location.pathname) === -1) return;
 
-  if (/(?:^\?|&)web=1(?:&|$)/.test(location.search)) {
+  if (/(^|[?&])web=1(&|$)/.test(location.search)) {
     try {
       document.cookie = 'ecotrek_web=1; path=/; max-age=31536000; SameSite=Lax';
     } catch (error) {
@@ -164,13 +165,20 @@
     if (window.history && history.replaceState) history.replaceState(null, '', location.pathname);
     return;
   }
-  if (/(?:^|;\s*)ecotrek_web=1/.test(document.cookie)) return;
+  if (/(^|; ?)ecotrek_web=1/.test(document.cookie)) return;
+
   try {
     if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return;
   } catch (error) {
-    /* no matchMedia: fall through and offer the install page */
+    /* no matchMedia: carry on */
   }
-  if (/Android/i.test(navigator.userAgent)) location.replace('/install/android.html');
+  if (navigator.standalone === true) return;
+
+  var ua = navigator.userAgent || '';
+  // iPadOS 13+ asks for the desktop site and reports itself as a touch Mac.
+  var touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
+  if (/iPhone|iPad|iPod/.test(ua) || touchMac) location.replace('/install/ios.html');
+  else if (/Android/i.test(ua)) location.replace('/install/android.html');
 })();
 </script>
 </head>
@@ -192,7 +200,6 @@
   <div class="ecotrek-launcher-links">
     <a href="/install/android.html">Android app</a>
     <a href="/install/ios.html">iPhone &amp; iPad</a>
-    <a href="/api-key.html">AI key</a>
   </div>
   <button type="button" id="ecotrek-launcher-close" aria-label="Hide this bar" title="Hide this bar">&#215;</button>
 </div>
@@ -221,7 +228,7 @@
   if (close) {
     close.onclick = function () {
       bar.hidden = true;
-      document.documentElement.className = document.documentElement.className.replace(/s*ecotrek-launcher-open/, '');
+      document.documentElement.className = document.documentElement.className.replace(' ecotrek-launcher-open', '');
       try {
         localStorage.setItem(storageKey, '1');
       } catch (error) {
@@ -238,7 +245,7 @@
     <!-- The root element for your Expo app. -->
     <div id="root"></div>
   <script src="/_expo/static/js/web/ecotrek-polyfills-6222020a8dac28077a86605376623116.js" defer></script>
-<script src="/_expo/static/js/web/index-bb4f3768da657edd68957cf56fcb969c.js" defer></script>
+<script src="/_expo/static/js/web/index-b2d3d611eb3d16a3bc3166e2e817a885.js" defer></script>
 <script id="ecotrek-bootstrap">
 /* EcoTrek boot watchdog — ES5, no dependencies.
    Records startup failures, hides the splash once React paints, and after a

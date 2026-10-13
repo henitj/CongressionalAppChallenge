@@ -15,6 +15,7 @@ import Icon, { IconName } from '../components/Icon';
 import Logo from '../components/Logo';
 import { Button } from '../components/ui';
 import { SPACING, ColorPalette } from '../constants/theme';
+import { MAX_CLEANUP_POINTS } from '../services/cleanup';
 import { useTheme } from '../context/ThemeContext';
 
 type Page = { icon: IconName; title: string; body: string };
@@ -43,7 +44,7 @@ const PAGES: Page[] = [
   {
     icon: 'trash',
     title: 'Every piece counts.',
-    body: 'After every trail, EcoTrek asks: How many pieces of trash do you pick up? Enter any honest number from 0 to 99. The more you collect, the more EcoPoints you earn.',
+    body: 'After every trail, log an honest count from 0 to 99. The full litter count is saved, with a small cleanup reward capped at 10 points per activity.',
   },
 ];
 
@@ -141,7 +142,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
                     <Text style={[styles.trashDemoNumber, typography.h2]}>0–99</Text>
                     <Text style={[styles.trashDemoUnit, typography.small]}>pieces</Text>
                   </View>
-                  <Text style={[styles.trashDemoHint, typography.small]}>More pieces = more points</Text>
+                  <Text style={[styles.trashDemoHint, typography.small]}>Small reward, capped at {MAX_CLEANUP_POINTS} points</Text>
                 </View>
                 ) : null}
               </View>

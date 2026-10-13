@@ -8,6 +8,7 @@ import {
   ScrollView,
   ActivityIndicator,
   Linking,
+  Platform,
 } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
 
@@ -31,7 +32,9 @@ import {
   AI_PRESETS,
   isAllowedBaseUrl,
   AiProviderSettings,
+  AssistantChatTurn,
   DEFAULT_AI_SETTINGS,
+  askPuterModel,
   askUserModel,
   hasAiKey,
   loadAiSettings,
@@ -147,10 +150,14 @@ export default function AssistantScreen() {
       if (local.trail) focusRef.current = local.trail;
 
       const answerId = `a-${Date.now()}`;
-      // A better phrasing can come from the project backend (if deployed) or
-      // from the user's own API key. Without either, the on-device answer
-      // stands on its own — no key required, works offline.
-      const canUpgrade = isBackendConfigured() || hasAiKey(aiSettings);
+      // The website and APK use Puter-hosted Grok by default. Native builds can
+      // still use the optional backend or a user's own OpenAI-compatible key.
+      const canUpgrade =
+        Platform.OS === 'web' || isBackendConfigured() || hasAiKey(aiSettings);
+      const priorTurns: AssistantChatTurn[] = messages
+        .filter((message) => message.id !== 'seed' && !message.upgrading)
+        .slice(-8)
+        .map((message) => ({ role: message.role, content: message.text }));
 
       setMessages((m) => [
         ...m,
@@ -215,22 +222,33 @@ export default function AssistantScreen() {
         };
 
         let better: string | null = null;
-        if (isBackendConfigured()) {
-          const res = await api.post<{ text: string }>(ROUTES.assistant, payload);
-          better = res.ok && typeof res.data?.text === 'string' ? res.data.text : null;
-        }
-        if (!better && hasAiKey(aiSettings)) {
+        if (hasAiKey(aiSettings)) {
           better = await askUserModel(question, payload.context, aiSettings);
         }
+        if (!better && Platform.OS === 'web') {
+          better = await askPuterModel(question, payload.context, priorTurns);
+        }
+        if (!better && isBackendConfigured()) {
+          try {
+            const res = await api.post<{ text: string }>(ROUTES.assistant, payload);
+            better = res.ok && typeof res.data?.text === 'string' ? res.data.text : null;
+          } catch {
+            better = null;
+          }
+        }
 
+        const answerText = better ??
+          (Platform.OS === 'web'
+            ? `${local.text}\n\nI could not reach Grok, so this is EcoTrek's offline trail-data answer.`
+            : local.text);
         setMessages((m) =>
           m.map((msg) =>
-            msg.id === answerId ? { ...msg, text: better ?? msg.text, upgrading: false } : msg
+            msg.id === answerId ? { ...msg, text: answerText, upgrading: false } : msg
           )
         );
       }
     },
-    [thinking, buildContext, trails, trailsLoading, locating, usingFallbackLocation, report, aiSettings]
+    [thinking, buildContext, trails, trailsLoading, locating, usingFallbackLocation, report, aiSettings, messages]
   );
 
   const showStarters = messages.filter((m) => m.role === 'user').length === 0;
@@ -277,24 +295,28 @@ export default function AssistantScreen() {
               </View>
               <Text style={styles.introTitle}>What do you want to know?</Text>
               <Text style={styles.introText}>
-                I know every trail in this app — distances, difficulty, dogs, water, restrooms,
-                climbing, what grows there, and what the weather is doing right now.
+                Ask a custom question about trails or anything else. When you are online, Grok can
+                answer through Puter; EcoTrek also supplies nearby trail facts when they help.
               </Text>
               <Text style={styles.introHint}>
-                Name a trail once and I will remember it, so you can just ask "is it shaded?" next.
+                Trail names and follow-up questions stay in the conversation. Live conditions still need checking.
               </Text>
 
               <Pressable onPress={() => setAiSheet(true)} style={styles.aiStatusRow}>
                 <Icon
-                  name={hasAiKey(aiSettings) ? 'zap' : 'lock'}
+                  name={Platform.OS === 'web' || hasAiKey(aiSettings) ? 'sparkles' : 'lock'}
                   size={14}
-                  color={hasAiKey(aiSettings) ? colors.primary : colors.textLight}
+                  color={Platform.OS === 'web' || hasAiKey(aiSettings) ? colors.primary : colors.textLight}
                   strokeWidth={2}
                 />
                 <Text style={styles.aiStatusText}>
-                  {hasAiKey(aiSettings)
-                    ? 'AI answers on — using your API key'
-                    : 'Works offline with no setup · add your own AI key for richer answers'}
+                  {Platform.OS === 'web'
+                    ? hasAiKey(aiSettings)
+                      ? 'Using your provider key · Grok via Puter is the fallback'
+                      : 'Online Grok via Puter · no key required'
+                    : hasAiKey(aiSettings)
+                      ? 'Online AI enabled with your optional provider key'
+                      : 'Offline trail answers; online AI is unavailable here'}
                 </Text>
                 <Icon name="chevron-right" size={13} color={colors.textLight} strokeWidth={2} />
               </Pressable>
@@ -408,7 +430,9 @@ export default function AssistantScreen() {
 
         {!keyboardVisible ? (
           <Text style={styles.disclaimer}>
-            Answers come from the trail data in this app. Conditions still change — check before you go.
+            {Platform.OS === 'web'
+              ? 'Online answers use Grok through Puter; your question and relevant trail/weather facts are sent to that service. Check current conditions before you go.'
+              : 'Answers use available trail data and AI services. Conditions change — verify details before you go.'}
           </Text>
         ) : null}
       </View>
@@ -506,14 +530,14 @@ function AiKeySheet({
       visible={visible}
       onClose={onClose}
       title="AI answers"
-      subtitle="Optional — the assistant already works without any key"
+      subtitle="Grok through Puter works online without a personal key"
     >
       <View style={{ gap: SPACING.md }}>
         <Banner
           tone="info"
           icon="shield"
-          title="Your key stays on this phone"
-          message="It is saved only on this device and sent only to the AI provider you choose. Remove it any time."
+          title="Grok works online without a key"
+          message="EcoTrek uses Puter for Grok by default. Your question and relevant trail/weather facts go to Puter; a personal provider key below is optional, used first if configured, and stored on this device."
         />
 
         <Text style={styles.aiSheetLabel}>Provider</Text>

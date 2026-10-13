@@ -80,7 +80,7 @@ export function TreeGrowthProvider({ children }: { children: React.ReactNode }) 
   const idx = stageIndex(stage.id);
   const isFullyGrown = idx === TREE_STAGES.length - 1 && CARE_KINDS.every((k) => store.care[k] >= stage.unitsPerCare);
 
-  const costFor = useCallback((kind: CareKind) => stage.unitCost, [stage]);
+  const costFor = useCallback((_kind: CareKind) => stage.unitCost, [stage]);
   const isCareDone = useCallback(
     (kind: CareKind) => store.care[kind] >= stage.unitsPerCare,
     [store.care, stage]

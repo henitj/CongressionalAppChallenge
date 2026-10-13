@@ -12,8 +12,11 @@ export const MAX_CLEANUP_PIECES = 99;
 /** Kept for the impact/logbook screens that describe a longer walk. */
 export const CLEANUP_PROMPT_SEC = 10 * 60;
 
-/** Flat thank-you points for logging a cleanup. */
-export const CLEANUP_BASE_POINTS = 15;
+/** Small thank-you for logging a cleanup. */
+export const CLEANUP_BASE_POINTS = 2;
+/** One point per reported piece, with a deliberately low per-cleanup ceiling. */
+export const CLEANUP_PIECE_POINTS = 1;
+export const MAX_CLEANUP_POINTS = 10;
 
 /**
  * Normalizes user input before it reaches AsyncStorage, the points ledger, or
@@ -28,13 +31,14 @@ export function normalizeCleanupPieces(value: unknown): number {
 }
 
 /**
- * Points rise with every piece up to the 99 cap. Anything above the cap is
- * capped first, so it earns exactly what 99 earns: the reward never falls as
- * the count grows, and a runaway count is not a leaderboard shortcut.
+ * Keep cleanup rewards modest: the count is self-reported, so it must not be
+ * an easy way to inflate a points balance. The logbook still keeps the full
+ * reported count; only the reward is capped.
  */
 export function cleanupBonusPoints(pieces: number): number {
-  if (!Number.isFinite(pieces) || pieces <= 0) return 0;
-  return CLEANUP_BASE_POINTS + normalizeCleanupPieces(pieces) * 2;
+  const safe = normalizeCleanupPieces(pieces);
+  if (safe <= 0) return 0;
+  return Math.min(MAX_CLEANUP_POINTS, CLEANUP_BASE_POINTS + safe * CLEANUP_PIECE_POINTS);
 }
 
 /**

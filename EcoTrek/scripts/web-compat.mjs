@@ -474,7 +474,10 @@ export async function writePolyfills(distDirectory, { dryRun = false } = {}) {
  * Rewrite index.html: swap in the compat bundle + polyfills and inject the
  * splash/watchdog. Idempotent — re-running an export replaces what it finds.
  */
-export async function patchIndexHtml(distDirectory, { bundleName, polyfillsName, dryRun = false } = {}) {
+export async function patchIndexHtml(
+  distDirectory,
+  { bundleName, polyfillsName, standalone = false, dryRun = false } = {}
+) {
   const htmlPath = path.join(distDirectory, 'index.html');
   let html = await fs.readFile(htmlPath, 'utf8');
 
@@ -501,8 +504,10 @@ export async function patchIndexHtml(distDirectory, { bundleName, polyfillsName,
   ].join('\n');
   html = html.slice(0, firstTag) + tags + html.slice(firstTag).replace(new RegExp(tagSource, 'g'), '');
 
-  html = html.replace('</head>', `${SPLASH_STYLE}\n${LAUNCHER_STYLE}\n${APP_REDIRECT_SCRIPT}\n</head>`);
-  html = html.replace('<body>', `<body>\n    ${SPLASH_MARKUP}\n    ${LAUNCHER_MARKUP}`);
+  const publicSiteHead = standalone ? '' : `\n${LAUNCHER_STYLE}\n${APP_REDIRECT_SCRIPT}`;
+  const publicSiteBody = standalone ? '' : `\n    ${LAUNCHER_MARKUP}`;
+  html = html.replace('</head>', `${SPLASH_STYLE}${publicSiteHead}\n</head>`);
+  html = html.replace('<body>', `<body>\n    ${SPLASH_MARKUP}${publicSiteBody}`);
   html = html.replace('</body>', `${BOOTSTRAP_SCRIPT}\n</body>`);
 
   if (!dryRun) await fs.writeFile(htmlPath, html);
