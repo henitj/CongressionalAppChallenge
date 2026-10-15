@@ -1,0 +1,2668 @@
+{
+  "renderer": "Mitsuba 3.7.1 scalar CPU path tracer",
+  "seed": 57124,
+  "growthImages": 100,
+  "seasonalImages": 40,
+  "frames": [
+    {
+      "frame": 0,
+      "heightMeters": 0.09,
+      "trunkRadiusMeters": 0.003,
+      "branches": 0,
+      "leaves": 2,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-000.png",
+      "seconds": 0.68,
+      "sha256": "b683c3d1ede54681fdb4a805148ce9d7f4125d444823c318e4baebfdbf5b814e",
+      "bytes": 4210,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 1,
+      "heightMeters": 0.1086,
+      "trunkRadiusMeters": 0.00314,
+      "branches": 0,
+      "leaves": 3,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-001.png",
+      "seconds": 0.67,
+      "sha256": "ee61013bc1c47d5bf076aa1bfcb0886fdc177a8c24da59c0c9fe95e11374debf",
+      "bytes": 5159,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 2,
+      "heightMeters": 0.1271,
+      "trunkRadiusMeters": 0.00329,
+      "branches": 0,
+      "leaves": 3,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-002.png",
+      "seconds": 0.71,
+      "sha256": "c25b557e35fe213bd9bc5768fc6ab48cd2e1b77e3ac4a2feea0cbafec993573b",
+      "bytes": 5930,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 3,
+      "heightMeters": 0.1457,
+      "trunkRadiusMeters": 0.00343,
+      "branches": 0,
+      "leaves": 4,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-003.png",
+      "seconds": 0.75,
+      "sha256": "5d5af475f95ff410fb41986e5deed8becd85628e77a24dec782e9b7a308215c0",
+      "bytes": 6546,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 4,
+      "heightMeters": 0.1643,
+      "trunkRadiusMeters": 0.00357,
+      "branches": 0,
+      "leaves": 4,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-004.png",
+      "seconds": 0.72,
+      "sha256": "9cd1c6da1f2dd856686ba248ed4f45e1924541c27269bc0cd1b9ac5f25300196",
+      "bytes": 6961,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 5,
+      "heightMeters": 0.1829,
+      "trunkRadiusMeters": 0.00371,
+      "branches": 0,
+      "leaves": 5,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-005.png",
+      "seconds": 0.72,
+      "sha256": "299001d50cf8289970c32ea546e6ca82b5336027c1bf0534d677c154b201f3fd",
+      "bytes": 7253,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 6,
+      "heightMeters": 0.2014,
+      "trunkRadiusMeters": 0.00386,
+      "branches": 0,
+      "leaves": 5,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-006.png",
+      "seconds": 0.72,
+      "sha256": "740a8d0563600b3923f3a6ff526bee6028152a363661ce4698264e7d201e738f",
+      "bytes": 7554,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 7,
+      "heightMeters": 0.22,
+      "trunkRadiusMeters": 0.004,
+      "branches": 0,
+      "leaves": 6,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-007.png",
+      "seconds": 0.76,
+      "sha256": "b19c6f4851899c3b48b28a98a2e8d058992d726e95e3dd2b08cb24f1ce2dc0d1",
+      "bytes": 7925,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 8,
+      "heightMeters": 0.25,
+      "trunkRadiusMeters": 0.00414,
+      "branches": 0,
+      "leaves": 7,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-008.png",
+      "seconds": 0.74,
+      "sha256": "72fa17e08299334596e99080d3a60d66b775c0b2cb8b096b26a1f0bee77957b6",
+      "bytes": 8101,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 9,
+      "heightMeters": 0.28,
+      "trunkRadiusMeters": 0.00429,
+      "branches": 0,
+      "leaves": 7,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-009.png",
+      "seconds": 0.74,
+      "sha256": "d14338481fd6e64574e8506dd5b76f81589e83dba3a21068efd87d6010682480",
+      "bytes": 8204,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 10,
+      "heightMeters": 0.31,
+      "trunkRadiusMeters": 0.00443,
+      "branches": 0,
+      "leaves": 8,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-010.png",
+      "seconds": 0.8,
+      "sha256": "1bcb7a827f8d4ca1b0f43e3f5782e33686c1cf70f688b1356990aefa441bddb7",
+      "bytes": 8257,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 11,
+      "heightMeters": 0.34,
+      "trunkRadiusMeters": 0.00457,
+      "branches": 0,
+      "leaves": 8,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-011.png",
+      "seconds": 0.76,
+      "sha256": "bd545fe301be33c10f12d9e24e2e435cce4913ff1c2c08eb7d2271fc01f0cf3a",
+      "bytes": 8193,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 12,
+      "heightMeters": 0.37,
+      "trunkRadiusMeters": 0.00471,
+      "branches": 0,
+      "leaves": 9,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-012.png",
+      "seconds": 0.88,
+      "sha256": "9609e6fdfd3759065841b04c91edb7dec6c20c29d23495e88150e7204bed8d7c",
+      "bytes": 8237,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 13,
+      "heightMeters": 0.4,
+      "trunkRadiusMeters": 0.00486,
+      "branches": 0,
+      "leaves": 9,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-013.png",
+      "seconds": 0.74,
+      "sha256": "2b6e9d3540a6f4412eb56ef2772fb6f63dff52004b59932ff3021afb0c9d0940",
+      "bytes": 8083,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 14,
+      "heightMeters": 0.43,
+      "trunkRadiusMeters": 0.005,
+      "branches": 0,
+      "leaves": 10,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-014.png",
+      "seconds": 0.77,
+      "sha256": "c3129ab52d4cb732b9fe31124bf4c7ff77ed8b60b09f0da8d701a87290aeadc7",
+      "bytes": 7953,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 15,
+      "heightMeters": 0.4612,
+      "trunkRadiusMeters": 0.00536,
+      "branches": 0,
+      "leaves": 10,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-015.png",
+      "seconds": 0.72,
+      "sha256": "961c41ba08a80118c60d70a253d55800cc5c8de4acaa3d2803773dedf9bbc1e1",
+      "bytes": 7813,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 16,
+      "heightMeters": 0.4925,
+      "trunkRadiusMeters": 0.00571,
+      "branches": 0,
+      "leaves": 11,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-016.png",
+      "seconds": 0.76,
+      "sha256": "075e0ca15af6b0d6c5603f30864688043fbfaa1624afc463db6cbc3a0b98be54",
+      "bytes": 7815,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 17,
+      "heightMeters": 0.5238,
+      "trunkRadiusMeters": 0.00607,
+      "branches": 0,
+      "leaves": 12,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-017.png",
+      "seconds": 0.75,
+      "sha256": "81863f8a93c676f96fa657e0747e00b52cb784ac06bccb2cd88bdd3c9ca1ffca",
+      "bytes": 7758,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 18,
+      "heightMeters": 0.555,
+      "trunkRadiusMeters": 0.00643,
+      "branches": 1,
+      "leaves": 12,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-018.png",
+      "seconds": 0.71,
+      "sha256": "8c4b8208fd1dfe43308148c83bd7271098247cca00abca4f430e00653c21762c",
+      "bytes": 7665,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 19,
+      "heightMeters": 0.5863,
+      "trunkRadiusMeters": 0.00679,
+      "branches": 1,
+      "leaves": 13,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-019.png",
+      "seconds": 0.73,
+      "sha256": "cefee07181a86c6de313dc24eeef6cb50f5b71b4a92fc9661e2a0080a6aaf40d",
+      "bytes": 7711,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 20,
+      "heightMeters": 0.6175,
+      "trunkRadiusMeters": 0.00714,
+      "branches": 1,
+      "leaves": 13,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-020.png",
+      "seconds": 0.72,
+      "sha256": "a93d01cee1e58083bb5026b64091e85a1053d7e0db799ba3f8bdeac8d719fdf0",
+      "bytes": 7646,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 21,
+      "heightMeters": 0.6488,
+      "trunkRadiusMeters": 0.0075,
+      "branches": 1,
+      "leaves": 15,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-021.png",
+      "seconds": 0.75,
+      "sha256": "7666737648a5bd6d5be45596463c0a30a530ae0928a122ba277f1471d7476781",
+      "bytes": 7633,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 22,
+      "heightMeters": 0.68,
+      "trunkRadiusMeters": 0.00786,
+      "branches": 1,
+      "leaves": 16,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-022.png",
+      "seconds": 0.74,
+      "sha256": "b1ae7db2a27bf9296884eac7448a3c6995f73b598f0cdb74638a119f40010f40",
+      "bytes": 7759,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 23,
+      "heightMeters": 0.7233,
+      "trunkRadiusMeters": 0.00821,
+      "branches": 2,
+      "leaves": 18,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-023.png",
+      "seconds": 0.72,
+      "sha256": "e3946a798334d259db3335ded07625ddbc311f2da5f220d366ad27818805d048",
+      "bytes": 7843,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 24,
+      "heightMeters": 0.7667,
+      "trunkRadiusMeters": 0.00857,
+      "branches": 2,
+      "leaves": 20,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-024.png",
+      "seconds": 0.72,
+      "sha256": "0314aac2d0206f433dc8fc908fe8ac6cdaeaa7c8cc5a3685cb71f39785f935dd",
+      "bytes": 7969,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 25,
+      "heightMeters": 0.81,
+      "trunkRadiusMeters": 0.00893,
+      "branches": 2,
+      "leaves": 22,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-025.png",
+      "seconds": 0.74,
+      "sha256": "2203c99fa5ecde4a8274f59f06849349e6471452123fda750cccfe4522501a47",
+      "bytes": 8342,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 26,
+      "heightMeters": 0.8533,
+      "trunkRadiusMeters": 0.00929,
+      "branches": 3,
+      "leaves": 23,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-026.png",
+      "seconds": 0.78,
+      "sha256": "30cb41cb8dd75f6e7c7f2178909079206224e4ff0a9493d1946536386dc9d909",
+      "bytes": 8868,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 27,
+      "heightMeters": 0.8967,
+      "trunkRadiusMeters": 0.00964,
+      "branches": 4,
+      "leaves": 25,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-027.png",
+      "seconds": 0.76,
+      "sha256": "14da6fdd24f7310eb50968695d92f38d5899e1c232c80d8c3d1051ed9b9dbc4d",
+      "bytes": 9341,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 28,
+      "heightMeters": 0.94,
+      "trunkRadiusMeters": 0.01,
+      "branches": 5,
+      "leaves": 28,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-028.png",
+      "seconds": 0.79,
+      "sha256": "edf894f6779c998841c43f5a3dd82fdf5488119d6c503c3ebc9fb4d517ff028e",
+      "bytes": 9821,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 29,
+      "heightMeters": 0.9886,
+      "trunkRadiusMeters": 0.01086,
+      "branches": 5,
+      "leaves": 31,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-029.png",
+      "seconds": 0.77,
+      "sha256": "1d41c506dd6cc357c04ffcc5a45a18e4b899f5f9288c9ce2baf8c8449412e353",
+      "bytes": 10257,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 30,
+      "heightMeters": 1.0371,
+      "trunkRadiusMeters": 0.01171,
+      "branches": 6,
+      "leaves": 37,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-030.png",
+      "seconds": 0.77,
+      "sha256": "60dba9f466d913bfc0ee3a1b70ca275848a4d355d9f32d0ddcb33dbf1ef037f7",
+      "bytes": 10548,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 31,
+      "heightMeters": 1.0857,
+      "trunkRadiusMeters": 0.01257,
+      "branches": 8,
+      "leaves": 43,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-031.png",
+      "seconds": 0.79,
+      "sha256": "f03cf4071c323b5d9461e8c9b4883e7c5490eb41ef41771bb218741ebbc69293",
+      "bytes": 10965,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 32,
+      "heightMeters": 1.1343,
+      "trunkRadiusMeters": 0.01343,
+      "branches": 9,
+      "leaves": 49,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-032.png",
+      "seconds": 0.83,
+      "sha256": "78388796c74a98dc8e1a8f14ded0be1e1f72e26b967272de1dee94acd01dc2c3",
+      "bytes": 11374,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 33,
+      "heightMeters": 1.1829,
+      "trunkRadiusMeters": 0.01429,
+      "branches": 10,
+      "leaves": 58,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-033.png",
+      "seconds": 0.84,
+      "sha256": "af2d994dd04473c8407df525329ceed0921ea9a9a2829a796d3c3734d03916ff",
+      "bytes": 11830,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 34,
+      "heightMeters": 1.2314,
+      "trunkRadiusMeters": 0.01514,
+      "branches": 13,
+      "leaves": 69,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-034.png",
+      "seconds": 0.87,
+      "sha256": "3aa7869d5d608d448d61d4bcd3d3d3c78feef300413df99bc82143a7d8544de2",
+      "bytes": 12253,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 35,
+      "heightMeters": 1.28,
+      "trunkRadiusMeters": 0.016,
+      "branches": 15,
+      "leaves": 78,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-035.png",
+      "seconds": 0.86,
+      "sha256": "4c179d567acea407cc76738dfe078953d6e672cc18a52de690ba06c2ff341e10",
+      "bytes": 12717,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 36,
+      "heightMeters": 1.3314,
+      "trunkRadiusMeters": 0.01686,
+      "branches": 17,
+      "leaves": 96,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-036.png",
+      "seconds": 0.92,
+      "sha256": "f29bf6134c36f57d779532966815dd0d7bd803c454e24e5adb34c3720fcf573c",
+      "bytes": 13388,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 37,
+      "heightMeters": 1.3829,
+      "trunkRadiusMeters": 0.01771,
+      "branches": 20,
+      "leaves": 114,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-037.png",
+      "seconds": 0.96,
+      "sha256": "c5bed1e2c049145484a22a3b320c6e0abc9dc0273b0eb4fd08f7dec17f15cbd3",
+      "bytes": 14048,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 38,
+      "heightMeters": 1.4343,
+      "trunkRadiusMeters": 0.01857,
+      "branches": 24,
+      "leaves": 139,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-038.png",
+      "seconds": 0.98,
+      "sha256": "ae143eba0c933fdce0d44bf312e713f63f8b087d3972efad3dff6487a8bb33f2",
+      "bytes": 14844,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 39,
+      "heightMeters": 1.4857,
+      "trunkRadiusMeters": 0.01943,
+      "branches": 29,
+      "leaves": 163,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-039.png",
+      "seconds": 1.07,
+      "sha256": "0238624067025577aa2a0f0521d76897bf9d1c0a4c0242a5df63d38835835d7e",
+      "bytes": 15984,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 40,
+      "heightMeters": 1.5371,
+      "trunkRadiusMeters": 0.02029,
+      "branches": 32,
+      "leaves": 198,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-040.png",
+      "seconds": 1.11,
+      "sha256": "20611b01ccf933d4729cb8388eb412eb3a0809c6589710a5e3534fae7a6957ef",
+      "bytes": 17268,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 41,
+      "heightMeters": 1.5886,
+      "trunkRadiusMeters": 0.02114,
+      "branches": 36,
+      "leaves": 233,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-041.png",
+      "seconds": 1.23,
+      "sha256": "93f3c2011539b14cbea57afeb3d106a773433e290a4665bdae8dd0b3865956ba",
+      "bytes": 18839,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 42,
+      "heightMeters": 1.64,
+      "trunkRadiusMeters": 0.022,
+      "branches": 42,
+      "leaves": 275,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-042.png",
+      "seconds": 1.27,
+      "sha256": "0815cb813f9d0f151ae69ced7a63303ad260757a79441013cee416a25f523f11",
+      "bytes": 20099,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 43,
+      "heightMeters": 1.6975,
+      "trunkRadiusMeters": 0.02363,
+      "branches": 48,
+      "leaves": 316,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-043.png",
+      "seconds": 1.36,
+      "sha256": "41f1012ff9d39439b9e7d923bab465594600f5a4f12eb9d99928a7e2cdd7cb98",
+      "bytes": 21413,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 44,
+      "heightMeters": 1.755,
+      "trunkRadiusMeters": 0.02525,
+      "branches": 53,
+      "leaves": 369,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-044.png",
+      "seconds": 1.41,
+      "sha256": "f32d8c8c645c03d80497ddaee056ba05f5bd5fea58aa48ddff5521f0f06fd087",
+      "bytes": 22523,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 45,
+      "heightMeters": 1.8125,
+      "trunkRadiusMeters": 0.02687,
+      "branches": 60,
+      "leaves": 431,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-045.png",
+      "seconds": 1.5,
+      "sha256": "cb8864d8bd97309ffa7ef6d0146cf8e4dc29577fc5c7a14c3f1c760c0cec03c6",
+      "bytes": 23550,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 46,
+      "heightMeters": 1.87,
+      "trunkRadiusMeters": 0.0285,
+      "branches": 64,
+      "leaves": 491,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-046.png",
+      "seconds": 1.58,
+      "sha256": "932578c4577aa9659f62645a2c3c43c9f51bf2bfbbee67e3fdd403a456a63f30",
+      "bytes": 24741,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 47,
+      "heightMeters": 1.9275,
+      "trunkRadiusMeters": 0.03013,
+      "branches": 74,
+      "leaves": 570,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-047.png",
+      "seconds": 1.7,
+      "sha256": "55531d5ec5cac9a33ddfe94b58fc7c1208af5c85aed022cf4dc1fab248426d25",
+      "bytes": 25788,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 48,
+      "heightMeters": 1.985,
+      "trunkRadiusMeters": 0.03175,
+      "branches": 78,
+      "leaves": 644,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-048.png",
+      "seconds": 1.8,
+      "sha256": "8ec6555f80df8159b66cb63d62e872c393236a5f3a468fccc1fe58b425fdd7ac",
+      "bytes": 26791,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 49,
+      "heightMeters": 2.0425,
+      "trunkRadiusMeters": 0.03338,
+      "branches": 87,
+      "leaves": 734,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-049.png",
+      "seconds": 1.96,
+      "sha256": "510e3677eeede4f090995a40cf6198b8da767276e4ea23f319606019db9542d2",
+      "bytes": 27838,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 50,
+      "heightMeters": 2.1,
+      "trunkRadiusMeters": 0.035,
+      "branches": 93,
+      "leaves": 815,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-050.png",
+      "seconds": 2.03,
+      "sha256": "9d6f7ddadbdcd1cd06c1736743743d4bfba8913ef16889a9705c6911668592dc",
+      "bytes": 29057,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 51,
+      "heightMeters": 2.175,
+      "trunkRadiusMeters": 0.037,
+      "branches": 101,
+      "leaves": 907,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-051.png",
+      "seconds": 2.14,
+      "sha256": "3b596016ad3a96fa1c07acc34b11cba2dfc8e13c5c94e9f006bd7ccdf2c08d45",
+      "bytes": 30455,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 52,
+      "heightMeters": 2.25,
+      "trunkRadiusMeters": 0.039,
+      "branches": 110,
+      "leaves": 1002,
+      "blossoms": 3,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-052.png",
+      "seconds": 2.25,
+      "sha256": "0f6faf6ceab681a9c86b0eac8d319b5a1b59aafb9a933761494a0a7522814946",
+      "bytes": 31702,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 53,
+      "heightMeters": 2.325,
+      "trunkRadiusMeters": 0.041,
+      "branches": 116,
+      "leaves": 1102,
+      "blossoms": 4,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-053.png",
+      "seconds": 2.35,
+      "sha256": "0c35b57f28c1a3cf5f32d9b833f3ac05c4c3b5e308834afe1994b001ef41bae4",
+      "bytes": 33288,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 54,
+      "heightMeters": 2.4,
+      "trunkRadiusMeters": 0.043,
+      "branches": 126,
+      "leaves": 1207,
+      "blossoms": 4,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-054.png",
+      "seconds": 2.49,
+      "sha256": "4b15e9528f0aae83e60eb9da0ef523c36d7c5815f0bd357487e73778cc310640",
+      "bytes": 34653,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 55,
+      "heightMeters": 2.475,
+      "trunkRadiusMeters": 0.045,
+      "branches": 131,
+      "leaves": 1308,
+      "blossoms": 5,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-055.png",
+      "seconds": 2.58,
+      "sha256": "e371d3df515bfc78b9fad4028d1366bf28b7093cc0dcc75d688ca37e5b3d35a5",
+      "bytes": 36262,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 56,
+      "heightMeters": 2.55,
+      "trunkRadiusMeters": 0.047,
+      "branches": 142,
+      "leaves": 1418,
+      "blossoms": 6,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-056.png",
+      "seconds": 2.73,
+      "sha256": "c676376b14b3d7e3a33440757053a0c35733fdd1b31aaaab813b49bc4f133ec3",
+      "bytes": 38144,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 57,
+      "heightMeters": 2.625,
+      "trunkRadiusMeters": 0.049,
+      "branches": 145,
+      "leaves": 1523,
+      "blossoms": 7,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-057.png",
+      "seconds": 2.92,
+      "sha256": "8d3d4d9538f9da917ed2a4a4ba23688cc661d77566283d94a260cd1ffed0a307",
+      "bytes": 39557,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 58,
+      "heightMeters": 2.7,
+      "trunkRadiusMeters": 0.051,
+      "branches": 158,
+      "leaves": 1641,
+      "blossoms": 7,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-058.png",
+      "seconds": 3.01,
+      "sha256": "47a60b86f024bafa3c39f911e310b139d9f19bf240b2bb872cf1ffbd076c7f1f",
+      "bytes": 41082,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 59,
+      "heightMeters": 2.775,
+      "trunkRadiusMeters": 0.053,
+      "branches": 160,
+      "leaves": 1751,
+      "blossoms": 8,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-059.png",
+      "seconds": 3.11,
+      "sha256": "5af55f3a93333bdc35be6f0e3ef973fae4fe8129f1fa000451e9b055ff52211d",
+      "bytes": 41613,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 60,
+      "heightMeters": 2.85,
+      "trunkRadiusMeters": 0.055,
+      "branches": 174,
+      "leaves": 1863,
+      "blossoms": 9,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-060.png",
+      "seconds": 3.3,
+      "sha256": "06ac5335618f85acccd192e6d34e25b9b079c5f63d52cc0d6d6e60c0d9c85e7f",
+      "bytes": 43167,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 61,
+      "heightMeters": 2.923,
+      "trunkRadiusMeters": 0.0573,
+      "branches": 176,
+      "leaves": 1971,
+      "blossoms": 10,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-061.png",
+      "seconds": 3.4,
+      "sha256": "c6ee46191077b9831acab23ed843c3a6233538ca0fa1b7d9cba975ba7d8b20a1",
+      "bytes": 45026,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 62,
+      "heightMeters": 2.996,
+      "trunkRadiusMeters": 0.0596,
+      "branches": 189,
+      "leaves": 2083,
+      "blossoms": 10,
+      "fruit": 0,
+      "season": "summer",
+      "file": "growth-062.png",
+      "seconds": 3.52,
+      "sha256": "e7b825f84478a45093a7107200eb64a7dd291907f1c22e66f006ddb64fb0907d",
+      "bytes": 45212,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 63,
+      "heightMeters": 3.069,
+      "trunkRadiusMeters": 0.0619,
+      "branches": 193,
+      "leaves": 2196,
+      "blossoms": 11,
+      "fruit": 3,
+      "season": "summer",
+      "file": "growth-063.png",
+      "seconds": 3.67,
+      "sha256": "aa9631063c956355e565ef16e6b60e2798ad9ab67d8c06194aca28daae6dd92a",
+      "bytes": 45970,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 64,
+      "heightMeters": 3.142,
+      "trunkRadiusMeters": 0.0642,
+      "branches": 205,
+      "leaves": 2312,
+      "blossoms": 12,
+      "fruit": 5,
+      "season": "summer",
+      "file": "growth-064.png",
+      "seconds": 3.69,
+      "sha256": "02411d8fabdfa1a3951e7304005994953b13b72f94ffed64009bf47761c5efdb",
+      "bytes": 46923,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 65,
+      "heightMeters": 3.215,
+      "trunkRadiusMeters": 0.0665,
+      "branches": 209,
+      "leaves": 2425,
+      "blossoms": 13,
+      "fruit": 7,
+      "season": "summer",
+      "file": "growth-065.png",
+      "seconds": 3.87,
+      "sha256": "43e3922a792d2d709772c2177930e15b22f3c6a7e77391a7b24200d225606f4e",
+      "bytes": 47570,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 66,
+      "heightMeters": 3.288,
+      "trunkRadiusMeters": 0.0688,
+      "branches": 219,
+      "leaves": 2541,
+      "blossoms": 14,
+      "fruit": 9,
+      "season": "summer",
+      "file": "growth-066.png",
+      "seconds": 3.85,
+      "sha256": "8af69865a59d7fc2c9a1dd0d02e9f698cdc6d56bbbc27bf95c2558d797724e3e",
+      "bytes": 48400,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 67,
+      "heightMeters": 3.361,
+      "trunkRadiusMeters": 0.0711,
+      "branches": 223,
+      "leaves": 2654,
+      "blossoms": 14,
+      "fruit": 12,
+      "season": "summer",
+      "file": "growth-067.png",
+      "seconds": 4.03,
+      "sha256": "3a174c34944a29837ae19f568fd3070cfbb49e7e4962d0a72b26765b8fdbd725",
+      "bytes": 49101,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 68,
+      "heightMeters": 3.434,
+      "trunkRadiusMeters": 0.0734,
+      "branches": 233,
+      "leaves": 2772,
+      "blossoms": 15,
+      "fruit": 14,
+      "season": "summer",
+      "file": "growth-068.png",
+      "seconds": 4.13,
+      "sha256": "3d66175fcc5a402f2564eb72aefa57924477b6d10e71aea5c4bb900e14753a0f",
+      "bytes": 49726,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 69,
+      "heightMeters": 3.507,
+      "trunkRadiusMeters": 0.0757,
+      "branches": 237,
+      "leaves": 2882,
+      "blossoms": 16,
+      "fruit": 16,
+      "season": "summer",
+      "file": "growth-069.png",
+      "seconds": 4.2,
+      "sha256": "7d67be3d848a81a7be6a8129158cd0f90bd15ef8ed595bf9257ae3670c5f8a0c",
+      "bytes": 50467,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 70,
+      "heightMeters": 3.58,
+      "trunkRadiusMeters": 0.078,
+      "branches": 245,
+      "leaves": 2996,
+      "blossoms": 17,
+      "fruit": 18,
+      "season": "summer",
+      "file": "growth-070.png",
+      "seconds": 4.3,
+      "sha256": "031ee14a17bda0ed1d4d89d8d9f314c6ad598483f6d0cee515e507adaee74a0c",
+      "bytes": 51375,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 71,
+      "heightMeters": 3.657,
+      "trunkRadiusMeters": 0.0808,
+      "branches": 250,
+      "leaves": 3102,
+      "blossoms": 17,
+      "fruit": 20,
+      "season": "summer",
+      "file": "growth-071.png",
+      "seconds": 4.35,
+      "sha256": "abe3ddeb67b93bbaef1b44a9503efbbc18d3fdf20b724f5f305e1e8c95832ee7",
+      "bytes": 52158,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 72,
+      "heightMeters": 3.734,
+      "trunkRadiusMeters": 0.0836,
+      "branches": 257,
+      "leaves": 3208,
+      "blossoms": 17,
+      "fruit": 23,
+      "season": "summer",
+      "file": "growth-072.png",
+      "seconds": 4.39,
+      "sha256": "e52ab09cae5ac7745e84b843e07aa8e8f929f7a43800d24236d5baa070b19a11",
+      "bytes": 53069,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 73,
+      "heightMeters": 3.811,
+      "trunkRadiusMeters": 0.0864,
+      "branches": 262,
+      "leaves": 3308,
+      "blossoms": 15,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-073.png",
+      "seconds": 4.51,
+      "sha256": "2a0f96083b1c00906fb7ba6a89e618d1701f686b66ebd768b574c99166cf355d",
+      "bytes": 54121,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 74,
+      "heightMeters": 3.888,
+      "trunkRadiusMeters": 0.0892,
+      "branches": 267,
+      "leaves": 3408,
+      "blossoms": 14,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-074.png",
+      "seconds": 4.55,
+      "sha256": "cc7f623976da4922070cd09c05f61963dfc2ad30388c5a06c08b9bfedd0a1c75",
+      "bytes": 55500,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 75,
+      "heightMeters": 3.965,
+      "trunkRadiusMeters": 0.092,
+      "branches": 271,
+      "leaves": 3497,
+      "blossoms": 11,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-075.png",
+      "seconds": 4.62,
+      "sha256": "66b48ab25f14b9163a21849d5c328a481b65214ccd04bbf7ca484b0216e89003",
+      "bytes": 55976,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 76,
+      "heightMeters": 4.042,
+      "trunkRadiusMeters": 0.0948,
+      "branches": 275,
+      "leaves": 3590,
+      "blossoms": 9,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-076.png",
+      "seconds": 4.63,
+      "sha256": "3dc209f66f8855467927a9fdd4dae1ed475fdbac8cbec9a798726670cc95b697",
+      "bytes": 57243,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 77,
+      "heightMeters": 4.119,
+      "trunkRadiusMeters": 0.0976,
+      "branches": 278,
+      "leaves": 3669,
+      "blossoms": 7,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-077.png",
+      "seconds": 4.74,
+      "sha256": "b8bd1bc24d77f67864355bf931ed4468fd08631f900789eb3365fbdc781c71ff",
+      "bytes": 58553,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 78,
+      "heightMeters": 4.196,
+      "trunkRadiusMeters": 0.1004,
+      "branches": 280,
+      "leaves": 3746,
+      "blossoms": 5,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-078.png",
+      "seconds": 4.8,
+      "sha256": "0905352aa671ed31ba721295461fbbdbbae135dfb4d8f990c9d27e11a00a64a4",
+      "bytes": 61113,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 79,
+      "heightMeters": 4.273,
+      "trunkRadiusMeters": 0.1032,
+      "branches": 283,
+      "leaves": 3814,
+      "blossoms": 3,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-079.png",
+      "seconds": 5.14,
+      "sha256": "cb93772ab3afd78c4d28c046e02352ab12d75297b39990852b0710db5b6e462c",
+      "bytes": 63456,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 80,
+      "heightMeters": 4.35,
+      "trunkRadiusMeters": 0.106,
+      "branches": 284,
+      "leaves": 3879,
+      "blossoms": 3,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-080-fall.png",
+      "seconds": 5.13,
+      "sha256": "52a29fae93b86fb36a993bebc3fb337fe11ccaae6b6608dc5924c0a139a9a382",
+      "bytes": 67155,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 80,
+      "heightMeters": 4.35,
+      "trunkRadiusMeters": 0.106,
+      "branches": 284,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-080-winter.png",
+      "seconds": 1.62,
+      "sha256": "457e7d5842ec4726238a0ab9909355a6848d4d454ae31d08a9a2d706a40424f9",
+      "bytes": 35653,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 80,
+      "heightMeters": 4.35,
+      "trunkRadiusMeters": 0.106,
+      "branches": 284,
+      "leaves": 3879,
+      "blossoms": 3,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-080.png",
+      "seconds": 4.99,
+      "sha256": "9639d5ff0d2487de64f50aab927fb068cdae42e520aec34066696defb7564a53",
+      "bytes": 65343,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 81,
+      "heightMeters": 4.3753,
+      "trunkRadiusMeters": 0.10742,
+      "branches": 287,
+      "leaves": 3929,
+      "blossoms": 2,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-081-fall.png",
+      "seconds": 5.11,
+      "sha256": "b93efa96436edcad177da809934292596a1b8ee4202c522cb1754c440561ef1d",
+      "bytes": 68351,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 81,
+      "heightMeters": 4.3753,
+      "trunkRadiusMeters": 0.10742,
+      "branches": 287,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-081-winter.png",
+      "seconds": 1.72,
+      "sha256": "4b23c57fa693f62e9ebd5e0a2b4ebec996c334b8d4d0ef8fd81d7e8eacee05e3",
+      "bytes": 36218,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 81,
+      "heightMeters": 4.3753,
+      "trunkRadiusMeters": 0.10742,
+      "branches": 287,
+      "leaves": 3929,
+      "blossoms": 2,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-081.png",
+      "seconds": 5.08,
+      "sha256": "a417af04dc73256d5f82b58b8ef3f704dafaff9f63f3e5b3ebd07eda78ea90ff",
+      "bytes": 66634,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 82,
+      "heightMeters": 4.4005,
+      "trunkRadiusMeters": 0.10884,
+      "branches": 287,
+      "leaves": 3974,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-082-fall.png",
+      "seconds": 5.25,
+      "sha256": "fc0d71c2c8fec0e0ba832a88c9a75d8fd74749b939ae7cacb275623d2f87c0bf",
+      "bytes": 69546,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 82,
+      "heightMeters": 4.4005,
+      "trunkRadiusMeters": 0.10884,
+      "branches": 287,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-082-winter.png",
+      "seconds": 1.77,
+      "sha256": "544a0a4a7b22631c5ae3d65698a63186cc267048c42b32737a41e4a6d58169e1",
+      "bytes": 36790,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 82,
+      "heightMeters": 4.4005,
+      "trunkRadiusMeters": 0.10884,
+      "branches": 287,
+      "leaves": 3974,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-082.png",
+      "seconds": 5.13,
+      "sha256": "f955fc296d492dd2b828dc2d37357ebe9080f93c3e5a55f19858933d4a9bab93",
+      "bytes": 67997,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 83,
+      "heightMeters": 4.4258,
+      "trunkRadiusMeters": 0.11026,
+      "branches": 289,
+      "leaves": 4014,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-083-fall.png",
+      "seconds": 5.34,
+      "sha256": "65ef3fd64fc18be29c5bf19c69accb6e52d55001f305e1a256294d1cc85cfa23",
+      "bytes": 70632,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 83,
+      "heightMeters": 4.4258,
+      "trunkRadiusMeters": 0.11026,
+      "branches": 289,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-083-winter.png",
+      "seconds": 1.82,
+      "sha256": "8e44b3e2dc78cd67866b95f6c23be19a5e4076dde72690b8f2a81b5708c17a54",
+      "bytes": 37260,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 83,
+      "heightMeters": 4.4258,
+      "trunkRadiusMeters": 0.11026,
+      "branches": 289,
+      "leaves": 4014,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-083.png",
+      "seconds": 5.32,
+      "sha256": "94b8f9645e43c5bf3401bad9ec7685bde952a3a47c027571228f007fe305b869",
+      "bytes": 68913,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 84,
+      "heightMeters": 4.4511,
+      "trunkRadiusMeters": 0.11168,
+      "branches": 289,
+      "leaves": 4049,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-084-fall.png",
+      "seconds": 5.35,
+      "sha256": "85615fa31492569c6d0296b4d593b6222224630abedd30b49015aa52b9d5b6fb",
+      "bytes": 71738,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 84,
+      "heightMeters": 4.4511,
+      "trunkRadiusMeters": 0.11168,
+      "branches": 289,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-084-winter.png",
+      "seconds": 1.69,
+      "sha256": "dfa5ae3a6db430b8460ef3c308820e69c530fd187d0cc43ba42f7ff60174c1e4",
+      "bytes": 37807,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 84,
+      "heightMeters": 4.4511,
+      "trunkRadiusMeters": 0.11168,
+      "branches": 289,
+      "leaves": 4049,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-084.png",
+      "seconds": 5.26,
+      "sha256": "b73c0368975c5faba75b58d6d5473cbe6f30558198809aa408b400e63c9d4843",
+      "bytes": 69919,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 85,
+      "heightMeters": 4.4763,
+      "trunkRadiusMeters": 0.11311,
+      "branches": 290,
+      "leaves": 4077,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-085-fall.png",
+      "seconds": 5.31,
+      "sha256": "711591b24c77ecf1f676a0068839a50a7817f467cc83a32c4c72536a47ddf76c",
+      "bytes": 72916,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 85,
+      "heightMeters": 4.4763,
+      "trunkRadiusMeters": 0.11311,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-085-winter.png",
+      "seconds": 1.75,
+      "sha256": "9462533575ad3f845a73bcf17634ce29c1ad2149521234784bae969b76d475fa",
+      "bytes": 38286,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 85,
+      "heightMeters": 4.4763,
+      "trunkRadiusMeters": 0.11311,
+      "branches": 290,
+      "leaves": 4077,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-085.png",
+      "seconds": 5.47,
+      "sha256": "b4507dd6d94e6b87577d1d6c5ae2eb121823522b7d2f33dee2b5067fcb443e79",
+      "bytes": 71033,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 86,
+      "heightMeters": 4.5016,
+      "trunkRadiusMeters": 0.11453,
+      "branches": 290,
+      "leaves": 4099,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-086-fall.png",
+      "seconds": 5.39,
+      "sha256": "45dd1a6e9977161e27e9c9240c6e86498c82c65608e3b3faa0b2a680575f741c",
+      "bytes": 73991,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 86,
+      "heightMeters": 4.5016,
+      "trunkRadiusMeters": 0.11453,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-086-winter.png",
+      "seconds": 1.7,
+      "sha256": "c09d10bfcc505d40351fe09bb4029e00fed6514337cc473cbecd7d68e8956d6c",
+      "bytes": 38749,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 86,
+      "heightMeters": 4.5016,
+      "trunkRadiusMeters": 0.11453,
+      "branches": 290,
+      "leaves": 4099,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-086.png",
+      "seconds": 5.37,
+      "sha256": "bba2a05501461630f2b25d55c648d5198e333fd1e97f867421f227d1dd81db5d",
+      "bytes": 72206,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 87,
+      "heightMeters": 4.5268,
+      "trunkRadiusMeters": 0.11595,
+      "branches": 290,
+      "leaves": 4118,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-087-fall.png",
+      "seconds": 5.49,
+      "sha256": "7dcffa0639acef667f58969342b66ed6d84d398a591ff8d2832f5dca97ada75f",
+      "bytes": 75016,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 87,
+      "heightMeters": 4.5268,
+      "trunkRadiusMeters": 0.11595,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-087-winter.png",
+      "seconds": 1.73,
+      "sha256": "deb05bf6af36f22111888443919fedf22a71613dd6e10348545cf6af5bb7bfb9",
+      "bytes": 39261,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 87,
+      "heightMeters": 4.5268,
+      "trunkRadiusMeters": 0.11595,
+      "branches": 290,
+      "leaves": 4118,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-087.png",
+      "seconds": 5.36,
+      "sha256": "6515290d7b25e5fa4de0aef0f0cbe8120c1eb8d1376b6d19f1de074909a09714",
+      "bytes": 72988,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 88,
+      "heightMeters": 4.5521,
+      "trunkRadiusMeters": 0.11737,
+      "branches": 290,
+      "leaves": 4134,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-088-fall.png",
+      "seconds": 5.61,
+      "sha256": "fec7eb4211a8d7f140a4b44952695707d2c90515f2cf8ad1545d30486b1e3827",
+      "bytes": 82255,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 88,
+      "heightMeters": 4.5521,
+      "trunkRadiusMeters": 0.11737,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-088-winter.png",
+      "seconds": 1.72,
+      "sha256": "24918866e50c6c63caad86b35e666bcd8177dd576057946aac6197e8943388c9",
+      "bytes": 39779,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 88,
+      "heightMeters": 4.5521,
+      "trunkRadiusMeters": 0.11737,
+      "branches": 290,
+      "leaves": 4134,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-088.png",
+      "seconds": 5.38,
+      "sha256": "2e866ee295f9ad32a5de21e17d8dbb9545d8e0a45de856032c8a0720c9c6c192",
+      "bytes": 80297,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 89,
+      "heightMeters": 4.5774,
+      "trunkRadiusMeters": 0.11879,
+      "branches": 290,
+      "leaves": 4142,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-089-fall.png",
+      "seconds": 5.55,
+      "sha256": "c28c709a3528f141aec3e52c02c763455ef2d0427bc02c8323a62ccbd854edba",
+      "bytes": 82547,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 89,
+      "heightMeters": 4.5774,
+      "trunkRadiusMeters": 0.11879,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-089-winter.png",
+      "seconds": 1.86,
+      "sha256": "371c8521fbbe4a9aee96deb74f30a4ba2e567a04180077bc9bcc7fe0582e73c4",
+      "bytes": 40157,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 89,
+      "heightMeters": 4.5774,
+      "trunkRadiusMeters": 0.11879,
+      "branches": 290,
+      "leaves": 4142,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-089.png",
+      "seconds": 5.6,
+      "sha256": "ba5a20ec1c5216a701f4c5ecf92858a8c494d567fe76948ece44267760b6c41b",
+      "bytes": 80263,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 90,
+      "heightMeters": 4.6026,
+      "trunkRadiusMeters": 0.12021,
+      "branches": 290,
+      "leaves": 4148,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-090-fall.png",
+      "seconds": 5.39,
+      "sha256": "7b17674f4c82c2d423999817226b3006248d83831f6196bfc88ad39be00b086a",
+      "bytes": 82579,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 90,
+      "heightMeters": 4.6026,
+      "trunkRadiusMeters": 0.12021,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-090-winter.png",
+      "seconds": 1.75,
+      "sha256": "a886a4c5983b9a5606aca846d3165c48a92ea335d848dfa3d32069ddb83c5bf9",
+      "bytes": 40616,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 90,
+      "heightMeters": 4.6026,
+      "trunkRadiusMeters": 0.12021,
+      "branches": 290,
+      "leaves": 4148,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-090.png",
+      "seconds": 5.55,
+      "sha256": "495af2b710fdc7bec92f51ba36589b9116df88fae4c21973e2b9eeb22454ec7f",
+      "bytes": 80177,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 91,
+      "heightMeters": 4.6279,
+      "trunkRadiusMeters": 0.12163,
+      "branches": 290,
+      "leaves": 4152,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-091-fall.png",
+      "seconds": 5.58,
+      "sha256": "6c20dc667098eac9a2d4edd5007796aeced0a025a1d845f3c5f90ea1fad2c201",
+      "bytes": 83008,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 91,
+      "heightMeters": 4.6279,
+      "trunkRadiusMeters": 0.12163,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-091-winter.png",
+      "seconds": 1.85,
+      "sha256": "e4866e4d4dbf083bf4d92009e65c12bc7d2c6431e3b86b2f6bcb1c74a847d4e2",
+      "bytes": 50188,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 91,
+      "heightMeters": 4.6279,
+      "trunkRadiusMeters": 0.12163,
+      "branches": 290,
+      "leaves": 4152,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-091.png",
+      "seconds": 5.63,
+      "sha256": "790b0f4cef44446d355a96e85ea7c0d93c40ea22ea8dc6e1dd3a5a770bb4fc8f",
+      "bytes": 80839,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 92,
+      "heightMeters": 4.6532,
+      "trunkRadiusMeters": 0.12305,
+      "branches": 290,
+      "leaves": 4154,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-092-fall.png",
+      "seconds": 5.52,
+      "sha256": "6d20b4e52a5878007dd42e6a22ce14c0223d0542320f48859ecb613c0a821e63",
+      "bytes": 82790,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 92,
+      "heightMeters": 4.6532,
+      "trunkRadiusMeters": 0.12305,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-092-winter.png",
+      "seconds": 1.78,
+      "sha256": "01b87b1a3aeafa299814a5c161dfbd7944376b83bee1b2cd9b8a21317a111eb3",
+      "bytes": 50532,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 92,
+      "heightMeters": 4.6532,
+      "trunkRadiusMeters": 0.12305,
+      "branches": 290,
+      "leaves": 4154,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-092.png",
+      "seconds": 5.62,
+      "sha256": "684f5368c4e3a87684300e5bfae5d1e981af444ca58579e4736231a838d57958",
+      "bytes": 80392,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 93,
+      "heightMeters": 4.6784,
+      "trunkRadiusMeters": 0.12447,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-093-fall.png",
+      "seconds": 5.57,
+      "sha256": "ddf5bd57811631501bda22a9d3e574f3b92c412d9130cd429ee74ebb3a099a75",
+      "bytes": 82840,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 93,
+      "heightMeters": 4.6784,
+      "trunkRadiusMeters": 0.12447,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-093-winter.png",
+      "seconds": 1.92,
+      "sha256": "7102fd62bb72b90081bb8b46fdca3fb8bf239a164eea0d2b9017e17e005cbad1",
+      "bytes": 50633,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 93,
+      "heightMeters": 4.6784,
+      "trunkRadiusMeters": 0.12447,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-093.png",
+      "seconds": 5.46,
+      "sha256": "66f0cfefeeca1d6a7aef8d57a607c8a2c74ebd26261315fa768d243e9b275950",
+      "bytes": 80301,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 94,
+      "heightMeters": 4.7037,
+      "trunkRadiusMeters": 0.12589,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-094-fall.png",
+      "seconds": 5.46,
+      "sha256": "d5702fc37ef1ded3cb5efd3731eef2526c596a7c185e6a09e128ef3a6a87d676",
+      "bytes": 82511,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 94,
+      "heightMeters": 4.7037,
+      "trunkRadiusMeters": 0.12589,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-094-winter.png",
+      "seconds": 1.77,
+      "sha256": "4987dfe6dd08f72de20332106c83c5e2dfa82349d0a98ef874c9e03aa2a1c683",
+      "bytes": 50235,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 94,
+      "heightMeters": 4.7037,
+      "trunkRadiusMeters": 0.12589,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-094.png",
+      "seconds": 5.51,
+      "sha256": "36af8bbbae274b0e76c64560f3d9da6e874495a4f1bfc185bdfeb61fc57ab8c5",
+      "bytes": 80477,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 95,
+      "heightMeters": 4.7289,
+      "trunkRadiusMeters": 0.12732,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-095-fall.png",
+      "seconds": 5.9,
+      "sha256": "2001db97a3f5e3a74ee974556dbce536eccead5f7ad3c35fe721d0ed346cfb6e",
+      "bytes": 82782,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 95,
+      "heightMeters": 4.7289,
+      "trunkRadiusMeters": 0.12732,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-095-winter.png",
+      "seconds": 1.77,
+      "sha256": "57f9d669d31765c84b25b2328d9544cf3a73dbd9cb119e420cb4204d78d10b34",
+      "bytes": 50351,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 95,
+      "heightMeters": 4.7289,
+      "trunkRadiusMeters": 0.12732,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-095.png",
+      "seconds": 5.7,
+      "sha256": "9eeb045528762f85675bb5fa5d787df1e150d8125b67c36086611f532f32b3bb",
+      "bytes": 80382,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 96,
+      "heightMeters": 4.7542,
+      "trunkRadiusMeters": 0.12874,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-096-fall.png",
+      "seconds": 5.46,
+      "sha256": "99e5a7eff0dbddb4f6b73933ebfec752c915e50bed900889f968a37b6b590b6c",
+      "bytes": 82524,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 96,
+      "heightMeters": 4.7542,
+      "trunkRadiusMeters": 0.12874,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-096-winter.png",
+      "seconds": 1.78,
+      "sha256": "9768c3e0cd4f0c6325fac75906fbaf34a34ab9e2b7ac19af667f56f13c0251f1",
+      "bytes": 50689,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 96,
+      "heightMeters": 4.7542,
+      "trunkRadiusMeters": 0.12874,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-096.png",
+      "seconds": 5.47,
+      "sha256": "7db7e569328815c7377cb8a473824ad14a9bcd9706f0a39c7f07930b48ae666e",
+      "bytes": 80321,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 97,
+      "heightMeters": 4.7795,
+      "trunkRadiusMeters": 0.13016,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-097-fall.png",
+      "seconds": 5.5,
+      "sha256": "03e621e2c4be68acd3fd904787b4efb1f5c62f376396f7732a9399b528748c39",
+      "bytes": 82382,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 97,
+      "heightMeters": 4.7795,
+      "trunkRadiusMeters": 0.13016,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-097-winter.png",
+      "seconds": 1.77,
+      "sha256": "927cf48e473b389b0404ca4cda230a125e431f0c0561f4e26514cda05beeab94",
+      "bytes": 50495,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 97,
+      "heightMeters": 4.7795,
+      "trunkRadiusMeters": 0.13016,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-097.png",
+      "seconds": 5.48,
+      "sha256": "bb26add33d386fdca67cc3c4ba3aaf477127d331d346b20a52fe6735c95681d5",
+      "bytes": 80269,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 98,
+      "heightMeters": 4.8047,
+      "trunkRadiusMeters": 0.13158,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-098-fall.png",
+      "seconds": 5.62,
+      "sha256": "e374b8aa8cea012c97be57903ffec5cefb5db8c7ce5e9b2637b12f50aac9d26a",
+      "bytes": 82739,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 98,
+      "heightMeters": 4.8047,
+      "trunkRadiusMeters": 0.13158,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-098-winter.png",
+      "seconds": 1.82,
+      "sha256": "ab20ec5c1d5edd038f3160295e8a06864b9798157744d7d6e06adc7cfc69f1ca",
+      "bytes": 50538,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 98,
+      "heightMeters": 4.8047,
+      "trunkRadiusMeters": 0.13158,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-098.png",
+      "seconds": 5.53,
+      "sha256": "bf4dc43e2e899b77c39473c3ae03f3d6833ad0157f29f2dbcf24ab1c604a14ad",
+      "bytes": 80323,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 99,
+      "heightMeters": 4.83,
+      "trunkRadiusMeters": 0.133,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "fall",
+      "file": "growth-099-fall.png",
+      "seconds": 5.88,
+      "sha256": "d083bc2838dd3ebf345d939d82a96dab22a6095603678121e106262c4ad86b08",
+      "bytes": 82420,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 99,
+      "heightMeters": 4.83,
+      "trunkRadiusMeters": 0.133,
+      "branches": 290,
+      "leaves": 0,
+      "blossoms": 0,
+      "fruit": 0,
+      "season": "winter",
+      "file": "growth-099-winter.png",
+      "seconds": 1.77,
+      "sha256": "885d41db3ceb875b0d420c08979e7c82a1968d65063be9662afb25c601232f63",
+      "bytes": 50391,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    },
+    {
+      "frame": 99,
+      "heightMeters": 4.83,
+      "trunkRadiusMeters": 0.133,
+      "branches": 290,
+      "leaves": 4155,
+      "blossoms": 0,
+      "fruit": 25,
+      "season": "summer",
+      "file": "growth-099.png",
+      "seconds": 5.53,
+      "sha256": "04de18dd287e44029a34bba6e2e6ccdc6d674be520b9f6bf4dc5fcb51ad3b554",
+      "bytes": 80250,
+      "size": [
+        640,
+        640
+      ],
+      "rootBaseline": 610
+    }
+  ]
+}

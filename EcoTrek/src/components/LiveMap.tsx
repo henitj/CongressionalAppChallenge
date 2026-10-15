@@ -9,7 +9,7 @@ import { useTheme } from '../context/ThemeContext';
 type Props = {
   path: Coord[];
   current?: Coord;
-  height?: number;
+  height?: number | '100%';
   follow?: boolean;
 };
 

@@ -45,26 +45,27 @@ type Mode = 'hike' | 'bike';
 const SPEED_LIMITS: Record<Mode, number> = { hike: 20, bike: 30 };
 
 export default function ActiveTrackingScreen() {
-  const { colors, typography } = useTheme();
+  const { colors, typography, fontScale } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const navigation = useNavigation<any>();
   const route = useRoute<any>();
-  const { height: windowHeight } = useWindowDimensions();
+  const { width: windowWidth, height: windowHeight } = useWindowDimensions();
+  const wide = windowWidth > windowHeight && (windowWidth >= 840 || windowHeight < 520);
+  const compactLandscape = wide && windowWidth < 840;
   const mode: Mode = route.params?.mode ?? 'hike';
   const { formatDistance, formatDistanceUnit, formatTemp } = useSettings();
-  const { trails } = useApp();
+  const { trails, coords, requestLocation } = useApp();
   const { profile } = useProfile();
   const { award } = useEcoPoints();
   const { myClub, contribute } = useClub();
   const { addActivity, totalActivities } = useActivity();
 
-  // The map gets a share of the screen rather than a hard 280px, so short
-  // phones still have room for the stats underneath.
-  const mapHeight = Math.round(Math.min(340, Math.max(200, windowHeight * 0.32)));
-
-
+  // Two thirds map, one third controls; horizontal on wide screens. The
+  // controls scroll independently so expanded stats never cover the route.
   const [path, setPath] = useState<Coord[]>([]);
-  const [current, setCurrent] = useState<Coord | undefined>();
+  const [current, setCurrent] = useState<Coord | undefined>(() => coords ? { ...coords, timestamp: Date.now() } : undefined);
+  const [gpsError, setGpsError] = useState<string | null>(null);
+  const [gpsAttempt, setGpsAttempt] = useState(0);
   const [miles, setMiles] = useState(0);
   const [paused, setPaused] = useState(false);
   const [elapsed, setElapsed] = useState(0);
@@ -91,6 +92,7 @@ export default function ActiveTrackingScreen() {
   const pausedTotalRef = useRef(0);
   const pausedAtRef = useRef<number | null>(null);
   const strikesRef = useRef(0);
+  const finishInFlightRef = useRef(false);
 
   // Ending the walk always wins. If the GPS watch is still starting, it is
   // removed as soon as it arrives instead of recording behind the summary.
@@ -133,13 +135,13 @@ export default function ActiveTrackingScreen() {
 
   // Timer — pause must not keep adding seconds.
   useEffect(() => {
-    if (paused) return;
+    if (paused || result || saving) return;
     const tick = () =>
       setElapsed(Math.floor((Date.now() - startedAt - pausedTotalRef.current) / 1000));
     tick();
     const t = setInterval(tick, 1000);
     return () => clearInterval(t);
-  }, [paused, startedAt]);
+  }, [paused, startedAt, result, saving]);
 
   // Handle app state — keep tracking but show indicator
   useEffect(() => {
@@ -149,60 +151,65 @@ export default function ActiveTrackingScreen() {
     return () => sub.remove();
   }, []);
 
-  // Start tracking immediately.
+  // Start the watch and one-shot lookup together. A cold GPS fix must not
+  // delay the watch (or block the map) for another eight seconds.
   useEffect(() => {
     let cancelled = false;
+    let liveFix = false;
     stoppedRef.current = false;
-    (async () => {
-      const coords = await getCurrentPosition();
-      if (!cancelled && !stoppedRef.current && coords) setCurrent(coords);
-
-      const sub = await startTracking(
-        (coord) => {
-          if (pausedRef.current) return;
-
-          const step = advanceTrack(trackRef.current, coord);
-          trackRef.current = step.state;
-          if (step.status === 'ignored') return;
-          if (step.status === 'still' || !step.point) {
-            setCurrentMph(0);
-            return;
-          }
-
-          setCurrentMph(step.mph);
-          setCurrent(step.point);
-          setPath((p) => [...p, step.point as Coord]);
-          setMiles(step.state.miles);
-          setElevationGain(step.state.gainFt);
-          setElevationLoss(step.state.lossFt);
-
-          // Only counted movement can be too fast. Three strikes warn; more
-          // than three and the activity is not counted (validateActivity).
-          if (step.status === 'moved' && step.mph > speedLimit) {
-            strikesRef.current += 1;
-            if (strikesRef.current >= 3) setShowSpeedAlert(true);
-          }
-        },
-        {
-          onError: (err) => console.warn('[track]', err),
-          allowBackground: true,
-        }
-      );
-
-      if (cancelled || stoppedRef.current) {
-        sub.remove();
+    setGpsError(null);
+    getCurrentPosition().then((point) => {
+      if (!cancelled && !stoppedRef.current && !liveFix && point) setCurrent(point);
+    });
+    startTracking((coord) => {
+      if (cancelled || stoppedRef.current || pausedRef.current) return;
+      const step = advanceTrack(trackRef.current, coord);
+      trackRef.current = step.state;
+      if (step.status === 'ignored') return;
+      liveFix = true;
+      setGpsError(null);
+      setCurrent(step.point ?? coord);
+      if (step.status === 'still' || !step.point) {
+        setCurrentMph(0);
         return;
       }
-      subRef.current = sub;
-    })();
-
+      setCurrentMph(step.mph);
+      setPath((p) => [...p, step.point as Coord]);
+      setMiles(step.state.miles);
+      setElevationGain(step.state.gainFt);
+      setElevationLoss(step.state.lossFt);
+      if (step.status === 'moved' && step.mph > speedLimit) {
+        strikesRef.current += 1;
+        if (strikesRef.current >= 3) setShowSpeedAlert(true);
+      }
+    }, {
+      onError: (error) => {
+        if (!cancelled && !stoppedRef.current) setGpsError(error.message || 'No GPS fix. Check location permissions.');
+      },
+      allowBackground: true,
+    }).then((sub) => {
+      if (cancelled || stoppedRef.current) sub.remove();
+      else subRef.current = sub;
+    }).catch(() => {
+      if (!cancelled && !stoppedRef.current) setGpsError('GPS could not start. Check location permissions and retry.');
+    });
     return () => {
       cancelled = true;
       stopTracking();
     };
-  }, [speedLimit, stopTracking]);
+  }, [speedLimit, stopTracking, gpsAttempt]);
+
+  const retryGps = async () => {
+    const point = await requestLocation({ explain: true });
+    if (point) {
+      setCurrent({ ...point, timestamp: Date.now() });
+      setGpsAttempt((n) => n + 1);
+    }
+  };
 
   const handleFinish = useCallback(async () => {
+    if (finishInFlightRef.current) return;
+    finishInFlightRef.current = true;
     stopTracking();
     setSaving(true);
     setConfettiDone(false);
@@ -247,7 +254,9 @@ export default function ActiveTrackingScreen() {
       if (shouldAskCleanupAfterTrail(res.rejected)) setShowCleanup(true);
     } catch (e: any) {
       alert('Could not save', e?.message ?? 'Something went wrong saving that activity.');
+      setGpsAttempt((n) => n + 1);
     } finally {
+      finishInFlightRef.current = false;
       setSaving(false);
     }
   }, [addActivity, stopTracking, mode, startedAt, miles, elapsed, path, calories, elevationGain, elevationLoss, totalActivities]);
@@ -428,129 +437,90 @@ export default function ActiveTrackingScreen() {
 
   return (
     <View style={styles.root}>
-      <SafeAreaView style={{ flex: 1 }} edges={['top']}>
-        {/* Top bar — just the exit and pause controls. Ending the activity
-            is handled by the big "Stop and save" button below, so we do not
-            duplicate it up here. */}
+      <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
-          <Pressable onPress={handleDiscard} style={styles.backBtn} hitSlop={12} accessibilityLabel="Discard activity">
-            <Icon name="x" size={20} color="#fff" strokeWidth={2.2} />
+          <Pressable onPress={handleDiscard} style={styles.backBtn} hitSlop={8} accessibilityRole="button" accessibilityLabel="Discard activity">
+            <Icon name="x" size={20} color={colors.text} strokeWidth={2} />
           </Pressable>
           <View style={styles.topCenter}>
-            <View style={styles.recordingDot} />
+            <View style={[styles.recordingDot, paused && { backgroundColor: colors.textMuted }]} />
             <Text style={styles.topLabel} numberOfLines={1}>
-              {paused ? 'Paused' : isBackgrounded ? 'Tracking in background' : 'Tracking'}
+              {paused ? 'Paused' : isBackgrounded ? 'Tracking in background' : mode === 'bike' ? 'Tracking ride' : 'Tracking walk'}
             </Text>
           </View>
-          <View style={styles.topActions}>
-            <Pressable
-              onPress={togglePause}
-              style={styles.pauseBtn}
-              hitSlop={8}
-              accessibilityLabel={paused ? 'Resume' : 'Pause'}
-            >
-              <Icon name={paused ? 'play' : 'pause'} size={18} color="#fff" strokeWidth={2} />
-            </Pressable>
-          </View>
+          <Pressable onPress={retryGps} accessibilityRole="button" accessibilityLabel="Check GPS connection" style={styles.gpsBadge}>
+            <Icon name="map-pin" size={14} color={gpsError ? colors.warning : colors.primary} />
+            <Text style={[styles.gpsLabel, gpsError && { color: colors.warning }]}>
+              {gpsError ? 'Retry GPS' : current ? 'GPS on' : 'Finding GPS'}
+            </Text>
+          </Pressable>
         </View>
-
-        {/* Everything below the top bar scrolls. On a short phone the stats
-            and the Finish button used to run off the bottom of the screen
-            with no way to reach them. */}
-        <ScrollView
-          style={{ flex: 1 }}
-          contentContainerStyle={styles.scrollBody}
-          showsVerticalScrollIndicator={false}
-        >
-          <View style={[styles.mapContainer, { height: mapHeight }]}>
-            <LiveMap path={path} current={current} height={mapHeight} follow={!paused} />
-
-            {/* Trail detection overlay */}
+        <View style={[styles.trackingLayout, wide && { flexDirection: 'row' }]}>
+          <View testID="tracking-map-area" style={[styles.mapContainer, wide && { marginRight: 0, flex: 2.5 }]}>
+            <LiveMap path={path} current={current} height="100%" follow={!paused} />
             {nearbyTrail ? (
-              <View style={styles.trailBadge}>
-                <Icon name="map-pin" size={14} color={colors.primary} strokeWidth={2} />
-                <Text style={styles.trailBadgeText} numberOfLines={1}>
-                  {nearbyTrail.name}
-                </Text>
+              <View style={styles.trailBadge} pointerEvents="none">
+                <Icon name="map-pin" size={14} color={colors.primary} />
+                <Text style={styles.trailBadgeText} numberOfLines={1}>{nearbyTrail.name}</Text>
               </View>
             ) : null}
           </View>
-
-          {showRest ? (
-            <View style={styles.restBanner}>
-              <Icon name="clock" size={18} color={colors.accentDark} strokeWidth={2} />
-              <Text style={styles.restText}>
-                You have been out for {Math.floor(elapsed / 60)} minutes
-                {report ? ` · it is ${formatTemp(report.tempF)}` : ''}. Want a sit-down?
-              </Text>
-              <Pressable onPress={() => setShowRest(false)} hitSlop={10} accessibilityLabel="Dismiss rest reminder">
-                <Icon name="x" size={16} color={colors.textMuted} />
+          <View style={[styles.statsPanel, { minHeight: wide ? 0 : Math.min(Math.round(200 * Math.min(fontScale, 1.4)), Math.max(100, Math.floor((windowHeight - 68) / 3))) }, wide && { maxWidth: 400, margin: 12, borderRadius: 24 }]}>
+            <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.metricsScroll} showsVerticalScrollIndicator={false}>
+              <View style={[styles.mainMetrics, compactLandscape && { flexDirection: 'column', alignItems: 'stretch', gap: 4 }]}>
+                <View style={[styles.mainMetric, compactLandscape && { flex: 0, flexDirection: 'row', justifyContent: 'space-between' }]}>
+                  <Text style={styles.metricValue} numberOfLines={1}>{formatDistance(miles)}</Text>
+                  <Text style={styles.metricLabel}>{formatDistanceUnit()}</Text>
+                </View>
+                {!compactLandscape ? <View style={styles.metricDivider} /> : null}
+                <View style={[styles.mainMetric, compactLandscape && { flex: 0, flexDirection: 'row', justifyContent: 'space-between' }]}>
+                  <Text style={styles.metricValue} numberOfLines={1}>{formatTime(elapsed)}</Text>
+                  <Text style={styles.metricLabel}>Time</Text>
+                </View>
+                {!compactLandscape ? <View style={styles.metricDivider} /> : null}
+                <View style={[styles.mainMetric, compactLandscape && { flex: 0, flexDirection: 'row', justifyContent: 'space-between' }]}>
+                  <Text style={styles.metricValue} numberOfLines={1}>{trees}</Text>
+                  <Text style={styles.metricLabel}>Trees</Text>
+                </View>
+              </View>
+              {gpsError ? (
+                <Pressable onPress={retryGps} accessibilityRole="button" style={styles.gpsWarning}>
+                  <Icon name="alert-circle" size={16} color={colors.warning} />
+                  <Text style={styles.gpsWarningText}>{gpsError} Tap to retry GPS.</Text>
+                </Pressable>
+              ) : null}
+              {showRest ? (
+                <Pressable style={styles.gpsWarning} onPress={() => setShowRest(false)} accessibilityRole="button" accessibilityLabel="Dismiss rest reminder">
+                  <Icon name="clock" size={16} color={colors.accentDark} />
+                  <Text style={styles.gpsWarningText}>
+                    {Math.floor(elapsed / 60)} minutes outside{report ? ` · ${formatTemp(report.tempF)}` : ''}. Time for a breather?
+                  </Text>
+                  <Icon name="x" size={14} color={colors.textMuted} />
+                </Pressable>
+              ) : null}
+              <Pressable onPress={() => setShowDetails((shown) => !shown)} style={styles.detailsToggle} accessibilityRole="button" accessibilityState={{ expanded: showDetails }}>
+                <Text style={styles.detailsLabel}>{showDetails ? 'Hide details' : 'Speed, elevation & calories'}</Text>
+                <Icon name={showDetails ? 'chevron-down' : 'chevron-right'} size={16} color={colors.textMuted} />
               </Pressable>
-            </View>
-          ) : null}
-
-          {/* Stats panel */}
-          <View style={styles.statsPanel}>
-            {/* Primary stat: distance */}
-            <View style={styles.primaryRow}>
-              <Text style={styles.distanceValue}>{formatDistance(miles)}</Text>
-              <Text style={styles.distanceUnit}>{formatDistanceUnit()}</Text>
-            </View>
-
-            <View style={styles.statsGrid}>
-              <StatBox icon="clock" value={formatTime(elapsed)} label="Time" />
-              <StatBox icon="tree" value={String(trees)} label="Trees" />
-            </View>
-            <Button label={showDetails ? 'Hide details' : 'Show details'} variant="ghost"
-              onPress={() => setShowDetails((shown) => !shown)} />
-            {showDetails ? <>
-            {/* Speed — with warning indicator */}
-            <View style={styles.speedRow}>
-              <View style={styles.speedBlock}>
-                <Text style={[
-                  styles.speedValue,
-                  currentMph > speedLimit && styles.speedOverLimit
-                ]}>
-                  {currentMph.toFixed(1)}
-                </Text>
-                <Text style={styles.speedLabel}>mph now</Text>
-                {currentMph > speedLimit ? (
-                  <View style={styles.speedWarning}>
-                    <Icon name="alert-triangle" size={12} color={colors.danger} strokeWidth={2} />
-                    <Text style={styles.speedWarningText}>Over {speedLimit} mph limit</Text>
-                  </View>
-                ) : null}
-              </View>
-              <View style={styles.speedDivider} />
-              <View style={styles.speedBlock}>
-                <Text style={styles.speedValue}>{avgMph.toFixed(1)}</Text>
-                <Text style={styles.speedLabel}>avg mph</Text>
-              </View>
-            </View>
-
-            {/* Secondary stats grid */}
-            <View style={styles.statsGrid}>
-              <StatBox icon="trending-up" value={`${Math.round(elevationGain)}`} label="Gain (ft)" />
-              <StatBox icon="trending-up" value={`${Math.round(elevationLoss)}`} label="Loss (ft)" iconColor={colors.textMuted} />
-              <StatBox icon="zap" value={String(calories)} label="Calories" />
-            </View>
-
-            </> : null}
-
-            {/* Finish button */}
-            <View style={styles.finishRow}>
-              <Button
-                label={mode === 'bike' ? 'Stop and save ride' : 'Stop and save walk'}
-                icon="stop"
-                size="lg"
-                full
-                loading={saving}
-                disabled={saving}
-                onPress={handleFinish}
-              />
+              {showDetails ? (
+                <View style={styles.statsGrid}>
+                  <StatBox icon="activity" value={currentMph.toFixed(1)} label="mph now" iconColor={currentMph > speedLimit ? colors.danger : colors.primary} />
+                  <StatBox icon="activity" value={avgMph.toFixed(1)} label="avg mph" />
+                  <StatBox icon="zap" value={String(calories)} label="Calories" />
+                  <StatBox icon="trending-up" value={String(Math.round(elevationGain))} label="Gain (ft)" />
+                  <StatBox icon="trending-up" value={String(Math.round(elevationLoss))} label="Loss (ft)" />
+                </View>
+              ) : null}
+            </ScrollView>
+            <View style={[styles.trackingButtons, compactLandscape && { flexDirection: 'column' }]}>
+              <Pressable onPress={togglePause} disabled={saving} style={styles.pauseControl} accessibilityRole="button" accessibilityLabel={paused ? 'Resume' : 'Pause'}>
+                <Icon name={paused ? 'play' : 'pause'} size={20} color={colors.primary} />
+                <Text style={styles.pauseLabel}>{paused ? 'Resume' : 'Pause'}</Text>
+              </Pressable>
+              <Button label={mode === 'bike' ? 'Stop and save ride' : 'Stop and save walk'} icon="stop" size="md" loading={saving} disabled={saving} onPress={handleFinish} style={{ flex: 1 }} />
             </View>
           </View>
-        </ScrollView>
+        </View>
 
         {/* Speed alert — 3 strikes. Covers the whole screen so it cannot be
             scrolled past or missed. */}
@@ -653,20 +623,21 @@ function ResultStat({ label, value, icon }: { label: string; value: string; icon
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
 
-  root: { flex: 1, backgroundColor: c.primaryDark },
+  root: { flex: 1, backgroundColor: c.background },
 
   topBar: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
     paddingHorizontal: SPACING.md,
-    paddingVertical: SPACING.sm + 4,
+    paddingVertical: SPACING.sm,
+    minHeight: 56,
   },
   backBtn: {
     width: 36,
     height: 36,
     borderRadius: 18,
-    backgroundColor: 'rgba(255,255,255,0.12)',
+    backgroundColor: c.surfaceSunken,
     alignItems: 'center',
     justifyContent: 'center',
   },
@@ -677,31 +648,24 @@ function makeStyles(c: ColorPalette, t: Typography) {
     borderRadius: 5,
     backgroundColor: '#FF4444',
   },
-  topLabel: { flexShrink: 1, ...t.bodyMed, color: '#fff' },
-  topActions: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-  },
-  pauseBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: 'rgba(255,255,255,0.12)',
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  // flexGrow keeps the white stats panel filling the bottom of the screen
-  // when the content is short, and lets it scroll when it is not.
-  scrollBody: { flexGrow: 1 },
-
-  mapContainer: {
-    borderRadius: RADIUS.lg,
-    overflow: 'hidden',
-    marginHorizontal: SPACING.md,
-    borderWidth: 1,
-    borderColor: 'rgba(255,255,255,0.1)',
-  },
+  topLabel: { flexShrink: 1, ...t.smallMed, color: c.text },
+  trackingLayout: { flex: 1, minHeight: 0 },
+  mapContainer: { flex: 2, minHeight: 140, marginHorizontal: 12, marginBottom: 12, borderRadius: 22, overflow: 'hidden' },
+  gpsBadge: { flexDirection: 'row', gap: 4, alignItems: 'center', minHeight: 40, paddingLeft: 6 },
+  gpsLabel: { ...t.micro, color: c.primary },
+  mainMetrics: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 8 },
+  mainMetric: { flex: 1, alignItems: 'center', gap: 5, minWidth: 0 },
+  metricValue: { ...t.h2, color: c.text, fontVariant: ['tabular-nums'] },
+  metricLabel: { ...t.micro, color: c.textMuted },
+  metricDivider: { width: 1, height: 28, backgroundColor: c.borderLight },
+  metricsScroll: { gap: 6, paddingBottom: 6 },
+  detailsToggle: { minHeight: 40, flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 6 },
+  detailsLabel: { ...t.micro, color: c.textMuted, textAlign: 'center' },
+  trackingButtons: { flexDirection: 'row', alignItems: 'stretch', gap: 10, paddingTop: 8, borderTopWidth: 1, borderTopColor: c.borderLight },
+  pauseControl: { minWidth: 64, minHeight: 52, alignItems: 'center', justifyContent: 'center', gap: 4, paddingHorizontal: 8, backgroundColor: c.primarySurface, borderRadius: 14 },
+  pauseLabel: { ...t.micro, color: c.primary },
+  gpsWarning: { flexDirection: 'row', alignItems: 'center', gap: 8, backgroundColor: c.warningLight, borderRadius: 10, padding: 9 },
+  gpsWarningText: { ...t.micro, fontWeight: '400', lineHeight: 18, color: c.textSecondary, flex: 1 },
   trailBadge: {
     position: 'absolute',
     top: 12,
@@ -718,42 +682,10 @@ function makeStyles(c: ColorPalette, t: Typography) {
   trailBadgeText: { ...t.smallMed, color: c.primary },
 
   statsPanel: {
-    flexGrow: 1,
-    backgroundColor: c.surface,
-    borderTopLeftRadius: RADIUS.xxl,
-    borderTopRightRadius: RADIUS.xxl,
-    marginTop: SPACING.md,
-    paddingHorizontal: SPACING.lg,
-    paddingTop: SPACING.lg,
-    paddingBottom: SPACING.lg,
-    gap: SPACING.md,
+    flex: 1, minHeight: 200, backgroundColor: c.surface,
+    borderTopLeftRadius: 24, borderTopRightRadius: 24,
+    paddingHorizontal: 16, paddingTop: 8, paddingBottom: 12,
   },
-
-  primaryRow: { flexDirection: 'row', alignItems: 'baseline', gap: 8, justifyContent: 'center' },
-  distanceValue: { ...t.metricLg, color: c.text },
-  distanceUnit: { ...t.h3, color: c.textMuted },
-
-  speedRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: c.surfaceSunken,
-    borderRadius: RADIUS.lg,
-    paddingVertical: SPACING.md,
-    gap: SPACING.lg,
-  },
-  speedBlock: { alignItems: 'center', flex: 1 },
-  speedValue: { ...t.metric, color: c.text },
-  speedOverLimit: { color: c.danger },
-  speedLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
-  speedDivider: { width: 1, height: 40, backgroundColor: c.border },
-  speedWarning: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 4,
-    marginTop: 4,
-  },
-  speedWarningText: { ...t.micro, color: c.danger, fontWeight: '600' },
 
   statsGrid: {
     flexDirection: 'row',
@@ -793,30 +725,6 @@ function makeStyles(c: ColorPalette, t: Typography) {
   alertText: { ...t.body, color: c.textSecondary, textAlign: 'center' },
   alertSubtext: { ...t.small, color: c.textMuted, textAlign: 'center' },
   alertButtons: { flexDirection: 'row', gap: SPACING.sm, width: '100%' },
-
-  helpRow: { flexDirection: 'row', gap: SPACING.sm, paddingHorizontal: SPACING.md, marginTop: SPACING.sm },
-  helpIconBtn: {
-    minHeight: 44,
-    paddingHorizontal: SPACING.md,
-    borderRadius: RADIUS.pill,
-    backgroundColor: c.surface,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 7,
-  },
-  helpLabel: { ...t.smallMed, color: c.danger },
-  restBanner: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    marginHorizontal: SPACING.md,
-    marginTop: SPACING.sm,
-    backgroundColor: c.warningLight,
-    borderRadius: RADIUS.md,
-    padding: SPACING.sm + 4,
-  },
-  restText: { ...t.small, color: c.text, flex: 1 },
-  finishRow: { paddingBottom: SPACING.md },
 
   resultScroll: {
     flexGrow: 1,

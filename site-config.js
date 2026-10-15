@@ -28,10 +28,10 @@ window.ECOTREK_CONFIG = {
   apiKeyUrl: '/api-key.html',
 
   // --- release facts (printed on the pages) --------------------------------
-  apkVersion: '1.2.1',
-  apkVersionCode: 4,
-  apkBytes: 1766743,
-  apkSha256: 'bd1f6553404427bd223fbd2397bda0e6feb7a5619d914fb0dd8e4970d9a0bbf0',
+  apkVersion: '1.5.0',
+  apkVersionCode: 7,
+  apkBytes: 8766759,
+  apkSha256: '17bc50b301ea212ed54cac7237f09b56303de0320d8a0d7c05e0c0b3ac2ee89b',
   signingCertSubject: 'CN=EcoTrek, O=EcoTrek Team, C=US',
   signingCertSha256: '74005b52c140cd4b45a1adb0e95ce31ea30e82b4e6db20197dc0c889901726d3',
   minAndroid: 'Android 7.0 (API 24)',

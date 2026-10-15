@@ -7,6 +7,8 @@ import { useStreak } from './StreakContext';
 import { useClub } from '../context/ClubContext';
 import { useEcoPoints } from '../context/EcoPointsContext';
 import { useGems } from '../context/GemsContext';
+import { useOptionalTreeGrowth } from './TreeGrowthContext';
+import { qualifiesForTreeWeek } from '../services/treeGrowth';
 import { useProfile, estimateCalories, estimateElevation } from './ProfileContext';
 import { useApp } from './AppContext';
 import { isArray, keyFor, loadJSON, saveJSON } from '../services/storage';
@@ -93,6 +95,8 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
   const { award } = useEcoPoints();
   const { earn: earnGems } = useGems();
   const { recordActivity } = useStreak();
+  const treeGrowth = useOptionalTreeGrowth();
+  const recordOutdoorWeek = treeGrowth?.recordOutdoorWeek;
   const { contribute, myClub } = useClub();
   const { profile } = useProfile();
   const { trails } = useApp();
@@ -118,6 +122,13 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
       historyRef.current = local;
       setHistory(local);
       setLoading(false);
+      // Recover recent outdoor credits after an interrupted storage write.
+      // This only supplements the permanent ledger; older tree weeks never
+      // depend on the one-year raw history staying on the device.
+      for (const activity of local) if (qualifiesForTreeWeek(activity)) {
+        await recordOutdoorWeek?.(activity.endedAt).catch((error) => console.warn('[tree] activity credit could not be saved', error));
+        if (cancelled) return;
+      }
 
       if (isBackendConfigured()) {
         const res = await api.get<Activity[]>(ROUTES.activities);
@@ -135,7 +146,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
     return () => {
       cancelled = true;
     };
-  }, [storeKey]);
+  }, [storeKey, recordOutdoorWeek]);
 
   const persist = useCallback(
     (update: (prev: Activity[]) => Activity[]) => {
@@ -216,6 +227,9 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
 
       if (validation.valid) {
         await recordActivity(input.miles, trees, input.startedAt, id);
+        // A short real outing counts; invalid/zero-distance sessions do not.
+        // Tree weeks live separately so they survive logbook retention.
+        if (qualifiesForTreeWeek(activity)) await recordOutdoorWeek?.(input.endedAt).catch((error) => console.warn('[tree] activity credit could not be saved', error));
         if (myClub) {
           await contribute({ points: pointsAwarded, trees, miles: input.miles, activities: 1 });
         }
@@ -236,7 +250,7 @@ export function ActivityProvider({ children }: { children: React.ReactNode }) {
         rejectionReason: validation.flagReason,
       };
     },
-    [persist, award, earnGems, recordActivity, contribute, myClub, userId, profile, trails]
+    [persist, award, earnGems, recordActivity, recordOutdoorWeek, contribute, myClub, userId, profile, trails]
   );
 
   // Multiple Finish taps share one operation; previously they paid rewards twice.

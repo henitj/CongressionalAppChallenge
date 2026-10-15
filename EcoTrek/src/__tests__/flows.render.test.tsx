@@ -1,4 +1,7 @@
 import React from 'react';
+import { CARE_KINDS } from '../constants/treeGrowth';
+import { addCalendarMonths, emptyTree } from '../services/treeGrowth';
+import { keyFor } from '../services/storage';
 import { Text, View } from 'react-native';
 import { render, waitFor, act } from '@testing-library/react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -627,32 +630,20 @@ describe('gems and the tree', () => {
     await waitFor(() => expect(harness.gems.totalGems).toBe(afterComplete));
   });
 
-  it('spending gems waters the tree and advances it through stages', async () => {
+  it('charges one gem per weekly care kind without rushing calendar growth', async () => {
     await boot();
+    await act(async () => { await harness.gems.adjust(30, 'Test care balance'); });
+    await act(async () => {
+      expect(await harness.tree.addCare('water')).toBe(true);
+      expect(await harness.tree.addCare('water')).toBe(false);
+      expect(await harness.tree.addCare('sun')).toBe(true);
+      expect(await harness.tree.addCare('nutrients')).toBe(true);
+      await harness.tree.recordOutdoorWeek(Date.now());
+    });
+    expect(harness.gems.totalGems).toBe(27);
     expect(harness.tree.stage.id).toBe('seed');
-
-    // Earn a pile of gems with several plausible (not anti-cheat-flagged)
-    // hikes, each a separate activity so none of them get deduped.
-    const first = hikeInput({ miles: 3 });
-    await act(async () => {
-      for (let i = 0; i < 15; i++) {
-        await harness.activity.addActivity({ ...first, startedAt: first.startedAt + i * 3600_000 });
-      }
-    });
-    // 15 hikes of 3 gems each from mileage alone already clears what one
-    // stage of watering costs (2 units x 3 kinds x 8 gems = 48).
-    await waitFor(() => expect(harness.gems.totalGems).toBeGreaterThan(48));
-
-    await act(async () => {
-      await harness.tree.addCare('water');
-      await harness.tree.addCare('water');
-      await harness.tree.addCare('sun');
-      await harness.tree.addCare('sun');
-      await harness.tree.addCare('nutrients');
-      await harness.tree.addCare('nutrients');
-    });
-
-    await waitFor(() => expect(harness.tree.stage.id).toBe('sprout'));
+    expect(harness.tree.growthWeeks).toBe(1);
+    expect(harness.tree.isFullyGrown).toBe(false);
   });
 
   it('refuses to spend gems it does not have', async () => {
@@ -669,32 +660,128 @@ describe('gems and the tree', () => {
     expect(harness.gems.totalGems).toBe(0);
   });
 
-  it('cannot double-spend the same gems on two care taps fired at once', async () => {
+  it('cannot double-spend the same gem on two care taps fired at once', async () => {
     await boot();
-    await act(async () => {
-      await harness.activity.addActivity(hikeInput({ miles: 10 }));
-    });
-    const gemsBefore = harness.gems.totalGems;
-    // Only enough for exactly one unit of care at the seed stage's cost.
-    expect(gemsBefore).toBeGreaterThanOrEqual(8);
-
-    // Fire two purchases "at once" (no await between them) — only one
-    // should be able to succeed if the balance only covers one.
-    await act(async () => {
-      await harness.gems.spend(gemsBefore - 1, 'drain to almost zero');
-    });
-    expect(harness.gems.totalGems).toBe(1);
-
+    await act(async () => { await harness.gems.adjust(1, 'One test gem'); });
     let results: boolean[] = [];
-    await act(async () => {
-      results = await Promise.all([
-        harness.tree.addCare('water'),
-        harness.tree.addCare('sun'),
-      ]);
-    });
+    await act(async () => { results = await Promise.all([harness.tree.addCare('water'), harness.tree.addCare('sun')]); });
+    expect(results.filter(Boolean)).toHaveLength(1);
+    expect(harness.gems.totalGems).toBe(0);
+  });
 
-    const successes = results.filter(Boolean).length;
-    expect(successes).toBeLessThanOrEqual(1);
-    expect(harness.gems.totalGems).toBeGreaterThanOrEqual(0);
+  it('refunds care if tree persistence fails and keeps established progress unchanged', async () => {
+    await boot();
+    await act(async () => { await harness.gems.adjust(3, 'Care'); });
+    const setItem = AsyncStorage.setItem as jest.Mock;
+    const original = setItem.getMockImplementation()!;
+    const treeKey = keyFor(USER.id, 'tree-growth');
+    let failed = false;
+    setItem.mockImplementation((key, value) => {
+      if (key === treeKey && !failed) { failed = true; return Promise.reject(new Error('device full')); }
+      return original(key, value);
+    });
+    try {
+      await act(async () => { await expect(harness.tree.addCare('water')).rejects.toThrow('device full'); });
+      expect(harness.gems.totalGems).toBe(3);
+      expect(harness.tree.care.water).toBe(0);
+      expect(harness.tree.saveError).toMatch(/couldn’t be saved/);
+      await act(async () => { expect(await harness.tree.addCare('water')).toBe(true); });
+      expect(harness.gems.totalGems).toBe(2);
+      expect(harness.tree.care.water).toBe(1);
+      expect(harness.tree.saveError).toBeNull();
+    } finally { setItem.mockImplementation(original); }
+  });
+
+  it('retains partial weekly care and increases the growth factor exactly once per kind', async () => {
+    await boot();
+    await act(async () => { await harness.gems.adjust(10, 'Care'); await harness.tree.recordOutdoorWeek(Date.now()); });
+    expect(harness.tree.growthPercent).toBe(5);
+    await act(async () => { await harness.tree.addCare('water'); });
+    expect(harness.tree.growthPercent).toBe(25);
+    await act(async () => { await harness.tree.addCare('nutrients'); });
+    expect(harness.tree.growthPercent).toBe(60);
+    const stored = JSON.parse((await AsyncStorage.getItem(keyFor(USER.id, 'tree-growth')))!);
+    expect(stored.careHistory[stored.careWeek]).toEqual({ water: 1, sun: 0, nutrients: 1 });
+    await act(async () => { expect(await harness.tree.addCare('water')).toBe(false); await harness.tree.addCare('sun'); });
+    expect(harness.tree.growthPercent).toBe(100);
+    expect(harness.gems.totalGems).toBe(7);
+  });
+
+  it('a valid saved outing credits the tree even when care came first', async () => {
+    await boot();
+    await act(async () => { await harness.gems.adjust(3, 'Care'); for (const kind of CARE_KINDS) await harness.tree.addCare(kind); });
+    expect(harness.tree.growthWeeks).toBe(0);
+    const endedAt = Date.now();
+    const startedAt = endedAt - 3600_000;
+    const input = hikeInput({ startedAt, endedAt, path: [
+      { latitude: barton.startLat, longitude: barton.startLng, timestamp: startedAt },
+      { latitude: barton.startLat + 0.01, longitude: barton.startLng, timestamp: startedAt + 1800_000 },
+      { latitude: barton.startLat + 0.02, longitude: barton.startLng, timestamp: endedAt },
+    ] });
+    await act(async () => { await harness.activity.addActivity(input); });
+    expect(harness.tree.outdoorThisWeek).toBe(true);
+    expect(harness.tree.growthWeeks).toBe(1);
+    await act(async () => { await harness.activity.addActivity(input); });
+    expect(harness.tree.growthWeeks).toBe(1);
+    const stored = JSON.parse((await AsyncStorage.getItem(keyFor(USER.id, 'tree-growth')))!);
+    expect(stored.outdoorWeeks).toHaveLength(1);
+  });
+
+});
+
+
+describe('the real-time virtual tree lifecycle', () => {
+  it('takes a full year to mature and 18 months to become sage; apples and archiving cannot be duplicated', async () => {
+    const plantedAt = new Date(2025, 0, 1, 12).getTime();
+    let time = plantedAt;
+    const clock = jest.spyOn(Date, 'now').mockImplementation(() => time);
+    try {
+      await boot();
+      await act(async () => { await harness.gems.adjust(5000, 'Test balance'); });
+      let expectedSpend = 0;
+      for (let week = 0; week < 78; week++) {
+        time = plantedAt + week * 7 * 86400000;
+        await act(async () => {
+          await harness.tree.recordOutdoorWeek(time);
+          for (const kind of CARE_KINDS) { expect(await harness.tree.addCare(kind)).toBe(true); expectedSpend += 1; }
+        });
+        if (week <= 52) expect(harness.tree.isFullyGrown).toBe(false);
+        if (week === 53) expect(harness.tree.stage.id).toBe('mature');
+      }
+      expect(harness.tree.stage.id).toBe('old');
+      time = addCalendarMonths(plantedAt, 18);
+      await act(async () => {
+        await harness.tree.recordOutdoorWeek(time);
+        for (const kind of CARE_KINDS) { expect(await harness.tree.addCare(kind)).toBe(true); expectedSpend += 1; }
+      });
+      expect(harness.tree.stage.id).toBe('sage');
+      expect(harness.tree.growthWeeks).toBe(79);
+      expect(harness.gems.totalGems).toBe(5000 - expectedSpend);
+      let apples: boolean[] = [];
+      await act(async () => { apples = await Promise.all([harness.tree.harvestApple(), harness.tree.harvestApple()]); });
+      expect(apples).toEqual([true, false]);
+      expect(harness.tree.goldenApples).toBe(1);
+      expect(harness.gems.totalGems).toBe(5000 - expectedSpend);
+      let replants: boolean[] = [];
+      await act(async () => { replants = await Promise.all([harness.tree.plantNew(), harness.tree.plantNew()]); });
+      expect(replants).toEqual([true, false]);
+      expect(harness.tree.forest).toBe(1);
+      expect(harness.tree.stage.id).toBe('seed');
+      expect(harness.tree.goldenApples).toBe(1);
+      expect(harness.tree.care).toEqual({ water: 0, sun: 0, nutrients: 0 });
+      const stored = JSON.parse((await AsyncStorage.getItem(keyFor(USER.id, 'tree-growth')))!);
+      expect(stored).toMatchObject({ version: 3, plantedAt: time, forest: 1, goldenApples: 1 });
+      expect(stored.careWeeks).toEqual([]);
+    } finally { clock.mockRestore(); }
+  });
+
+  it('persists the planting date on first load and refuses a premature harvest/replant', async () => {
+    await boot();
+    let results: boolean[] = [];
+    await act(async () => { results = await Promise.all([harness.tree.harvestApple(), harness.tree.plantNew()]); });
+    expect(results).toEqual([false, false]);
+    const stored = JSON.parse((await AsyncStorage.getItem(keyFor(USER.id, 'tree-growth')))!);
+    expect(stored.plantedAt).toBe(harness.tree.plantedAt);
+    expect(stored.version).toBe(emptyTree().version);
   });
 });

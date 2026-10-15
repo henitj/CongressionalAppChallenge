@@ -25,12 +25,24 @@ function toneFor(c: ColorPalette): Record<SafetyLevel, { bg: string; border: str
  * friendly sentence. Everything else (hourly, alerts, air quality) lives one
  * tap away on the full Conditions page.
  */
-export default function ConditionsCard() {
+export default function ConditionsCard({ compact = false }: { compact?: boolean } = {}) {
   const navigation = useNavigation<any>();
   const { report, loading, error, refresh } = useWeather();
   const { formatTemp } = useSettings();
   const { colors, typography } = useTheme();
   const styles = React.useMemo(() => makeWeatherStyles(colors, typography), [colors, typography]);
+
+  if (compact) {
+    const hazardous = report && (report.level === 'danger' || report.level === 'warning');
+    return <Pressable onPress={() => navigation.navigate('Conditions')} accessibilityRole="button" accessibilityLabel={report ? `Outdoor conditions: ${formatTemp(report.tempF)}, ${report.condition}. ${report.shortNote}` : 'Check outdoor conditions'} style={{ flexDirection: 'row', alignItems: 'center', gap: 10, minHeight: 44, paddingHorizontal: 5 }}>
+      <Icon name={hazardous ? 'alert-triangle' : report?.icon as IconName ?? 'cloud'} size={20} color={hazardous ? colors.warning : colors.textMuted} />
+      <View style={{ flex: 1, gap: 3 }}>
+        <Text style={[typography.smallMed, { color: hazardous ? colors.warning : colors.textSecondary }]}>{report ? `${formatTemp(report.tempF)} · ${report.condition}` : loading ? 'Checking outdoor conditions…' : 'Check outdoor conditions'}</Text>
+        {hazardous ? <Text style={[typography.small, { color: report.level === 'danger' ? colors.danger : colors.textSecondary }]}>{LEVEL_META[report.level].label} · {report.shortNote}</Text> : null}
+      </View>
+      <Icon name="chevron-right" size={15} color={colors.textMuted} />
+    </Pressable>;
+  }
 
   if (loading && !report) {
     return (

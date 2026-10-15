@@ -21,6 +21,8 @@ const port = Number(process.env.PORT || 8000);
 const rewrites = [
   [/^\/privacy$/, '/privacy.html'],
   [/^\/app\/?$/, '/app/index.html'],
+  [/^\/(?:home|track|more|active-tracking|trails|profile|impact|challenges|tree|conditions|streak|assistant|recap|safety|settings|history|badges)\/?$/, '/app/index.html'],
+  [/^\/activity\/[^/]+\/?$/, '/app/index.html'],
   [/^\/download$/, '/downloads/ecotrek.apk'],
   [/^\/apk$/, '/downloads/ecotrek.apk'],
   [/^\/_expo\//, (p) => `/app${p}`],

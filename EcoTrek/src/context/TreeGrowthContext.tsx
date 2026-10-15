@@ -1,164 +1,141 @@
 import React, { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
+import { AppState } from 'react-native';
 import { useAuth } from './AuthContext';
 import { useGems } from './GemsContext';
-import { isObject, keyFor, loadJSON, saveJSON } from '../services/storage';
-import { CARE_KINDS, CareKind, TREE_STAGES, TreeStage, stageIndex } from '../constants/treeGrowth';
+import { keyFor, loadJSON, saveJSON } from '../services/storage';
+import { atCurrentWeek, emptyTree, normalizeTreeGrowth, treeStatus, type TreeGrowthStore } from '../services/treeGrowth';
+import { CARE_KINDS, CARE_LABEL, WEEKLY_CARE_COST, type CareKind } from '../constants/treeGrowth';
+import { weekKey } from '../services/dates';
 
-type CareProgress = Record<CareKind, number>;
-
-type Stored = {
-  stageId: TreeStage['id'];
-  care: CareProgress;
-  /** Trees fully grown before this one — a small forest. */
-  forest: number;
-};
-
-const zeroCare = (): CareProgress => ({ water: 0, sun: 0, nutrients: 0 });
-
-const DEFAULT: Stored = { stageId: 'seed', care: zeroCare(), forest: 0 };
-
-function isValidStore(v: unknown): v is Stored {
-  if (!isObject(v)) return false;
-  const s = v as Partial<Stored>;
-  return typeof s.stageId === 'string' && isObject(s.care) && typeof s.forest === 'number';
-}
-
-type TreeGrowthState = {
-  stage: TreeStage;
-  stageNumber: number; // 1-based, out of TREE_STAGES.length
-  stageCount: number;
-  care: CareProgress;
-  forest: number;
-  isFullyGrown: boolean;
-  /** Gem cost of one more unit of the given care type right now. */
+type TreeGrowthState = ReturnType<typeof treeStatus> & {
+  saveError: string | null;
   costFor: (kind: CareKind) => number;
-  /** True if the current stage's requirement for this care type is already met. */
   isCareDone: (kind: CareKind) => boolean;
-  /** Spend gems to add one unit of care. Resolves false if gems are short or the care is already maxed. */
   addCare: (kind: CareKind) => Promise<boolean>;
-  /** Start a brand new seed after the current tree is fully grown. */
-  plantNew: () => Promise<void>;
+  /** A compact permanent ledger, independent of the one-year raw logbook. */
+  recordOutdoorWeek: (finishedAt: number) => Promise<boolean>;
+  harvestApple: () => Promise<boolean>;
+  /** Optional only after 18 months + 78 qualifying weeks. */
+  plantNew: () => Promise<boolean>;
 };
-
 const TreeGrowthContext = createContext<TreeGrowthState | null>(null);
 
 export function TreeGrowthProvider({ children }: { children: React.ReactNode }) {
   const { user } = useAuth();
-  const userId = user?.id ?? null;
-  const storeKey = keyFor(userId, 'tree-growth');
-  const { spend } = useGems();
-
-  const [store, setStore] = useState<Stored>(DEFAULT);
+  const storeKey = keyFor(user?.id, 'tree-growth');
+  const { spend, adjust } = useGems();
+  const [store, setStore] = useState<TreeGrowthStore>(() => emptyTree());
   const storeRef = useRef(store);
-  storeRef.current = store;
   const [loaded, setLoaded] = useState(false);
-  // Serialises care purchases. Without this, two taps fired in the same
-  // tick (before either has re-rendered) could both read the same stale
-  // care/stage snapshot and both succeed — double-spending gems or
-  // double-advancing a stage on one purchase's worth of gems.
-  const addCareQueue = useRef<Promise<boolean>>(Promise.resolve(false));
+  const loadedRef = useRef(false);
+  const activeKey = useRef(storeKey);
+  if (activeKey.current !== storeKey) {
+    activeKey.current = storeKey;
+    loadedRef.current = false;
+  }
+  const [now, setNow] = useState(Date.now);
+  const [saveError, setSaveError] = useState<string | null>(null);
+  const queue = useRef<Promise<boolean>>(Promise.resolve(false));
 
   useEffect(() => {
     let cancelled = false;
+    loadedRef.current = false;
     setLoaded(false);
+    setSaveError(null);
     (async () => {
-      const s = await loadJSON<Stored>(storeKey, DEFAULT, isValidStore);
+      const raw = await loadJSON<unknown>(storeKey, null);
       if (cancelled) return;
-      storeRef.current = s;
-      setStore(s);
+      const time = Date.now();
+      const normalized = normalizeTreeGrowth(raw, time);
+      storeRef.current = normalized;
+      setStore(normalized);
+      setNow(time);
+      loadedRef.current = true;
       setLoaded(true);
+      // Persist the real planting date immediately, not at the first purchase.
+      try { await saveJSON(storeKey, normalized, { strict: true }); }
+      catch { if (!cancelled) setSaveError('Your tree couldn’t be saved. Check free device storage and try again.'); }
     })();
-    return () => {
-      cancelled = true;
-    };
+    return () => { cancelled = true; };
   }, [storeKey]);
 
-  const stage = useMemo(
-    () => TREE_STAGES.find((s) => s.id === store.stageId) ?? TREE_STAGES[0],
-    [store.stageId]
-  );
-  const idx = stageIndex(stage.id);
-  const isFullyGrown = idx === TREE_STAGES.length - 1 && CARE_KINDS.every((k) => store.care[k] >= stage.unitsPerCare);
+  useEffect(() => {
+    const update = () => setNow(Date.now());
+    const timer = setInterval(update, 60_000);
+    const listener = AppState.addEventListener('change', (state) => { if (state === 'active') update(); });
+    return () => { clearInterval(timer); listener.remove(); };
+  }, []);
 
-  const costFor = useCallback((_kind: CareKind) => stage.unitCost, [stage]);
-  const isCareDone = useCallback(
-    (kind: CareKind) => store.care[kind] >= stage.unitsPerCare,
-    [store.care, stage]
-  );
+  const commit = useCallback(async (next: TreeGrowthStore, key: string) => {
+    try { await saveJSON(key, next, { strict: true }); }
+    catch (error) {
+      if (activeKey.current === key) setSaveError('Your tree couldn’t be saved. Check free device storage and try again.');
+      throw error;
+    }
+    if (activeKey.current === key) {
+      storeRef.current = next;
+      setStore(next);
+      setNow(next.lastSeenAt);
+      setSaveError(null);
+    }
+  }, []);
 
-  const addCare = useCallback<TreeGrowthState['addCare']>(
-    (kind) => {
-      // Chain onto whatever purchase is already in flight so two calls
-      // never race against the same storeRef snapshot.
-      const run = addCareQueue.current.then(async () => {
-        const current = storeRef.current;
-        const curStage = TREE_STAGES.find((s) => s.id === current.stageId) ?? TREE_STAGES[0];
-        const curIdx = stageIndex(curStage.id);
-        const alreadyMaxed = curIdx === TREE_STAGES.length - 1 && CARE_KINDS.every((k) => current.care[k] >= curStage.unitsPerCare);
-        if (alreadyMaxed) return false;
-        if (current.care[kind] >= curStage.unitsPerCare) return false;
-
-        const ok = await spend(curStage.unitCost, `${curStage.name} · ${kind}`);
-        if (!ok) return false;
-
-        const nextCare: CareProgress = { ...current.care, [kind]: current.care[kind] + 1 };
-        const stageDone = CARE_KINDS.every((k) => nextCare[k] >= curStage.unitsPerCare);
-        const atLastStage = curIdx === TREE_STAGES.length - 1;
-
-        let next: Stored;
-        if (stageDone && !atLastStage) {
-          const nextStage = TREE_STAGES[curIdx + 1];
-          next = { ...current, stageId: nextStage.id, care: zeroCare() };
-        } else {
-          next = { ...current, care: nextCare };
-        }
-        storeRef.current = next;
-        setStore(next);
-        await saveJSON(storeKey, next);
-        return true;
-      });
-      addCareQueue.current = run;
-      return run;
-    },
-    [spend, storeKey]
-  );
-
-  const plantNew = useCallback(async () => {
-    const current = storeRef.current;
-    const curStage = TREE_STAGES.find((s) => s.id === current.stageId) ?? TREE_STAGES[0];
-    const curIdx = stageIndex(curStage.id);
-    const done = curIdx === TREE_STAGES.length - 1 && CARE_KINDS.every((k) => current.care[k] >= curStage.unitsPerCare);
-    if (!done) return;
-    const next: Stored = { stageId: 'seed', care: zeroCare(), forest: current.forest + 1 };
-    storeRef.current = next;
-    setStore(next);
-    await saveJSON(storeKey, next);
+  // Care, activity credit, harvest and replant share one queue. Rapid taps
+  // cannot double-spend, duplicate a week, mint apples or archive twice.
+  const serialize = useCallback((operation: (current: TreeGrowthStore, time: number, key: string) => Promise<boolean>) => {
+    const key = storeKey;
+    const run = queue.current.catch(() => false).then(async () => {
+      if (!loadedRef.current || activeKey.current !== key) return false;
+      const time = Math.max(Date.now(), storeRef.current.lastSeenAt);
+      setNow(time);
+      return operation(atCurrentWeek(storeRef.current, time), time, key);
+    });
+    queue.current = run;
+    return run;
   }, [storeKey]);
 
-  const value = useMemo<TreeGrowthState>(
-    () => ({
-      stage,
-      stageNumber: idx + 1,
-      stageCount: TREE_STAGES.length,
-      care: store.care,
-      forest: store.forest,
-      isFullyGrown,
-      costFor,
-      isCareDone,
-      addCare,
-      plantNew,
-    }),
-    [stage, idx, store.care, store.forest, isFullyGrown, costFor, isCareDone, addCare, plantNew]
-  );
+  const addCare = useCallback((kind: CareKind) => serialize(async (current, time, key) => {
+    if (!CARE_KINDS.includes(kind) || current.care[kind] === 1) return false;
+    if (!await spend(WEEKLY_CARE_COST, `Weekly tree care · ${CARE_LABEL[kind]}`)) return false;
+    const care = { ...current.care, [kind]: 1 };
+    const careWeeks = CARE_KINDS.every((item) => care[item] === 1)
+      ? [...new Set([...current.careWeeks, current.careWeek])].sort() : current.careWeeks;
+    try { await commit({ ...current, care, careWeeks, careHistory: { ...current.careHistory, [current.careWeek]: care }, lastSeenAt: time }, key); }
+    catch (error) { await adjust(WEEKLY_CARE_COST, 'Tree care not saved · gem returned'); throw error; }
+    return true;
+  }), [serialize, spend, adjust, commit]);
 
+  const recordOutdoorWeek = useCallback((finishedAt: number) => serialize(async (current, time, key) => {
+    if (!Number.isFinite(finishedAt) || finishedAt < current.plantedAt || finishedAt > time) return false;
+    const week = weekKey(new Date(finishedAt));
+    if (current.outdoorWeeks.includes(week)) return false;
+    await commit({ ...current, outdoorWeeks: [...current.outdoorWeeks, week].sort(), lastSeenAt: time }, key);
+    return true;
+  }), [serialize, commit]);
+
+  const harvestApple = useCallback(() => serialize(async (current, time, key) => {
+    if (!treeStatus(current, time).canHarvest) return false;
+    await commit({ ...current, goldenApples: current.goldenApples + 1, harvestedWeeks: [...current.harvestedWeeks, current.careWeek], lastSeenAt: time }, key);
+    return true;
+  }), [serialize, commit]);
+
+  const plantNew = useCallback(() => serialize(async (current, time, key) => {
+    if (!treeStatus(current, time).isSage) return false;
+    await commit({ ...emptyTree(time), forest: current.forest + 1, goldenApples: current.goldenApples, harvestedWeeks: current.harvestedWeeks }, key);
+    return true;
+  }), [serialize, commit]);
+
+  const status = useMemo(() => treeStatus(store, now), [store, now]);
+  const isCareDone = useCallback((kind: CareKind) => status.care[kind] === 1, [status.care]);
+  const costFor = useCallback((_kind: CareKind) => WEEKLY_CARE_COST, []);
+  const value = useMemo<TreeGrowthState>(() => ({ ...status, saveError, costFor, isCareDone, addCare, recordOutdoorWeek, harvestApple, plantNew }),
+    [status, saveError, costFor, isCareDone, addCare, recordOutdoorWeek, harvestApple, plantNew]);
   if (!loaded) return null;
-
   return <TreeGrowthContext.Provider value={value}>{children}</TreeGrowthContext.Provider>;
 }
-
+export function useOptionalTreeGrowth() { return useContext(TreeGrowthContext); }
 export function useTreeGrowth() {
-  const ctx = useContext(TreeGrowthContext);
-  if (!ctx) throw new Error('useTreeGrowth must be used inside <TreeGrowthProvider />');
-  return ctx;
+  const context = useOptionalTreeGrowth();
+  if (!context) throw new Error('useTreeGrowth must be used inside <TreeGrowthProvider />');
+  return context;
 }
-

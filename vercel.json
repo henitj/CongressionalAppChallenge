@@ -184,6 +184,14 @@
     {
       "source": "/assets/:path*",
       "destination": "/app/assets/:path*"
+    },
+    {
+      "source": "/:screen(home|track|more|active-tracking|trails|profile|impact|challenges|tree|conditions|streak|assistant|recap|safety|settings|history|badges)",
+      "destination": "/app/index.html"
+    },
+    {
+      "source": "/activity/:activityId",
+      "destination": "/app/index.html"
     }
   ]
 }

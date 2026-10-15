@@ -1,5 +1,5 @@
 import React from 'react';
-import { View, Text, StyleSheet, Platform } from 'react-native';
+import { View, Text, StyleSheet, Platform, useWindowDimensions } from 'react-native';
 import { createBottomTabNavigator } from '@react-navigation/bottom-tabs';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import type { LinkingOptions } from '@react-navigation/native';
@@ -72,19 +72,25 @@ const TABS: { name: string; icon: IconName; label: string }[] = [
 ];
 
 function TabItem({ icon, label, focused }: { icon: IconName; label: string; focused: boolean }) {
-  const { colors, fontScale } = useTheme();
+  const { colors, fontScale, appearance } = useTheme();
+  const { width } = useWindowDimensions();
+  const activeInk = appearance === 'dark' ? colors.primaryDark : '#FFFFFF';
+  const activeFill = appearance === 'dark' ? colors.primary : colors.primaryDark;
   return (
-    <View style={[styles.tabItem, { width: Math.round(72 * Math.max(1, fontScale)) }]}>
+    <View testID={`tab-${label.toLowerCase()}${focused ? '-active' : ''}`} style={[styles.tabItem, {
+      width: Math.min(Math.floor(width / 3) - 10, Math.round(90 * Math.max(1, fontScale))),
+      backgroundColor: focused ? activeFill : 'transparent',
+    }]}>
       <Icon
         name={icon}
         size={Math.round(24 * Math.max(1, fontScale))}
-        color={focused ? colors.primary : colors.textMuted}
+        color={focused ? activeInk : colors.textMuted}
         strokeWidth={focused ? 2.2 : 1.8}
       />
       <Text
         style={[
           styles.tabLabel,
-          { color: focused ? colors.primary : colors.textMuted, fontSize: Math.round(12 * fontScale) },
+          { color: focused ? activeInk : colors.textMuted, fontSize: Math.round(12 * fontScale) },
         ]}
         numberOfLines={1}
         accessibilityLabel={label}
@@ -108,11 +114,12 @@ function Tabs() {
           headerShown: false,
           unmountOnBlur: true,
           tabBarShowLabel: false,
+          tabBarAccessibilityLabel: tab?.label ?? route.name,
           tabBarStyle: [
             styles.tabBar,
             { backgroundColor: colors.surface, borderTopColor: colors.border, height: barHeight },
           ],
-          tabBarItemStyle: { paddingTop: 6 },
+          tabBarItemStyle: { paddingTop: 0 },
           tabBarIcon: ({ focused }) => (
             <TabItem icon={tab?.icon ?? 'circle'} label={tab?.label ?? route.name} focused={focused} />
           ),
@@ -172,7 +179,11 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     justifyContent: 'center',
     gap: 4,
-    width: 72,
+    width: 90,
+    minHeight: 56,
+    paddingVertical: 7,
+    paddingHorizontal: 12,
+    borderRadius: 18,
   },
   tabLabel: {
     fontSize: 12,

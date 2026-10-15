@@ -18,6 +18,32 @@ export function mergeAccountData(name: string, source: any, destination: any): a
     return [...items.values()].sort((a, b) => (b.startedAt ?? b.timestamp ?? b.date ?? 0) - (a.startedAt ?? a.timestamp ?? a.date ?? 0));
   }
   if (source && destination && typeof source === 'object' && typeof destination === 'object') {
+    if (name === 'trail-ratings') return { ...source, ...destination };
+    if (name === 'tree-growth' && ([2, 3].includes(source.version) || [2, 3].includes(destination.version))) {
+      const v2 = [2, 3].includes(source.version) ? source : destination;
+      const other = [2, 3].includes(source.version) && [2, 3].includes(destination.version) ? destination : {};
+      const union = (field: string) => [...new Set([...(Array.isArray(v2[field]) ? v2[field] : []), ...(Array.isArray(other[field]) ? other[field] : [])])].sort();
+      const validTime = (value: any) => typeof value === 'number' && Number.isFinite(value) && value > 0 ? value : Infinity;
+      const current = (other.careWeek ?? '') > (v2.careWeek ?? '') ? other : v2;
+      const care = { ...current.care };
+      if (v2.careWeek === other.careWeek) for (const kind of ['water', 'sun', 'nutrients']) care[kind] = Math.max(v2.care?.[kind] ?? 0, other.care?.[kind] ?? 0);
+      const harvestedWeeks = union('harvestedWeeks');
+      const careHistory: Record<string, any> = {};
+      for (const tree of [v2, other]) {
+        for (const week of tree.careWeeks ?? []) careHistory[week] = { water: 1, sun: 1, nutrients: 1 };
+        for (const [week, value] of Object.entries(tree.careHistory ?? {}) as [string, any][]) {
+          const old = careHistory[week] ?? {};
+          careHistory[week] = { water: Math.max(old.water ?? 0, value?.water ?? 0), sun: Math.max(old.sun ?? 0, value?.sun ?? 0), nutrients: Math.max(old.nutrients ?? 0, value?.nutrients ?? 0) };
+        }
+      }
+      return { ...v2, ...other, version: 3, careHistory,
+        plantedAt: Math.min(validTime(v2.plantedAt), validTime(other.plantedAt)),
+        lastSeenAt: Math.max(v2.lastSeenAt ?? 0, other.lastSeenAt ?? 0),
+        careWeek: current.careWeek, care, careWeeks: union('careWeeks'), outdoorWeeks: union('outdoorWeeks'), harvestedWeeks,
+        forest: Math.max(source.forest ?? 0, destination.forest ?? 0),
+        goldenApples: Math.max(v2.goldenApples ?? 0, other.goldenApples ?? 0, harvestedWeeks.length),
+      };
+    }
     if (name === 'user_profile') {
       const result = { ...source, ...destination };
       for (const key of ['firstName', 'lastName', 'age', 'heightInches', 'weightPounds', 'stepLengthInches', 'createdAt', 'avatarUri']) {

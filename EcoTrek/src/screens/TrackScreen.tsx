@@ -1,10 +1,9 @@
 import React, { useCallback, useEffect, useMemo } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
-
+import { View, Text, StyleSheet, Pressable, useWindowDimensions } from 'react-native';
 import { useNavigation, useRoute } from '@react-navigation/native';
+
 import Header from '../components/Header';
 import Icon from '../components/Icon';
-import TrailScene from '../components/TrailScene';
 import ActivityCharacter from '../components/ActivityCharacter';
 import { Screen, Banner } from '../components/ui';
 import { ColorPalette, RADIUS, SPACING, TREE_RULES } from '../constants/theme';
@@ -14,22 +13,18 @@ import { useResetOnLeave } from '../hooks/useResetOnLeave';
 import { useStartActivity } from '../hooks/useStartActivity';
 import { Typography, useTheme } from '../context/ThemeContext';
 
-/**
- * The Start tab. One job: start a walk or a ride.
- *
- * The whole screen is the button's stage — an illustration of the trail fills
- * the space above it instead of a paragraph explaining what a walk is. No
- * unnecessary steps: pick Walk or Bike, press Start, go. The page can scroll
- * on short screens and with large text.
- */
+/** No decorative trail hero: the two activity choices are the focus. */
 export default function TrackScreen() {
   const route = useRoute<any>();
   const navigation = useNavigation<any>();
   const { permission, usingFallbackLocation, requestLocation } = useApp();
   const { report } = useWeather();
   const { mode, setMode, start, starting } = useStartActivity('hike');
+  const { width, height } = useWindowDimensions();
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+  const artHeight = Math.min(214, Math.max(140, height * 0.25));
+  const artWidth = Math.min(240, (Math.min(width, 720) - 80) / 2);
 
   useEffect(() => {
     if (route.params?.mode === 'hike' || route.params?.mode === 'bike') {
@@ -38,21 +33,15 @@ export default function TrackScreen() {
     }
   }, [route.params?.mode, navigation, setMode]);
 
-  useResetOnLeave(
-    useCallback(() => {
-      setMode('hike');
-    }, [setMode])
-  );
+  useResetOnLeave(useCallback(() => setMode('hike'), [setMode]));
 
-  const treeLine =
-    mode === 'hike'
-      ? `1 tree per ${TREE_RULES.hikeMilesPerTree} mile walked`
-      : `1 tree per ${TREE_RULES.bikeMilesPerTree} miles ridden`;
+  const treeLine = mode === 'hike'
+    ? `1 symbolic tree per ${TREE_RULES.hikeMilesPerTree} mile walked`
+    : `1 symbolic tree per ${TREE_RULES.bikeMilesPerTree} miles ridden`;
 
   return (
     <Screen contentStyle={{ paddingBottom: SPACING.lg }}>
-      <Header title="Start" subtitle="Ready when you are" />
-
+      <Header title="Start" subtitle="A little fresh air goes a long way" />
       <View style={styles.body}>
         {report && report.level !== 'good' ? (
           <Banner
@@ -63,21 +52,16 @@ export default function TrackScreen() {
           />
         ) : null}
 
-        {/* The stage: illustration fills whatever height is left over. */}
-        <View style={styles.hero}>
-          <TrailScene mode={mode} />
-          <View style={styles.heroCaption}>
-            <Icon name="tree" size={15} color={colors.primary} strokeWidth={2} />
-            <Text style={styles.heroCaptionText} numberOfLines={1}>
-              {treeLine}
-            </Text>
-          </View>
+        <View style={styles.heading}>
+          <Text style={styles.eyebrow}>YOUR NEXT ADVENTURE</Text>
+          <Text style={styles.title}>How are you heading out?</Text>
+          <Text style={styles.subtitle}>Choose your pace. We’ll take care of the miles.</Text>
         </View>
 
-        <View style={styles.modeRow} accessibilityRole="radiogroup">
+        <View style={styles.modeRow} accessibilityRole="radiogroup" accessibilityLabel="Activity type">
           {([
-            { value: 'hike' as const, title: 'Walk', subtitle: 'On foot' },
-            { value: 'bike' as const, title: 'Bike', subtitle: 'Ride' },
+            { value: 'hike' as const, title: 'Walk', subtitle: 'One step at a time', icon: 'boot' as const },
+            { value: 'bike' as const, title: 'Bike', subtitle: 'Find your own rhythm', icon: 'bike' as const },
           ]).map((option) => {
             const selected = mode === option.value;
             return (
@@ -86,144 +70,92 @@ export default function TrackScreen() {
                 onPress={() => setMode(option.value)}
                 accessibilityRole="radio"
                 accessibilityState={{ checked: selected }}
-                accessibilityLabel={`${option.title}, ${option.subtitle}`}
-                style={({ pressed }) => [
-                  styles.modeCard,
-                  selected && styles.modeCardSelected,
-                  pressed && { opacity: 0.84 },
-                ]}
+                aria-checked={selected}
+                accessibilityLabel={`${option.title}, ${option.value === 'hike' ? 'On foot' : 'Ride'}`}
+                testID={`activity-${option.value}`}
+                style={({ pressed }) => [styles.modeCard, selected && styles.modeCardSelected, pressed && { opacity: 0.86 }]}
               >
-                <ActivityCharacter mode={option.value} size={56} />
-                <View style={styles.modeCopy}>
-                  <Text style={styles.modeTitle}>{option.title}</Text>
-                  <Text style={styles.modeSubtitle}>{option.subtitle}</Text>
-                </View>
                 <View style={[styles.modeCheck, selected && styles.modeCheckSelected]}>
-                  {selected ? <Icon name="check" size={13} color="#fff" strokeWidth={3} /> : null}
+                  {selected ? <Icon name="check" size={14} color="#fff" strokeWidth={2.6} /> : null}
                 </View>
+                <View style={styles.art}>
+                  <ActivityCharacter mode={option.value} size={artWidth} height={artHeight} />
+                </View>
+                <View style={styles.modeTitleRow}>
+                  <Icon name={option.icon} size={20} color={colors.primary} />
+                  <Text style={styles.modeTitle}>{option.title}</Text>
+                </View>
+                <Text style={styles.modeSubtitle}>{option.subtitle}</Text>
               </Pressable>
             );
           })}
+        </View>
+
+        <View style={styles.impactNote}>
+          <Icon name="tree" size={19} color={colors.primary} />
+          <Text style={styles.impactText}>{treeLine}</Text>
         </View>
 
         <Pressable
           onPress={start}
           disabled={starting}
           accessibilityRole="button"
+          accessibilityState={{ disabled: starting, busy: starting }}
           accessibilityLabel={mode === 'bike' ? 'Start ride' : 'Start walk'}
-          style={({ pressed }) => [
-            styles.startBtn,
-            { backgroundColor: colors.primary },
-            pressed && { opacity: 0.88, transform: [{ scale: 0.995 }] },
-          ]}
+          style={({ pressed }) => [styles.startBtn, (pressed || starting) && { opacity: 0.8 }]}
         >
-          <View style={styles.startIcon}>
-            <Icon name="play" size={22} color={colors.primary} strokeWidth={2.4} filled />
-          </View>
-          <Text style={styles.startLabel} numberOfLines={1}>
-            {starting ? 'Starting…' : mode === 'bike' ? 'Start ride' : 'Start walk'}
-          </Text>
+          <Icon name="play" size={22} color="#fff" filled />
+          <Text style={styles.startLabel}>{starting ? 'Starting…' : mode === 'bike' ? 'Start ride' : 'Start walk'}</Text>
+          <Icon name="arrow-right" size={22} color="#fff" />
         </Pressable>
 
         {usingFallbackLocation || permission !== 'granted' ? (
-          <Pressable onPress={() => requestLocation({ explain: true })} hitSlop={8}>
-            <Text style={styles.permissionNote} numberOfLines={3}>
+          <Pressable onPress={() => requestLocation({ explain: true })} style={styles.locationNote} accessibilityRole="button">
+            <Icon name="map-pin" size={16} color={colors.textMuted} />
+            <Text style={styles.permissionNote}>
               {permission === 'denied'
-                ? 'Location access is off. Tap to see how to restore permission.'
-                : 'No GPS fix yet. Check that device Location is on, then tap to retry.'}
+                ? 'Location is off. Tap to restore GPS access.'
+                : 'GPS connects when you start. Tap to check location.'}
             </Text>
           </Pressable>
-        ) : null}
+        ) : (
+          <Text style={[styles.permissionNote, { textAlign: 'center' }]}>GPS ready · Your route stays on this device</Text>
+        )}
       </View>
     </Screen>
   );
 }
 
-// Geometry lives here; every colour and text size comes from the theme, so
-// this screen re-themes and re-scales for free.
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
-    body: {
-      flex: 1,
-      paddingHorizontal: SPACING.md,
-      paddingBottom: SPACING.md,
-      gap: SPACING.md + 2,
-    },
-
-    hero: {
-      aspectRatio: 320 / 280,
-      minHeight: 170,
-      borderRadius: RADIUS.xxl,
-      overflow: 'hidden',
-      backgroundColor: c.primarySurface,
-      borderWidth: 0,
-      justifyContent: 'flex-end',
-    },
-    heroCaption: {
-      margin: SPACING.sm,
-      maxWidth: '95%',
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: 7,
-      alignSelf: 'flex-start',
-      paddingVertical: 8,
-      paddingHorizontal: SPACING.md - 2,
-      borderRadius: RADIUS.pill,
-      backgroundColor: c.surface,
-      borderWidth: 0,
-    },
-    heroCaptionText: { ...t.smallMed, color: c.text, flexShrink: 1 },
-
-    modeRow: { flexDirection: 'row', gap: SPACING.sm },
+    body: { paddingHorizontal: SPACING.md, paddingBottom: SPACING.md, gap: SPACING.lg },
+    heading: { gap: 8 },
+    eyebrow: { ...t.overline, color: c.primary },
+    title: { ...t.h2, color: c.text },
+    subtitle: { ...t.small, color: c.textMuted },
+    modeRow: { flexDirection: 'row', gap: 12 },
     modeCard: {
-      flex: 1,
-      minWidth: 0,
-      minHeight: 82,
-      flexDirection: 'row',
-      alignItems: 'center',
-      gap: SPACING.xs,
-      paddingVertical: SPACING.xs,
-      paddingHorizontal: SPACING.xs,
-      borderRadius: RADIUS.xl,
-      borderWidth: 1.5,
-      borderColor: c.border,
-      backgroundColor: c.surface,
+      flex: 1, minWidth: 0, alignItems: 'center', paddingHorizontal: 10, paddingTop: 24, paddingBottom: 20,
+      borderRadius: 24, borderWidth: 2, borderColor: c.borderLight, backgroundColor: c.surface,
     },
     modeCardSelected: { borderColor: c.primary, backgroundColor: c.primarySurface },
-    modeCopy: { flex: 1, minWidth: 0, gap: 2 },
-    modeTitle: { ...t.bodyMed, color: c.text },
-    modeSubtitle: { ...t.micro, color: c.textMuted },
     modeCheck: {
-      width: 20,
-      height: 20,
-      borderRadius: 10,
-      borderWidth: 1.5,
-      borderColor: c.border,
-      alignItems: 'center',
-      justifyContent: 'center',
+      position: 'absolute', top: 12, right: 12, width: 24, height: 24, borderRadius: 12,
+      borderWidth: 1.5, borderColor: c.borderStrong, alignItems: 'center', justifyContent: 'center',
     },
-    modeCheckSelected: { borderColor: c.primary, backgroundColor: c.primary },
-
+    modeCheckSelected: { borderColor: c.primaryMid, backgroundColor: c.primaryMid },
+    art: { alignItems: 'center', justifyContent: 'center', marginBottom: 16 },
+    modeTitleRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7 },
+    modeTitle: { ...t.h3, color: c.text },
+    modeSubtitle: { ...t.micro, color: c.textMuted, textAlign: 'center', marginTop: 6 },
+    impactNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8 },
+    impactText: { ...t.micro, color: c.textSecondary, flexShrink: 1 },
     startBtn: {
-      borderRadius: RADIUS.xxl,
-      minHeight: 76,
-      paddingVertical: SPACING.md,
-      paddingHorizontal: SPACING.lg,
-      alignItems: 'center',
-      justifyContent: 'center',
-      flexDirection: 'row',
-      gap: SPACING.sm + 4,
+      borderRadius: RADIUS.xl, minHeight: 64, paddingVertical: 18, paddingHorizontal: SPACING.lg,
+      alignItems: 'center', justifyContent: 'center', flexDirection: 'row', gap: 12, backgroundColor: c.primaryMid,
     },
-    startIcon: {
-      width: 40,
-      height: 40,
-      borderRadius: 20,
-      backgroundColor: 'rgba(255,255,255,0.92)',
-      alignItems: 'center',
-      justifyContent: 'center',
-    },
-    startLabel: { ...t.h2, color: '#fff', fontWeight: '700', letterSpacing: -0.2 },
-
-    permissionNote: { ...t.small, color: c.textMuted, textAlign: 'center' },
+    startLabel: { ...t.h3, color: '#fff', fontWeight: '700', flex: 1, textAlign: 'center' },
+    locationNote: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 7, minHeight: 44 },
+    permissionNote: { ...t.micro, color: c.textMuted, flexShrink: 1, lineHeight: 19 },
   });
 }

@@ -34,6 +34,22 @@ public class AppChromeClient extends WebChromeClient {
                 MainActivity.REQ_LOCATION);
     }
 
+    /** Auth popups must remain real child windows, not external browser tabs. */
+    @Override
+    public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture,
+                                  android.os.Message resultMsg) {
+        if (!isUserGesture || !(resultMsg.obj instanceof WebView.WebViewTransport)) {
+            return false;
+        }
+        AuthPopup popup = new AuthPopup(act);
+        popup.show();
+        popup.getWindow().setLayout(-1, -1);
+        WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
+        transport.setWebView(popup.webView);
+        resultMsg.sendToTarget();
+        return true;
+    }
+
     @Override
     public boolean onShowFileChooser(
             WebView wv, ValueCallback<android.net.Uri[]> cb, FileChooserParams params) {

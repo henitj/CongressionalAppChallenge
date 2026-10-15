@@ -147,7 +147,7 @@ describe('the real app shell', () => {
   jest.setTimeout(20000);
   it('boots through the onboarding gate to the three tabs', async () => {
     const utils = render(<FullApp />);
-    await waitFor(() => expect(utils.queryByText('Your last walk')).toBeTruthy(), {
+    await waitFor(() => expect(utils.queryByText('A little time outside.')).toBeTruthy(), {
       timeout: 10000,
     });
     // The three tabs render their labels as text.
@@ -165,14 +165,14 @@ describe('the real app shell', () => {
       timeout: 10000,
     });
     fireEvent.press(first.getByLabelText('Skip introduction'));
-    await waitFor(() => expect(first.queryByText('Your last walk')).toBeTruthy(), {
+    await waitFor(() => expect(first.queryByText('A little time outside.')).toBeTruthy(), {
       timeout: 10000,
     });
     expect(await AsyncStorage.getItem('@ecotrek/test-user/start_tutorial_complete')).toBe('true');
     first.unmount();
 
     const second = render(<FullApp />);
-    await waitFor(() => expect(second.queryByText('Your last walk')).toBeTruthy(), {
+    await waitFor(() => expect(second.queryByText('A little time outside.')).toBeTruthy(), {
       timeout: 10000,
     });
     expect(second.queryByText('Tap Start. Then walk.')).toBeNull();
@@ -180,23 +180,23 @@ describe('the real app shell', () => {
 
   it('switching tabs really switches screens', async () => {
     const utils = render(<FullApp />);
-    await waitFor(() => expect(utils.queryByText('Your last walk')).toBeTruthy(), {
+    await waitFor(() => expect(utils.queryByText('A little time outside.')).toBeTruthy(), {
       timeout: 10000,
     });
 
     fireEvent.press(utils.getAllByLabelText('Start')[0]);
-    await waitFor(() => expect(utils.queryByText(/1 tree per 1 mile/)).toBeTruthy());
+    await waitFor(() => expect(utils.queryByText(/1 symbolic tree per 1 mile/)).toBeTruthy());
 
     fireEvent.press(utils.getAllByLabelText('More')[0]);
     await waitFor(() => expect(utils.queryByText('My walks')).toBeTruthy());
 
     fireEvent.press(utils.getAllByLabelText('Home')[0]);
-    await waitFor(() => expect(utils.queryByText('Your last walk')).toBeTruthy());
+    await waitFor(() => expect(utils.queryByText('A little time outside.')).toBeTruthy());
   });
 
   it('More keeps Trails, Profile and Impact visible and hides Clubs', async () => {
     const utils = render(<FullApp />);
-    await waitFor(() => expect(utils.queryByText('Your last walk')).toBeTruthy(), {
+    await waitFor(() => expect(utils.queryByText('A little time outside.')).toBeTruthy(), {
       timeout: 10000,
     });
 
@@ -211,7 +211,7 @@ describe('the real app shell', () => {
 
   it('the Impact screen can log a cleanup (the sheet is reachable)', async () => {
     const utils = render(<FullApp />);
-    await waitFor(() => expect(utils.queryByText('Your last walk')).toBeTruthy(), {
+    await waitFor(() => expect(utils.queryByText('A little time outside.')).toBeTruthy(), {
       timeout: 10000,
     });
 
@@ -234,7 +234,7 @@ describe('the real app shell', () => {
 
   it('Settings offers text size and look but not Simple mode or Less motion', async () => {
     const utils = render(<FullApp />);
-    await waitFor(() => expect(utils.queryByText('Your last walk')).toBeTruthy(), {
+    await waitFor(() => expect(utils.queryByText('A little time outside.')).toBeTruthy(), {
       timeout: 10000,
     });
 

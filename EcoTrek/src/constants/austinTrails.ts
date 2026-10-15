@@ -1,4 +1,4 @@
-import { api, isBackendConfigured, ROUTES } from '../services/api';
+import { apiRequest, isBackendConfigured, ROUTES } from '../services/api';
 import { haversineMiles } from '../services/geo';
 import {
   fetchOsmTrails,
@@ -514,12 +514,14 @@ export async function fetchNearbyTrails(
   }
 
   const nearAustin = isNearAustin(lat, lon);
-  const [place, osmResult] = await Promise.all([
+  const serverTask = isBackendConfigured() ? apiRequest<Trail[]>(`${ROUTES.trails}?lat=${lat}&lon=${lon}`, { method: 'GET', timeoutMs: 6000 }) : Promise.resolve(null);
+  const [place, osmResult, serverResult] = await Promise.all([
     fetchPlace(lat, lon).catch(() => ({ name: null, countryCode: null, country: null })),
     fetchOsmTrails(lat, lon, nearAustin ? 'Austin' : 'Nearby').catch((e) => {
       console.warn('[trails] OSM lookup failed', e);
       return [] as Trail[];
     }),
+    serverTask,
   ]);
 
   if (!isInServiceArea(lat, lon, place.countryCode)) {
@@ -536,12 +538,11 @@ export async function fetchNearbyTrails(
   const live = osmResult.map((t) => (t.area === 'Nearby' && region !== 'Nearby' ? { ...t, area: region } : t));
 
   let fromServer: Trail[] = [];
-  if (isBackendConfigured()) {
-    const res = await api.get<Trail[]>(`${ROUTES.trails}?lat=${lat}&lon=${lon}`);
-    if (res.ok && Array.isArray(res.data)) {
+  if (serverResult) {
+    if (serverResult.ok && Array.isArray(serverResult.data)) {
       // Only keep server rows that are actually near the user. An old API
       // that ignores lat/lon would otherwise dump Austin onto a NYC phone.
-      fromServer = res.data.filter((t) => {
+      fromServer = serverResult.data.filter((t) => {
         if (t.startLat == null || t.startLng == null) return false;
         return haversineMiles({ latitude: lat, longitude: lon }, { latitude: t.startLat, longitude: t.startLng }) <= 40;
       });

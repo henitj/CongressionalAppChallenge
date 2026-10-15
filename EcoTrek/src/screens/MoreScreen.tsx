@@ -26,6 +26,7 @@ const SECTIONS: Section[] = [
       { icon: 'user', label: 'Profile', hint: 'Your photo, level and badges', to: 'Profile' },
       { icon: 'tree', label: 'Impact', hint: 'Everything you have logged', to: 'Impact' },
       { icon: 'clock', label: 'My walks', hint: 'Every walk you have saved', to: 'History' },
+      { icon: 'flame', label: 'Weekly streak', hint: 'Your steady rhythm', to: 'Streak' },
     ],
   },
   {
@@ -33,7 +34,8 @@ const SECTIONS: Section[] = [
     rows: [
       { icon: 'map', label: 'Trails', hint: 'Walks and rides near you', to: 'Trails' },
       { icon: 'target', label: 'Weekly goals', hint: 'Five small things this week', to: 'Challenges' },
-      { icon: 'gem', label: 'Your tree', hint: 'Spend gems to grow it', to: 'Tree' },
+      { icon: 'tree', label: 'Your tree', hint: 'A little care, week by week', to: 'Tree' },
+      { icon: 'sparkles', label: 'Assistant', hint: 'Ask Grok when you need a hand', to: 'Assistant' },
     ],
   },
   {

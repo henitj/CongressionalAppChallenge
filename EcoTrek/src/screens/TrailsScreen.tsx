@@ -12,16 +12,17 @@ import { useFocusEffect, useNavigation, useRoute } from '@react-navigation/nativ
 
 import Header from '../components/Header';
 import Icon, { IconName } from '../components/Icon';
-import AssistantFab from '../components/AssistantFab';
+import { TrailRatingControls } from '../components/TrailRatingSheet';
 import Slider from '../components/Slider';
 import { TrailCover, TrailPhotoGallery } from '../components/TrailPhotos';
-import { Screen, Card, Pill, EmptyState, Sheet, Button, Banner, Divider } from '../components/ui';
+import { Screen, Card, Pill, EmptyState, Sheet, Button, Divider } from '../components/ui';
 
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { Trail } from '../constants/austinTrails';
 import { useApp } from '../context/AppContext';
 import { useSettings } from '../context/SettingsContext';
 import { useActivity } from '../context/ActivityContext';
+import { useAuth } from '../context/AuthContext';
 import { useResponsive } from '../hooks/useResponsive';
 import { useResetOnLeave } from '../hooks/useResetOnLeave';
 import { useTheme, Typography } from '../context/ThemeContext';
@@ -30,8 +31,6 @@ import {
   estimateElevationFt,
   estimateMinutes,
   formatMinutes,
-  getTrailIntel,
-  TrailIntel,
 } from '../services/trailIntel';
 
 type SortKey = 'nearest' | 'shortest' | 'longest' | 'easiest' | 'rating';
@@ -65,7 +64,7 @@ const SORTS: { value: SortKey; label: string }[] = [
   { value: 'shortest', label: 'Shortest' },
   { value: 'longest', label: 'Longest' },
   { value: 'easiest', label: 'Easiest' },
-  { value: 'rating', label: 'Top rated' },
+  { value: 'rating', label: 'Your highest rated' },
 ];
 
 const DIFFICULTY_ORDER = { Easy: 0, Moderate: 1, Hard: 2 } as const;
@@ -112,15 +111,18 @@ export default function TrailsScreen() {
     usingFallbackLocation,
     trailsRegion,
     locating,
+    trailsSource,
+    trailsError,
   } = useApp();
   const { formatDistanceCompact, formatDistanceUnit } = useSettings();
   const { history } = useActivity();
+  const { user } = useAuth();
+  const userId = user?.id ?? null;
   const { isTablet } = useResponsive();
   const openedRef = useRef(false);
 
-  // Opening Trails is the location request. It also kicks off the bounded
-  // three-attempt catalogue lookup in AppContext, so the first screen visit
-  // behaves like the user already pressed Retry a couple of times.
+  // The offline collection/saved cards are already usable. Opening Trails
+  // requests a real fix once and enriches the list without blocking it.
   useFocusEffect(
     useCallback(() => {
       if (openedRef.current) return;
@@ -146,9 +148,10 @@ export default function TrailsScreen() {
   useFocusEffect(
     useCallback(() => {
       let active = true;
-      loadTrailRatings().then((saved) => active && setRatings(saved));
+      setRatings({});
+      loadTrailRatings(userId).then((saved) => active && setRatings(saved));
       return () => { active = false; };
-    }, [])
+    }, [userId])
   );
   const [selected, setSelected] = useState<Trail | null>(null);
   const [showFilters, setShowFilters] = useState(false);
@@ -184,8 +187,7 @@ export default function TrailsScreen() {
     const id = route.params?.focusTrailId;
     if (!id) return;
     const match = trails.find((t) => t.id === id);
-    if (match) setSelected(match);
-    navigation.setParams({ focusTrailId: undefined });
+    if (match) { setSelected(match); navigation.setParams({ focusTrailId: undefined }); }
   }, [route.params?.focusTrailId, trails, navigation]);
 
   const completedIds = useMemo(
@@ -226,9 +228,10 @@ export default function TrailsScreen() {
         sorted.sort((a, b) => DIFFICULTY_ORDER[a.difficulty] - DIFFICULTY_ORDER[b.difficulty]);
         break;
       case 'rating':
-        sorted.sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0));
+        sorted.sort((a, b) => (ratings[b.id] ?? 0) - (ratings[a.id] ?? 0) || (a.distanceFromUserMi ?? 0) - (b.distanceFromUserMi ?? 0));
         break;
       default: {
+        if (usingFallbackLocation) return sorted;
         // Ratings tailor discovery without hiding nearby choices. Trails that
         // resemble a highly-rated trail (same activity and difficulty) receive
         // a modest distance bonus; low ratings push similar options down.
@@ -241,189 +244,36 @@ export default function TrailsScreen() {
       }
     }
     return sorted;
-  }, [trails, filters, maxLen, maxAway, maxClimb, sort, query, ratings]);
+  }, [trails, filters, maxLen, maxAway, maxClimb, sort, query, ratings, usingFallbackLocation]);
 
-  const completedCount = completedIds.size;
+  const saveRating = (id: string, stars: number) => setRatings((previous) => {
+    const next = { ...previous };
+    if (stars) next[id] = stars; else delete next[id];
+    return next;
+  });
+  const subtitle = trailsSource === 'collection' ? 'Offline collection · Austin, TX' : trailsSource === 'cached' ? `${trailsRegion ?? 'Saved trails'} · saved` : trailsRegion ?? (trailsSource === 'unsupported' ? 'Outside our discovery area' : 'Walks and rides near you');
 
   return (
-    <View style={{ flex: 1 }}>
-    <Screen
-      refreshControl={
-        <RefreshControl refreshing={trailsLoading} onRefresh={refreshTrails} tintColor={colors.textMuted} />
-      }
-    >
-      <Header
-        title="Trails"
-        subtitle={
-          trailsRegion
-            ? `${trailsRegion} · ${completedCount} of ${trails.length} completed`
-            : `${completedCount} of ${trails.length} completed`
-        }
-        back
-        actions={[{ icon: 'shield', onPress: () => navigation.navigate('Safety'), label: 'Safety' }]}
-      />
-
+    <Screen refreshControl={<RefreshControl refreshing={trailsLoading && trails.length === 0} onRefresh={refreshTrails} tintColor={colors.textMuted} />}>
+      <Header title="Trails" subtitle={subtitle} back actions={[{ icon: 'shield', onPress: () => navigation.navigate('Safety'), label: 'Safety' }]} />
       <View style={styles.body}>
-        {/* Search */}
         <View style={styles.searchRow}>
-          <View style={styles.search}>
-            <Icon name="search" size={16} color={colors.textLight} strokeWidth={2} />
-            <TextInput
-              value={query}
-              onChangeText={setQuery}
-              placeholder="Search trails"
-              placeholderTextColor={colors.textLight}
-              style={styles.searchInput}
-              autoCorrect={false}
-              returnKeyType="search"
-            />
-            {query.length > 0 ? (
-              <Pressable onPress={() => setQuery('')} hitSlop={8}>
-                <Icon name="x" size={15} color={colors.textLight} strokeWidth={2.2} />
-              </Pressable>
-            ) : null}
-          </View>
-          <Pressable
-            onPress={() => setShowFilters(true)}
-            style={styles.sortBtn}
-            accessibilityLabel="Filters and sort"
-          >
-            <Icon name="filter" size={16} color={colors.textSecondary} strokeWidth={1.9} />
-            {activeFilterCount > 0 ? (
-              <View style={styles.filterBadge}>
-                <Text style={styles.filterBadgeText}>{activeFilterCount}</Text>
-              </View>
-            ) : null}
-          </Pressable>
+          <View style={styles.search}><Icon name="search" size={17} color={colors.textMuted} /><TextInput value={query} onChangeText={setQuery} placeholder="Search trails" accessibilityLabel="Search trails" placeholderTextColor={colors.textMuted} style={styles.searchInput} autoCorrect={false} returnKeyType="search" />{query ? <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search"><Icon name="x" size={16} color={colors.textMuted} /></Pressable> : null}</View>
+          <Pressable onPress={() => setShowFilters(true)} style={styles.sortBtn} accessibilityRole="button" accessibilityLabel="Filters and sort"><Icon name="filter" size={19} color={colors.primary} />{activeFilterCount > 0 ? <View style={styles.filterBadge}><Text style={styles.filterBadgeText}>{activeFilterCount}</Text></View> : null}</Pressable>
         </View>
-
-        {usingFallbackLocation ? (
-          <Banner
-            tone="neutral"
-            icon="map-pin"
-            title={permission === 'denied' ? 'Location permission is off' : 'Location is unavailable'}
-            message={
-              permission === 'granted'
-                ? 'EcoTrek has access, but has not received a GPS fix yet. Turn on device Location, then try again.'
-                : 'Allow location access so EcoTrek can find trails near you and measure routes only while you record.'
-            }
-            right={
-              <Pressable onPress={() => requestLocation({ explain: true })} hitSlop={8}>
-                <Text style={styles.bannerAction}>{permission === 'denied' ? 'Settings' : 'Enable'}</Text>
-              </Pressable>
-            }
-          />
-        ) : null}
-
-        {/* Quick filters — tap several, they stack */}
+        {usingFallbackLocation ? <View style={styles.locationRow}>
+          <Icon name="map-pin" size={17} color={colors.textMuted} />
+          <Text style={[styles.locationText, { flex: 1 }]}>{locating ? 'Finding nearby trails. Keep browsing meanwhile.' : trailsSource === 'cached' ? 'Saved trails, not a current location lookup.' : 'Browse Austin offline, or find trails near you.'}</Text>
+          <Pressable onPress={() => requestLocation({ explain: true })} style={{ minHeight: 44, justifyContent: 'center' }} accessibilityRole="button"><Text style={styles.bannerAction}>{permission === 'denied' ? 'Settings' : 'Use location'}</Text></Pressable>
+        </View> : null}
+        {trailsError ? <Text style={styles.locationText} accessibilityLiveRegion="polite">{trailsError}</Text> : null}
         <View style={styles.filterRow}>
-          <Pressable
-            onPress={resetFilters}
-            style={[styles.chip, activeFilterCount === 0 && styles.chipActive]}
-          >
-            <Icon
-              name="map"
-              size={13}
-              color={activeFilterCount === 0 ? '#fff' : colors.textMuted}
-              strokeWidth={2}
-            />
-            <Text style={[styles.chipText, activeFilterCount === 0 && styles.chipTextActive]}>All</Text>
-          </Pressable>
-          {FILTERS.slice(0, 3).map((f) => {
-            const active = filters.has(f.value);
-            return (
-              <Pressable
-                key={f.value}
-                onPress={() => toggleFilter(f.value)}
-                style={[styles.chip, active && styles.chipActive]}
-              >
-                <Icon
-                  name={active ? 'check' : f.icon}
-                  size={13}
-                  color={active ? '#fff' : colors.textMuted}
-                  strokeWidth={2}
-                />
-                <Text style={[styles.chipText, active && styles.chipTextActive]}>{f.label}</Text>
-              </Pressable>
-            );
-          })}
+          <Pressable onPress={resetFilters} style={[styles.chip, activeFilterCount === 0 && styles.chipActive]} accessibilityRole="button" accessibilityState={{ selected: activeFilterCount === 0 }}><Text style={[styles.chipText, activeFilterCount === 0 && styles.chipTextActive]}>All</Text></Pressable>
+          {FILTERS.slice(0, 3).map((filter) => { const active = filters.has(filter.value); return <Pressable key={filter.value} onPress={() => toggleFilter(filter.value)} style={[styles.chip, active && styles.chipActive]} accessibilityRole="button" accessibilityState={{ selected: active }}><Icon name={active ? 'check' : filter.icon} size={14} color={active ? colors.textInverse : colors.textMuted} /><Text style={[styles.chipText, active && styles.chipTextActive]}>{filter.label}</Text></Pressable>; })}
         </View>
-
-        <View style={styles.resultRow}>
-          <Text style={styles.resultCount}>
-            {filtered.length} trail{filtered.length === 1 ? '' : 's'}
-            {sliderCount > 0
-              ? ` · ${[
-                  maxLen < LEN_MAX ? `≤ ${maxLen} mi long` : null,
-                  maxAway < AWAY_MAX ? `≤ ${maxAway} mi away` : null,
-                  maxClimb < CLIMB_MAX ? `≤ ${maxClimb} ft climb` : null,
-                ]
-                  .filter(Boolean)
-                  .join(' · ')}`
-              : ''}
-          </Text>
-          <Pressable onPress={() => setShowFilters(true)} hitSlop={8} style={styles.sortLabel}>
-            <Text style={styles.sortLabelText}>
-              {SORTS.find((s) => s.value === sort)?.label}
-            </Text>
-            <Icon name="chevron-down" size={13} color={colors.primary} strokeWidth={2.2} />
-          </Pressable>
-        </View>
-
-        {trails.length === 0 && (trailsLoading || locating) ? (
-          <EmptyState
-            icon={locating && usingFallbackLocation ? 'map-pin' : 'map'}
-            title={locating && usingFallbackLocation ? 'Finding your location' : 'Looking for trails'}
-            message={
-              locating && usingFallbackLocation
-                ? 'Hang tight — once we know where you are, we will look up walks and rides around you.'
-                : 'Checking OpenStreetMap around you. This can take a few seconds on a slow connection.'
-            }
-          />
-        ) : trails.length === 0 ? (
-          <EmptyState
-            icon="map-pin"
-            title={usingFallbackLocation ? 'See trails near you' : 'No trails nearby'}
-            message={
-              usingFallbackLocation
-                ? 'Turn on location and we will look up walks and rides around you.'
-                : 'We could not find named trails in this area. Pull to refresh, or try again in a moment.'
-            }
-            action={usingFallbackLocation ? 'Enable location' : 'Try again'}
-            onAction={() => (usingFallbackLocation ? requestLocation({ explain: true }) : refreshTrails())}
-          />
-        ) : filtered.length === 0 ? (
-          <EmptyState
-            icon="map"
-            title="No trails match"
-            message="Try removing a filter, raising a slider, or clearing the search."
-            action="Reset"
-            onAction={() => {
-              resetFilters();
-              setQuery('');
-            }}
-          />
-        ) : (
-          <View style={[styles.grid, isTablet && styles.gridTablet]}>
-            {filtered.map((t) => (
-              <View key={t.id} style={isTablet ? styles.gridHalf : styles.gridFull}>
-                <TrailCard
-                  trail={t}
-                  completed={completedIds.has(t.id)}
-                  visited={visitedIds.has(t.id)}
-                  showDistance={!usingFallbackLocation}
-                  onPress={() => setSelected(t)}
-                  formatDistance={formatDistanceCompact}
-                  unit={formatDistanceUnit()}
-                  styles={styles}
-                  colors={colors}
-                />
-              </View>
-            ))}
-          </View>
-        )}
+        <View style={styles.resultRow}><Text style={styles.resultCount}>{filtered.length} trail{filtered.length === 1 ? '' : 's'}{activeFilterCount ? ' · filtered' : ''}</Text><Pressable onPress={() => setShowFilters(true)} style={styles.sortLabel} accessibilityRole="button" accessibilityLabel="Change trail sorting"><Text style={styles.sortLabelText}>{sort === 'nearest' && usingFallbackLocation ? 'Collection order' : SORTS.find((item) => item.value === sort)?.label}</Text><Icon name="chevron-down" size={14} color={colors.primary} /></Pressable></View>
+        {trails.length === 0 && trailsSource === 'unsupported' ? <EmptyState icon="globe" title="This region isn’t supported yet" message="Nearby discovery currently covers the US, Canada and Mexico." /> : trails.length === 0 && (trailsLoading || locating) ? <View style={{ gap: 14 }}><View style={styles.loadingRow}><ActivityIndicator size="small" color={colors.primary} /><Text style={styles.locationText}>Finding nearby trails…</Text></View>{[0, 1].map((i) => <View key={i} style={styles.skeleton}><View style={styles.skeletonCover} /><View style={styles.skeletonLine} /><View style={[styles.skeletonLine, { width: '55%' }]} /></View>)}</View> : trails.length === 0 ? <EmptyState icon="map-pin" title="No trails found here yet" message="The trail service may be offline, or there may be no named routes nearby." action="Refresh nearby trails" onAction={refreshTrails} /> : filtered.length === 0 ? <EmptyState icon="map" title="No trails match" message="Try clearing the search or removing a filter." action="Reset" onAction={() => { resetFilters(); setQuery(''); }} /> : <View style={[styles.grid, isTablet && styles.gridTablet]}>{filtered.map((trail) => <View key={trail.id} style={isTablet ? styles.gridHalf : styles.gridFull}><TrailCard trail={trail} completed={completedIds.has(trail.id)} visited={visitedIds.has(trail.id)} showDistance={!usingFallbackLocation && trailsSource !== 'collection'} rating={ratings[trail.id]} onPress={() => setSelected(trail)} formatDistance={formatDistanceCompact} unit={formatDistanceUnit()} styles={styles} colors={colors} /></View>)}</View>}
       </View>
-
       {/* Filters & sort */}
       <Sheet visible={showFilters} onClose={() => setShowFilters(false)} title="Filter trails">
         <View style={{ gap: SPACING.md }}>
@@ -518,429 +368,112 @@ export default function TrailsScreen() {
         </View>
       </Sheet>
 
-      {/* Trail detail */}
-      <Sheet
-        visible={!!selected}
-        onClose={() => setSelected(null)}
-        title={selected?.name ?? ''}
-        subtitle={selected ? `${selected.area} · ${selected.difficulty}` : undefined}
-      >
-        {selected ? (
-          <TrailDetail
-            trail={selected}
-            completed={completedIds.has(selected.id)}
-            onStart={() => {
-              setSelected(null);
-              navigation.navigate('Tabs', { screen: 'Track', params: { mode: selected.type === 'bike' ? 'bike' : 'hike' } });
-            }}
-            onAsk={() => {
-              const t = selected;
-              setSelected(null);
-              navigation.navigate('Assistant', { trailId: t.id });
-            }}
-            formatDistance={formatDistanceCompact}
-            unit={formatDistanceUnit()}
-          />
-        ) : null}
+      <Sheet visible={!!selected} onClose={() => setSelected(null)} title={selected?.name ?? ''} subtitle={selected ? `${selected.area} · ${selected.difficulty}` : undefined}>
+        {selected ? <TrailDetail key={selected.id} userId={userId} trail={selected} rating={ratings[selected.id]} completed={completedIds.has(selected.id)} onRatingSaved={(stars) => saveRating(selected.id, stars)} onStart={() => { setSelected(null); navigation.navigate('Tabs', { screen: 'Track', params: { mode: selected.type === 'bike' ? 'bike' : 'hike' } }); }} formatDistance={formatDistanceCompact} unit={formatDistanceUnit()} /> : null}
       </Sheet>
     </Screen>
-
-    {/* Floating AI chat button */}
-    <AssistantFab />
-    </View>
   );
 }
 
-/* ── Detail sheet ─────────────────────────────────────────────────────── */
-
-function TrailDetail({
-  trail,
-  completed,
-  onStart,
-  onAsk,
-  formatDistance,
-  unit,
-}: {
+/** Only the essentials open by default. No AI request or article is fetched. */
+function TrailDetail({ trail, userId, completed, rating, onRatingSaved, onStart, formatDistance, unit }: {
   trail: Trail;
+  userId: string | null;
   completed: boolean;
+  rating?: number;
+  onRatingSaved: (stars: number) => void;
   onStart: () => void;
-  onAsk: () => void;
-  formatDistance: (m: number) => string;
+  formatDistance: (miles: number) => string;
   unit: string;
 }) {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
-
-  const [intel, setIntel] = useState<TrailIntel | null>(null);
-
-  useEffect(() => {
-    let alive = true;
-    setIntel(null);
-    getTrailIntel(trail).then((i) => {
-      if (alive) setIntel(i);
-    });
-    return () => {
-      alive = false;
-    };
-  }, [trail]);
-
-  const climb = estimateElevationFt(trail);
-  const climbEstimated = trail.elevationGainFt == null;
-  const mins = estimateMinutes(trail);
-
-  return (
-    <View style={{ gap: SPACING.md }}>
-      {completed ? (
-        <Banner
-          tone="success"
-          icon="check-circle"
-          title="You have completed this trail"
-          message="It counts toward your Trail Master badge."
-        />
-      ) : null}
-
-      <TrailPhotoGallery trail={trail} />
-
-      {/* Key numbers — length, climb, average time, rating */}
-      <View style={styles.detailStats}>
-        <DetailStat
-          icon="activity"
-          value={`${formatDistance(trail.distanceMiles)} ${unit}`}
-          label="Length"
-        />
-        <DetailStat
-          icon="mountain"
-          value={`${climbEstimated ? '~' : ''}${climb} ft`}
-          label="Climb"
-        />
-        <DetailStat icon="clock" value={formatMinutes(mins)} label="Avg time" />
-        <DetailStat
-          icon="star"
-          value={trail.rating ? String(trail.rating) : '—'}
-          label="Rating"
-        />
-      </View>
-
-      <Text style={styles.detailDescription}>{trail.description}</Text>
-
-      {/* AI trail notes */}
-      {intel ? (
-        <View style={styles.aiCard}>
-          <View style={styles.aiHead}>
-            <Icon name="sparkles" size={15} color={colors.primary} strokeWidth={2} />
-            <Text style={styles.aiTitle}>{intel.fromAI ? 'AI trail notes' : 'Trail notes'}</Text>
-          </View>
-          <Text style={styles.aiText}>{intel.summary}</Text>
-          <Text style={styles.aiLabel}>Terrain</Text>
-          <Text style={styles.aiText}>{intel.terrain}</Text>
-          <Text style={styles.aiLabel}>Highlights</Text>
-          <Text style={styles.aiText}>{intel.highlights}</Text>
-          {intel.fromAI ? (
-            <Text style={styles.aiDisclaimer}>Generated by AI — conditions can differ on the day.</Text>
-          ) : null}
-        </View>
-      ) : (
-        <View style={[styles.aiCard, styles.aiCardLoading]}>
-          <ActivityIndicator size="small" color={colors.textMuted} />
-          <Text style={styles.aiLoadingText}>Pulling trail details…</Text>
-        </View>
-      )}
-
-      <View style={styles.amenities}>
-        {trail.petFriendly ? <Pill label="Dogs allowed" tone="primary" size="sm" /> : null}
-        {trail.familyFriendly ? <Pill label="Family friendly" tone="primary" size="sm" /> : null}
-        {trail.strollerFriendly ? <Pill label="Stroller OK" tone="neutral" size="sm" /> : null}
-        {trail.restroomsAvailable ? <Pill label="Restrooms" tone="neutral" size="sm" /> : null}
-        {trail.waterStations ? <Pill label="Water" tone="neutral" size="sm" /> : null}
-        {trail.isLoop ? <Pill label="Loop" tone="neutral" size="sm" /> : null}
-      </View>
-
-      {trail.safetyTips.length > 0 ? (
-        <View>
-          <Text style={styles.detailSection}>Before you go</Text>
-          {trail.safetyTips.map((tip, i) => (
-            <View key={i} style={styles.tipRow}>
-              <Icon name="alert-circle" size={14} color={colors.warning} strokeWidth={2} />
-              <Text style={styles.tipText}>{tip}</Text>
-            </View>
-          ))}
-        </View>
-      ) : null}
-
-      {trail.plants?.length || trail.animals?.length ? (
-        <View>
-          <Text style={styles.detailSection}>What lives here</Text>
-          <View style={styles.amenities}>
-            {trail.plants?.map((p) => (
-              <Pill key={p} label={p} tone="primary" size="sm" icon="leaf" />
-            ))}
-            {trail.animals?.map((a) => (
-              <Pill key={a} label={a} tone="neutral" size="sm" icon="eye" />
-            ))}
-          </View>
-        </View>
-      ) : null}
-
-      <Divider />
-
-      <View style={{ gap: SPACING.sm }}>
-        <Button label={trail.type === 'bike' ? 'Start a ride here' : 'Start a walk here'} icon="play" full onPress={onStart} />
-        <Button
-          label="Ask AI about it"
-          variant="secondary"
-          icon="sparkles"
-          full
-          onPress={onAsk}
-        />
-      </View>
-
-      <Text style={styles.detectionNote}>
-        Start within about a third of a mile of the trailhead and EcoTrek recognises the trail
-        automatically. Cover 70% of its length to log a completion.
-      </Text>
+  const [notes, setNotes] = useState(false);
+  const [before, setBefore] = useState(false);
+  const [photos, setPhotos] = useState(false);
+  return <View style={{ gap: 18 }}>
+    <View style={styles.detailStats}>
+      <DetailStat value={`${trail.id.startsWith('osm-') ? '~' : ''}${formatDistance(trail.distanceMiles)} ${unit}`} label="Length" />
+      <DetailStat value={formatMinutes(estimateMinutes(trail))} label="Est. time" />
+      <DetailStat value={`${trail.elevationGainFt == null ? '~' : ''}${estimateElevationFt(trail)} ft`} label="Climb" />
     </View>
-  );
+    <Text style={styles.detailDescription} numberOfLines={2}>{trail.description}</Text>
+    {completed ? <View style={styles.loadingRow}><Icon name="check-circle" size={17} color={colors.primary} /><Text style={styles.locationText}>You’ve completed this trail.</Text></View> : null}
+    <View style={styles.ratingPanel}><TrailRatingControls userId={userId} trailId={trail.id} initialRating={rating} onSaved={onRatingSaved} /></View>
+    <Button label={trail.type === 'bike' ? 'Start a ride here' : 'Start a walk here'} icon="play" full onPress={onStart} />
+    <View>
+      <Disclosure label="Before you go" open={before} toggle={() => setBefore((value) => !value)} />
+      {before ? <View style={styles.disclosed}><Text style={styles.tipText}>Check opening hours, closures and current conditions before heading out. Catalogue distances and facilities can be approximate.</Text>{trail.safetyTips.map((tip, i) => <Text key={i} style={styles.tipText}>• {tip}</Text>)}<Text style={styles.tipText}>For automatic recognition, start within about a third of a mile of the trailhead. Cover 70% of its recorded length to log a completion.</Text></View> : null}
+      <Disclosure label="Trail notes & amenities" open={notes} toggle={() => setNotes((value) => !value)} />
+      {notes ? <View style={styles.disclosed}>
+        <Text style={styles.detailDescription}>{trail.description}</Text>
+        <View style={styles.amenities}>{trail.petFriendly ? <Pill label="Dogs allowed" tone="primary" size="sm" /> : null}{trail.familyFriendly ? <Pill label="Family friendly" tone="primary" size="sm" /> : null}{trail.strollerFriendly ? <Pill label="Stroller OK" tone="neutral" size="sm" /> : null}{trail.restroomsAvailable ? <Pill label="Restrooms" tone="neutral" size="sm" /> : null}{trail.waterStations ? <Pill label="Water" tone="neutral" size="sm" /> : null}{trail.isLoop ? <Pill label="Loop" tone="neutral" size="sm" /> : null}</View>
+        {trail.plants?.length ? <Text style={styles.tipText}>Plants: {trail.plants.join(', ')}</Text> : null}{trail.animals?.length ? <Text style={styles.tipText}>Wildlife: {trail.animals.join(', ')}</Text> : null}
+      </View> : null}
+      <Disclosure label="Photos" open={photos} toggle={() => setPhotos((value) => !value)} />
+      {photos ? <View style={styles.disclosed}><TrailPhotoGallery trail={trail} /></View> : null}
+    </View>
+  </View>;
 }
-
-/* ── List card ────────────────────────────────────────────────────────── */
-
-const TrailCard = React.memo(function TrailCard({
-  trail,
-  completed,
-  visited,
-  showDistance,
-  onPress,
-  formatDistance,
-  unit,
-  styles,
-  colors,
-}: {
+function Disclosure({ label, open, toggle }: { label: string; open: boolean; toggle: () => void }) {
+  const { colors, typography } = useTheme();
+  return <Pressable onPress={toggle} accessibilityRole="button" accessibilityState={{ expanded: open }} style={{ flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', gap: 10, minHeight: 48, borderTopWidth: 1, borderTopColor: colors.borderLight }}><Text style={[typography.smallMed, { color: colors.text }]}>{label}</Text><Icon name={open ? 'chevron-down' : 'chevron-right'} size={17} color={colors.textMuted} /></Pressable>;
+}
+const TrailCard = React.memo(function TrailCard({ trail, completed, visited, showDistance, rating, onPress, formatDistance, unit, styles, colors }: {
   trail: Trail;
   completed: boolean;
   visited: boolean;
   showDistance: boolean;
+  rating?: number;
   onPress: () => void;
-  formatDistance: (m: number) => string;
+  formatDistance: (miles: number) => string;
   unit: string;
   styles: ReturnType<typeof makeStyles>;
   colors: ColorPalette;
 }) {
-  const difficultyTone =
-    trail.difficulty === 'Easy' ? 'primary' : trail.difficulty === 'Moderate' ? 'warning' : 'danger';
-
-  return (
-    <Card onPress={onPress} style={styles.trailCard}>
-      <TrailCover trail={trail} />
-      <View style={styles.trailHead}>
-        <View style={[styles.trailIcon, completed && styles.trailIconDone]}>
-          <Icon
-            name={completed ? 'check' : trail.type === 'bike' ? 'bike' : trail.type === 'hike' ? 'boot' : 'route'}
-            size={17}
-            color={completed ? '#fff' : colors.primary}
-            strokeWidth={completed ? 2.6 : 1.9}
-          />
-        </View>
-        <View style={{ flex: 1, minWidth: 0 }}>
-          <Text style={styles.trailName} numberOfLines={1}>
-            {trail.name}
-          </Text>
-          <Text style={styles.trailArea} numberOfLines={1}>
-            {trail.area}
-            {showDistance && trail.distanceFromUserMi != null
-              ? ` · ${trail.distanceFromUserMi.toFixed(1)} mi away`
-              : ''}
-          </Text>
-        </View>
-      </View>
-
-      <Text style={styles.trailDesc} numberOfLines={2}>
-        {trail.description}
-      </Text>
-
-      <View style={styles.trailTags}>
-        <Pill
-          label={`${formatDistance(trail.distanceMiles)} ${unit}`}
-          tone="neutral"
-          size="sm"
-          icon="activity"
-        />
-        <Pill
-          label={trail.difficulty === 'Easy' ? 'Easy' : trail.difficulty === 'Moderate' ? 'Medium' : 'Hard'}
-          tone={difficultyTone as any}
-          size="sm"
-        />
-        <Pill label={formatMinutes(estimateMinutes(trail))} tone="neutral" size="sm" icon="clock" />
-        {trail.petFriendly ? <Pill label="Dogs" tone="primary" size="sm" /> : null}
-        {trail.waterStations ? <Pill label="Water" tone="neutral" size="sm" icon="droplet" /> : null}
-        {trail.restroomsAvailable ? <Pill label="Bathrooms" tone="neutral" size="sm" /> : null}
-        {completed ? <Pill label="Done" tone="primary" size="sm" icon="flag" /> : visited ? <Pill label="Visited" tone="neutral" size="sm" /> : null}
-      </View>
-    </Card>
-  );
+  return <Card style={styles.trailCard}>
+    <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Open ${trail.name}`} style={{ gap: 13 }}>
+      <TrailCover trail={trail} loadRemote={false} />
+      <View style={styles.trailHead}><View style={[styles.trailIcon, completed && { backgroundColor: colors.primary }]}><Icon name={completed ? 'check' : trail.type === 'bike' ? 'bike' : trail.type === 'hike' ? 'boot' : 'route'} size={18} color={completed ? colors.textInverse : colors.primary} /></View><View style={{ flex: 1, minWidth: 0 }}><Text style={styles.trailName} numberOfLines={2}>{trail.name}</Text><Text style={styles.trailArea} numberOfLines={1}>{trail.area}{showDistance && trail.distanceFromUserMi != null ? ` · ${formatDistance(trail.distanceFromUserMi)} ${unit} away` : ''}</Text></View></View>
+      <Text style={styles.trailMeta}>{formatDistance(trail.distanceMiles)} {unit} · {trail.difficulty} · {formatMinutes(estimateMinutes(trail))}{completed ? ' · Completed' : visited ? ' · Visited' : ''}</Text>
+    </Pressable>
+    <Pressable onPress={onPress} style={styles.cardRating} accessibilityRole="button" accessibilityLabel={`Rate ${trail.name}`}><Icon name="star" size={17} filled={!!rating} color={rating ? colors.accentDark : colors.textMuted} /><Text style={styles.sortLabelText}>{rating ? `Your rating: ${rating}/5` : 'Rate trail'}</Text><Icon name="chevron-right" size={14} color={colors.primary} /></Pressable>
+  </Card>;
 });
-
-const DetailStat = React.memo(function DetailStat({
-  icon,
-  value,
-  label,
-  styles: propStyles,
-  colors: propColors,
-}: {
-  icon: IconName;
-  value: string;
-  label: string;
-  styles?: ReturnType<typeof makeStyles>;
-  colors?: ColorPalette;
-}) {
-  const theme = useTheme();
-  const colors = propColors ?? theme.colors;
-  const typography = theme.typography;
-  const styles = propStyles ?? useMemo(() => makeStyles(colors, typography), [colors, typography]);
-  return (
-    <View style={{ flexBasis: '45%', flexGrow: 1, minWidth: 0, gap: 3 }}>
-      <Icon name={icon} size={15} color={colors.textMuted} strokeWidth={1.9} />
-      <Text style={styles.detailStatValue}>{value}</Text>
-      <Text style={styles.detailStatLabel}>{label}</Text>
-    </View>
-  );
-});
-
+function DetailStat({ value, label }: { value: string; label: string }) {
+  const { colors, typography } = useTheme();
+  return <View style={{ flex: 1, minWidth: 75, gap: 4 }}><Text style={[typography.h4, { color: colors.text }]}>{value}</Text><Text style={[typography.micro, { color: colors.textMuted }]}>{label}</Text></View>;
+}
 function makeStyles(c: ColorPalette, t: Typography) {
   return StyleSheet.create({
-
-  body: { paddingHorizontal: SPACING.md, gap: SPACING.md },
-  bannerAction: { ...t.smallMed, color: c.primary },
-
-  askBar: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.md - 2,
-    backgroundColor: c.surface,
-    borderWidth: 0,
-    borderRadius: RADIUS.xl,
-    padding: SPACING.md,
-  },
-  askIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: RADIUS.md,
-    backgroundColor: c.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  askTitle: { ...t.h4, color: c.text },
-  askSub: { ...t.small, color: c.textMuted, marginTop: 1 },
-
-  searchRow: { flexDirection: 'row', gap: SPACING.sm },
-  search: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SPACING.sm,
-    backgroundColor: c.surface,
-    borderWidth: 0,
-    borderRadius: RADIUS.pill,
-    paddingHorizontal: SPACING.md,
-    height: 48,
-  },
-  searchInput: { flex: 1, minWidth: 0, ...t.body, color: c.text, paddingVertical: 0 },
-  sortBtn: {
-    width: 48,
-    height: 48,
-    borderRadius: 24,
-    backgroundColor: c.surface,
-    borderWidth: 0,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  filterBadge: {
-    position: 'absolute',
-    top: -4,
-    right: -4,
-    minWidth: 18,
-    height: 18,
-    borderRadius: 9,
-    backgroundColor: c.primary,
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingHorizontal: 4,
-  },
-  filterBadgeText: { ...t.micro, color: '#fff', fontWeight: '700' },
-
-  filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
-  chip: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 5,
-    paddingVertical: 8,
-    paddingHorizontal: 14,
-    borderRadius: RADIUS.pill,
-    backgroundColor: c.surface,
-    borderWidth: 0,
-  },
-  chipActive: { backgroundColor: c.primary },
-  chipText: { ...t.smallMed, color: c.textSecondary },
-  chipTextActive: { color: '#fff' },
-
-  resultRow: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between' },
-  resultCount: { ...t.small, color: c.textMuted, flex: 1, marginRight: SPACING.sm },
-  sortLabel: { flexDirection: 'row', alignItems: 'center', gap: 3 },
-  sortLabelText: { ...t.smallMed, color: c.primary },
-
-  grid: { gap: SPACING.md },
-  gridTablet: { flexDirection: 'row', flexWrap: 'wrap' },
-  gridFull: { width: '100%' },
-  gridHalf: { width: '50%', padding: SPACING.xs },
-
-  trailCard: { gap: SPACING.md - 2 },
-  trailHead: { flexDirection: 'row', alignItems: 'center', gap: SPACING.md - 2 },
-  trailIcon: {
-    width: 40,
-    height: 40,
-    borderRadius: RADIUS.md,
-    backgroundColor: c.primarySurface,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  trailIconDone: { backgroundColor: c.primary },
-  trailName: { ...t.h4, color: c.text },
-  trailArea: { ...t.small, color: c.textMuted, marginTop: 1 },
-  trailDesc: { ...t.small, color: c.textSecondary },
-  trailTags: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-
-  sheetSection: { ...t.overline, color: c.textMuted },
-  sortOption: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingVertical: 12,
-  },
-  sortOptionText: { ...t.body, color: c.text },
-
-  detailStats: { flexDirection: 'row', flexWrap: 'wrap', gap: SPACING.md },
-  detailStatValue: { ...t.h4, color: c.text },
-  detailStatLabel: { ...t.micro, color: c.textMuted, textTransform: 'uppercase' },
-  detailDescription: { ...t.body, color: c.textSecondary },
-  detailSection: { ...t.overline, color: c.textMuted, marginBottom: SPACING.xs },
-
-  aiCard: {
-    backgroundColor: c.primarySurface,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.md,
-    gap: SPACING.xs + 2,
-  },
-  aiCardLoading: { flexDirection: 'row', alignItems: 'center', gap: SPACING.sm },
-  aiHead: { flexDirection: 'row', alignItems: 'center', gap: 6 },
-  aiTitle: { ...t.h4, color: c.primaryDark },
-  aiLabel: { ...t.overline, color: c.primary, marginTop: 2 },
-  aiText: { ...t.small, color: c.textSecondary },
-  aiDisclaimer: { ...t.micro, color: c.textLight, marginTop: 2, fontStyle: 'italic' },
-  aiLoadingText: { ...t.small, color: c.textMuted },
-
-  amenities: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
-  tipRow: { flexDirection: 'row', gap: SPACING.sm, marginBottom: 7, alignItems: 'flex-start' },
-  tipText: { ...t.small, color: c.textSecondary, flex: 1 },
-  detectionNote: { ...t.small, color: c.textMuted },
-
+    body: { paddingHorizontal: SPACING.md, gap: 16 },
+    bannerAction: { ...t.smallMed, color: c.primary },
+    searchRow: { flexDirection: 'row', gap: 9 },
+    search: { flex: 1, flexDirection: 'row', alignItems: 'center', gap: 9, backgroundColor: c.surface, borderRadius: RADIUS.pill, paddingHorizontal: 16, height: 48 },
+    searchInput: { flex: 1, minWidth: 0, ...t.body, color: c.text, paddingVertical: 0 },
+    sortBtn: { width: 48, height: 48, borderRadius: 24, backgroundColor: c.surface, alignItems: 'center', justifyContent: 'center' },
+    filterBadge: { position: 'absolute', top: -3, right: -3, minWidth: 18, height: 18, borderRadius: 9, backgroundColor: c.primary, alignItems: 'center', justifyContent: 'center', paddingHorizontal: 4 },
+    filterBadgeText: { ...t.micro, color: c.textInverse, fontWeight: '700' },
+    filterRow: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+    chip: { flexDirection: 'row', alignItems: 'center', gap: 5, minHeight: 40, paddingVertical: 8, paddingHorizontal: 14, borderRadius: RADIUS.pill, backgroundColor: c.surface },
+    chipActive: { backgroundColor: c.primary }, chipText: { ...t.smallMed, color: c.textSecondary }, chipTextActive: { color: c.textInverse },
+    resultRow: { flexDirection: 'row', flexWrap: 'wrap', alignItems: 'center', justifyContent: 'space-between', gap: 8 },
+    resultCount: { ...t.small, color: c.textMuted },
+    sortLabel: { flexDirection: 'row', alignItems: 'center', gap: 4, minHeight: 36 }, sortLabelText: { ...t.smallMed, color: c.primary },
+    locationRow: { flexDirection: 'row', alignItems: 'center', gap: 9 }, locationText: { ...t.small, color: c.textMuted },
+    grid: { gap: 16 }, gridTablet: { flexDirection: 'row', flexWrap: 'wrap' }, gridFull: { width: '100%' }, gridHalf: { width: '50%', padding: 4 },
+    trailCard: { gap: 10 }, trailHead: { flexDirection: 'row', alignItems: 'center', gap: 12 },
+    trailIcon: { width: 36, height: 36, borderRadius: 12, backgroundColor: c.primarySurface, alignItems: 'center', justifyContent: 'center' },
+    trailName: { ...t.h4, color: c.text }, trailArea: { ...t.small, color: c.textMuted, marginTop: 4 }, trailMeta: { ...t.small, color: c.textSecondary },
+    cardRating: { flexDirection: 'row', alignItems: 'center', gap: 7, alignSelf: 'flex-start', minHeight: 36 },
+    sheetSection: { ...t.overline, color: c.textMuted }, sortOption: { flexDirection: 'row', alignItems: 'center', justifyContent: 'space-between', paddingVertical: 12 }, sortOptionText: { ...t.body, color: c.text },
+    detailStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
+    detailDescription: { ...t.small, color: c.textSecondary, lineHeight: Math.max(22, t.small.lineHeight ?? 22) },
+    ratingPanel: { padding: 14, borderRadius: 18, backgroundColor: c.surfaceSunken },
+    amenities: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
+    tipText: { ...t.small, color: c.textSecondary, lineHeight: Math.max(22, t.small.lineHeight ?? 22) },
+    disclosed: { gap: 12, paddingBottom: 18, paddingTop: 6 },
+    loadingRow: { flexDirection: 'row', alignItems: 'center', gap: 9 },
+    skeleton: { backgroundColor: c.surface, borderRadius: 20, padding: 16, gap: 13 }, skeletonCover: { height: 120, backgroundColor: c.surfaceSunken, borderRadius: 14 }, skeletonLine: { height: 12, width: '80%', backgroundColor: c.surfaceSunken, borderRadius: 6 },
   });
 }

@@ -29,25 +29,14 @@ already handled in the code.
 - [ ] **[you]** Put that URL in `.env` as `EXPO_PUBLIC_PRIVACY_URL` and in the
       Play Console listing.
 
-## 3. Google sign-in for a real build
+## 3. Local profiles and optional AI authentication
 
-This is where most first submissions break.
+The current app has no EcoTrek account login. Google OAuth is **not** a launch blocker for the website or downloadable WebView APK. Do not show unconfigured sign-in or claim cross-device sync. See `GOOGLE_OAUTH_SETUP.md` only if deliberately restoring that separate feature.
 
-- [ ] **[you]** Make your own Google Cloud project. Client IDs live only in
-      `.env` — nothing is hardcoded. Copy `.env.example` and paste yours.
-- [ ] **[you]** Configure the OAuth consent screen. External, published. Scopes:
-      only `email`, `profile`, `openid` — these are non-sensitive, so you skip
-      Google's verification review entirely. Do not add anything else.
-- [ ] **[you]** Create three OAuth clients:
-      - Web — redirect URI `https://auth.expo.io/@<expo-username>/ecotrek`
-      - iOS — bundle ID `com.ecotrek.app`
-      - Android — package `com.ecotrek.app`, SHA-1 from **`eas credentials`**
-- [ ] **[you]** Use the **release** keystore SHA-1 for the Android client, not
-      the debug one. Debug works in Expo Go and fails on the Play build, which
-      is a miserable bug to find after submitting.
-- [ ] **[you]** Paste all three into `.env`.
-- [ ] **[done]** `authConfig.ts` reads them from `.env` and reports per-platform
-      what is missing.
+- [x] Local profiles work without an account.
+- [x] Grok uses an explicit Puter Connect/Test flow and only reports Connected after a model reply.
+- [ ] **[you]** With a real Puter account, complete sign-in and a custom Grok question on the deployed HTTPS site and the signed APK. Account/credit limits may apply.
+- [ ] **[you]** Check cancelled/blocked popups and retry, not just a successful login. The Android child-window bridge assembles, but still needs physical-device verification.
 
 ## 4. Neon database (optional for launch, needed for shared clubs)
 
@@ -71,21 +60,17 @@ step-by-step guide with screenshots-level detail: **`docs/NEON_SETUP.md`**.
 - [ ] **[done]** `.env` is loaded automatically by the server; `npm run check`
       validates the link end to end.
 
-## 5. Android map key (hard blocker for a usable build)
+## 5. Map display and GPS
 
-react-native-maps on Android needs a Google Maps key or the map is a blank
-grey rectangle. It is free for mobile map display.
+The website/downloadable WebView APK use bundled Leaflet and keyless OpenStreetMap tiles. A Google browser key is **not** required.
 
-- [ ] **[you]** In your Cloud project, enable **Maps SDK for Android**.
-- [ ] **[you]** Create an API key, then restrict it: Application restriction →
-      Android apps → add package `com.ecotrek.app` with your release SHA-1.
-      An unrestricted key can be lifted out of your APK and used by anyone.
-- [ ] **[you]** Put it in `.env` as `GOOGLE_MAPS_ANDROID_KEY`, and add the same
-      value as an EAS secret so release builds pick it up:
-      `eas secret:create --name GOOGLE_MAPS_ANDROID_KEY --value <key>`
-- [ ] **[done]** `app.config.js` injects it at build time and warns during an
-      Android EAS build if it is missing.
-- iOS needs nothing here — it uses Apple Maps, which requires no key.
+- [x] About two-thirds of the tracking area is reserved for the map, with a landscape split, independent stats scrolling and reachable stop controls.
+- [x] Tile failure shows a route-only view and retry without stopping GPS; the tile watchdog is bounded.
+- [ ] **[you]** On real hardware with the network enabled, confirm OSM tiles, current-location accuracy, route lines, drag/zoom/recenter and rotation.
+- [ ] **[you]** Revoke location and disable network separately; check that GPS and tile errors are distinguished.
+- [ ] **[you]** For a larger deployment, choose a tile service appropriate for traffic and review its usage terms. No prefetch/bulk download is implemented.
+
+Only a **separate native Android/EAS build** uses `react-native-maps`/Google Maps and needs `GOOGLE_MAPS_ANDROID_KEY` with Maps SDK for Android enabled and a package/signing-certificate restriction. Native iOS uses Apple Maps.
 
 ## 6. Store assets
 
@@ -106,21 +91,13 @@ grey rectangle. It is free for mobile map display.
 
 ## 7. Play Console forms
 
-- [ ] **[you]** **Data safety** — declare exactly this:
-      - Location (approximate + precise): collected, **not** shared, optional,
-        used for App functionality. Not linked to advertising.
-      - Personal info (name, email): collected only for Google sign-in, not
-        shared, used for App functionality and Account management.
-      - Data is encrypted in transit: **yes**.
-      - Users can request deletion: **yes** (Settings → Delete account).
+- [ ] **[you]** **Data safety** — review the actual native release and current Play guidance, not a generic checklist. Disclose off-device location/viewport requests to map, trail and weather providers and optional prompts/account data handled by Puter or a selected AI provider. Local profiles do not use Google sign-in in this release. Verify HTTPS, deletion controls and each SDK’s practices against `PRIVACY_POLICY.md`.
 - [ ] **[you]** **Content rating questionnaire** — answer honestly. EcoTrek
       lands at Everyone / PEGI 3.
 - [ ] **[you]** **Target audience** — select **13 and over**. Do not opt into
       the Families programme; it triggers a much stricter review and COPPA
       obligations you do not want.
-- [ ] **[you]** **App access** — Play reviewers need to get in. Either point them
-      at the "Continue as guest" button (say so in the notes) or give test
-      credentials.
+- [ ] **[you]** **App access** — explain the local-profile onboarding (no EcoTrek login) and separate optional Puter login. Give reviewers clear instructions to test both local answers and online Grok.
 - [ ] **[you]** **Ads** — declare none. There are none.
 
 ## 8. Build and submit
@@ -138,23 +115,15 @@ eas submit --platform android
 - [ ] **[you]** Run `eas build:configure` once — it fills in the empty
       `extra.eas.projectId` in `app.json`.
 - [ ] **[you]** Test the **production APK on a real Android phone** before
-      submitting, not just Expo Go. Specifically check: Google sign-in works,
-      location permission prompt appears with your wording, and a tracked
-      activity saves.
+      submitting, not just Expo Go. Specifically check: location permission,
+      actual map tiles, a saved walk, persistent tree care, and optional Puter
+      sign-in plus a real Grok reply. Web mocks do not prove these services work.
 - [ ] **[you]** Use **internal testing** first. It reviews in hours instead of
       days and catches the obvious rejections.
 
 ## 9. Timing
 
-Today is **5 September 2026**. The Congressional App Challenge closes in
-**late October**.
-
-- First Play review commonly takes **3–7 days**, occasionally longer for a brand
-  new developer account.
-- Submit to internal testing by **mid September**. That leaves room for one
-  rejection, a fix, and a resubmission without touching your deadline.
-- Record your CAC demo video from a **real device running the release build**.
-  Judges notice a simulator.
+Checklist refreshed **14 October 2026**. Confirm your district’s official Congressional App Challenge deadline before choosing a release date. Allow time for physical-device testing and any store review; do not represent a sideload APK as an approved Play Store release. Record the demo on the tested release build.
 
 ---
 
@@ -179,8 +148,8 @@ Today is **5 September 2026**. The Congressional App Challenge closes in
 | Hardcoded mock global leaderboard presented as real | Real data only, with an honest note when it is device-local |
 | No account deletion | Settings → Delete account |
 | Unused `@expo/ngrok` and `@google/genai` dependencies | Removed |
-| Android map had no API key configured — blank grey box on release | `app.config.js` injects it and warns if absent |
-| iOS Google sign-in URL scheme was missing from the config | Derived automatically from the iOS client id |
+| Website/WebView map depended on a missing Google key | Bundled Leaflet + OSM tiles; route-only retry if offline. Native Android keys remain separately configurable. |
+| Default account sign-in was unconfigured | Current release uses local profiles. Puter authentication is separate and optional for online Grok. |
 | `PATCH /api/clubs/:id` did not exist, so member caps silently failed in cloud mode | Route added; cap round-trips correctly |
 | Streak sync made up to 60 HTTP round trips per check-in | Collapsed into a single batched upsert |
 | The API auth token was never attached to any request, so every backend call would have failed with 401 | `setAuthTokenProvider` is now wired from AuthContext |
