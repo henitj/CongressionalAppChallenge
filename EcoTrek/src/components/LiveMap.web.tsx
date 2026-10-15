@@ -1,321 +1,242 @@
-import React, { useEffect, useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet } from 'react-native';
+import React, { useEffect, useRef, useState } from 'react';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import * as L from 'leaflet';
 
 import Icon from './Icon';
 import RouteSketch from './RouteSketch';
-import { Coord } from '../services/location';
-import { RADIUS, SPACING } from '../constants/theme';
+import type { Coord } from '../services/location';
+import { RADIUS } from '../constants/theme';
 import { useTheme } from '../context/ThemeContext';
 
-type LatLng = { lat: number; lng: number };
-type GoogleMap = {
-  panTo: (position: LatLng) => void;
-  fitBounds: (bounds: unknown) => void;
-};
-type GoogleOverlay = {
-  setMap: (map: GoogleMap | null) => void;
-};
-type GooglePolyline = GoogleOverlay & {
-  setPath: (path: LatLng[]) => void;
-};
-type GoogleMarker = GoogleOverlay & {
-  setPosition: (position: LatLng) => void;
-};
-type GoogleCircle = GoogleOverlay & {
-  setCenter: (position: LatLng) => void;
-  setRadius: (radius: number) => void;
-};
-type GoogleMapsApi = {
-  Map: new (element: HTMLElement, options: Record<string, unknown>) => GoogleMap;
-  Polyline: new (options: Record<string, unknown>) => GooglePolyline;
-  Marker: new (options: Record<string, unknown>) => GoogleMarker;
-  Circle: new (options: Record<string, unknown>) => GoogleCircle;
-  event?: { clearInstanceListeners: (instance: unknown) => void };
-};
-
-declare global {
-  interface Window {
-    google?: { maps?: GoogleMapsApi };
-  }
-}
-
-type Props = {
+export type LiveMapProps = {
   path: Coord[];
   current?: Coord;
-  height?: number;
+  height?: number | '100%';
   follow?: boolean;
 };
 
-const AUSTIN: LatLng = { lat: 30.2672, lng: -97.7431 };
-let mapsPromise: Promise<GoogleMapsApi> | null = null;
+const AUSTIN: L.LatLngTuple = [30.2672, -97.7431];
+const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-function loadGoogleMaps(apiKey: string): Promise<GoogleMapsApi> {
-  if (window.google?.maps) return Promise.resolve(window.google.maps);
-  if (!apiKey) return Promise.reject(new Error('Google Maps API key is not configured'));
-  if (mapsPromise) return mapsPromise;
+// Bundle the small amount of Leaflet CSS we use with the app. No CDN scripts,
+// icon downloads, map API keys, or billing setup are needed to render this map.
+const MAP_CSS = `
+.ecotrek-map .leaflet-pane,.ecotrek-map .leaflet-tile,.ecotrek-map .leaflet-marker-icon,.ecotrek-map .leaflet-marker-shadow,.ecotrek-map .leaflet-tile-container,.ecotrek-map .leaflet-pane>svg,.ecotrek-map .leaflet-pane>canvas,.ecotrek-map .leaflet-zoom-box{position:absolute;left:0;top:0}
+.ecotrek-map .leaflet-tile{visibility:hidden;user-select:none;-webkit-user-drag:none}
+.ecotrek-map .leaflet-tile-loaded{visibility:inherit}
+.ecotrek-map .leaflet-zoom-animated{transform-origin:0 0}
+.ecotrek-map .leaflet-pane{z-index:400}
+.ecotrek-map .leaflet-tile-pane{z-index:200}
+.ecotrek-map .leaflet-overlay-pane{z-index:400}
+.ecotrek-map .leaflet-shadow-pane{z-index:500}
+.ecotrek-map .leaflet-marker-pane{z-index:600}
+.ecotrek-map .leaflet-tooltip-pane{z-index:650}
+.ecotrek-map .leaflet-popup-pane{z-index:700}
+.ecotrek-map .leaflet-map-pane svg{max-width:none!important;max-height:none!important;overflow:visible}
+.ecotrek-map .leaflet-tile-container img{max-width:none!important;max-height:none!important;padding:0}
+.ecotrek-map .leaflet-container{overflow:hidden;outline-offset:2px;font:12px/1.5 system-ui,sans-serif;background:#e7eddf;touch-action:none;-webkit-tap-highlight-color:transparent}
+.ecotrek-map .leaflet-grab{cursor:grab}
+.ecotrek-map .leaflet-dragging .leaflet-grab{cursor:grabbing}
+.ecotrek-map .leaflet-control{position:relative;z-index:800;pointer-events:auto;float:left;clear:both}
+.ecotrek-map .leaflet-top,.ecotrek-map .leaflet-bottom{position:absolute;z-index:800;pointer-events:none}
+.ecotrek-map .leaflet-top{top:0}.ecotrek-map .leaflet-right{right:0}.ecotrek-map .leaflet-bottom{bottom:0}.ecotrek-map .leaflet-left{left:0}
+.ecotrek-map .leaflet-right .leaflet-control{float:right}
+.ecotrek-map .leaflet-control-attribution{margin:0!important;padding:2px 7px;background:rgba(255,255,255,.9);color:#384e41;font-size:10px;line-height:17px}
+.ecotrek-map .leaflet-control-attribution a{color:#28583e;text-decoration:underline}
+.ecotrek-map .leaflet-zoom-hide{visibility:hidden}
+.ecotrek-map .leaflet-interactive{cursor:pointer}
+.ecotrek-map .leaflet-pane>svg path{pointer-events:none}
+.ecotrek-map button:focus-visible,.ecotrek-map a:focus-visible{outline:3px solid #1a7a5a;outline-offset:2px}
+`;
 
-  mapsPromise = new Promise<GoogleMapsApi>((resolve, reject) => {
-    const scriptId = 'ecotrek-google-maps-js';
-    const existing = document.getElementById(scriptId) as HTMLScriptElement | null;
-    const script = existing ?? document.createElement('script');
-    let timeout: ReturnType<typeof setTimeout>;
-
-    const cleanup = () => {
-      clearTimeout(timeout);
-      script.removeEventListener('load', onLoad);
-      script.removeEventListener('error', onError);
-    };
-    const onLoad = () => {
-      cleanup();
-      if (window.google?.maps) resolve(window.google.maps);
-      else reject(new Error('Google Maps loaded without its JavaScript API'));
-    };
-    const onError = () => {
-      cleanup();
-      reject(new Error('Google Maps could not be loaded'));
-    };
-
-    script.addEventListener('load', onLoad, { once: true });
-    script.addEventListener('error', onError, { once: true });
-    timeout = setTimeout(() => {
-      cleanup();
-      reject(new Error('Google Maps took too long to load'));
-    }, 12_000);
-
-    if (!existing) {
-      script.id = scriptId;
-      script.async = true;
-      script.defer = true;
-      script.src = `https://maps.googleapis.com/maps/api/js?key=${encodeURIComponent(apiKey)}&v=weekly`;
-      document.head.appendChild(script);
-    } else if (window.google?.maps) {
-      onLoad();
-    }
-  }).catch((error) => {
-    mapsPromise = null;
-    throw error;
-  });
-
-  return mapsPromise;
+function valid(point: Coord | undefined): point is Coord {
+  return !!point && Number.isFinite(point.latitude) && Number.isFinite(point.longitude)
+    && Math.abs(point.latitude) <= 90 && Math.abs(point.longitude) <= 180;
 }
+const position = (point: Coord): L.LatLngTuple => [point.latitude, point.longitude];
 
-/** Google Maps on web; the recorded route remains visible if Maps is offline or unconfigured. */
-export default function LiveMap({ path, current, height = 260, follow = true }: Props) {
+/** Interactive, keyless OpenStreetMap basemap. GPS recording is independent of tiles. */
+export default function LiveMap({ path, current, height = 260, follow = true }: LiveMapProps) {
   const { colors, typography } = useTheme();
-  const containerRef = useRef<HTMLDivElement | null>(null);
-  const mapRef = useRef<GoogleMap | null>(null);
-  const polylineRef = useRef<GooglePolyline | null>(null);
-  const markerRef = useRef<GoogleMarker | null>(null);
-  const startMarkerRef = useRef<GoogleMarker | null>(null);
-  const accuracyCircleRef = useRef<GoogleCircle | null>(null);
-  const [status, setStatus] = useState<'loading' | 'ready' | 'unavailable'>('loading');
-
-  const apiKey = process.env.EXPO_PUBLIC_GOOGLE_MAPS_API_KEY?.trim() ?? '';
+  const containerRef = useRef<HTMLDivElement>(null);
+  const mapRef = useRef<L.Map | null>(null);
+  const lineRef = useRef<L.Polyline | null>(null);
+  const pinRef = useRef<L.CircleMarker | null>(null);
+  const startRef = useRef<L.CircleMarker | null>(null);
+  const accuracyRef = useRef<L.Circle | null>(null);
+  const followingRef = useRef(true);
+  const latest = useRef({ path, current, follow });
+  latest.current = { path, current, follow };
+  const [attempt, setAttempt] = useState(0);
+  const [status, setStatus] = useState<'loading' | 'ready' | 'offline'>('loading');
 
   useEffect(() => {
-    const element = containerRef.current;
-    if (!element) return;
+    if (!containerRef.current) return;
     let active = true;
-    let map: GoogleMap | null = null;
-    const initial = current
-      ? { lat: current.latitude, lng: current.longitude }
-      : path[0]
-        ? { lat: path[0].latitude, lng: path[0].longitude }
-        : AUSTIN;
+    let loadedTiles = 0;
+    let failedTiles = 0;
+    let watchdog: ReturnType<typeof setTimeout>;
+    let resizeObserver: ResizeObserver | undefined;
+    let map: L.Map | undefined;
+    setStatus('loading');
+    followingRef.current = true;
 
-    if (!apiKey) {
-      setStatus('unavailable');
-      return () => {
-        active = false;
-      };
-    }
-
-    loadGoogleMaps(apiKey)
-      .then((google) => {
-        if (!active || !containerRef.current) return;
-        map = new google.Map(containerRef.current, {
-          center: initial,
-          zoom: 16,
-          mapTypeId: 'roadmap',
-          mapTypeControl: false,
-          streetViewControl: false,
-          fullscreenControl: false,
-          clickableIcons: false,
-          gestureHandling: 'greedy',
-        });
-        mapRef.current = map;
-        polylineRef.current = new google.Polyline({
-          map,
-          path: [],
-          geodesic: true,
-          strokeColor: colors.primaryDark,
-          strokeOpacity: 0.95,
-          strokeWeight: 6,
-        });
-        markerRef.current = new google.Marker({
-          map,
-          position: initial,
-          title: 'You are here',
-          zIndex: 3,
-          icon: {
-            path: 'CIRCLE',
-            scale: 8,
-            fillColor: '#FFD000',
-            fillOpacity: 1,
-            strokeColor: colors.primaryDark,
-            strokeWeight: 3,
-          },
-        });
-        setStatus('ready');
-      })
-      .catch((error) => {
-        if (active) {
-          console.warn('[map] Google Maps unavailable; drawing route fallback.', error);
-          setStatus('unavailable');
-        }
+    try {
+      const points = latest.current.path.filter(valid);
+      const center = valid(latest.current.current) ? position(latest.current.current)
+        : points.length ? position(points[points.length - 1]) : AUSTIN;
+      map = L.map(containerRef.current, {
+        center, zoom: points.length || valid(latest.current.current) ? 16 : 12,
+        zoomControl: false, attributionControl: true, preferCanvas: false,
+        scrollWheelZoom: true, zoomAnimation: true,
       });
+      mapRef.current = map;
+      map.attributionControl.setPrefix(false);
+      L.tileLayer(TILE_URL, {
+        attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
+        maxZoom: 19,
+        // Standard browser caching, a single tile host, and no prefetch/offline downloads.
+        keepBuffer: 1,
+      }).on('tileload', () => {
+        if (!active) return;
+        loadedTiles += 1;
+        clearTimeout(watchdog);
+        setStatus('ready');
+      }).on('tileerror', () => {
+        failedTiles += 1;
+        if (active && loadedTiles === 0 && failedTiles >= 4) {
+          clearTimeout(watchdog);
+          setStatus('offline');
+        }
+      }).addTo(map);
+
+      lineRef.current = L.polyline(points.map(position), {
+        color: '#176143', weight: 5, opacity: 0.95, lineCap: 'round', lineJoin: 'round',
+      }).addTo(map);
+      map.on('dragstart', () => { followingRef.current = false; });
+      if (!latest.current.follow && points.length > 1) {
+        map.fitBounds(L.latLngBounds(points.map(position)), { padding: [36, 36], maxZoom: 17 });
+      }
+      if (typeof ResizeObserver !== 'undefined') {
+        resizeObserver = new ResizeObserver(() => map?.invalidateSize({ pan: false }));
+        resizeObserver.observe(containerRef.current);
+      }
+      watchdog = setTimeout(() => {
+        if (active && loadedTiles === 0) setStatus('offline');
+      }, 8_000);
+    } catch {
+      setStatus('offline');
+    }
+    const retryWhenOnline = () => setAttempt((n) => n + 1);
+    window.addEventListener('online', retryWhenOnline);
 
     return () => {
       active = false;
-      if (map) window.google?.maps?.event?.clearInstanceListeners(map);
-      [polylineRef.current, markerRef.current, startMarkerRef.current, accuracyCircleRef.current].forEach(
-        (overlay) => {
-          if (overlay) {
-            window.google?.maps?.event?.clearInstanceListeners(overlay);
-            overlay.setMap(null);
-          }
-        }
-      );
+      clearTimeout(watchdog);
+      resizeObserver?.disconnect();
+      window.removeEventListener('online', retryWhenOnline);
+      map?.remove();
       mapRef.current = null;
-      polylineRef.current = null;
-      markerRef.current = null;
-      startMarkerRef.current = null;
-      accuracyCircleRef.current = null;
+      lineRef.current = null;
+      pinRef.current = null;
+      startRef.current = null;
+      accuracyRef.current = null;
     };
-    // A map is created once per screen mount. Current/path changes are handled below.
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [apiKey, colors.primaryDark]);
+  }, [attempt]);
 
   useEffect(() => {
-    const google = window.google?.maps;
     const map = mapRef.current;
-    const polyline = polylineRef.current;
-    if (status !== 'ready' || !google || !map || !polyline) return;
-
-    const points = path.map((point) => ({ lat: point.latitude, lng: point.longitude }));
-    polyline.setPath(points);
-    if (points.length > 0) {
-      if (!startMarkerRef.current) {
-        startMarkerRef.current = new google.Marker({
-          map,
-          position: points[0],
-          title: 'Start',
-          zIndex: 2,
-          icon: {
-            path: 'CIRCLE',
-            scale: 6,
-            fillColor: colors.accent,
-            fillOpacity: 1,
-            strokeColor: '#FFFFFF',
-            strokeWeight: 2,
-          },
-        });
-      } else {
-        startMarkerRef.current.setPosition(points[0]);
+    if (!map) return;
+    const points = path.filter(valid);
+    lineRef.current?.setLatLngs(points.map(position));
+    if (points.length) {
+      if (!startRef.current) {
+        startRef.current = L.circleMarker(position(points[0]), {
+          radius: 6, color: '#fff', weight: 2, fillColor: '#D9953B', fillOpacity: 1,
+        }).addTo(map);
+      } else startRef.current.setLatLng(position(points[0]));
+      if (!follow && points.length > 1) {
+        map.fitBounds(L.latLngBounds(points.map(position)), { padding: [36, 36], maxZoom: 17, animate: false });
       }
-    } else if (startMarkerRef.current) {
-      startMarkerRef.current.setMap(null);
-      startMarkerRef.current = null;
+    } else if (startRef.current) {
+      startRef.current.remove();
+      startRef.current = null;
     }
-  }, [path, status, colors.accent]);
+  }, [path, follow, attempt, status]);
 
   useEffect(() => {
-    const google = window.google?.maps;
     const map = mapRef.current;
-    const marker = markerRef.current;
-    if (status !== 'ready' || !google || !map || !marker || !current) return;
-
-    const position = { lat: current.latitude, lng: current.longitude };
-    marker.setPosition(position);
-    if (current.accuracy !== undefined) {
-      if (accuracyCircleRef.current) {
-        accuracyCircleRef.current.setCenter(position);
-        accuracyCircleRef.current.setRadius(current.accuracy);
-      } else {
-        accuracyCircleRef.current = new google.Circle({
-          map,
-          center: position,
-          radius: current.accuracy,
-          fillColor: colors.primary,
-          fillOpacity: 0.08,
-          strokeColor: colors.primary,
-          strokeOpacity: 0.4,
-          strokeWeight: 1,
-          clickable: false,
-        });
-      }
-    } else if (accuracyCircleRef.current) {
-      accuracyCircleRef.current.setMap(null);
-      accuracyCircleRef.current = null;
+    if (!map || !valid(current)) return;
+    const center = position(current);
+    if (!pinRef.current) {
+      pinRef.current = L.circleMarker(center, {
+        radius: 8, color: '#FFFFFF', weight: 3, fillColor: '#2379D2', fillOpacity: 1,
+      }).addTo(map);
+    } else pinRef.current.setLatLng(center);
+    pinRef.current.bringToFront();
+    if (Number.isFinite(current.accuracy) && current.accuracy! > 0) {
+      const radius = Math.min(5000, current.accuracy!);
+      if (!accuracyRef.current) {
+        accuracyRef.current = L.circle(center, { radius, color: '#2379D2', weight: 1, fillOpacity: 0.08, interactive: false }).addTo(map);
+      } else accuracyRef.current.setLatLng(center).setRadius(radius);
+    } else {
+      accuracyRef.current?.remove();
+      accuracyRef.current = null;
     }
-    if (follow) map.panTo(position);
-  }, [current, follow, status, colors.primary]);
+    if (follow && followingRef.current) map.setView(center, Math.max(map.getZoom(), 16), { animate: false });
+  }, [current, follow, attempt, status]);
 
-  const shellStyle = useMemo(
-    () => ({
-      width: '100%' as const,
-      height,
-      borderRadius: RADIUS.md,
-      overflow: 'hidden' as const,
-      backgroundColor: colors.backgroundDark,
-      borderWidth: 1,
-      borderColor: colors.border,
-    }),
-    [colors.backgroundDark, colors.border, height]
-  );
-
-  const fallbackMessage = apiKey
-    ? 'Google Maps unavailable — route is still shown'
-    : 'Google Maps key not configured — route is still shown';
+  const recenter = () => {
+    followingRef.current = true;
+    const point = latest.current.current ?? latest.current.path[latest.current.path.length - 1];
+    if (valid(point)) mapRef.current?.setView(position(point), 16, { animate: false });
+    else if (path.filter(valid).length > 1) mapRef.current?.fitBounds(L.latLngBounds(path.filter(valid).map(position)));
+  };
 
   return (
-    <View style={shellStyle}>
-      <div ref={containerRef} style={{ width: '100%', height: '100%', background: '#DCE6DF' }} />
-      {status !== 'ready' ? (
-        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surfaceSunken }]}>
-          {status === 'unavailable' ? (
-            <>
-              <RouteSketch path={path} current={current} />
-              <View style={[styles.note, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-                <Icon name="map" size={14} color={colors.textMuted} strokeWidth={2} />
-                <Text style={[typography.micro, { color: colors.textMuted }]}>{fallbackMessage}</Text>
-              </View>
-            </>
-          ) : (
-            <View style={styles.center}>
-              <Icon name="map" size={22} color={colors.textLight} strokeWidth={1.8} />
-              <Text style={[typography.small, { color: colors.textMuted }]}>Loading Google Maps…</Text>
-            </View>
-          )}
+    <View testID="live-map" style={{ width: '100%', height, overflow: 'hidden', borderRadius: RADIUS.lg, backgroundColor: '#E7EDDF' }}>
+      <style>{MAP_CSS}</style>
+      <div className="ecotrek-map" style={{ width: '100%', height: '100%', position: 'absolute', inset: 0, zIndex: 0 }}>
+        <div ref={containerRef} role="region" aria-label="Activity map" style={{ width: '100%', height: '100%' }} />
+      </div>
+      {status === 'ready' ? (
+        <View style={styles.controls}>
+          <Pressable accessibilityRole="button" accessibilityLabel="Zoom in" style={styles.control} onPress={() => mapRef.current?.zoomIn()}>
+            <Icon name="plus" size={21} color="#254D39" />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Zoom out" style={styles.control} onPress={() => mapRef.current?.zoomOut()}>
+            <Icon name="minus" size={21} color="#254D39" />
+          </Pressable>
+          <Pressable accessibilityRole="button" accessibilityLabel="Recenter on my location" style={[styles.control, { marginTop: 6 }]} onPress={recenter}>
+            <Icon name="navigation" size={20} color="#176143" />
+          </Pressable>
         </View>
-      ) : null}
+      ) : (
+        <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surfaceSunken }]}>
+          <RouteSketch path={path} current={current} />
+          <View style={[styles.notice, { backgroundColor: colors.surface, borderColor: colors.border }]}>
+            {status === 'loading' ? <ActivityIndicator size="small" color={colors.primary} /> : <Icon name="map" size={18} color={colors.primary} />}
+            <View style={{ flex: 1, gap: 3 }}>
+              <Text style={[typography.micro, { color: colors.text }]}>{status === 'loading' ? 'Loading map…' : 'Map tiles unavailable'}</Text>
+              <Text style={[typography.micro, { fontWeight: '400', color: colors.textMuted }]}>
+                {status === 'loading' ? 'Your recorded route stays visible.' : 'Route-only view. GPS can keep recording.'}
+              </Text>
+            </View>
+            {status === 'offline' ? (
+              <Pressable accessibilityRole="button" onPress={() => setAttempt((n) => n + 1)} style={styles.retry}>
+                <Text style={[typography.micro, { color: colors.primary }]}>Retry map</Text>
+              </Pressable>
+            ) : null}
+          </View>
+        </View>
+      )}
     </View>
   );
 }
 
 const styles = StyleSheet.create({
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center', gap: SPACING.sm },
-  note: {
-    position: 'absolute',
-    left: SPACING.sm,
-    bottom: SPACING.sm,
-    maxWidth: '94%',
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: 6,
-    paddingVertical: 5,
-    paddingHorizontal: 9,
-    borderRadius: RADIUS.pill,
-    borderWidth: 1,
-  },
+  controls: { zIndex: 2, position: 'absolute', right: 12, bottom: 28, gap: 2 },
+  control: { width: 44, height: 44, backgroundColor: '#FFFFFF', borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2, boxShadow: '0 2px 10px #18382918' },
+  notice: { position: 'absolute', bottom: 12, left: 12, right: 12, padding: 12, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1 },
+  retry: { paddingHorizontal: 8, paddingVertical: 14 },
 });

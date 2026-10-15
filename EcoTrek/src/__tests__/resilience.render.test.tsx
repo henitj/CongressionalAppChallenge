@@ -151,7 +151,7 @@ describe('corrupted stored state never crashes the app', () => {
       for (const key of GLOBAL_KEYS) {
         await AsyncStorage.setItem(key, payload);
       }
-      await mountOnCorruptedState(HomeScreen, 'Your last walk');
+      await mountOnCorruptedState(HomeScreen, 'A little time outside.');
     });
 
     it(`more survives: ${label} in every store key`, async () => {
@@ -171,13 +171,13 @@ describe('corrupted stored state never crashes the app', () => {
       for (const key of GLOBAL_KEYS) {
         await AsyncStorage.setItem(key, payload);
       }
-      await mountOnCorruptedState(TrackScreen, /1 tree per 1 mile/);
+      await mountOnCorruptedState(TrackScreen, /1 symbolic tree per 1 mile/);
     });
   }
 
   it('an array in an object key falls back to defaults', async () => {
     await AsyncStorage.setItem(keyFor(TEST_USER.id, 'streak'), '[1,2,3]');
-    await mountOnCorruptedState(HomeScreen, 'Your last walk');
+    await mountOnCorruptedState(HomeScreen, 'A little time outside.');
   });
 
   it('an object in an array key falls back to defaults', async () => {

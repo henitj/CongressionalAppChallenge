@@ -8,7 +8,7 @@ import RouteSketch from './RouteSketch';
 type Props = {
   path: Coord[];
   current?: Coord;
-  height?: number;
+  height?: number | '100%';
   follow?: boolean;
 };
 

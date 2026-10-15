@@ -7,7 +7,8 @@ import {
   Trail,
   type TrailSource,
 } from '../constants/austinTrails';
-import { isNearAustin, withDistances } from '../services/nearbyTrails';
+import { inServiceBbox, isNearAustin, withDistances } from '../services/nearbyTrails';
+import { catalogueMatches, loadSavedTrailCatalogue, saveTrailCatalogue, type SavedTrailCatalogue } from '../services/trailCatalogueStorage';
 import { alert } from '../services/alert';
 
 /**
@@ -69,11 +70,11 @@ type AppContextType = {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [trails, setTrails] = useState<Trail[]>([]);
-  const [trailsLoading, setTrailsLoading] = useState(true);
+  const [trails, setTrails] = useState<Trail[]>(AUSTIN_TRAILS);
+  const [trailsLoading, setTrailsLoading] = useState(false);
   const [trailsError, setTrailsError] = useState<string | null>(null);
-  const [trailsRegion, setTrailsRegion] = useState<string | null>(null);
-  const [trailsSource, setTrailsSource] = useState<TrailSource>('need-location');
+  const [trailsRegion, setTrailsRegion] = useState<string | null>('Austin, TX');
+  const [trailsSource, setTrailsSource] = useState<TrailSource>('collection');
 
   const [coords, setCoords] = useState<Coords | null>(null);
   const [permission, setPermission] = useState<PermissionState>('unknown');
@@ -91,6 +92,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
    * in state whenever it arrives, and anything watching updates on its own.
    */
   const positionFix = useRef<Promise<Coords | null> | null>(null);
+  const browserFix = useRef<Promise<Coords | null> | null>(null);
+  const browserExplain = useRef(false);
   const getPositionFix = useCallback((): Promise<Coords | null> => {
     if (!positionFix.current) {
       positionFix.current = Location.getCurrentPositionAsync({
@@ -111,44 +114,74 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     return positionFix.current;
   }, []);
 
-  const refreshTrails = useCallback(async () => {
-    setTrailsLoading(true);
-    setTrailsError(null);
-    const lat = coords?.latitude;
-    const lon = coords?.longitude;
+  const catalogueRequest = useRef(0);
+  const savedCatalogue = useRef<SavedTrailCatalogue | null>(null);
+  const mounted = useRef(true);
+  useEffect(() => {
+    mounted.current = true;
+    loadSavedTrailCatalogue().then((saved) => {
+      if (!mounted.current || !saved) return;
+      savedCatalogue.current = saved;
+      const position = coordsRef.current;
+      if (!position || catalogueMatches(saved, position.latitude, position.longitude)) {
+        setTrails(position ? withDistances(saved.trails, position.latitude, position.longitude) : saved.trails);
+        setTrailsRegion(saved.region);
+        setTrailsSource('cached');
+        setTrailsLoading(false);
+      }
+    });
+    return () => { mounted.current = false; catalogueRequest.current += 1; };
+  }, []);
 
-    // Austin ships with a vetted offline catalogue. Put it on screen while
-    // the live lookup retries in the background so the page is useful on the
-    // very first tap, even if Overpass is slow.
-    if (lat != null && lon != null && isNearAustin(lat, lon)) {
-      const immediate = withDistances(AUSTIN_TRAILS, lat, lon);
-      setTrails(immediate);
+  const refreshTrails = useCallback(async () => {
+    const request = ++catalogueRequest.current;
+    setTrailsError(null);
+    const latitude = coords?.latitude, longitude = coords?.longitude;
+    if (latitude == null || longitude == null) {
+      // Useful on the very first visit, without inventing the user's location:
+      // browse the clearly-labelled offline Austin collection (no distances),
+      // or saved trails. Live nearby discovery still needs a genuine fix.
+      setTrailsLoading(false);
+      return;
+    }
+    const matches = catalogueMatches(savedCatalogue.current, latitude, longitude);
+    const austin = isNearAustin(latitude, longitude);
+    const immediate = matches || austin;
+    if (matches && savedCatalogue.current) {
+      setTrails(withDistances(savedCatalogue.current.trails, latitude, longitude));
+      setTrailsRegion(savedCatalogue.current.region);
+      setTrailsSource('cached');
+    } else if (austin) {
+      setTrails(withDistances(AUSTIN_TRAILS, latitude, longitude));
       setTrailsRegion('Austin, TX');
       setTrailsSource('bundled');
+    } else {
+      setTrails([]);
+      setTrailsRegion(null);
+      setTrailsSource(inServiceBbox(latitude, longitude) ? 'live' : 'unsupported');
     }
-
+    // Background enrichment must not hold offline/cached cards behind a
+    // spinner. A single bounded lookup replaces the old nested retry queues.
+    setTrailsLoading(!immediate && inServiceBbox(latitude, longitude));
     try {
-      // A cold Overpass/Nominatim request is the most common reason the old
-      // Trails page looked empty until the user tapped Retry several times.
-      // Treat the first open like a small, bounded retry queue instead. The
-      // request that eventually succeeds updates the same screen; no second
-      // tap is needed.
-      const attempts = lat == null || lon == null ? 1 : 3;
-      let data = await fetchNearbyTrails(lat, lon);
-      for (let attempt = 1; attempt < attempts && data.trails.length === 0 && data.source === 'live'; attempt += 1) {
-        await new Promise((resolve) => setTimeout(resolve, attempt === 1 ? 250 : 700));
-        data = await fetchNearbyTrails(lat, lon);
+      const data = await fetchNearbyTrails(latitude, longitude);
+      if (!mounted.current || request !== catalogueRequest.current) return;
+      if (data.trails.length === 0 && data.source === 'live' && immediate) {
+        setTrailsError('Could not update nearby trails. Your saved list is still available.');
+        return;
       }
-
       setTrails(data.trails);
       setTrailsRegion(data.region);
       setTrailsSource(data.source);
-    } catch (e: any) {
-      // The catalogue service normally returns a safe empty result, but this
-      // envelope protects the page if a future provider throws unexpectedly.
-      setTrailsError(e?.message ?? 'Could not load trails');
+      if (data.trails.length) {
+        const saved = { latitude, longitude, trails: data.trails, region: data.region, savedAt: Date.now() };
+        savedCatalogue.current = saved;
+        void saveTrailCatalogue(saved);
+      }
+    } catch (error: any) {
+      if (mounted.current && request === catalogueRequest.current) setTrailsError(error?.message ?? 'Could not update trails.');
     } finally {
-      setTrailsLoading(false);
+      if (mounted.current && request === catalogueRequest.current) setTrailsLoading(false);
     }
   }, [coords?.latitude, coords?.longitude]);
 
@@ -253,7 +286,20 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               }
             }
 
-            return await new Promise<Coords | null>((resolve) => {
+            // Starting with an existing grant needs permission, not a cold
+            // GPS lock. The tracker itself listens for precise real fixes.
+            if (opts.permissionOnly && navigator.permissions?.query) {
+              try {
+                const access = await navigator.permissions.query({ name: 'geolocation' });
+                if (access.state === 'granted') {
+                  setPermission('granted');
+                  return coordsRef.current ?? DEFAULT_LOCATION;
+                }
+              } catch { /* Older WebViews obtain the grant through a fix. */ }
+            }
+            browserExplain.current = browserExplain.current || !!opts.explain;
+            if (!browserFix.current) {
+              browserFix.current = new Promise<Coords | null>((resolve) => {
               navigator.geolocation.getCurrentPosition(
                 (pos) => {
                   const c = {
@@ -269,7 +315,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   // unavailable, 3 = timeout. Do not mislabel a disabled GPS
                   // switch as an app-permission denial.
                   setPermission(err?.code === 1 ? 'denied' : 'unavailable');
-                  if (opts.explain) {
+                  if (browserExplain.current) {
                     if (err?.code === 2) {
                       alert(
                         'Turn on location services',
@@ -294,9 +340,24 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                   }
                   resolve(opts.permissionOnly && Platform.OS !== 'web' ? DEFAULT_LOCATION : null);
                 },
-                { enableHighAccuracy: false, timeout: 4000, maximumAge: 300000 }
+                { enableHighAccuracy: false, timeout: 30000, maximumAge: 300000 }
               );
-            });
+              }).finally(() => {
+                browserFix.current = null;
+                browserExplain.current = false;
+                if (mounted.current) setLocating(false);
+              });
+            }
+            // Only the initial wait is four seconds. The shared browser fix
+            // continues for up to 30s and updates the existing screen when it
+            // lands, just like native GPS; a second Retry tap is unnecessary.
+            let waitTimer: ReturnType<typeof setTimeout> | undefined;
+            const position = await Promise.race([
+              browserFix.current,
+              new Promise<null>((resolve) => { waitTimer = setTimeout(() => resolve(null), 4000); }),
+            ]).finally(() => { if (waitTimer) clearTimeout(waitTimer); });
+            return position ?? coordsRef.current;
+
           }
 
           const existing = await Location.getForegroundPermissionsAsync();
@@ -383,10 +444,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           }
 
           const fix = getPositionFix();
+          let waitTimer: ReturnType<typeof setTimeout> | undefined;
           const pos = await Promise.race([
             fix,
-            new Promise<null>((resolve) => setTimeout(() => resolve(null), 4000)),
-          ]);
+            new Promise<null>((resolve) => { waitTimer = setTimeout(() => resolve(null), 4000); }),
+          ]).finally(() => { if (waitTimer) clearTimeout(waitTimer); });
           if (pos) {
             setCoords(pos);
             return pos;
@@ -402,7 +464,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
           console.warn('[location] failed', e);
           return coordsRef.current;
         } finally {
-          setLocating(false);
+          setLocating(!!browserFix.current);
           inFlight.current = null;
         }
       })();

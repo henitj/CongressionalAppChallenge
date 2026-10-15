@@ -87,7 +87,7 @@ type OsmElement = {
   tags?: Record<string, string>;
 };
 
-export type TrailSource = 'bundled' | 'live' | 'unsupported' | 'need-location';
+export type TrailSource = 'bundled' | 'live' | 'cached' | 'collection' | 'unsupported' | 'need-location';
 
 export type TrailCatalogue = {
   trails: Trail[];
@@ -253,7 +253,6 @@ export function trailFromOsmElement(
     area: tags['addr:city'] || tags['addr:suburb'] || tags['is_in:city'] || area || 'Nearby',
     description: descriptionFor(name, area, type, difficulty, tags),
     safetyTips: safetyTips(tags, type),
-    rating: 4.4,
     petFriendly: pet,
     familyFriendly: isPark || difficulty === 'Easy',
     strollerFriendly: paved || (isPark && difficulty === 'Easy'),
@@ -310,7 +309,7 @@ export async function fetchPlace(lat: number, lon: number): Promise<PlaceInfo> {
     const url =
       `${NOMINATIM_URL}?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}` +
       `&format=json&zoom=10&addressdetails=1`;
-    const data = await fetchJSON(url, 6000);
+    const data = await fetchJSON(url, 3500);
     const a = data?.address ?? {};
     const nameRaw =
       a.city || a.town || a.village || a.municipality || a.suburb || a.county || a.state || null;
@@ -334,7 +333,7 @@ function overpassQuery(lat: number, lon: number): string {
   const la = lat.toFixed(5);
   const lo = lon.toFixed(5);
   return `
-[out:json][timeout:18];
+[out:json][timeout:6];
 (
   relation["route"~"^(hiking|foot|walking|bicycle)$"]["name"](around:25000,${la},${lo});
   way["route"~"^(hiking|foot|walking)$"]["name"](around:15000,${la},${lo});
@@ -349,11 +348,15 @@ out center tags 50;
 export async function fetchOsmTrails(lat: number, lon: number, area: string): Promise<Trail[]> {
   const query = overpassQuery(lat, lon);
   let lastError: unknown = null;
+  const clock = () => typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
+  const deadline = clock() + 12_000;
 
   for (const endpoint of OVERPASS_ENDPOINTS) {
+    const remaining = deadline - clock();
+    if (remaining <= 0) break;
     try {
       const url = `${endpoint}?data=${encodeURIComponent(query)}`;
-      const data = await fetchJSON(url, 20000);
+      const data = await fetchJSON(url, Math.min(7000, remaining));
       const elements: OsmElement[] = Array.isArray(data?.elements) ? data.elements : [];
       const mapped = elements
         .map((el) => trailFromOsmElement(el, lat, lon, area))

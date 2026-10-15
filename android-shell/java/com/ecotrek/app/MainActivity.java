@@ -39,6 +39,7 @@ public class MainActivity extends Activity {
 
         WebSettings s = wv.getSettings();
         s.setJavaScriptEnabled(true);
+        s.setSupportMultipleWindows(true);
         s.setDomStorageEnabled(true);
         s.setDatabaseEnabled(true);
         s.setGeolocationEnabled(true);

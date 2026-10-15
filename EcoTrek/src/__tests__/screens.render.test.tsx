@@ -28,7 +28,9 @@ import Header from '../components/Header';
 import { TrailCover, TrailPhotoGallery } from '../components/TrailPhotos';
 import { AUSTIN_TRAILS } from '../constants/austinTrails';
 import * as TrailPhotosService from '../services/trailPhotos';
+import * as TrailIntelService from '../services/trailIntel';
 import TrackScreen from '../screens/TrackScreen';
+import TreeScreen from '../screens/TreeScreen';
 import TrailsScreen from '../screens/TrailsScreen';
 import LeaderboardScreen from '../screens/LeaderboardScreen';
 import ProfileScreen from '../screens/ProfileScreen';
@@ -142,8 +144,9 @@ async function mount(Component: React.ComponentType<any>, anchor: string | RegEx
 
 /** Each screen plus a string that only appears once it has really rendered. */
 const SCREENS: [string, React.ComponentType<any>, string | RegExp][] = [
-  ['Home', HomeScreen, 'Your last walk'],
-  ['Track', TrackScreen, /1 tree per 1 mile/],
+  ['Home', HomeScreen, 'A little time outside.'],
+  ['Track', TrackScreen, /1 symbolic tree per 1 mile/],
+  ['Tree', TreeScreen, 'This week’s care'],
   ['More', MoreScreen, 'My walks'],
   ['Trails', TrailsScreen, 'Trails'],
   ['Clubs', LeaderboardScreen, 'My club'],
@@ -172,13 +175,34 @@ describe('every screen renders on an empty account', () => {
 
 describe('trail discovery upgrades', () => {
   it('Home does not expose the AI entry point', async () => {
-    const utils = await mount(HomeScreen, 'Your last walk');
+    const utils = await mount(HomeScreen, 'A little time outside.');
     expect(utils.queryByTestId('assistant-fab')).toBeNull();
   });
 
-  it('Trails shows the floating AI chat button', async () => {
+  it('Trails is immediately browsable and has no automatic AI UI', async () => {
     const utils = await mount(TrailsScreen, 'Trails');
-    expect(utils.getByTestId('assistant-fab')).toBeTruthy();
+    expect(utils.queryByTestId('assistant-fab')).toBeNull();
+    expect(utils.getAllByLabelText(/^Open /).length).toBeGreaterThan(0);
+    expect(utils.queryByText('AI trail notes')).toBeNull();
+  });
+
+  it('trail details put ratings first and only load photos/extra notes on request', async () => {
+    const intel = jest.spyOn(TrailIntelService, 'getTrailIntel');
+    const cover = jest.spyOn(TrailPhotosService, 'getTrailCover');
+    const gallery = jest.spyOn(TrailPhotosService, 'getTrailPhotos');
+    try {
+      const utils = await mount(TrailsScreen, 'Trails');
+      expect(cover).not.toHaveBeenCalled();
+      fireEvent.press(utils.getAllByLabelText(/^Rate /)[0]);
+      await waitFor(() => expect(utils.queryByText('Your rating')).toBeTruthy());
+      expect(utils.getByLabelText('5 stars')).toBeTruthy();
+      expect(intel).not.toHaveBeenCalled();
+      expect(gallery).not.toHaveBeenCalled();
+      expect(utils.queryByText('Ask AI about it')).toBeNull();
+      fireEvent.press(utils.getByText('Photos'));
+      await waitFor(() => expect(gallery).toHaveBeenCalledTimes(1));
+      expect(intel).not.toHaveBeenCalled();
+    } finally { intel.mockRestore(); cover.mockRestore(); gallery.mockRestore(); }
   });
 
   it('Trails filter chips are multi-select and stack', async () => {
@@ -220,7 +244,7 @@ describe('trail discovery upgrades', () => {
     expect(utils.getByText('Any climb')).toBeTruthy();
     // Sorting now lives in the same sheet.
     expect(utils.getByText('Sort by')).toBeTruthy();
-    expect(utils.getByText('Top rated')).toBeTruthy();
+    expect(utils.getByText('Your highest rated')).toBeTruthy();
   });
 
   it('slider accessibility actions adjust the value', async () => {
@@ -373,11 +397,12 @@ describe('the post-walk feedback popup', () => {
 });
 
 describe('online Grok assistant provider', () => {
-  it('accepts Puter text response shapes and rejects empty/oversized replies', () => {
+  it('accepts Puter reply shapes without rejecting valid long answers', () => {
     expect(extractPuterReply({ message: { content: '  A custom answer.  ' } })).toBe('A custom answer.');
     expect(extractPuterReply({ message: { content: [{ text: 'Hello' }, { text: 'there' }] } })).toBe('Hello there');
     expect(extractPuterReply({ message: { content: '' } })).toBeNull();
-    expect(extractPuterReply({ text: 'x'.repeat(2001) })).toBeNull();
+    expect(extractPuterReply({ text: 'x'.repeat(2001) })).toHaveLength(2001);
+    expect(extractPuterReply({ text: 'x'.repeat(9000) })).toContain('Reply shortened.');
   });
 
   it('sends custom questions and relevant trail facts to Puter Grok', async () => {
@@ -585,8 +610,10 @@ describe('screens that do not need the provider stack', () => {
 
 describe('empty states say something useful', () => {
   it('Home tells a brand new user what to do', async () => {
-    const { queryByText } = await mount(HomeScreen, 'Your last walk');
-    expect(queryByText(/You have not walked yet/i)).toBeTruthy();
+    const { queryByText } = await mount(HomeScreen, 'A little time outside.');
+    expect(queryByText('Start a walk')).toBeTruthy();
+    expect(queryByText('Explore trails')).toBeTruthy();
+    expect(queryByText('Quick actions')).toBeNull();
   });
 
   it('Clubs opens on the tab that explains how to join', async () => {
@@ -598,5 +625,21 @@ describe('empty states say something useful', () => {
   it('History starts empty with a call to action', async () => {
     const { queryByText } = await mount(HistoryScreen, /No walks yet/i);
     expect(queryByText('Start walk')).toBeTruthy();
+  });
+});
+
+
+describe('the redesigned tree page', () => {
+  it('shows affordable-care requirements and previews growth without spending', async () => {
+    const utils = await mount(TreeScreen, 'This week’s care');
+    expect(utils.getByLabelText('Add water for 1 gem')).toBeDisabled();
+    expect(utils.getByText('Growth image 1 / 100')).toBeTruthy();
+    fireEvent.press(utils.getByText('Explore 100 images'));
+    await waitFor(() => expect(utils.queryByText('100 small steps of growth')).toBeTruthy());
+    fireEvent.press(utils.getByLabelText('Preview Sage tree'));
+    expect(utils.getByText('All 100 images can be explored. Your real tree still needs calendar age and consistent weekly care. Previewing spends nothing and changes no progress.')).toBeTruthy();
+    expect(utils.getByLabelText('0 gems available')).toBeTruthy();
+    fireEvent.press(utils.getByLabelText('Close'));
+    expect(utils.getByText('Growth image 1 / 100')).toBeTruthy();
   });
 });

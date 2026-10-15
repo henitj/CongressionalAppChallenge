@@ -21,7 +21,11 @@
  */
 import fs from 'node:fs';
 import path from 'node:path';
+import { createHash } from 'node:crypto';
+import { createRequire } from 'node:module';
+import { transformAsync } from '@babel/core';
 import {
+  COMPAT_TARGETS,
   patchIndexHtml,
   transpileBundles,
   writePolyfills,
@@ -87,6 +91,26 @@ if (standalone) {
   }
   console.log('standalone: omitted repository install redirect and launcher.');
 }
+
+// Pin and serve Puter locally. A blocked third-party script CDN must not
+// prevent the assistant's Connect button from ever becoming usable. It is
+// loaded lazily on Assistant, not at app startup; no app-owned key is bundled.
+const require = createRequire(import.meta.url);
+const sdkSource = fs.readFileSync(require.resolve('@heyputer/puter.js/dist/puter.cjs'), 'utf8');
+const sdkResult = await transformAsync(sdkSource, {
+  presets: [['@babel/preset-env', { targets: COMPAT_TARGETS, modules: false, bugfixes: true }]],
+  configFile: false, babelrc: false, compact: true, comments: false,
+});
+if (!sdkResult?.code) throw new Error('Could not prepare the Puter SDK');
+const sdkCode = '// Puter.js — Copyright Puter Technologies Inc. Apache-2.0.\n' + sdkResult.code;
+const sdkHash = createHash('sha256').update(sdkCode).digest('hex').slice(0, 16);
+const sdkPath = `assets/vendor/puter-${sdkHash}.js`;
+fs.mkdirSync(path.join(dist, 'assets', 'vendor'), { recursive: true });
+fs.writeFileSync(path.join(dist, sdkPath), sdkCode);
+fs.copyFileSync(path.join(process.cwd(), 'assets', 'THIRD_PARTY_NOTICES.txt'), path.join(dist, 'assets', 'vendor', 'THIRD_PARTY_NOTICES.txt'));
+const sdkConfig = `<script id="ecotrek-puter-sdk-config">window.__ECOTREK_PUTER_SDK_URL__=${JSON.stringify('/' + sdkPath)};</script>`;
+fs.writeFileSync(indexPath, fs.readFileSync(indexPath, 'utf8').replace('</head>', `${sdkConfig}</head>`));
+console.log(`assistant: bundled same-origin Puter SDK (${sdkCode.length.toLocaleString()} bytes).`);
 
 // --- 5. the repository website front door is the app ------------------------
 const rootPage = path.join(repoRoot, 'index.html');

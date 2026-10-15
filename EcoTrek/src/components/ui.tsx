@@ -181,6 +181,7 @@ export function SectionHeader({
 
 export function Button({
   label,
+  accessibilityLabel,
   onPress,
   variant = 'primary',
   size = 'md',
@@ -193,6 +194,7 @@ export function Button({
   tone,
 }: {
   label: string;
+  accessibilityLabel?: string;
   onPress?: () => void;
   variant?: 'primary' | 'secondary' | 'ghost' | 'danger' | 'dark';
   size?: 'sm' | 'md' | 'lg';
@@ -247,8 +249,8 @@ export function Button({
   return (
     <Pressable
       accessibilityRole="button"
-      accessibilityLabel={label}
-      accessibilityState={{ disabled: !!isDisabled }}
+      accessibilityLabel={accessibilityLabel ?? label}
+      accessibilityState={{ disabled: !!isDisabled, busy: !!loading }}
       onPress={onPress}
       disabled={isDisabled}
       style={({ pressed }) => [
@@ -566,6 +568,7 @@ export function Sheet({
               onPress={onClose}
               hitSlop={10}
               style={[ui.sheetClose, { backgroundColor: colors.surfaceSunken }]}
+              accessibilityRole="button"
               accessibilityLabel="Close"
             >
               <Icon name="x" size={18} color={colors.textSecondary} strokeWidth={2.1} />

@@ -24,7 +24,7 @@ export async function loadJSON<T>(
   validate?: (value: unknown) => boolean
 ): Promise<T> {
   try {
-    await pending.get(key);
+    await pending.get(key)?.catch(() => {});
     const raw = await AsyncStorage.getItem(key);
     if (!raw) return fallback;
     const parsed = JSON.parse(raw);
@@ -45,18 +45,22 @@ export function isObject(value: unknown): boolean {
   return typeof value === 'object' && value !== null && !Array.isArray(value);
 }
 
-export function saveJSON(key: string, value: unknown): Promise<void> {
+export function saveJSON(key: string, value: unknown, options: { strict?: boolean } = {}): Promise<void> {
   const json = JSON.stringify(value);
-  const write = (pending.get(key) ?? Promise.resolve()).then(() => AsyncStorage.setItem(key, json))
-    .catch((e) => { console.warn('[storage] save failed', key, e); });
+  const write = (pending.get(key) ?? Promise.resolve()).catch(() => {}).then(() => AsyncStorage.setItem(key, json))
+    .catch((error) => {
+      console.warn('[storage] save failed', key, error);
+      if (options.strict) throw error;
+    });
   pending.set(key, write);
-  void write.then(() => { if (pending.get(key) === write) pending.delete(key); });
+  const cleanup = () => { if (pending.get(key) === write) pending.delete(key); };
+  void write.then(cleanup, cleanup);
   return write;
 }
 
 export async function removeKey(key: string): Promise<void> {
   try {
-    await pending.get(key);
+    await pending.get(key)?.catch(() => {});
     await AsyncStorage.removeItem(key);
   } catch {
     /* ignore */
@@ -70,7 +74,7 @@ export async function removeKey(key: string): Promise<void> {
 export async function copyUserData(fromId: string, toId: string): Promise<number> {
   if (!fromId || !toId || fromId === toId) return 0;
   try {
-    await Promise.all(pending.values());
+    await Promise.all([...pending.values()].map((write) => write.catch(() => {})));
     const all = await AsyncStorage.getAllKeys();
     const prefix = `${PREFIX}/${fromId}/`;
     const mine = all.filter((k) => k.startsWith(prefix));
@@ -106,10 +110,12 @@ export async function copyUserData(fromId: string, toId: string): Promise<number
 /** Wipes every EcoTrek key for one user (used by "delete my data"). */
 export async function clearUserData(userId: string | null | undefined) {
   try {
-    await Promise.all(pending.values());
+    await Promise.all([...pending.values()].map((write) => write.catch(() => {})));
     const all = await AsyncStorage.getAllKeys();
     const mine = all.filter((k) => k.startsWith(`${PREFIX}/${userId ?? 'anon'}/`));
-    if (mine.length) await AsyncStorage.multiRemove(mine);
+    // The public trail cache includes a coarse last search area; remove it
+    // along with any pre-profile legacy ratings when data is deleted.
+    await AsyncStorage.multiRemove([...mine, '@ecotrek/trail-catalogue-v1', '@ecotrek/trail-ratings']);
   } catch (e) {
     console.warn('[storage] clear failed', e);
   }

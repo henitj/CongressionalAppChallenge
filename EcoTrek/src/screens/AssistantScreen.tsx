@@ -34,7 +34,9 @@ import {
   AiProviderSettings,
   AssistantChatTurn,
   DEFAULT_AI_SETTINGS,
-  askPuterModel,
+  preparePuter,
+  connectPuter,
+  requestPuterAnswer,
   askUserModel,
   hasAiKey,
   loadAiSettings,
@@ -51,6 +53,7 @@ type Message = {
   trails?: Trail[];
   /** True while an AI upgrade of this answer is still in flight. */
   upgrading?: boolean;
+  source?: 'device' | 'grok' | 'provider' | 'backend';
 };
 
 /** What to say when no trails are on the device yet. */
@@ -93,6 +96,50 @@ export default function AssistantScreen() {
   );
   const [input, setInput] = useState('');
   const [thinking, setThinking] = useState(false);
+  const sendingRef = useRef(false);
+  const mountedRef = useRef(true);
+  const [grokState, setGrokState] = useState<'loading' | 'needs-connection' | 'signed-in' | 'checking' | 'connected' | 'unavailable'>('loading');
+  const [grokNote, setGrokNote] = useState('Preparing the online assistant…');
+
+  const initializeGrok = useCallback(async () => {
+    setGrokState('loading');
+    const connection = await preparePuter();
+    if (!mountedRef.current) return;
+    setGrokState(connection.ok ? connection.signedIn ? 'signed-in' : 'needs-connection' : 'unavailable');
+    setGrokNote(connection.ok
+      ? connection.signedIn ? 'Puter is signed in. Send a question or test the Grok connection.'
+        : 'Connect with Puter for online Grok answers. Puter may require an account and credits; no personal API key is needed.'
+      : connection.message);
+  }, []);
+
+  useEffect(() => {
+    mountedRef.current = true;
+    if (Platform.OS === 'web') initializeGrok();
+    return () => { mountedRef.current = false; };
+  }, [initializeGrok]);
+
+  const handleConnectGrok = () => {
+    if (grokState === 'loading' || grokState === 'checking' || sendingRef.current) return;
+    if (grokState === 'unavailable' && (typeof window === 'undefined' || !window.puter?.ai?.chat)) { initializeGrok(); return; }
+    // This call is synchronous with the tap, BEFORE any await/state work.
+    const authentication = connectPuter();
+    setGrokState('checking');
+    setGrokNote('Complete Puter sign-in in the popup. Then we’ll test a real Grok reply.');
+    authentication.then(async (connection) => {
+      if (!mountedRef.current) return;
+      if (!connection.ok) {
+        setGrokState(connection.code === 'auth_required' || connection.code === 'cancelled' || connection.code === 'popup_blocked' ? 'needs-connection' : 'unavailable');
+        setGrokNote(connection.message);
+        return;
+      }
+      setGrokNote('Testing a real Grok response…');
+      const test = await requestPuterAnswer('Reply with the single word: ready', { trail: null, allTrails: [], weather: null }, [], 20000);
+      if (!mountedRef.current) return;
+      setGrokState(test.ok ? 'connected' : test.code === 'auth_required' ? 'needs-connection' : 'unavailable');
+      setGrokNote(test.ok ? 'Grok replied successfully. Online answers are connected through Puter.' : test.message);
+    });
+  };
+
 
   // Bring-your-own-key AI upgrade. Loaded once; edited through the sheet.
   const [aiSettings, setAiSettings] = useState<AiProviderSettings>(DEFAULT_AI_SETTINGS);
@@ -133,7 +180,8 @@ export default function AssistantScreen() {
   const send = useCallback(
     async (raw: string) => {
       const question = raw.trim();
-      if (!question || thinking) return;
+      if (!question || sendingRef.current) return;
+      sendingRef.current = true;
 
       const userMsg: Message = { id: `u-${Date.now()}`, role: 'user', text: question };
       setInput('');
@@ -168,9 +216,9 @@ export default function AssistantScreen() {
           text: local.text,
           trails: local.results,
           upgrading: canUpgrade,
+          source: 'device',
         },
       ]);
-      setThinking(false);
       requestAnimationFrame(() => scrollRef.current?.scrollToEnd({ animated: true }));
 
       // If a backend with a model key is configured, ask it for a better
@@ -222,33 +270,39 @@ export default function AssistantScreen() {
         };
 
         let better: string | null = null;
+        let source: Message['source'] = 'device';
+        let onlineFailure = '';
         if (hasAiKey(aiSettings)) {
           better = await askUserModel(question, payload.context, aiSettings);
+          if (better) source = 'provider';
         }
         if (!better && Platform.OS === 'web') {
-          better = await askPuterModel(question, payload.context, priorTurns);
+          const online = await requestPuterAnswer(question, payload.context, priorTurns);
+          if (online.ok) { better = online.text; source = 'grok'; }
+          else onlineFailure = online.message;
+          if (mountedRef.current) {
+            setGrokState(online.ok ? 'connected' : online.code === 'auth_required' ? 'needs-connection' : 'unavailable');
+            setGrokNote(online.ok ? 'Grok is connected through Puter.' : online.message);
+          }
         }
         if (!better && isBackendConfigured()) {
           try {
             const res = await api.post<{ text: string }>(ROUTES.assistant, payload);
             better = res.ok && typeof res.data?.text === 'string' ? res.data.text : null;
+            if (better) source = 'backend';
           } catch {
             better = null;
           }
         }
 
-        const answerText = better ??
-          (Platform.OS === 'web'
-            ? `${local.text}\n\nI could not reach Grok, so this is EcoTrek's offline trail-data answer.`
-            : local.text);
-        setMessages((m) =>
-          m.map((msg) =>
-            msg.id === answerId ? { ...msg, text: answerText, upgrading: false } : msg
-          )
-        );
+        const answerText = better ?? `${local.text}${onlineFailure ? `\n\n${onlineFailure}` : ''}`;
+        if (mountedRef.current) setMessages((m) => m.map((msg) => msg.id === answerId
+          ? { ...msg, text: answerText, upgrading: false, source } : msg));
       }
+      sendingRef.current = false;
+      if (mountedRef.current) setThinking(false);
     },
-    [thinking, buildContext, trails, trailsLoading, locating, usingFallbackLocation, report, aiSettings, messages]
+    [buildContext, trails, trailsLoading, locating, usingFallbackLocation, report, aiSettings, messages]
   );
 
   const showStarters = messages.filter((m) => m.role === 'user').length === 0;
@@ -288,6 +342,20 @@ export default function AssistantScreen() {
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
         >
+          {Platform.OS === 'web' ? <Card style={{ gap: 12 }}>
+            <View style={{ flexDirection: 'row', alignItems: 'center', gap: 8 }}>
+              <Icon name={grokState === 'connected' ? 'check-circle' : 'sparkles'} size={19} color={colors.primary} />
+              <Text style={[typography.smallMed, { color: colors.text, flex: 1 }]}>Grok · Puter</Text>
+              <Pill label={grokState === 'connected' ? 'Connected' : grokState === 'checking' ? 'Checking' : 'Online AI'} tone={grokState === 'connected' ? 'success' : 'neutral'} size="sm" />
+            </View>
+            <Text style={[typography.micro, { color: colors.textMuted, fontWeight: '400', lineHeight: 20 }]} accessibilityLiveRegion="polite">{grokNote}</Text>
+            <Button
+              label={grokState === 'loading' ? 'Preparing Grok…' : grokState === 'checking' ? 'Connecting…' : grokState === 'unavailable' ? 'Retry AI connection' : grokState === 'needs-connection' ? 'Connect Grok' : 'Test Grok'}
+              icon="sparkles" size="sm" variant="secondary" disabled={grokState === 'loading' || grokState === 'checking' || thinking}
+              loading={grokState === 'loading' || grokState === 'checking'} onPress={handleConnectGrok}
+            />
+          </Card> : null}
+
           {showStarters ? (
             <View style={styles.intro}>
               <View style={styles.introIcon}>
@@ -313,7 +381,7 @@ export default function AssistantScreen() {
                   {Platform.OS === 'web'
                     ? hasAiKey(aiSettings)
                       ? 'Using your provider key · Grok via Puter is the fallback'
-                      : 'Online Grok via Puter · no key required'
+                      : 'Grok via Puter · connection shown above'
                     : hasAiKey(aiSettings)
                       ? 'Online AI enabled with your optional provider key'
                       : 'Offline trail answers; online AI is unavailable here'}
@@ -346,11 +414,14 @@ export default function AssistantScreen() {
                 </View>
                 <View style={{ flex: 1, gap: SPACING.sm }}>
                   <View style={styles.assistantBubble}>
+                    {m.source ? <Text style={[styles.upgradingText, { color: m.source === 'grok' ? colors.primary : colors.textMuted, marginBottom: 8 }]}>
+                      {m.source === 'grok' ? 'Grok · Puter' : m.source === 'provider' ? 'Your AI provider' : m.source === 'backend' ? 'Online assistant' : 'On-device trail answer'}
+                    </Text> : null}
                     <Text style={styles.assistantText}>{m.text}</Text>
                     {m.upgrading ? (
                       <View style={styles.upgrading}>
                         <ActivityIndicator size="small" color={colors.textLight} />
-                        <Text style={styles.upgradingText}>Checking for more detail…</Text>
+                        <Text style={styles.upgradingText}>Asking the online model…</Text>
                       </View>
                     ) : null}
                   </View>
@@ -390,7 +461,7 @@ export default function AssistantScreen() {
             )
           )}
 
-          {thinking ? (
+          {thinking && !messages.some((m) => m.upgrading) ? (
             <View style={styles.assistantRow}>
               <View style={styles.assistantAvatar}>
                 <Icon name="leaf" size={14} color={colors.primary} strokeWidth={2} />
@@ -413,15 +484,15 @@ export default function AssistantScreen() {
             placeholderTextColor={colors.textLight}
             style={styles.input}
             multiline
-            maxLength={200}
+            maxLength={1000}
             onSubmitEditing={() => send(input)}
             returnKeyType="send"
             blurOnSubmit
           />
           <Pressable
             onPress={() => send(input)}
-            disabled={!input.trim()}
-            style={[styles.sendBtn, !input.trim() && { opacity: 0.35 }]}
+            disabled={!input.trim() || thinking}
+            style={[styles.sendBtn, (!input.trim() || thinking) && { opacity: 0.35 }]}
             accessibilityLabel="Send question"
           >
             <Icon name="arrow-right" size={18} color="#fff" strokeWidth={2.3} />
@@ -530,14 +601,14 @@ function AiKeySheet({
       visible={visible}
       onClose={onClose}
       title="AI answers"
-      subtitle="Grok through Puter works online without a personal key"
+      subtitle="Puter connection or an optional personal provider key"
     >
       <View style={{ gap: SPACING.md }}>
         <Banner
           tone="info"
           icon="shield"
-          title="Grok works online without a key"
-          message="EcoTrek uses Puter for Grok by default. Your question and relevant trail/weather facts go to Puter; a personal provider key below is optional, used first if configured, and stored on this device."
+          title="Connect Grok through Puter"
+          message="Use Connect Grok in the assistant to sign in to Puter and test a real response. Puter may require credits or apply usage limits. Your questions and relevant trail/weather facts are sent to Puter. A personal provider key below is optional, used first, and stored on this device."
         />
 
         <Text style={styles.aiSheetLabel}>Provider</Text>

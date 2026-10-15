@@ -5,15 +5,16 @@ package served from the install guide.
 
 ## What it is
 
-A ~1.3 MB, dependency-free **WebView shell** around the Expo *web* export of
-the app in `../EcoTrek`. It contains three tiny classes (readable sources in
+A ~2.8 MB **WebView shell** around the Expo *web* export of
+the app in `../EcoTrek`. It contains small bridge classes (readable sources in
 `java/`, the shipped smali in `smali/`):
 
 | Class | Job |
 | --- | --- |
 | `MainActivity` | Creates the WebView, locks `textZoom` to 100, enables standard viewport behaviour, sends Android back presses to React Navigation before exiting at Home, clears cached WebView location permission on resume, and handles permission/file-picker results. |
 | `AppWebViewClient` | Serves the bundled web app from `assets/` on the **virtual secure origin** `https://appassets.ecotrek.app`, and opens external links in the browser. |
-| `AppChromeClient` | Bridges web geolocation to the Android permission dialog, and `<input type="file">` to the system photo picker. |
+| `AppChromeClient` | Bridges web geolocation to the Android permission dialog, `<input type="file">` to the system photo picker, and user-gesture child windows to Puter authentication. |
+| `AuthPopup` / `AuthPopupChromeClient` | A restricted child WebView preserves `window.opener`/`postMessage` for auth and destroys itself on close; it has no app bridge, asset interceptor or local file access. |
 
 ## Why the virtual HTTPS origin matters
 
@@ -28,13 +29,9 @@ It also fixes the "stretched / shifted" rendering: `setTextZoom(100)`
 disables Android's font boosting and `setUseWideViewPort(true)` makes the
 WebView honour the page's `<meta name="viewport">`.
 
-The WebView uses Google Maps JavaScript API when
-`EXPO_PUBLIC_GOOGLE_MAPS_API_KEY` is set before `npm run export:web`. That key
-is public in the web bundle; restrict it to the website and
-`appassets.ecotrek.app` referrers. If it is missing or Maps is unreachable, the
-recorded route remains visible as a local sketch. The Trails assistant uses
-Grok through Puter online without an app-owned key; questions and relevant
-trail/weather facts are sent to Puter as described in the privacy policy.
+The WebView uses bundled Leaflet and OpenStreetMap tiles, with no Google browser key. Attribution and ordinary browser caching are retained; tiles are not prefetched. If tiles are unreachable, the recorded route remains visible as a local sketch with Retry map.
+
+The Trails assistant connects Grok through Puter without an app-owned key. Users must connect their Puter account; credits/limits can apply. The SDK is pinned and bundled locally, but sign-in/chat still need the network. A deliberate Connect tap opens a **real child auth window**, not an unrelated browser that loses the return channel. Only a successful model reply marks the connection as working. Questions and relevant trail/weather facts are sent to Puter as described in the privacy policy. Physical-device popup/sign-in and live-service checks are still required; successful smali assembly is not a runtime test.
 
 > **One branch, one white screen.** The interceptor rewrites the requested path
 > to `/index.html` for *one* case only — a request for `/`. If that comparison

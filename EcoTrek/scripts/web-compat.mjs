@@ -82,8 +82,8 @@ const SPLASH_STYLE = `<style id="${BOOTSTRAP_MARKER}-style">
 const SPLASH_MARKUP = `<div id="${SPLASH_ID}" role="status" aria-live="polite">
   <svg viewBox="0 0 64 64" aria-hidden="true" focusable="false">
     <circle cx="32" cy="32" r="30" fill="#dff7d7"></circle>
-    <path d="M32 12l11 17h-7l8 12H20l8-12h-7z" fill="#176848"></path>
-    <rect x="29.5" y="40" width="5" height="12" rx="2.5" fill="#0d4832"></rect>
+    <path d="M32 12c-7 0-11 4-12 10-8-1-12 9-7 14-4 6 1 11 8 11h23c8 0 12-9 5-13 3-7-2-13-8-12-1-6-4-10-9-10z" fill="#176848"></path>
+    <path d="M32 31v22m0-13-8-7m8 11 8-8m-15 18h14" fill="none" stroke="#0d4832" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"></path>
   </svg>
   <strong>EcoTrek</strong>
   <small id="${SPLASH_ID}-note">Getting your forest ready…</small>

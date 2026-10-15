@@ -10,6 +10,9 @@
  */
 
 import assert from 'node:assert/strict';
+import { mergeAccountData } from '../services/mergeAccountData';
+import { addCalendarMonths, atCurrentWeek, effectiveGrowthWeeks, imageForGrowth, weeklyGrowthFactor, stageForImage, careProgress, emptyTree, normalizeTreeGrowth, qualifiesForTreeWeek, seasonalTreeBehavior, stageReadyAt, treeGrowthAge, treeSeason, treeStatus, zeroCare } from '../services/treeGrowth';
+import { CARE_GROWTH_FACTORS, MATURE_IMAGE, TREE_IMAGE_COUNT, TREE_STAGES } from '../constants/treeGrowth';
 
 import { dayKey, addDays, daysBetween, weekKey, weekStart, weekEnd } from '../services/dates';
 import { challengesForWeek, CHALLENGE_CATALOG, CHALLENGES_PER_WEEK } from '../constants/challenges';
@@ -1175,6 +1178,197 @@ async function asyncTests() {
     }
   })();
 }
+
+const treeBirthday = new Date(2025, 0, 1, 12).getTime();
+const treeDay = 86400000;
+function caredTree(creditWeeks: number, plantedAt = treeBirthday) {
+  const store = emptyTree(plantedAt);
+  const keys = Array.from({ length: creditWeeks }, (_, i) => weekKey(new Date(plantedAt + i * 7 * treeDay)));
+  return { ...store, careWeeks: keys, outdoorWeeks: keys };
+}
+
+test('tree schema normalizes corrupt saves and persists a real planting date', () => {
+  assert.deepEqual(normalizeTreeGrowth(null, treeBirthday), emptyTree(treeBirthday));
+  const corrupt = normalizeTreeGrowth({ plantedAt: Infinity, care: { water: NaN, sun: -1, nutrients: 1.9 }, forest: Infinity }, treeBirthday);
+  assert.equal(corrupt.plantedAt, treeBirthday);
+  assert.equal(corrupt.version, 3);
+  assert.deepEqual(corrupt.care, { water: 0, sun: 0, nutrients: 1 });
+  assert.equal(treeStatus(corrupt, treeBirthday).stage.id, 'seed');
+  assert.equal(corrupt.forest, 0);
+});
+test('legacy instant-growth trees are never backdated by a year', () => {
+  const legacy = normalizeTreeGrowth({ stageId: 'flourishing', care: { water: 100, sun: 5, nutrients: 5 }, forest: 2 }, treeBirthday);
+  assert.equal(legacy.plantedAt, treeBirthday);
+  assert.equal(legacy.forest, 2);
+  assert.equal(legacy.legacyMigrated, true);
+  assert.deepEqual(legacy.care, { water: 1, sun: 1, nutrients: 1 });
+  assert.equal(treeStatus(legacy, treeBirthday).isFullyGrown, false);
+  assert.equal(treeStatus(legacy, treeBirthday).growthWeeks, 0);
+  assert.equal(legacy.careWeeks.length, 1);
+});
+test('calendar anniversaries clamp short months and handle leap years', () => {
+  assert.equal(addCalendarMonths(new Date(2025, 0, 31, 12).getTime(), 1), new Date(2025, 1, 28, 12).getTime());
+  assert.equal(addCalendarMonths(new Date(2024, 1, 29, 12).getTime(), 12), new Date(2025, 1, 28, 12).getTime());
+  assert.equal(stageReadyAt(TREE_STAGES.find((stage) => stage.id === 'mature')!, new Date(2024, 0, 1, 12).getTime()), new Date(2025, 0, 1, 12).getTime());
+});
+test('52 cared-for weeks cannot mature a tree before its full calendar year', () => {
+  const store = caredTree(52);
+  assert.equal(treeStatus(store, treeBirthday + 364 * treeDay).isFullyGrown, false);
+  const anniversary = addCalendarMonths(treeBirthday, 12);
+  assert.equal(treeStatus(store, anniversary - 1).isFullyGrown, false);
+  assert.equal(treeStatus(store, anniversary).stage.id, 'mature');
+});
+test('unattended calendar age is slow growth, not an adult-tree bypass', () => {
+  const now = addCalendarMonths(treeBirthday, 18);
+  const status = treeStatus(emptyTree(treeBirthday), now);
+  assert.equal(status.isFullyGrown, false);
+  assert.ok(status.effectiveGrowthWeeks < 4);
+  assert.equal(treeStatus({ ...caredTree(78), outdoorWeeks: [] }, now).isSage, false);
+});
+test('seventeen milestones require both their calendar and weekly effort gates', () => {
+  for (const stage of TREE_STAGES) {
+    const now = stageReadyAt(stage, treeBirthday);
+    const store = caredTree(stage.minWeeks);
+    assert.equal(treeStatus(store, now).stage.id, stage.id);
+    if (stage.minWeeks > 0) assert.ok(treeStatus(caredTree(stage.minWeeks - 1), now).imageIndex < stage.firstImage);
+  }
+  assert.equal(treeStatus(caredTree(78), addCalendarMonths(treeBirthday, 18) - 1).stage.id, 'old');
+});
+test('missed weeks and more-than-one-year-old records never shrink established growth', () => {
+  const store = caredTree(78);
+  const now = addCalendarMonths(treeBirthday, 42);
+  const recovered = normalizeTreeGrowth(store, now);
+  assert.equal(recovered.careWeeks.length, 78);
+  assert.equal(recovered.outdoorWeeks.length, 78);
+  assert.equal(treeStatus(recovered, now).stage.id, 'sage');
+  assert.equal(treeStatus(recovered, addCalendarMonths(treeBirthday, 60)).growthWeeks, 78);
+});
+test('decades of outdoor-only weeks cannot prune or erase an established sage', () => {
+  const base = caredTree(78);
+  const outdoorWeeks = Array.from({ length: 1500 }, (_, i) => weekKey(new Date(treeBirthday + i * 7 * treeDay)));
+  const now = addCalendarMonths(treeBirthday, 360);
+  const recovered = normalizeTreeGrowth({ ...base, outdoorWeeks }, now);
+  assert.equal(recovered.outdoorWeeks.length, 1500);
+  assert.equal(treeStatus(recovered, now).growthWeeks, 78);
+  assert.equal(treeStatus(recovered, now).stage.id, 'sage');
+});
+test('guest upgrades preserve the older tree birthday, permanent weeks and private ratings', () => {
+  const guest = { ...caredTree(52), goldenApples: 2, harvestedWeeks: ['2026-W01', '2026-W02'] };
+  const account = { ...emptyTree(addCalendarMonths(treeBirthday, 6)), careWeeks: ['2026-W03'], outdoorWeeks: ['2026-W03'] };
+  const merged = mergeAccountData('tree-growth', guest, account);
+  assert.equal(merged.plantedAt, treeBirthday);
+  assert.equal(merged.careWeeks.length, 53);
+  assert.equal(merged.goldenApples, 2);
+  assert.equal(treeStatus(merged, addCalendarMonths(treeBirthday, 18)).growthWeeks, 53);
+  assert.deepEqual(mergeAccountData('trail-ratings', { creek: 5, ridge: 3 }, { creek: 4 }), { creek: 4, ridge: 3 });
+});
+test('only unique intersecting weeks count; future, invalid and pre-planting credits do not', () => {
+  const current = weekKey(new Date(treeBirthday));
+  const raw = { ...emptyTree(treeBirthday), careWeeks: [current, current, 'broken', '2024-W01', '2099-W01'], outdoorWeeks: [current, current, '2099-W01'] };
+  const store = normalizeTreeGrowth(raw, treeBirthday);
+  assert.deepEqual(store.careWeeks, [current]);
+  assert.equal(treeStatus(store, treeBirthday).growthWeeks, 1);
+});
+test('weekly care resets locally on Monday without clearing completed weeks', () => {
+  const sunday = new Date(2026, 9, 18, 23, 59).getTime();
+  const monday = new Date(2026, 9, 19, 0).getTime();
+  const store = { ...emptyTree(sunday), care: { water: 1, sun: 1, nutrients: 1 }, careWeeks: [weekKey(new Date(sunday))] };
+  assert.deepEqual(atCurrentWeek(store, monday).care, zeroCare());
+  assert.equal(atCurrentWeek(store, monday).careWeeks.length, 1);
+});
+test('young trees experience seasons but only adults shed autumn leaves or go bare', () => {
+  for (const season of ['spring', 'summer', 'fall', 'winter'] as const) {
+    const young = seasonalTreeBehavior(season, false);
+    assert.equal(young.fallingLeaves, false);
+    assert.equal(young.bareBranches, false);
+    assert.equal(young.snow, season === 'winter');
+    const adult = seasonalTreeBehavior(season, true);
+    assert.equal(adult.fallingLeaves, season === 'fall');
+    assert.equal(adult.bareBranches, season === 'winter');
+  }
+});
+test('seasonal scenery follows the local calendar and hemisphere', () => {
+  assert.equal(treeSeason(new Date(2026, 9, 14).getTime(), 30), 'fall');
+  assert.equal(treeSeason(new Date(2026, 0, 14).getTime(), 30), 'winter');
+  assert.equal(treeSeason(new Date(2026, 0, 14).getTime(), -30), 'summer');
+  assert.equal(treeSeason(new Date(2026, 9, 14).getTime(), -30), 'spring');
+});
+test('golden apples require maturity and this week’s activity/care, once a week', () => {
+  const now = addCalendarMonths(treeBirthday, 12);
+  const current = weekKey(new Date(now));
+  const base = caredTree(52);
+  const store = { ...base, careWeek: current, care: { water: 1, sun: 1, nutrients: 1 }, outdoorWeeks: [...base.outdoorWeeks, current], careWeeks: [...base.careWeeks, current] };
+  assert.equal(treeStatus(store, now).canHarvest, true);
+  assert.equal(treeStatus({ ...store, harvestedWeeks: [current] }, now).canHarvest, false);
+  assert.equal(treeStatus({ ...store, care: zeroCare() }, now).canHarvest, false);
+  assert.equal(treeStatus({ ...store, outdoorWeeks: [] }, now).canHarvest, false);
+  assert.equal(treeStatus({ ...store, plantedAt: now }, now).canHarvest, false);
+});
+test('tree outings must be valid and exceed the short-outing minimum', () => {
+  assert.equal(qualifiesForTreeWeek({ valid: true, miles: 0.1, durationSec: 60 }), true);
+  for (const activity of [{ valid: false, miles: 3, durationSec: 3600 }, { valid: true, miles: 0.09, durationSec: 60 }, { valid: true, miles: 0.1, durationSec: 59 }, { valid: true, miles: NaN, durationSec: Infinity }]) assert.equal(qualifiesForTreeWeek(activity), false);
+});
+test('care is inexpensive, capped once per kind, and cannot buy calendar age', () => {
+  for (const stage of TREE_STAGES) {
+    assert.equal(stage.unitCost, 1);
+    assert.equal(stage.unitsPerCare, 1);
+    assert.equal(careProgress(stage, { water: 999, sun: 1, nutrients: 1 }), 1);
+  }
+  assert.equal(treeGrowthAge('seed', NaN), 0);
+  assert.equal(treeGrowthAge('sage', 2), TREE_STAGES.length);
+  assert.equal(treeStatus({ ...emptyTree(treeBirthday), care: { water: 1, sun: 1, nutrients: 1 } }, treeBirthday).stage.id, 'seed');
+});
+test('water, soil and sunlight all matter once per week; partial care slows instead of vanishing', () => {
+  for (const [units, factor] of CARE_GROWTH_FACTORS.entries()) {
+    const care = { water: units > 0 ? 1 : 0, sun: units > 1 ? 1 : 0, nutrients: units > 2 ? 1 : 0 };
+    assert.equal(weeklyGrowthFactor(care, true), factor);
+    assert.equal(weeklyGrowthFactor(care, false), factor * 0.75);
+  }
+  const now = addCalendarMonths(treeBirthday, 12);
+  const full = caredTree(52);
+  const partial = { ...full, careWeeks: [], careHistory: Object.fromEntries(full.outdoorWeeks.map((week) => [week, { water: 1, sun: 1, nutrients: 0 }])) };
+  assert.ok(effectiveGrowthWeeks(partial, now) > 30);
+  assert.ok(effectiveGrowthWeeks(partial, now) < effectiveGrowthWeeks(full, now));
+  assert.equal(treeStatus(partial, now).isFullyGrown, false);
+});
+test('every one of the 100 visual values is reachable by steady real-time care without an adult jump', () => {
+  const seen = new Set<number>();
+  let previous = 0;
+  for (let day = 0; day <= 550; day++) {
+    const now = treeBirthday + day * treeDay;
+    const store = caredTree(Math.floor(day / 7) + 1);
+    const status = treeStatus(store, now);
+    assert.ok(status.imageIndex >= previous);
+    assert.ok(status.imageIndex - previous <= 1, `Skipped a visual value on day ${day}`);
+    if (day < 365) assert.ok(status.imageIndex < MATURE_IMAGE);
+    seen.add(status.imageIndex); previous = status.imageIndex;
+  }
+  assert.equal(seen.size, TREE_IMAGE_COUNT);
+  assert.equal(stageForImage(52).id, 'flower');
+  assert.equal(stageForImage(25).id, 'branching');
+  assert.equal(stageForImage(99).id, 'sage');
+  assert.equal(imageForGrowth(99999, treeBirthday, treeBirthday).imageIndex, 0);
+});
+test('version-two tree upgrades preserve real birthdays, complete history and current partial care', () => {
+  const raw = { ...caredTree(52), version: 2, care: { water: 1, sun: 0, nutrients: 0 }, careWeek: weekKey(new Date(addCalendarMonths(treeBirthday, 12))), goldenApples: 4 };
+  const migrated = normalizeTreeGrowth(raw, addCalendarMonths(treeBirthday, 12));
+  assert.equal(migrated.version, 3);
+  assert.equal(migrated.plantedAt, treeBirthday);
+  assert.equal(migrated.careWeeks.length, 52);
+  assert.equal(migrated.goldenApples, 4);
+  assert.equal(migrated.careHistory[raw.careWeek].water, 1);
+  assert.equal(treeStatus(migrated, addCalendarMonths(treeBirthday, 12)).isFullyGrown, true);
+});
+test('partial care survives Monday and cannot regress a previously rendered image', () => {
+  const sunday = new Date(2025, 3, 27, 23, 59).getTime(), monday = new Date(2025, 3, 28).getTime();
+  const week = weekKey(new Date(sunday));
+  const store = { ...caredTree(16), careWeek: week, care: { water: 1, sun: 1, nutrients: 0 } };
+  const before = treeStatus(store, sunday);
+  const next = atCurrentWeek(store, monday);
+  assert.deepEqual(next.care, zeroCare());
+  assert.equal(next.careHistory[week].sun, 1);
+  assert.ok(treeStatus(next, monday).imageIndex >= before.imageIndex);
+});
 
 asyncTests().then(() => {
   console.log('\nEcoTrek logic tests\n');

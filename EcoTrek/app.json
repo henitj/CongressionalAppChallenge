@@ -3,7 +3,7 @@
     "name": "EcoTrek",
     "slug": "ecotrek",
     "scheme": "ecotrek",
-    "version": "1.2.1",
+    "version": "1.5.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -32,7 +32,7 @@
     },
     "android": {
       "package": "com.ecotrek.app",
-      "versionCode": 4,
+      "versionCode": 7,
       "softwareKeyboardLayoutMode": "resize",
       "permissions": [
         "ACCESS_FINE_LOCATION",

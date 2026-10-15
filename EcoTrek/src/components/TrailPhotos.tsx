@@ -9,15 +9,18 @@ import TrailScene from './TrailScene';
 type TrailPhotoProps = { trail: Trail };
 
 /** A real Wikimedia/admin-approved cover with an illustrated offline fallback. */
-export function TrailCover({ trail }: TrailPhotoProps) {
+export function TrailCover({ trail, loadRemote = true }: TrailPhotoProps & { loadRemote?: boolean }) {
   const { colors, typography } = useTheme();
   const [uri, setUri] = useState<string | null>(trail.imageUrl ?? null);
   const [failed, setFailed] = useState(false);
+  const [loaded, setLoaded] = useState(false);
 
   useEffect(() => {
     let active = true;
     setFailed(false);
+    setLoaded(false);
     setUri(trail.imageUrl ?? null);
+    if (!loadRemote) return () => { active = false; };
     getTrailCover(trail)
       .then((cover) => {
         if (active) setUri(cover);
@@ -28,28 +31,26 @@ export function TrailCover({ trail }: TrailPhotoProps) {
     return () => {
       active = false;
     };
-  }, [trail.id, trail.imageUrl]);
+  }, [trail.id, trail.imageUrl, loadRemote]);
 
   const showImage = Boolean(uri && !failed);
+  const photoReady = showImage && loaded;
   return (
     <View style={styles.cover}>
+      {!photoReady ? <TrailScene mode={trail.type === 'bike' ? 'bike' : 'hike'} style={{ height: 132, minHeight: 0, flexGrow: 0, flexShrink: 0 }} /> : null}
       {showImage ? (
         <Image
           source={{ uri: uri as string }}
-          style={StyleSheet.absoluteFill}
+          style={[StyleSheet.absoluteFill, { opacity: photoReady ? 1 : 0 }]}
           resizeMode="cover"
+          onLoad={() => setLoaded(true)}
           onError={() => setFailed(true)}
           accessibilityLabel={`${trail.name} trail photo`}
         />
-      ) : (
-        <TrailScene
-          mode={trail.type === 'bike' ? 'bike' : 'hike'}
-          style={{ height: 132, minHeight: 0, flex: 0 }}
-        />
-      )}
-      {!showImage ? (
+      ) : null}
+      {!photoReady ? (
         <View style={[styles.coverFallbackLabel, { backgroundColor: colors.surface, borderColor: colors.border }]}>
-          <Text style={[typography.micro, { color: colors.textMuted }]}>Trail preview</Text>
+          <Text style={[typography.micro, { color: colors.textMuted }]}>Trail illustration</Text>
         </View>
       ) : null}
     </View>
@@ -80,11 +81,11 @@ export function TrailPhotoGallery({ trail }: TrailPhotoProps) {
   if (items.length === 0) {
     return (
       <View style={styles.gallerySection}>
-        <Text style={[typography.overline, { color: colors.textMuted }]}>Trail preview</Text>
+        <Text style={[typography.overline, { color: colors.textMuted }]}>Trail illustration</Text>
         <View style={[styles.galleryFallback, { backgroundColor: colors.primarySurface }]}>
           <TrailScene
             mode={trail.type === 'bike' ? 'bike' : 'hike'}
-            style={{ height: 168, minHeight: 0, flex: 0 }}
+            style={{ height: 168, minHeight: 0, flexGrow: 0, flexShrink: 0 }}
           />
         </View>
         <Text style={[typography.micro, { color: colors.textLight }]}>

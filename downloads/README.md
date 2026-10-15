@@ -14,9 +14,9 @@ APKTOOL=/path/to/apktool.jar ../android-shell/build.sh
 
 | | |
 | --- | --- |
-| Version | 1.2.1 (versionCode 4) |
-| Size | 1,766,743 bytes |
-| SHA-256 | `bd1f6553404427bd223fbd2397bda0e6feb7a5619d914fb0dd8e4970d9a0bbf0` |
+| Version | 1.5.0 (versionCode 7) |
+| Size | 8,766,759 bytes |
+| SHA-256 | `17bc50b301ea212ed54cac7237f09b56303de0320d8a0d7c05e0c0b3ac2ee89b` |
 | Signing certificate | `CN=EcoTrek, O=EcoTrek Team, C=US` |
 | Certificate SHA-256 | `74005b52c140cd4b45a1adb0e95ce31ea30e82b4e6db20197dc0c889901726d3` |
 | Signatures | APK Signature Scheme **v1 + v2 + v3** (4-byte aligned) |
@@ -38,6 +38,16 @@ It re-derives the v2/v3 content digests from the bytes on disk, checks the v1
 JAR chain, confirms v1 and v2/v3 are signed by the same certificate, verifies
 the outer and signed v3 SDK ranges agree, confirms the web bundle's assets are
 all bundled, and checks that the uncompressed entries are aligned.
+
+The 1.5.0 build adds a 100-image apple-tree growth atlas with weekly water/soil/sunlight pacing, and keeps the calmer Home, immediately usable offline/saved trails,
+concise details with visible personal ratings, a seven-stage 12/18-month tree
+lifecycle, automatic age-aware seasons, golden apples and a centered gem icon.
+It preserves the approved activity cutouts, keyless tracking map and truthful
+optional Grok connection behavior. The signing
+certificate is unchanged, so it is eligible to update the previous sideload.
+Signature/asset checks passed; **physical-device GPS, live map tiles and
+Puter sign-in/chat still need verification**. See
+[release validation](../EcoTrek/docs/RELEASE_1.5.0.md).
 
 ## Play Protect
 
