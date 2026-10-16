@@ -1444,7 +1444,7 @@ test('hike plan codes round-trip and reject tampering', () => {
 
 test('friend challenge codes clamp hostile values and cannot set rewards', () => {
   const now = Date.now();
-  const good = { id: 'c1', title: 'Walk 5 miles', targetMiles: 5, deadline: now + 7 * 86400000, fromName: 'Jo', createdAt: now };
+  const good = { id: 'c1', title: 'Walk 5 miles', metric: 'miles' as const, targetMiles: 5, deadline: now + 7 * 86400000, fromName: 'Jo', createdAt: now };
   const code = encodeFriendChallenge(good);
   assert.deepEqual(decodeFriendChallenge(code, now), good);
   // A forged payload asking for absurd miles / far-future deadline is rejected.
@@ -1490,4 +1490,46 @@ test('social decoders survive fuzzing and never throw', () => {
   // Oversized structured input is rejected by the length cap, not parsed.
   const huge = encodePayload({ kind: 'plan', trailName: 'x'.repeat(5000) });
   assert.equal(decodeHikePlan(huge.length > 2048 ? 'v1.' + 'A'.repeat(5000) + '.x' : huge), null);
+});
+
+// ---------- Social v2: cleanup challenges, results, RSVP, sapling ----------
+import {
+  encodeChallengeResult,
+  decodeChallengeResult,
+  encodeRsvp,
+  decodeRsvp,
+  encodeSapling,
+  decodeSapling,
+  cleanupPiecesInWindow,
+} from '../services/social';
+
+test('cleanup challenge codes round-trip with clamps', () => {
+  const now = Date.now();
+  const c = { id: 'cl1', title: 'Pick up 25 pieces', metric: 'cleanup' as const, targetMiles: 25, deadline: now + 7 * 86400000, fromName: 'Jo', createdAt: now };
+  assert.deepEqual(decodeFriendChallenge(encodeFriendChallenge(c), now), c);
+  const forged = encodePayload({ kind: 'challenge', id: 'x', metric: 'cleanup', targetMiles: 99999, deadline: now + 86400000, fromName: 'E', createdAt: now });
+  assert.equal(decodeFriendChallenge(forged, now), null);
+  // Progress window ends AT the deadline: litter afterwards never counts.
+  const cleanups = [
+    { date: 1000, litterCount: 5 },
+    { date: 4000, litterCount: 7 },
+    { date: 9000, litterCount: 50 },
+  ];
+  assert.equal(cleanupPiecesInWindow(cleanups, 0, 5000), 12);
+  assert.equal(cleanupPiecesInWindow(cleanups, 5000, 10000), 50);
+});
+
+test('result, RSVP and sapling codes round-trip and reject junk', () => {
+  const now = Date.now();
+  assert.deepEqual(
+    decodeChallengeResult(encodeChallengeResult({ challengeId: 'c1', name: 'Jo', amount: 5.2, completed: true, at: now }), now),
+    { challengeId: 'c1', name: 'Jo', amount: 5.2, completed: true, at: now }
+  );
+  assert.deepEqual(decodeRsvp(encodeRsvp({ planId: 'p1', name: 'Jo', status: 'out' })), { planId: 'p1', name: 'Jo', status: 'out' });
+  const gift = { id: 's1', fromName: 'Jo', stageName: 'Sapling', imageIndex: 12, createdAt: now };
+  assert.deepEqual(decodeSapling(encodeSapling(gift), now), gift);
+  assert.equal(decodeChallengeResult(encodeSapling(gift), now), null, 'kinds must not cross-decode');
+  assert.equal(decodeSapling(encodeRsvp({ planId: 'p1', name: 'Jo', status: 'in' }), now), null);
+  const evilResult = encodePayload({ kind: 'result', challengeId: 'c1', name: 'Eve', amount: 999999, completed: true, at: now });
+  assert.equal(decodeChallengeResult(evilResult, now), null);
 });

@@ -663,17 +663,17 @@ describe('friends & plans (database-free social)', () => {
     await waitFor(() => expect(utils.queryByText(/I'm in/)).toBeTruthy());
     // Import a friend's challenge by pasting its code.
     const now = Date.now();
-    const code = encodeFriendChallenge({ id: 'friend-c1', title: 'Walk 5 miles in 7 days', targetMiles: 5, deadline: now + 7 * 86400000, fromName: 'Jo', createdAt: now });
+    const code = encodeFriendChallenge({ id: 'friend-c1', title: 'Walk 5 miles in 7 days', metric: 'miles', targetMiles: 5, deadline: now + 7 * 86400000, fromName: 'Jo', createdAt: now });
     const input = utils.getByLabelText('Paste a hike or challenge code');
     fireEvent.changeText(input, code);
     fireEvent.press(utils.getByText('Add it'));
-    await waitFor(() => expect(utils.queryByText(/Challenge added from Jo/)).toBeTruthy());
+    await waitFor(() => expect(utils.queryByText(/challenged you: Walk 5 miles/)).toBeTruthy());
     await waitFor(() => expect(utils.queryByText('Accept challenge')).toBeTruthy());
     fireEvent.press(utils.getByText('Accept challenge'));
     await waitFor(() => expect(utils.queryByText('Accept challenge')).toBeNull());
     // Re-importing the same code five times never duplicates the challenge.
     for (let i = 0; i < 5; i++) { fireEvent.changeText(input, code); fireEvent.press(utils.getByText('Add it')); }
-    await waitFor(() => expect(utils.getAllByText('Share / re-send').length).toBe(1));
+    await waitFor(() => expect(utils.getAllByText(/Share result with challenger|Share \/ re-send/).length).toBe(1));
     // A junk code is rejected gracefully.
     fireEvent.changeText(input, 'v1.garbage.zzz');
     fireEvent.press(utils.getByText('Add it'));
@@ -687,5 +687,52 @@ describe('friends & plans (database-free social)', () => {
     await waitFor(() => expect(utils.queryByText(/You're invited: Barton Creek/)).toBeTruthy());
     fireEvent.press(utils.getByLabelText(/I'm out for Barton Creek/));
     await waitFor(() => expect(utils.getAllByText('Barton Creek Greenbelt').length).toBeGreaterThan(1));
+  });
+});
+
+describe('social v2: cleanup challenges, results, RSVP, sapling', () => {
+  it('creates a cleanup challenge and shows a friend result sent back', async () => {
+    const utils = await mount(SocialScreen, /Plan a hike/);
+    fireEvent.press(utils.getByText(/Trail cleanup/));
+    fireEvent.press(utils.getByText('Create challenge & share'));
+    await waitFor(() => expect(utils.queryByText(/Pick up 25 pieces of litter/)).toBeTruthy());
+    const now = Date.now();
+    const code = encodeFriendChallenge({ id: 'loop-c1', title: 'Walk 5 miles in 7 days', metric: 'miles', targetMiles: 5, deadline: now + 7 * 86400000, fromName: 'Jo', createdAt: now });
+    fireEvent.changeText(utils.getByLabelText('Paste a hike or challenge code'), code);
+    fireEvent.press(utils.getByText('Add it'));
+    await waitFor(() => expect(utils.queryByText(/challenged you: Walk 5 miles/)).toBeTruthy());
+    const { encodeChallengeResult } = require('../services/social');
+    fireEvent.changeText(utils.getByLabelText('Paste a hike or challenge code'), encodeChallengeResult({ challengeId: 'loop-c1', name: 'Jo', amount: 5, completed: true, at: now }));
+    fireEvent.press(utils.getByText('Add it'));
+    await waitFor(() => expect(utils.queryByText(/sent their result/)).toBeTruthy());
+    await waitFor(() => expect(utils.queryByText(/Jo: 5 mi — finished it!/)).toBeTruthy());
+  });
+
+  it('imports a sapling gift and plants it for a tree head start', async () => {
+    const utils = await mount(SocialScreen, /Plan a hike/);
+    const now = Date.now();
+    const { encodeSapling } = require('../services/social');
+    const input = utils.getByLabelText('Paste a hike or challenge code');
+    fireEvent.changeText(input, encodeSapling({ id: 'sap-1', fromName: 'Jo', stageName: 'Sapling', imageIndex: 12, createdAt: now }));
+    fireEvent.press(utils.getByText('Add it'));
+    await waitFor(() => expect(utils.queryByText(/passed you a sapling/)).toBeTruthy());
+    fireEvent.press(utils.getByText('Plant it'));
+    await waitFor(() => expect(utils.queryByText(/got a 4-week head start/)).toBeTruthy());
+  });
+
+  it('applies an RSVP code to my own hike plan', async () => {
+    const utils = await mount(SocialScreen, /Plan a hike/);
+    fireEvent.press(utils.getByText('Create hike & share invite'));
+    await waitFor(() => expect(utils.queryByText(/I'm in/)).toBeTruthy());
+    const now = Date.now();
+    const { encodeHikePlan, encodeRsvp } = require('../services/social');
+    const input = utils.getByLabelText('Paste a hike or challenge code');
+    fireEvent.changeText(input, encodeHikePlan({ id: 'host-p1', trailId: 'barton-creek', trailName: 'Barton Creek Greenbelt', area: 'South Austin', startsAt: now + 86400000, durationMin: 120, notes: '', hostName: 'Me', createdAt: now }));
+    fireEvent.press(utils.getByText('Add it'));
+    await waitFor(() => expect(utils.queryByText(/You're invited: Barton Creek/)).toBeTruthy());
+    fireEvent.changeText(input, encodeRsvp({ planId: 'host-p1', name: 'Jo', status: 'in' }));
+    fireEvent.press(utils.getByText('Add it'));
+    await waitFor(() => expect(utils.queryByText(/RSVP is saved/)).toBeTruthy());
+    await waitFor(() => expect(utils.queryByText(/Replies: ✅ Jo/)).toBeTruthy());
   });
 });

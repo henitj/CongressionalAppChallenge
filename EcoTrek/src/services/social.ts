@@ -152,6 +152,8 @@ export type HikePlan = {
   /** true when this device created the plan. */
   mine: boolean;
   rsvp: 'in' | 'out' | null;
+  /** Replies received back from friends via RSVP codes. */
+  guests?: { name: string; status: 'in' | 'out' }[];
 };
 
 export function encodeHikePlan(plan: Omit<HikePlan, 'mine' | 'rsvp'>): string {
@@ -191,9 +193,13 @@ export function decodeHikePlan(code: string, now = Date.now()): Omit<HikePlan, '
 
 /* ---------------- friend challenges ---------------- */
 
+export type ChallengeMetric = 'miles' | 'cleanup';
+
 export type FriendChallenge = {
   id: string;
   title: string;
+  metric: ChallengeMetric;
+  /** Miles for metric='miles', pieces of litter for metric='cleanup'. */
   targetMiles: number;
   /** Unix ms deadline (end of that day is fine — comparisons use < deadline). */
   deadline: number;
@@ -202,13 +208,16 @@ export type FriendChallenge = {
   mine: boolean;
   acceptedAt: number | null;
   completedAt: number | null;
+  /** Filled when the OTHER person sends their result code back. */
+  friendResult?: { name: string; amount: number; completed: boolean; at: number } | null;
 };
 
-export function encodeFriendChallenge(c: Omit<FriendChallenge, 'mine' | 'acceptedAt' | 'completedAt'>): string {
+export function encodeFriendChallenge(c: Omit<FriendChallenge, 'mine' | 'acceptedAt' | 'completedAt' | 'friendResult'>): string {
   return encodePayload({
     kind: 'challenge',
     id: c.id,
     title: c.title,
+    metric: c.metric,
     targetMiles: c.targetMiles,
     deadline: c.deadline,
     fromName: c.fromName,
@@ -216,21 +225,92 @@ export function encodeFriendChallenge(c: Omit<FriendChallenge, 'mine' | 'accepte
   });
 }
 
-export function decodeFriendChallenge(code: string, now = Date.now()): Omit<FriendChallenge, 'mine' | 'acceptedAt' | 'completedAt'> | null {
+export function decodeFriendChallenge(code: string, now = Date.now()): Omit<FriendChallenge, 'mine' | 'acceptedAt' | 'completedAt' | 'friendResult'> | null {
   const p = decodePayload(code);
   if (!p || p.kind !== 'challenge') return null;
-  const targetMiles = cleanNumber(p.targetMiles, 0.5, 100);
+  const metric: ChallengeMetric = p.metric === 'cleanup' ? 'cleanup' : 'miles';
+  const targetMiles = cleanNumber(p.targetMiles, metric === 'cleanup' ? 1 : 0.5, metric === 'cleanup' ? 200 : 100);
   const deadline = cleanTime(p.deadline, now - 7 * 86400000, now + 366 * 86400000);
   const createdAt = cleanTime(p.createdAt, now - 366 * 86400000, now + 86400000);
   if (targetMiles == null || deadline == null || createdAt == null) return null;
   return {
     id: cleanText(p.id, 40) || makeId('challenge', createdAt),
-    title: cleanText(p.title, MAX_TITLE) || `Walk ${targetMiles} miles`,
+    title: cleanText(p.title, MAX_TITLE) || (metric === 'cleanup' ? `Pick up ${targetMiles} pieces of litter` : `Walk ${targetMiles} miles`),
+    metric,
     targetMiles,
     deadline,
     fromName: cleanText(p.fromName, MAX_NAME) || 'A friend',
     createdAt,
   };
+}
+
+/* --------- result & RSVP codes: how the loop gets closed --------- */
+
+export type ChallengeResult = { challengeId: string; name: string; amount: number; completed: boolean; at: number };
+
+export function encodeChallengeResult(r: ChallengeResult): string {
+  return encodePayload({ kind: 'result', challengeId: r.challengeId, name: r.name, amount: r.amount, completed: r.completed, at: r.at });
+}
+
+export function decodeChallengeResult(code: string, now = Date.now()): ChallengeResult | null {
+  const p = decodePayload(code);
+  if (!p || p.kind !== 'result') return null;
+  const amount = cleanNumber(p.amount, 0, 500);
+  const at = cleanTime(p.at, now - 366 * 86400000, now + 86400000);
+  const challengeId = cleanText(p.challengeId, 40);
+  if (amount == null || at == null || !challengeId) return null;
+  return { challengeId, name: cleanText(p.name, MAX_NAME) || 'A friend', amount, completed: p.completed === true, at };
+}
+
+export type RsvpReply = { planId: string; name: string; status: 'in' | 'out' };
+
+export function encodeRsvp(r: RsvpReply): string {
+  return encodePayload({ kind: 'rsvp', planId: r.planId, name: r.name, status: r.status });
+}
+
+export function decodeRsvp(code: string): RsvpReply | null {
+  const p = decodePayload(code);
+  if (!p || p.kind !== 'rsvp') return null;
+  const planId = cleanText(p.planId, 40);
+  if (!planId) return null;
+  return { planId, name: cleanText(p.name, MAX_NAME) || 'A friend', status: p.status === 'out' ? 'out' : 'in' };
+}
+
+/* ---------------- pass the sapling ---------------- */
+
+export type SaplingGift = { id: string; fromName: string; stageName: string; imageIndex: number; createdAt: number };
+
+export function encodeSapling(g: SaplingGift): string {
+  return encodePayload({ kind: 'sapling', id: g.id, fromName: g.fromName, stageName: g.stageName, imageIndex: g.imageIndex, createdAt: g.createdAt });
+}
+
+export function decodeSapling(code: string, now = Date.now()): SaplingGift | null {
+  const p = decodePayload(code);
+  if (!p || p.kind !== 'sapling') return null;
+  const createdAt = cleanTime(p.createdAt, now - 366 * 86400000, now + 86400000);
+  const imageIndex = cleanNumber(p.imageIndex, 0, 99);
+  if (createdAt == null || imageIndex == null) return null;
+  return {
+    id: cleanText(p.id, 40) || makeId('sapling', createdAt),
+    fromName: cleanText(p.fromName, MAX_NAME) || 'A friend',
+    stageName: cleanText(p.stageName, MAX_TITLE) || 'Sapling',
+    imageIndex: Math.round(imageIndex),
+    createdAt,
+  };
+}
+
+/** Pieces of litter picked up in [fromMs, toMs). */
+export function cleanupPiecesInWindow(
+  cleanups: { date: number; litterCount: number }[],
+  fromMs: number,
+  toMs: number
+): number {
+  let total = 0;
+  for (const c of cleanups) {
+    if (!Number.isFinite(c.litterCount) || c.litterCount <= 0) continue;
+    if (c.date >= fromMs && c.date < toMs) total += Math.min(999, c.litterCount);
+  }
+  return Math.round(total);
 }
 
 /** Miles from valid activities started in [fromMs, toMs). */
