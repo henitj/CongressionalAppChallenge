@@ -22,6 +22,9 @@ import { NotificationProvider } from '../context/NotificationContext';
 import { WeatherProvider } from '../context/WeatherContext';
 import { AnalyticsProvider } from '../context/AnalyticsContext';
 import { ProfileProvider } from '../context/ProfileContext';
+import { SocialProvider } from '../context/SocialContext';
+import SocialScreen from '../screens/SocialScreen';
+import { encodeFriendChallenge, encodeHikePlan } from '../services/social';
 
 import HomeScreen from '../screens/HomeScreen';
 import Header from '../components/Header';
@@ -103,6 +106,7 @@ function Providers({ children }: { children: React.ReactNode }) {
                 <ActivityProvider>
                   <LogbookProvider>
                     <ChallengeProvider>
+                      <SocialProvider>
                       <NotificationProvider>
                         <WeatherProvider notificationsEnabled={false}>
                           <AnalyticsProvider>
@@ -110,6 +114,7 @@ function Providers({ children }: { children: React.ReactNode }) {
                           </AnalyticsProvider>
                         </WeatherProvider>
                       </NotificationProvider>
+                      </SocialProvider>
                     </ChallengeProvider>
                   </LogbookProvider>
                 </ActivityProvider>
@@ -130,11 +135,11 @@ function Providers({ children }: { children: React.ReactNode }) {
 
 const Stack = createNativeStackNavigator();
 
-async function mount(Component: React.ComponentType<any>, anchor: string | RegExp) {
+async function mount(Component: React.ComponentType<any>, anchor: string | RegExp, initialParams?: Record<string, unknown>) {
   const utils = render(
     <Providers>
       <Stack.Navigator screenOptions={{ headerShown: false }}>
-        <Stack.Screen name="Target" component={Component} />
+        <Stack.Screen name="Target" component={Component} initialParams={initialParams} />
       </Stack.Navigator>
     </Providers>
   );
@@ -344,7 +349,8 @@ describe('review fixes', () => {
     const utils = await mount(ProfileScreen, 'Share my progress');
     fireEvent.press(utils.getByText('Share my progress'));
     await waitFor(() => expect(utils.queryByText('Share your progress')).toBeTruthy(), { timeout: 4000 });
-    expect(utils.queryByText(/a quick look at your ecotrek progress/i)).toBeTruthy();
+    expect(utils.queryByText(/Share it anywhere/i)).toBeTruthy();
+    expect(utils.queryByText('Share as image')).toBeTruthy();
   });
 });
 
@@ -643,5 +649,43 @@ describe('the redesigned tree page', () => {
     expect(utils.getByLabelText('0 gems available')).toBeTruthy();
     fireEvent.press(utils.getByLabelText('Close'));
     expect(utils.getByText('Growth image 1 / 100')).toBeTruthy();
+  });
+});
+
+
+describe('friends & plans (database-free social)', () => {
+  it('creates a hike plan, imports a challenge code, and tracks RSVP state', async () => {
+    const utils = await mount(SocialScreen, /Plan a hike/);
+    expect(utils.queryByText(/Plan a hike/)).toBeTruthy();
+    expect(utils.queryByText(/Challenge a friend/)).toBeTruthy();
+    fireEvent.press(utils.getByText('Create hike & share invite'));
+    await waitFor(() => expect(utils.queryByText('My hike plans')).toBeTruthy());
+    await waitFor(() => expect(utils.queryByText(/I'm in/)).toBeTruthy());
+    // Import a friend's challenge by pasting its code.
+    const now = Date.now();
+    const code = encodeFriendChallenge({ id: 'friend-c1', title: 'Walk 5 miles in 7 days', targetMiles: 5, deadline: now + 7 * 86400000, fromName: 'Jo', createdAt: now });
+    const input = utils.getByLabelText('Paste a hike or challenge code');
+    fireEvent.changeText(input, code);
+    fireEvent.press(utils.getByText('Add it'));
+    await waitFor(() => expect(utils.queryByText(/Challenge added from Jo/)).toBeTruthy());
+    await waitFor(() => expect(utils.queryByText('Accept challenge')).toBeTruthy());
+    fireEvent.press(utils.getByText('Accept challenge'));
+    await waitFor(() => expect(utils.queryByText('Accept challenge')).toBeNull());
+    // Re-importing the same code five times never duplicates the challenge.
+    for (let i = 0; i < 5; i++) { fireEvent.changeText(input, code); fireEvent.press(utils.getByText('Add it')); }
+    await waitFor(() => expect(utils.getAllByText('Share / re-send').length).toBe(1));
+    // A junk code is rejected gracefully.
+    fireEvent.changeText(input, 'v1.garbage.zzz');
+    fireEvent.press(utils.getByText('Add it'));
+    await waitFor(() => expect(utils.queryByText(/does not look right/)).toBeTruthy());
+  });
+
+  it('imports a hike plan from a deep-link style code and lets you RSVP out', async () => {
+    const now = Date.now();
+    const code = encodeHikePlan({ id: 'friend-p1', trailId: 'barton-creek', trailName: 'Barton Creek Greenbelt', area: 'South Austin', startsAt: now + 86400000, durationMin: 120, notes: '', hostName: 'Jo', createdAt: now });
+    const utils = await mount(SocialScreen, /Plan a hike/, { plan: code });
+    await waitFor(() => expect(utils.queryByText(/You're invited: Barton Creek/)).toBeTruthy());
+    fireEvent.press(utils.getByLabelText(/I'm out for Barton Creek/));
+    await waitFor(() => expect(utils.getAllByText('Barton Creek Greenbelt').length).toBeGreaterThan(1));
   });
 });

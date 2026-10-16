@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { alert } from '../services/alert';
 import { useNavigation, useRoute } from '@react-navigation/native';
@@ -14,7 +14,8 @@ import { useSettings } from '../context/SettingsContext';
 import { getTrailById } from '../constants/austinTrails';
 import { useApp } from '../context/AppContext';
 import { FLAG_MESSAGES } from '../services/trailDetection';
-import { shareText } from '../services/share';
+import PostcardSheet from '../components/PostcardSheet';
+import RouteSketch from '../components/RouteSketch';
 import { useTheme, Typography } from '../context/ThemeContext';
 
 /**
@@ -31,6 +32,7 @@ export default function ActivityDetailScreen() {
   const { history, deleteActivity } = useActivity();
   const { trails } = useApp();
   const { formatDistance, formatDistanceCompact, formatDistanceUnit } = useSettings();
+  const [showPostcard, setShowPostcard] = useState(false);
 
   const activityId: string | undefined = route.params?.activityId;
   const activity = useMemo(
@@ -127,15 +129,6 @@ export default function ActivityDetailScreen() {
     ]);
   };
 
-  const share = () => {
-    shareText(
-        `${activity.type === 'bike' ? 'I rode' : 'I walked'} ${formatDistanceCompact(activity.miles)} ` +
-        `${formatDistanceUnit()}${trailName ? ` on the ${trailName}` : ''} in ${formatDuration(activity.durationSec)}` +
-        `${activity.trees > 0 ? `, and earned ${activity.trees} tree${activity.trees === 1 ? '' : 's'}` : ''}. ` +
-        `Tracked with EcoTrek.`
-    );
-  };
-
   return (
     <Screen>
       <Header
@@ -146,7 +139,7 @@ export default function ActivityDetailScreen() {
           day: 'numeric',
         })}
         back
-        actions={[{ icon: 'share', onPress: share, label: 'Share activity' }]}
+        actions={[{ icon: 'share', onPress: () => setShowPostcard(true), label: 'Share activity postcard' }]}
       />
 
       <View style={styles.body}>
@@ -299,6 +292,22 @@ export default function ActivityDetailScreen() {
 
         <Button label="Delete activity" variant="ghost" tone={colors.danger} icon="trash" full onPress={confirmDelete} />
       </View>
+      <PostcardSheet
+        visible={showPostcard}
+        onClose={() => setShowPostcard(false)}
+        title="Share this walk"
+        headline={`${activity.type === 'bike' ? '🚴 Ride' : '🥾 Walk'} complete!`}
+        subline={`${started.toLocaleDateString(undefined, { weekday: 'long', month: 'long', day: 'numeric' })}${trailName ? ` · ${trailName}` : ''}`}
+        stats={[
+          { value: `${formatDistanceCompact(activity.miles)}`, label: formatDistanceUnit() },
+          { value: formatDuration(activity.durationSec), label: 'time' },
+          { value: String(activity.trees), label: activity.trees === 1 ? 'tree earned' : 'trees earned' },
+          { value: `${activity.calories ?? 0}`, label: 'calories' },
+        ]}
+        shareMessage={`${activity.type === 'bike' ? 'I rode' : 'I walked'} ${formatDistanceCompact(activity.miles)} ${formatDistanceUnit()}${trailName ? ` on the ${trailName}` : ''} with EcoTrek! 🌲`}
+      >
+        {activity.path.length > 1 ? <RouteSketch path={activity.path} current={activity.path[activity.path.length - 1]} /> : null}
+      </PostcardSheet>
     </Screen>
   );
 }

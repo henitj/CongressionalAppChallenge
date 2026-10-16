@@ -251,6 +251,33 @@ export async function scheduleWeeklyRecap() {
   }
 }
 
+/** One-off reminder one hour before a planned hike (see SocialScreen). */
+export async function scheduleHikeReminder(planId: string, trailName: string, startsAt: number) {
+  const N = getModule();
+  if (!N || Platform.OS === 'web') return;
+  const identifier = `hike-plan-${planId.replace(/[^A-Za-z0-9-]/g, '').slice(0, 40)}`;
+  await cancel(identifier);
+  const fireAt = startsAt - 3600000;
+  if (fireAt <= Date.now()) return;
+  try {
+    await N.scheduleNotificationAsync({
+      identifier,
+      content: {
+        title: 'Hike in one hour',
+        body: `${trailName} — pack water, check the weather, and tell someone where you're going.`,
+        ...(Platform.OS === 'android' ? { channelId: CHANNELS.reminders } : {}),
+      },
+      trigger: { type: N.SchedulableTriggerInputTypes.DATE, date: new Date(fireAt) },
+    });
+  } catch (e) {
+    console.warn('[notifications] hike schedule failed', e);
+  }
+}
+
+export async function cancelHikeReminder(planId: string) {
+  await cancel(`hike-plan-${planId.replace(/[^A-Za-z0-9-]/g, '').slice(0, 40)}`);
+}
+
 /** Immediate heads-up when conditions turn dangerous. Deduped per day+reason. */
 const sentSafety = new Set<string>();
 

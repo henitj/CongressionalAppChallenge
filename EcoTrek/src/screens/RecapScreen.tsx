@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import { View, Text, StyleSheet } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 
@@ -16,7 +16,7 @@ import { useSettings } from '../context/SettingsContext';
 import { buildRecap, lastWeekStart, RecapMetric } from '../services/recap';
 import { weekKey } from '../services/dates';
 import { computeRecords } from '../services/records';
-import { shareText } from '../services/share';
+import PostcardSheet from '../components/PostcardSheet';
 import { useTheme, Typography } from '../context/ThemeContext';
 
 /**
@@ -36,6 +36,7 @@ export default function RecapScreen() {
   const { sightingsInRange, cleanupsInRange } = useLogbook();
   const { lifetimeCompleted, completedInWeek } = useChallenges();
   const { formatDistanceCompact, formatDistanceUnit } = useSettings();
+  const [showPostcard, setShowPostcard] = useState(false);
 
   const weekStartMs = useMemo(() => lastWeekStart().getTime(), []);
 
@@ -70,21 +71,13 @@ export default function RecapScreen() {
     return records.filter((r) => r.activityId && idsInWeek.has(r.activityId));
   }, [records, history, weekStartMs]);
 
-  const share = () => {
-    shareText(
-      `My EcoTrek week (${recap.rangeLabel}):\n` +
-        `${recap.miles} miles · ${recap.activities} activities · ${recap.trees} trees · ${recap.points} points\n` +
-        `I got outside on ${recap.activeDays} of 7 days.`
-    );
-  };
-
   return (
     <Screen>
       <Header
         title="Last week"
         subtitle={recap.rangeLabel}
         back
-        actions={recap.empty ? [] : [{ icon: 'share', onPress: share, label: 'Share recap' }]}
+        actions={recap.empty ? [] : [{ icon: 'share', onPress: () => setShowPostcard(true), label: 'Share recap postcard' }]}
       />
 
       <View style={styles.body}>
@@ -217,6 +210,20 @@ export default function RecapScreen() {
           />
         </Card>
       </View>
+      <PostcardSheet
+        visible={showPostcard}
+        onClose={() => setShowPostcard(false)}
+        title="Share your week"
+        headline={recap.headline || 'My EcoTrek week 🌲'}
+        subline={recap.rangeLabel}
+        stats={[
+          { value: `${formatDistanceCompact(recap.miles)}`, label: formatDistanceUnit() },
+          { value: String(recap.activities), label: 'activities' },
+          { value: String(recap.trees), label: 'trees' },
+          { value: String(recap.points), label: 'points' },
+        ]}
+        shareMessage={`My EcoTrek week (${recap.rangeLabel}): ${recap.miles} miles · ${recap.activities} activities · ${recap.trees} trees · ${recap.points} points. I got outside on ${recap.activeDays} of 7 days. 🌲`}
+      />
     </Screen>
   );
 }

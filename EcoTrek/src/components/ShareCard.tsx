@@ -1,9 +1,6 @@
 import React from 'react';
-import { View, Text, StyleSheet } from 'react-native';
 
-import { Sheet } from './ui';
-import { RADIUS, SPACING } from '../constants/theme';
-import { useTheme } from '../context/ThemeContext';
+import PostcardSheet from './PostcardSheet';
 
 type Props = {
   visible: boolean;
@@ -18,9 +15,8 @@ type Props = {
 };
 
 /**
- * A simple, accessible progress summary. This used to render a ViewShot image
- * and offer a broken image-share action. Progress is now readable in the
- * sheet, with no misleading image or button that cannot reliably share one.
+ * Progress postcard — captured and shared as a real image (with a text
+ * fallback), instead of the old text-only summary.
  */
 export default function ShareCard({
   visible,
@@ -33,50 +29,21 @@ export default function ShareCard({
   level,
   trails = 0,
 }: Props) {
-  const { colors, typography } = useTheme();
+  const first = name.trim().split(/\s+/)[0] || 'I';
   return (
-    <Sheet visible={visible} onClose={onClose} title="Share your progress" subtitle="A quick look at your EcoTrek progress">
-      <View style={[styles.summary, { backgroundColor: colors.primarySurface, borderColor: colors.border }]}>
-        <Text style={[typography.h2, { color: colors.text }]}>{name}</Text>
-        <Text style={[typography.small, { color: colors.textMuted, marginTop: 2 }]}>{level}</Text>
-        <View style={styles.stats}>
-          <SummaryStat value={miles} label={unit} />
-          <SummaryStat value={String(trees)} label={trees === 1 ? 'tree' : 'trees'} />
-          <SummaryStat value={String(streak)} label="week streak" />
-          <SummaryStat value={String(trails)} label="trails" />
-        </View>
-      </View>
-      <Text style={[typography.small, { color: colors.textMuted, textAlign: 'center', marginTop: SPACING.md }]}>
-        You can show this to people.
-      </Text>
-    </Sheet>
+    <PostcardSheet
+      visible={visible}
+      onClose={onClose}
+      title="Share your progress"
+      headline={`${first} is out exploring 🌲`}
+      subline={level}
+      stats={[
+        { value: miles, label: unit },
+        { value: String(trees), label: trees === 1 ? 'tree earned' : 'trees earned' },
+        { value: String(streak), label: 'week streak' },
+        { value: String(trails), label: 'trails done' },
+      ]}
+      shareMessage={`${first} has covered ${miles} ${unit}, earned ${trees} tree${trees === 1 ? '' : 's'} and finished ${trails} trail${trails === 1 ? '' : 's'} with EcoTrek. 🌲`}
+    />
   );
 }
-
-function SummaryStat({ value, label }: { value: string; label: string }) {
-  const { colors, typography } = useTheme();
-  return (
-    <View style={styles.stat}>
-      <Text style={[typography.h3, { color: colors.primary }]}>{value}</Text>
-      <Text style={[typography.micro, { color: colors.textMuted }]}>{label}</Text>
-    </View>
-  );
-}
-
-const styles = StyleSheet.create({
-  summary: {
-    borderWidth: 1,
-    borderRadius: RADIUS.lg,
-    padding: SPACING.lg,
-  },
-  stats: {
-    flexDirection: 'row',
-    flexWrap: 'wrap',
-    marginTop: SPACING.lg,
-    gap: SPACING.md,
-  },
-  stat: {
-    flexGrow: 1,
-    flexBasis: '40%',
-  },
-});

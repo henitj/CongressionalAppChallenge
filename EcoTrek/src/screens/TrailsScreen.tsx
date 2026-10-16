@@ -371,20 +371,21 @@ export default function TrailsScreen() {
       </Sheet>
 
       <Sheet visible={!!selected} onClose={() => setSelected(null)} title={selected?.name ?? ''} subtitle={selected ? `${selected.area} · ${selected.difficulty}` : undefined}>
-        {selected ? <TrailDetail key={selected.id} userId={userId} trail={selected} rating={ratings[selected.id]} completed={completedIds.has(selected.id)} onRatingSaved={(stars) => saveRating(selected.id, stars)} onStart={() => { setSelected(null); navigation.navigate('Tabs', { screen: 'Track', params: { mode: selected.type === 'bike' ? 'bike' : 'hike' } }); }} formatDistance={formatDistanceCompact} unit={formatDistanceUnit()} /> : null}
+        {selected ? <TrailDetail key={selected.id} userId={userId} trail={selected} rating={ratings[selected.id]} completed={completedIds.has(selected.id)} onRatingSaved={(stars) => saveRating(selected.id, stars)} onStart={() => { setSelected(null); navigation.navigate('Tabs', { screen: 'Track', params: { mode: selected.type === 'bike' ? 'bike' : 'hike' } }); }} onPlan={() => { setSelected(null); navigation.navigate('Social', { trailId: selected.id }); }} formatDistance={formatDistanceCompact} unit={formatDistanceUnit()} /> : null}
       </Sheet>
     </Screen>
   );
 }
 
 /** Only the essentials open by default. No AI request or article is fetched. */
-function TrailDetail({ trail, userId, completed, rating, onRatingSaved, onStart, formatDistance, unit }: {
+function TrailDetail({ trail, userId, completed, rating, onRatingSaved, onStart, onPlan, formatDistance, unit }: {
   trail: Trail;
   userId: string | null;
   completed: boolean;
   rating?: number;
   onRatingSaved: (stars: number) => void;
   onStart: () => void;
+  onPlan: () => void;
   formatDistance: (miles: number) => string;
   unit: string;
 }) {
@@ -403,6 +404,7 @@ function TrailDetail({ trail, userId, completed, rating, onRatingSaved, onStart,
     {completed ? <View style={styles.loadingRow}><Icon name="check-circle" size={17} color={colors.primary} /><Text style={styles.locationText}>You’ve completed this trail.</Text></View> : null}
     <View style={styles.ratingPanel}><TrailRatingControls userId={userId} trailId={trail.id} initialRating={rating} onSaved={onRatingSaved} /></View>
     <Button label={trail.type === 'bike' ? 'Start a ride here' : 'Start a walk here'} icon="play" full onPress={onStart} />
+    <Button label="Plan a hike here with friends" icon="calendar" variant="secondary" full onPress={onPlan} />
     <Button
       label="Directions in Google Maps"
       icon="navigation"
