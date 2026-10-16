@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
+import { View, Text, StyleSheet, Pressable, ActivityIndicator, Linking } from 'react-native';
 import * as L from 'leaflet';
+import { googleMapsViewUrl } from '../services/maps';
 
 import Icon from './Icon';
 import RouteSketch from './RouteSketch';
@@ -16,7 +17,11 @@ export type LiveMapProps = {
 };
 
 const AUSTIN: L.LatLngTuple = [30.2672, -97.7431];
-const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
+// Google Maps tiles (the web build previously rendered OpenStreetMap here,
+// which is why Start appeared to "pop up in OpenStreetMap"). No API key is
+// needed for tile display; the "Google Maps" button below opens the real
+// Google Maps site/app for directions.
+const TILE_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
 
 // Bundle the small amount of Leaflet CSS we use with the app. No CDN scripts,
 // icon downloads, map API keys, or billing setup are needed to render this map.
@@ -55,7 +60,7 @@ function valid(point: Coord | undefined): point is Coord {
 }
 const position = (point: Coord): L.LatLngTuple => [point.latitude, point.longitude];
 
-/** Interactive, keyless OpenStreetMap basemap. GPS recording is independent of tiles. */
+/** Interactive Google Maps basemap. GPS recording is independent of tiles. */
 export default function LiveMap({ path, current, height = 260, follow = true }: LiveMapProps) {
   const { colors, typography } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -93,8 +98,8 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
       mapRef.current = map;
       map.attributionControl.setPrefix(false);
       L.tileLayer(TILE_URL, {
-        attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap</a>',
-        maxZoom: 19,
+        attribution: '© <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Google Maps</a>',
+        maxZoom: 20,
         // Standard browser caching, a single tile host, and no prefetch/offline downloads.
         keepBuffer: 1,
       }).on('tileload', () => {
@@ -210,6 +215,18 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
           <Pressable accessibilityRole="button" accessibilityLabel="Recenter on my location" style={[styles.control, { marginTop: 6 }]} onPress={recenter}>
             <Icon name="navigation" size={20} color="#176143" />
           </Pressable>
+          <Pressable
+            accessibilityRole="button"
+            accessibilityLabel="Open in Google Maps"
+            style={[styles.control, styles.mapsButton]}
+            onPress={() => {
+              const point = valid(current) ? current : path.filter(valid)[path.filter(valid).length - 1];
+              const url = point ? googleMapsViewUrl(point.latitude, point.longitude) : 'https://www.google.com/maps';
+              Linking.openURL(url).catch(() => {});
+            }}
+          >
+            <Text style={styles.mapsButtonText}>Google Maps</Text>
+          </Pressable>
         </View>
       ) : (
         <View style={[StyleSheet.absoluteFill, { backgroundColor: colors.surfaceSunken }]}>
@@ -239,4 +256,6 @@ const styles = StyleSheet.create({
   control: { width: 44, height: 44, backgroundColor: '#FFFFFF', borderRadius: 12, alignItems: 'center', justifyContent: 'center', elevation: 2, boxShadow: '0 2px 10px #18382918' },
   notice: { position: 'absolute', bottom: 12, left: 12, right: 12, padding: 12, borderRadius: 16, flexDirection: 'row', alignItems: 'center', gap: 10, borderWidth: 1 },
   retry: { paddingHorizontal: 8, paddingVertical: 14 },
+  mapsButton: { width: 76, marginTop: 6, paddingHorizontal: 6 },
+  mapsButtonText: { fontSize: 11, fontWeight: '700', color: '#176143', textAlign: 'center' },
 });

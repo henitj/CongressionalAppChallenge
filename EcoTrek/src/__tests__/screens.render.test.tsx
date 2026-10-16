@@ -192,7 +192,9 @@ describe('trail discovery upgrades', () => {
     const gallery = jest.spyOn(TrailPhotosService, 'getTrailPhotos');
     try {
       const utils = await mount(TrailsScreen, 'Trails');
-      expect(cover).not.toHaveBeenCalled();
+      // Card covers DO load (trail photos should be visible in the list),
+      // but the detail gallery/intel stay lazy until requested.
+      expect(cover).toHaveBeenCalled();
       fireEvent.press(utils.getAllByLabelText(/^Rate /)[0]);
       await waitFor(() => expect(utils.queryByText('Your rating')).toBeTruthy());
       expect(utils.getByLabelText('5 stars')).toBeTruthy();

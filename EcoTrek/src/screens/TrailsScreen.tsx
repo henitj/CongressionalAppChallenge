@@ -32,6 +32,8 @@ import {
   estimateMinutes,
   formatMinutes,
 } from '../services/trailIntel';
+import { Linking } from 'react-native';
+import { googleMapsDirectionsUrl } from '../services/maps';
 
 type SortKey = 'nearest' | 'shortest' | 'longest' | 'easiest' | 'rating';
 
@@ -401,6 +403,13 @@ function TrailDetail({ trail, userId, completed, rating, onRatingSaved, onStart,
     {completed ? <View style={styles.loadingRow}><Icon name="check-circle" size={17} color={colors.primary} /><Text style={styles.locationText}>You’ve completed this trail.</Text></View> : null}
     <View style={styles.ratingPanel}><TrailRatingControls userId={userId} trailId={trail.id} initialRating={rating} onSaved={onRatingSaved} /></View>
     <Button label={trail.type === 'bike' ? 'Start a ride here' : 'Start a walk here'} icon="play" full onPress={onStart} />
+    <Button
+      label="Directions in Google Maps"
+      icon="navigation"
+      variant="secondary"
+      full
+      onPress={() => Linking.openURL(googleMapsDirectionsUrl(trail)).catch(() => {})}
+    />
     <View>
       <Disclosure label="Before you go" open={before} toggle={() => setBefore((value) => !value)} />
       {before ? <View style={styles.disclosed}><Text style={styles.tipText}>Check opening hours, closures and current conditions before heading out. Catalogue distances and facilities can be approximate.</Text>{trail.safetyTips.map((tip, i) => <Text key={i} style={styles.tipText}>• {tip}</Text>)}<Text style={styles.tipText}>For automatic recognition, start within about a third of a mile of the trailhead. Cover 70% of its recorded length to log a completion.</Text></View> : null}
@@ -433,7 +442,7 @@ const TrailCard = React.memo(function TrailCard({ trail, completed, visited, sho
 }) {
   return <Card style={styles.trailCard}>
     <Pressable onPress={onPress} accessibilityRole="button" accessibilityLabel={`Open ${trail.name}`} style={{ gap: 13 }}>
-      <TrailCover trail={trail} loadRemote={false} />
+      <TrailCover trail={trail} />
       <View style={styles.trailHead}><View style={[styles.trailIcon, completed && { backgroundColor: colors.primary }]}><Icon name={completed ? 'check' : trail.type === 'bike' ? 'bike' : trail.type === 'hike' ? 'boot' : 'route'} size={18} color={completed ? colors.textInverse : colors.primary} /></View><View style={{ flex: 1, minWidth: 0 }}><Text style={styles.trailName} numberOfLines={2}>{trail.name}</Text><Text style={styles.trailArea} numberOfLines={1}>{trail.area}{showDistance && trail.distanceFromUserMi != null ? ` · ${formatDistance(trail.distanceFromUserMi)} ${unit} away` : ''}</Text></View></View>
       <Text style={styles.trailMeta}>{formatDistance(trail.distanceMiles)} {unit} · {trail.difficulty} · {formatMinutes(estimateMinutes(trail))}{completed ? ' · Completed' : visited ? ' · Visited' : ''}</Text>
     </Pressable>

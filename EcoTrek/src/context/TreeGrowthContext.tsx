@@ -3,7 +3,7 @@ import { AppState } from 'react-native';
 import { useAuth } from './AuthContext';
 import { useGems } from './GemsContext';
 import { keyFor, loadJSON, saveJSON } from '../services/storage';
-import { atCurrentWeek, emptyTree, normalizeTreeGrowth, treeStatus, type TreeGrowthStore } from '../services/treeGrowth';
+import { atCurrentWeek, completeCare, emptyTree, normalizeTreeGrowth, treeStatus, type TreeGrowthStore } from '../services/treeGrowth';
 import { CARE_KINDS, CARE_LABEL, WEEKLY_CARE_COST, type CareKind } from '../constants/treeGrowth';
 import { weekKey } from '../services/dates';
 
@@ -17,6 +17,12 @@ type TreeGrowthState = ReturnType<typeof treeStatus> & {
   harvestApple: () => Promise<boolean>;
   /** Optional only after 18 months + 78 qualifying weeks. */
   plantNew: () => Promise<boolean>;
+  /**
+   * Developer/demo only (the UI only shows this in developer mode): grow the
+   * tree as if `weeks` fully-cared, outdoors weeks had passed, at whatever
+   * pace the demo needs. Normal growth rules are untouched for everyone else.
+   */
+  developerAdvanceTree: (weeks: number) => Promise<boolean>;
 };
 const TreeGrowthContext = createContext<TreeGrowthState | null>(null);
 
@@ -113,6 +119,38 @@ export function TreeGrowthProvider({ children }: { children: React.ReactNode }) 
     return true;
   }), [serialize, commit]);
 
+  const developerAdvanceTree = useCallback((weeks: number) => serialize(async (current, time, key) => {
+    const count = Math.max(1, Math.min(260, Math.floor(weeks) || 0));
+    if (!count) return false;
+    // Backdate the planting by the requested weeks and credit every one of
+    // those weeks with full care + an outdoor outing, so both the calendar
+    // gates and the effort score move together — the tree genuinely grows.
+    const plantedAt = current.plantedAt - count * 7 * 86400000;
+    const careWeeks = new Set(current.careWeeks);
+    const outdoorWeeks = new Set(current.outdoorWeeks);
+    const careHistory = { ...current.careHistory };
+    for (let i = 0; i <= count; i++) {
+      const week = weekKey(new Date(plantedAt + i * 7 * 86400000));
+      careWeeks.add(week);
+      outdoorWeeks.add(week);
+      careHistory[week] = completeCare();
+    }
+    const currentWeek = weekKey(new Date(time));
+    careWeeks.add(currentWeek);
+    outdoorWeeks.add(currentWeek);
+    careHistory[currentWeek] = completeCare();
+    await commit({
+      ...current,
+      plantedAt,
+      care: completeCare(),
+      careWeeks: [...careWeeks].sort(),
+      outdoorWeeks: [...outdoorWeeks].sort(),
+      careHistory,
+      lastSeenAt: time,
+    }, key);
+    return true;
+  }), [serialize, commit]);
+
   const harvestApple = useCallback(() => serialize(async (current, time, key) => {
     if (!treeStatus(current, time).canHarvest) return false;
     await commit({ ...current, goldenApples: current.goldenApples + 1, harvestedWeeks: [...current.harvestedWeeks, current.careWeek], lastSeenAt: time }, key);
@@ -128,8 +166,8 @@ export function TreeGrowthProvider({ children }: { children: React.ReactNode }) 
   const status = useMemo(() => treeStatus(store, now), [store, now]);
   const isCareDone = useCallback((kind: CareKind) => status.care[kind] === 1, [status.care]);
   const costFor = useCallback((_kind: CareKind) => WEEKLY_CARE_COST, []);
-  const value = useMemo<TreeGrowthState>(() => ({ ...status, saveError, costFor, isCareDone, addCare, recordOutdoorWeek, harvestApple, plantNew }),
-    [status, saveError, costFor, isCareDone, addCare, recordOutdoorWeek, harvestApple, plantNew]);
+  const value = useMemo<TreeGrowthState>(() => ({ ...status, saveError, costFor, isCareDone, addCare, recordOutdoorWeek, harvestApple, plantNew, developerAdvanceTree }),
+    [status, saveError, costFor, isCareDone, addCare, recordOutdoorWeek, harvestApple, plantNew, developerAdvanceTree]);
   if (!loaded) return null;
   return <TreeGrowthContext.Provider value={value}>{children}</TreeGrowthContext.Provider>;
 }

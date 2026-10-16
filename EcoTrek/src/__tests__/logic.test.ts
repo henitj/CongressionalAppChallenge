@@ -1377,3 +1377,36 @@ asyncTests().then(() => {
     `\n${passed}/${passed + results.filter((r) => r.includes('FAIL')).length} passed\n`
   );
 });
+
+// ---------- Developer / demo mode ----------
+import {
+  DEVELOPER_SECRET,
+  DEVELOPER_AGE,
+  DEVELOPER_STEP_LENGTH_INCHES,
+  isDeveloperName,
+  isDeveloperProfile,
+  buildDemoWalk,
+  buildDeveloperSeedHistory,
+} from '../services/developerMode';
+
+test('developer mode requires the exact secret name', () => {
+  assert.equal(isDeveloperName(DEVELOPER_SECRET, ''), true);
+  assert.equal(isDeveloperName('', DEVELOPER_SECRET), true);
+  assert.equal(isDeveloperName(DEVELOPER_SECRET.slice(0, 16), DEVELOPER_SECRET.slice(16)), true);
+  assert.equal(isDeveloperName('Jane', 'Doe'), false);
+  assert.equal(isDeveloperName(DEVELOPER_SECRET.toLowerCase(), ''), false);
+  assert.equal(isDeveloperProfile({ firstName: 'Jane', lastName: 'Doe' }), false);
+  assert.equal(DEVELOPER_AGE, 100);
+  assert.equal(DEVELOPER_STEP_LENGTH_INCHES, 50);
+});
+
+test('demo walks and seeded Austin history pass activity validation', () => {
+  const walk = buildDemoWalk(3, Date.now() - 3600000);
+  assert.equal(validateActivity(walk.path, walk.miles, walk.durationSec, walk.type).valid, true);
+  const seed = buildDeveloperSeedHistory();
+  assert.equal(seed.length, 5);
+  for (const input of seed) {
+    assert.equal(validateActivity(input.path, input.miles, input.durationSec, input.type).valid, true, 'seed activity should be valid');
+    assert.equal(evaluateCompletion(input.path, input.miles).completed, true, 'seed activity should complete its trail');
+  }
+});

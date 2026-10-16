@@ -17,8 +17,14 @@ import { useEcoPoints, Badge, BADGE_CLAIM_POINTS } from '../context/EcoPointsCon
 import { useSettings } from '../context/SettingsContext';
 import { useProfile } from '../context/ProfileContext';
 import { fullNameOf } from '../services/displayName';
+import {
+  DEVELOPER_AGE,
+  DEVELOPER_STEP_LENGTH_INCHES,
+  isDeveloperName,
+} from '../services/developerMode';
 import { chooseAvatarAction, pickAndStoreAvatarPhoto } from '../services/avatar';
 import ShareCard from '../components/ShareCard';
+import DeveloperModePanel from '../components/DeveloperModePanel';
 import { useTheme, Typography } from '../context/ThemeContext';
 
 export default function ProfileScreen() {
@@ -58,7 +64,15 @@ export default function ProfileScreen() {
     const first = editFirst.trim();
     const last = editLast.trim();
     if (!first) return;
-    await setProfile({ firstName: first, lastName: last });
+    const developer = isDeveloperName(first, last);
+    await setProfile({
+      firstName: first,
+      lastName: last,
+      developerMode: developer,
+      ...(developer
+        ? { age: DEVELOPER_AGE, stepLengthInches: DEVELOPER_STEP_LENGTH_INCHES }
+        : {}),
+    });
     const full = `${first} ${last}`.trim();
     await updateUser({ name: full });
     setShowNameEditor(false);
@@ -307,6 +321,9 @@ export default function ProfileScreen() {
           </Card>
         </View>
 
+        {/* Only ever rendered for the developer/demo account. */}
+        <DeveloperModePanel />
+
         <Pressable onPress={confirmSignOut} style={styles.signOut}>
           <Icon name="log-out" size={16} color={colors.textMuted} strokeWidth={1.9} />
           <Text style={styles.signOutText}>Sign out</Text>
@@ -413,7 +430,7 @@ export default function ProfileScreen() {
               onChangeText={setEditFirst}
               placeholder="Jane"
               placeholderTextColor={colors.textLight}
-              maxLength={30}
+              maxLength={64}
               style={styles.input}
               accessibilityLabel="First name"
             />
@@ -425,7 +442,7 @@ export default function ProfileScreen() {
               onChangeText={setEditLast}
               placeholder="Doe"
               placeholderTextColor={colors.textLight}
-              maxLength={30}
+              maxLength={64}
               style={styles.input}
               accessibilityLabel="Last name"
             />

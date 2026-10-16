@@ -5,6 +5,7 @@ import Header from '../components/Header';
 import Icon from '../components/Icon';
 import Slider from '../components/Slider';
 import TreeGrowthScene, { type TreeCareEffect } from '../components/TreeGrowthScene';
+import DeveloperModePanel from '../components/DeveloperModePanel';
 import { Screen, Button, ProgressBar, Sheet } from '../components/ui';
 import { SPACING, type ColorPalette } from '../constants/theme';
 import { useTheme, type Typography } from '../context/ThemeContext';
@@ -128,6 +129,8 @@ export default function TreeScreen() {
           <Text style={styles.bodyText}>A fully cared-for outdoor week earns one golden apple after maturity. It is a keepsake, not money or extra gems. Sage can stay with you, or be saved in your grove before starting another seedling.</Text>
           <Text style={styles.bodyText}>Planted {date(tree.plantedAt)} · {tree.forest} {tree.forest === 1 ? 'tree' : 'trees'} saved in your virtual grove. Your existing birthday, full-care weeks, gems and apples are kept by this update.</Text>
         </View> : null}
+        {/* Only ever rendered for the developer/demo account. */}
+        <DeveloperModePanel />
         {tree.isSage ? <Button label="Save sage & plant a new seed" icon="plus" full variant="secondary" onPress={() => setConfirmPlant(true)} /> : null}
         <Text style={styles.disclaimer}>A virtual tree. No real tree is planted.</Text>
       </View>
