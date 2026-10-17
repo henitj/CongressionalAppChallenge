@@ -14,6 +14,11 @@ export type UserProfile = {
   heightInches: number;
   weightPounds: number;
   stepLengthInches: number;
+  /**
+   * Developer/demo mode, unlocked only by the exact secret name (see
+   * services/developerMode). Never set for a normal account.
+   */
+  developerMode?: boolean;
   /** Timestamp of profile creation */
   createdAt: number;
   /** Weight history for graphing */

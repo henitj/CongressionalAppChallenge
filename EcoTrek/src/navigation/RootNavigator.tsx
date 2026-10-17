@@ -22,6 +22,7 @@ import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 import RecapScreen from '../screens/RecapScreen';
 import HistoryScreen from '../screens/HistoryScreen';
 import BadgesScreen from '../screens/BadgesScreen';
+import SocialScreen from '../screens/SocialScreen';
 
 import Icon, { IconName } from '../components/Icon';
 import { useTheme } from '../context/ThemeContext';
@@ -61,6 +62,7 @@ export const linking: LinkingOptions<any> = {
       Settings: 'settings',
       History: 'history',
       Badges: 'badges',
+      Social: 'social',
     },
   },
 };
@@ -162,6 +164,7 @@ export default function RootNavigator() {
       <Stack.Screen name="Settings" component={SettingsScreen} />
       <Stack.Screen name="History" component={HistoryScreen} />
       <Stack.Screen name="Badges" component={BadgesScreen} />
+      <Stack.Screen name="Social" component={SocialScreen} />
     </Stack.Navigator>
   );
 }

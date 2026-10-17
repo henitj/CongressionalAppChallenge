@@ -1377,3 +1377,159 @@ asyncTests().then(() => {
     `\n${passed}/${passed + results.filter((r) => r.includes('FAIL')).length} passed\n`
   );
 });
+
+// ---------- Developer / demo mode ----------
+import {
+  DEVELOPER_SECRET,
+  DEVELOPER_AGE,
+  DEVELOPER_STEP_LENGTH_INCHES,
+  isDeveloperName,
+  isDeveloperProfile,
+  buildDemoWalk,
+  buildDeveloperSeedHistory,
+} from '../services/developerMode';
+
+test('developer mode requires the exact secret name', () => {
+  assert.equal(isDeveloperName(DEVELOPER_SECRET, ''), true);
+  assert.equal(isDeveloperName('', DEVELOPER_SECRET), true);
+  assert.equal(isDeveloperName(DEVELOPER_SECRET.slice(0, 16), DEVELOPER_SECRET.slice(16)), true);
+  assert.equal(isDeveloperName('Jane', 'Doe'), false);
+  assert.equal(isDeveloperName(DEVELOPER_SECRET.toLowerCase(), ''), false);
+  assert.equal(isDeveloperProfile({ firstName: 'Jane', lastName: 'Doe' }), false);
+  assert.equal(DEVELOPER_AGE, 100);
+  assert.equal(DEVELOPER_STEP_LENGTH_INCHES, 50);
+});
+
+test('demo walks and seeded Austin history pass activity validation', () => {
+  const walk = buildDemoWalk(3, Date.now() - 3600000);
+  assert.equal(validateActivity(walk.path, walk.miles, walk.durationSec, walk.type).valid, true);
+  const seed = buildDeveloperSeedHistory();
+  assert.equal(seed.length, 5);
+  for (const input of seed) {
+    assert.equal(validateActivity(input.path, input.miles, input.durationSec, input.type).valid, true, 'seed activity should be valid');
+    assert.equal(evaluateCompletion(input.path, input.miles).completed, true, 'seed activity should complete its trail');
+  }
+});
+
+// ---------- Database-free social (codes, plans, challenges) ----------
+import {
+  encodeHikePlan,
+  decodeHikePlan,
+  encodeFriendChallenge,
+  decodeFriendChallenge,
+  decodePayload,
+  encodePayload,
+  milesInWindow,
+  buildIcsEvent,
+  FRIEND_CHALLENGE_POINTS,
+} from '../services/social';
+
+test('hike plan codes round-trip and reject tampering', () => {
+  const now = Date.now();
+  const plan = {
+    id: 'plan-test', trailId: 'barton-creek', trailName: 'Barton Creek Greenbelt', area: 'South Austin',
+    startsAt: now + 86400000, durationMin: 120, notes: 'Bring water', hostName: 'Sam', createdAt: now,
+  };
+  const code = encodeHikePlan(plan);
+  assert.deepEqual(decodeHikePlan(code, now), plan);
+  // Code embedded in a shared link or sentence still parses.
+  assert.equal(decodeHikePlan(`Open this: https://x/social?plan=${code} !`, now)?.trailId, 'barton-creek');
+  // Tampered / truncated / junk codes are rejected, never crash.
+  assert.equal(decodeHikePlan(code.slice(0, -3) + 'zzz', now), null);
+  assert.equal(decodeHikePlan('v1.@@@.abc', now), null);
+  assert.equal(decodeHikePlan('', now), null);
+  assert.equal(decodeHikePlan('x'.repeat(100000), now), null);
+  assert.equal(decodePayload('not a code'), null);
+});
+
+test('friend challenge codes clamp hostile values and cannot set rewards', () => {
+  const now = Date.now();
+  const good = { id: 'c1', title: 'Walk 5 miles', metric: 'miles' as const, targetMiles: 5, deadline: now + 7 * 86400000, fromName: 'Jo', createdAt: now };
+  const code = encodeFriendChallenge(good);
+  assert.deepEqual(decodeFriendChallenge(code, now), good);
+  // A forged payload asking for absurd miles / far-future deadline is rejected.
+  const { encodePayload } = require('../services/social') as typeof import('../services/social');
+  const evil = encodePayload({ kind: 'challenge', id: 'evil', title: 'x', targetMiles: 99999, deadline: now + 999 * 86400000, fromName: 'Eve', createdAt: now, points: 1000000 });
+  assert.equal(decodeFriendChallenge(evil, now), null);
+  const evil2 = encodePayload({ kind: 'challenge', id: 'evil', title: 'x', targetMiles: 5, deadline: now + 86400000, fromName: 'Eve', createdAt: now, points: 1000000 });
+  const decoded = decodeFriendChallenge(evil2, now) as any;
+  assert.ok(decoded && !('points' in decoded), 'payload points must be dropped');
+  assert.equal(FRIEND_CHALLENGE_POINTS, 15);
+  // Control characters / oversized names are stripped.
+  const dirty = encodePayload({ kind: 'plan', id: 'p', trailId: 't', trailName: 'Trail\u0000Name', area: 'A', startsAt: now + 86400000, durationMin: 99999, notes: 'n', hostName: 'H'.repeat(500), createdAt: now });
+  const clean = decodeHikePlan(dirty, now);
+  assert.ok(clean && !clean.trailName.includes('\u0000') && clean.hostName.length <= 40 && clean.durationMin <= 720);
+});
+
+test('challenge progress counts only valid miles in the window', () => {
+  const acts = [
+    { startedAt: 1000, miles: 2, valid: true },
+    { startedAt: 2000, miles: 3, valid: false },
+    { startedAt: 3000, miles: 1.5, valid: true },
+    { startedAt: 9999, miles: 10, valid: true },
+  ];
+  assert.equal(milesInWindow(acts, 0, 5000), 3.5);
+  assert.equal(milesInWindow(acts, 5000, 10000), 10);
+});
+
+test('calendar events are valid ICS with escaped text', () => {
+  const ics = buildIcsEvent({ id: 'p1', trailName: 'Trail; With, Separators', area: 'Austin', startsAt: Date.now() + 86400000, durationMin: 90, notes: 'a;b', hostName: 'Sam' });
+  assert.ok(ics.startsWith('BEGIN:VCALENDAR'));
+  assert.ok(ics.includes('BEGIN:VEVENT') && ics.includes('DTSTART:'));
+  assert.ok(ics.includes('Trail\\; With\\, Separators'));
+});
+
+test('social decoders survive fuzzing and never throw', () => {
+  let seed = 42;
+  const rand = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+  const chars = 'v1./-_abcXYZ019= \u0000🥾{}[]",:';
+  for (let i = 0; i < 500; i++) {
+    const s = Array.from({ length: Math.floor(rand() * 120) }, () => chars[Math.floor(rand() * chars.length)]).join('');
+    assert.doesNotThrow(() => { decodeHikePlan(s); decodeFriendChallenge(s); decodePayload(s); });
+  }
+  // Oversized structured input is rejected by the length cap, not parsed.
+  const huge = encodePayload({ kind: 'plan', trailName: 'x'.repeat(5000) });
+  assert.equal(decodeHikePlan(huge.length > 2048 ? 'v1.' + 'A'.repeat(5000) + '.x' : huge), null);
+});
+
+// ---------- Social v2: cleanup challenges, results, RSVP, sapling ----------
+import {
+  encodeChallengeResult,
+  decodeChallengeResult,
+  encodeRsvp,
+  decodeRsvp,
+  encodeSapling,
+  decodeSapling,
+  cleanupPiecesInWindow,
+} from '../services/social';
+
+test('cleanup challenge codes round-trip with clamps', () => {
+  const now = Date.now();
+  const c = { id: 'cl1', title: 'Pick up 25 pieces', metric: 'cleanup' as const, targetMiles: 25, deadline: now + 7 * 86400000, fromName: 'Jo', createdAt: now };
+  assert.deepEqual(decodeFriendChallenge(encodeFriendChallenge(c), now), c);
+  const forged = encodePayload({ kind: 'challenge', id: 'x', metric: 'cleanup', targetMiles: 99999, deadline: now + 86400000, fromName: 'E', createdAt: now });
+  assert.equal(decodeFriendChallenge(forged, now), null);
+  // Progress window ends AT the deadline: litter afterwards never counts.
+  const cleanups = [
+    { date: 1000, litterCount: 5 },
+    { date: 4000, litterCount: 7 },
+    { date: 9000, litterCount: 50 },
+  ];
+  assert.equal(cleanupPiecesInWindow(cleanups, 0, 5000), 12);
+  assert.equal(cleanupPiecesInWindow(cleanups, 5000, 10000), 50);
+});
+
+test('result, RSVP and sapling codes round-trip and reject junk', () => {
+  const now = Date.now();
+  assert.deepEqual(
+    decodeChallengeResult(encodeChallengeResult({ challengeId: 'c1', name: 'Jo', amount: 5.2, completed: true, at: now }), now),
+    { challengeId: 'c1', name: 'Jo', amount: 5.2, completed: true, at: now }
+  );
+  assert.deepEqual(decodeRsvp(encodeRsvp({ planId: 'p1', name: 'Jo', status: 'out' })), { planId: 'p1', name: 'Jo', status: 'out' });
+  const gift = { id: 's1', fromName: 'Jo', stageName: 'Sapling', imageIndex: 12, createdAt: now };
+  assert.deepEqual(decodeSapling(encodeSapling(gift), now), gift);
+  assert.equal(decodeChallengeResult(encodeSapling(gift), now), null, 'kinds must not cross-decode');
+  assert.equal(decodeSapling(encodeRsvp({ planId: 'p1', name: 'Jo', status: 'in' }), now), null);
+  const evilResult = encodePayload({ kind: 'result', challengeId: 'c1', name: 'Eve', amount: 999999, completed: true, at: now });
+  assert.equal(decodeChallengeResult(evilResult, now), null);
+});

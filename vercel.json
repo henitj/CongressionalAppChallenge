@@ -186,7 +186,7 @@
       "destination": "/app/assets/:path*"
     },
     {
-      "source": "/:screen(home|track|more|active-tracking|trails|profile|impact|challenges|tree|conditions|streak|assistant|recap|safety|settings|history|badges)",
+      "source": "/:screen(home|track|more|active-tracking|trails|profile|impact|challenges|tree|conditions|streak|assistant|recap|safety|settings|history|badges|social)",
       "destination": "/app/index.html"
     },
     {

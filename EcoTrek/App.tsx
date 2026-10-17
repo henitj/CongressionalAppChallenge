@@ -30,6 +30,7 @@ import { NotificationProvider, useNotifications } from './src/context/Notificati
 import { WeatherProvider } from './src/context/WeatherContext';
 import { AnalyticsProvider } from './src/context/AnalyticsContext';
 import { ProfileProvider } from './src/context/ProfileContext';
+import { SocialProvider } from './src/context/SocialContext';
 import { LogbookProvider, useLogbook } from './src/context/LogbookContext';
 import { dayKey } from './src/services/dates';
 import { activeDaysInLast, perfectWeeks, hasComeback, DayMap } from './src/services/streaks';
@@ -192,6 +193,7 @@ function Gate() {
                 <ActivityProvider>
                   <LogbookProvider>
                     <ChallengeProvider>
+                      <SocialProvider>
                       <NotificationProvider>
                         <WeatherLayer>
                           <AnalyticsProvider>
@@ -204,6 +206,7 @@ function Gate() {
                           </AnalyticsProvider>
                         </WeatherLayer>
                       </NotificationProvider>
+                      </SocialProvider>
                     </ChallengeProvider>
                   </LogbookProvider>
                 </ActivityProvider>

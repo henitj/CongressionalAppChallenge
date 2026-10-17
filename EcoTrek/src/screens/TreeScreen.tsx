@@ -5,6 +5,8 @@ import Header from '../components/Header';
 import Icon from '../components/Icon';
 import Slider from '../components/Slider';
 import TreeGrowthScene, { type TreeCareEffect } from '../components/TreeGrowthScene';
+import DeveloperModePanel from '../components/DeveloperModePanel';
+import PostcardSheet from '../components/PostcardSheet';
 import { Screen, Button, ProgressBar, Sheet } from '../components/ui';
 import { SPACING, type ColorPalette } from '../constants/theme';
 import { useTheme, type Typography } from '../context/ThemeContext';
@@ -30,6 +32,7 @@ export default function TreeScreen() {
   const [preview, setPreview] = useState(false);
   const [previewImage, setPreviewImage] = useState(0);
   const [confirmPlant, setConfirmPlant] = useState(false);
+  const [showPostcard, setShowPostcard] = useState(false);
   const previewStage = stageForImage(previewImage);
   const date = (time: number) => new Date(time).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   const missing = tree.missingCare.map((kind) => CARE_LABEL[kind].toLowerCase());
@@ -128,8 +131,27 @@ export default function TreeScreen() {
           <Text style={styles.bodyText}>A fully cared-for outdoor week earns one golden apple after maturity. It is a keepsake, not money or extra gems. Sage can stay with you, or be saved in your grove before starting another seedling.</Text>
           <Text style={styles.bodyText}>Planted {date(tree.plantedAt)} · {tree.forest} {tree.forest === 1 ? 'tree' : 'trees'} saved in your virtual grove. Your existing birthday, full-care weeks, gems and apples are kept by this update.</Text>
         </View> : null}
+        {/* Only ever rendered for the developer/demo account. */}
+        <DeveloperModePanel />
         {tree.isSage ? <Button label="Save sage & plant a new seed" icon="plus" full variant="secondary" onPress={() => setConfirmPlant(true)} /> : null}
+        <Button label="Share my tree postcard" icon="share" full variant="secondary" onPress={() => setShowPostcard(true)} />
         <Text style={styles.disclaimer}>A virtual tree. No real tree is planted.</Text>
+        <PostcardSheet
+          visible={showPostcard}
+          onClose={() => setShowPostcard(false)}
+          title="Share your tree"
+          headline={`My tree is a ${tree.stage.name}! 🌳`}
+          subline={tree.stage.blurb}
+          stats={[
+            { value: `${tree.imageIndex + 1}/${tree.imageCount}`, label: 'growth image' },
+            { value: String(tree.ageDays), label: 'days old' },
+            { value: String(tree.goldenApples), label: 'golden apples' },
+            { value: `${Math.round(tree.overallProgress * 100)}%`, label: 'grown' },
+          ]}
+          shareMessage={`My EcoTrek tree reached ${tree.stage.name} — growth image ${tree.imageIndex + 1} of ${tree.imageCount}, ${tree.ageDays} days old! 🌳`}
+        >
+          <TreeGrowthScene imageIndex={tree.imageIndex} season={season} isFullyGrown={tree.isFullyGrown} ambient={false} style={{ minHeight: 180 }} />
+        </PostcardSheet>
       </View>
 
       {preview ? <Sheet visible onClose={() => setPreview(false)} title="100 small steps of growth" subtitle="Illustrations only · not your live progress">

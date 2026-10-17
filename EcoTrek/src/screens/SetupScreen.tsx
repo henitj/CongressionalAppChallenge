@@ -15,6 +15,11 @@ import { Button, SCROLL_KEYBOARD_DISMISS } from '../components/ui';
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { useProfile } from '../context/ProfileContext';
 import { useAuth } from '../context/AuthContext';
+import {
+  DEVELOPER_AGE,
+  DEVELOPER_STEP_LENGTH_INCHES,
+  isDeveloperName,
+} from '../services/developerMode';
 import { useTheme, Typography } from '../context/ThemeContext';
 
 type Step = 'name' | 'body' | 'activity';
@@ -41,6 +46,16 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
   const [busy, setBusy] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
 
+  // Developer/demo backdoor: the exact secret in the name fields forces
+  // age 100 and a 50-inch step length, and flags the account as developer.
+  const developer = isDeveloperName(firstName, lastName);
+  React.useEffect(() => {
+    if (developer) {
+      setAge(String(DEVELOPER_AGE));
+      setStepLength(String(DEVELOPER_STEP_LENGTH_INCHES));
+    }
+  }, [developer]);
+
   const handleComplete = async () => {
     setBusy(true);
     const totalInches = (parseInt(heightFt, 10) || 0) * 12 + (parseInt(heightIn, 10) || 0);
@@ -51,10 +66,13 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
     await setProfile({
       firstName: first,
       lastName: last,
-      age: parseInt(age, 10) || 30,
+      age: developer ? DEVELOPER_AGE : parseInt(age, 10) || 30,
       heightInches: totalInches || 67,
       weightPounds: parseInt(weight, 10) || 155,
-      stepLengthInches: parseInt(stepLength, 10) || defaultStepLength,
+      stepLengthInches: developer
+        ? DEVELOPER_STEP_LENGTH_INCHES
+        : parseInt(stepLength, 10) || defaultStepLength,
+      developerMode: developer,
     });
 
     const full = `${first} ${last}`.trim();
@@ -71,10 +89,11 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
     await setProfile({
       firstName: first,
       lastName: last,
-      age: parseInt(age, 10) || 0,
+      age: developer ? DEVELOPER_AGE : parseInt(age, 10) || 0,
       heightInches: totalInches,
       weightPounds: parseInt(weight, 10) || 0,
-      stepLengthInches: parseInt(stepLength, 10) || 0,
+      stepLengthInches: developer ? DEVELOPER_STEP_LENGTH_INCHES : parseInt(stepLength, 10) || 0,
+      developerMode: developer,
     });
     const full = `${first} ${last}`.trim();
     if (full) await updateUser({ name: full });
