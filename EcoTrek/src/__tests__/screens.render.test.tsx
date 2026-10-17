@@ -626,7 +626,7 @@ describe('the redesigned tree page', () => {
     expect(utils.getByText('A little care grows a tree')).toBeTruthy();
     fireEvent.press(utils.getByText('Next'));
     await waitFor(() => expect(utils.getByText('The oldest sage tree')).toBeTruthy());
-    expect(utils.getByText(/at least 18 months/i)).toBeTruthy();
+    expect(utils.getByText(/six months/i)).toBeTruthy();
     fireEvent.press(utils.getByText('Done'));
     await waitFor(() => expect(utils.getByText('This week’s care')).toBeTruthy());
   });

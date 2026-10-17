@@ -57,7 +57,7 @@ test('weekly care persists, cannot be repeated or rush age, and life-stage illus
   await page.getByRole('button', { name: 'Explore growth stages', exact: true }).click();
   await expect(page.getByText('Illustrations only · not your live progress')).toBeVisible();
   await page.getByRole('button', { name: 'Preview Sage tree', exact: true }).click();
-  await expect(page.getByText('At least 18 months')).toBeVisible();
+  await expect(page.getByText('6 months', { exact: true })).toBeVisible();
   await page.getByLabel('Close', { exact: true }).click();
   expect(await page.evaluate((key) => localStorage.getItem(key), `${PREFIX}tree-growth`)).toBe(stored);
   await page.reload();
@@ -87,7 +87,7 @@ test('weekly care improves growth pace once each; growth preview has no image co
   await page.getByRole('button', { name: 'Preview First flower', exact: true }).click();
   await expect(page.getByText('7 months')).toBeVisible();
   await page.getByRole('button', { name: 'Preview Sage tree', exact: true }).click();
-  await expect(page.getByText('At least 18 months')).toBeVisible();
+  await expect(page.getByText('6 months', { exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Next stage', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   expect(await page.evaluate((key) => localStorage.getItem(key), `${PREFIX}tree-growth`)).toBe(stored);
@@ -116,7 +116,7 @@ test('the first tree visit introduces patient growth and previews sage before Do
   await expect(page.getByText(/Growth image \d+ \/ 100/i)).toHaveCount(0);
   await page.getByRole('button', { name: 'Next', exact: true }).click();
   await expect(page.getByText('The oldest sage tree', { exact: true })).toBeVisible();
-  await expect(page.getByText(/at least 18 months/i)).toBeVisible();
+  await expect(page.getByText(/six months/i)).toBeVisible();
   await page.getByRole('button', { name: 'Done', exact: true }).click();
   await expect(page.getByText('This week’s care', { exact: true })).toBeVisible();
   await expect(page.getByText('New seedling', { exact: true })).toBeVisible();
@@ -128,11 +128,11 @@ test('the first tree visit introduces patient growth and previews sage before Do
 // Fixtures are test-only persisted histories, not an age bypass in the app.
 test('the actual calendar birthday gates maturity and automatic autumn shedding', async ({ context, page, baseURL }) => {
   const anniversary = new Date(2026, 9, 14, 12).getTime();
-  const birthday = new Date(2025, 9, 14, 12).getTime();
+  const birthday = new Date(2026, 5, 14, 12).getTime();
   await page.clock.setFixedTime(anniversary - 1);
   await context.addInitScript(({ origin, tree }) => {
     if (location.origin === origin && !localStorage.getItem('@ecotrek/experience-test/tree-growth')) localStorage.setItem('@ecotrek/experience-test/tree-growth', JSON.stringify(tree));
-  }, { origin: new URL(baseURL!).origin, tree: treeFixture(birthday, 52, anniversary - 1) });
+  }, { origin: new URL(baseURL!).origin, tree: treeFixture(birthday, 17, anniversary - 1) });
   await enter(page, '/tree');
   await expect(page.getByText('Young bearing tree', { exact: true })).toBeVisible();
   await expect(page.getByTestId('autumn-leaves')).toHaveCount(0);
@@ -145,13 +145,13 @@ test('the actual calendar birthday gates maturity and automatic autumn shedding'
   await expect(page.getByRole('button', { name: 'Save sage & plant a new seed', exact: true })).toHaveCount(0);
 });
 
-test('sage takes 18 months; golden apples survive a confirmed new planting without gem inflation', async ({ context, page, baseURL }) => {
+test('sage takes six months; golden apples survive a confirmed new planting without gem inflation', async ({ context, page, baseURL }) => {
   const now = new Date(2026, 9, 14, 12).getTime();
-  const birthday = new Date(2025, 3, 14, 12).getTime();
+  const birthday = new Date(2026, 3, 14, 12).getTime();
   await page.clock.setFixedTime(now);
   await context.addInitScript(({ origin, tree }) => {
     if (location.origin === origin && !localStorage.getItem('@ecotrek/experience-test/tree-growth')) localStorage.setItem('@ecotrek/experience-test/tree-growth', JSON.stringify(tree));
-  }, { origin: new URL(baseURL!).origin, tree: treeFixture(birthday, 78, now) });
+  }, { origin: new URL(baseURL!).origin, tree: treeFixture(birthday, 26, now) });
   await enter(page, '/tree');
   await expect(page.getByText('Sage tree', { exact: true })).toBeVisible();
   await expect(page.getByTestId('autumn-leaves')).toBeVisible();

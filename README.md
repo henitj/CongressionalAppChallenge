@@ -2,7 +2,7 @@
 
 EcoTrek is a local-first outdoor activity tracker and conservation companion built for the **Congressional App Challenge** by Henit Jain, Matan Heber, Arjun Averineni, and Basil Vinesh.
 
-The Expo / React Native app runs on web, iOS, and Android. People can record outdoor activities, discover nearby trails, check conditions, browse trail photos, and grow a virtual tree through steady weekly care.
+The Expo / React Native app runs on web, iOS, and Android. People can record outdoor activities, discover nearby trails, check conditions, browse trail photos, and grow a virtual tree to Sage in six calendar months with steady weekly care and outdoor activity.
 
 ## The website opens the app
 

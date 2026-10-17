@@ -1120,21 +1120,23 @@ test('legacy instant-growth trees are never backdated by a year', () => {
 test('calendar anniversaries clamp short months and handle leap years', () => {
   assert.equal(addCalendarMonths(new Date(2025, 0, 31, 12).getTime(), 1), new Date(2025, 1, 28, 12).getTime());
   assert.equal(addCalendarMonths(new Date(2024, 1, 29, 12).getTime(), 12), new Date(2025, 1, 28, 12).getTime());
-  assert.equal(stageReadyAt(TREE_STAGES.find((stage) => stage.id === 'mature')!, new Date(2024, 0, 1, 12).getTime()), new Date(2025, 0, 1, 12).getTime());
+  assert.equal(stageReadyAt(TREE_STAGES.find((stage) => stage.id === 'mature')!, new Date(2024, 0, 1, 12).getTime()), new Date(2024, 4, 1, 12).getTime());
 });
-test('52 cared-for weeks cannot mature a tree before its full calendar year', () => {
-  const store = caredTree(52);
-  assert.equal(treeStatus(store, treeBirthday + 364 * treeDay).isFullyGrown, false);
-  const anniversary = addCalendarMonths(treeBirthday, 12);
-  assert.equal(treeStatus(store, anniversary - 1).isFullyGrown, false);
-  assert.equal(treeStatus(store, anniversary).stage.id, 'mature');
+test('maturity takes four calendar months and sage takes six, even with excess care', () => {
+  for (const [id, months, weeks] of [['mature', 4, 17], ['sage', 6, 26]] as const) {
+    const anniversary = addCalendarMonths(treeBirthday, months);
+    const stage = TREE_STAGES.find((item) => item.id === id)!;
+    assert.ok(treeStatus(caredTree(weeks), anniversary - 1).imageIndex < stage.firstImage);
+    assert.equal(treeStatus(caredTree(weeks), anniversary).stage.id, id);
+    assert.ok(imageForGrowth(9999, treeBirthday, anniversary - 1).imageIndex < stage.firstImage);
+  }
 });
 test('unattended calendar age is slow growth, not an adult-tree bypass', () => {
   const now = addCalendarMonths(treeBirthday, 18);
   const status = treeStatus(emptyTree(treeBirthday), now);
   assert.equal(status.isFullyGrown, false);
   assert.ok(status.effectiveGrowthWeeks < 4);
-  assert.equal(treeStatus({ ...caredTree(78), outdoorWeeks: [] }, now).isSage, false);
+  assert.equal(treeStatus({ ...caredTree(26), outdoorWeeks: [] }, addCalendarMonths(treeBirthday, 6)).isSage, false);
 });
 test('seventeen milestones require both their calendar and weekly effort gates', () => {
   for (const stage of TREE_STAGES) {
@@ -1143,7 +1145,7 @@ test('seventeen milestones require both their calendar and weekly effort gates',
     assert.equal(treeStatus(store, now).stage.id, stage.id);
     if (stage.minWeeks > 0) assert.ok(treeStatus(caredTree(stage.minWeeks - 1), now).imageIndex < stage.firstImage);
   }
-  assert.equal(treeStatus(caredTree(78), addCalendarMonths(treeBirthday, 18) - 1).stage.id, 'old');
+  assert.equal(treeStatus(caredTree(26), addCalendarMonths(treeBirthday, 6) - 1).stage.id, 'old');
 });
 test('missed weeks and more-than-one-year-old records never shrink established growth', () => {
   const store = caredTree(78);
@@ -1235,23 +1237,23 @@ test('water, soil and sunlight all matter once per week; partial care slows inst
     assert.equal(weeklyGrowthFactor(care, true), factor);
     assert.equal(weeklyGrowthFactor(care, false), factor * 0.75);
   }
-  const now = addCalendarMonths(treeBirthday, 12);
-  const full = caredTree(52);
+  const now = addCalendarMonths(treeBirthday, 4);
+  const full = caredTree(17);
   const partial = { ...full, careWeeks: [], careHistory: Object.fromEntries(full.outdoorWeeks.map((week) => [week, { water: 1, sun: 1, nutrients: 0 }])) };
-  assert.ok(effectiveGrowthWeeks(partial, now) > 30);
+  assert.ok(effectiveGrowthWeeks(partial, now) > 10);
   assert.ok(effectiveGrowthWeeks(partial, now) < effectiveGrowthWeeks(full, now));
   assert.equal(treeStatus(partial, now).isFullyGrown, false);
 });
 test('every one of the 100 visual values is reachable by steady real-time care without an adult jump', () => {
   const seen = new Set<number>();
   let previous = 0;
-  for (let day = 0; day <= 550; day++) {
+  for (let day = 0; day <= 184; day++) {
     const now = treeBirthday + day * treeDay;
     const store = caredTree(Math.floor(day / 7) + 1);
     const status = treeStatus(store, now);
     assert.ok(status.imageIndex >= previous);
     assert.ok(status.imageIndex - previous <= 1, `Skipped a visual value on day ${day}`);
-    if (day < 365) assert.ok(status.imageIndex < MATURE_IMAGE);
+    if (now < addCalendarMonths(treeBirthday, 4)) assert.ok(status.imageIndex < MATURE_IMAGE);
     seen.add(status.imageIndex); previous = status.imageIndex;
   }
   assert.equal(seen.size, TREE_IMAGE_COUNT);
@@ -1443,4 +1445,25 @@ test('result, RSVP and sapling codes round-trip and reject junk', () => {
   assert.equal(decodeSapling(encodeRsvp({ planId: 'p1', name: 'Jo', status: 'in' }), now), null);
   const evilResult = encodePayload({ kind: 'result', challengeId: 'c1', name: 'Eve', amount: 999999, completed: true, at: now });
   assert.equal(decodeChallengeResult(evilResult, now), null);
+});
+
+test('shorter timeline keeps saved birthday, care, grove, gems-independent apples and grants earned sage', () => {
+  const now = addCalendarMonths(treeBirthday, 6);
+  const saved = { ...caredTree(26), goldenApples: 4, forest: 2 };
+  const normalized = normalizeTreeGrowth(saved, now);
+  assert.equal(normalized.plantedAt, saved.plantedAt);
+  assert.deepEqual(normalized.careWeeks, saved.careWeeks);
+  assert.equal(normalized.goldenApples, 4);
+  assert.equal(normalized.forest, 2);
+  assert.equal(treeStatus(normalized, now).isSage, true);
+});
+
+test('steady care reaches sage at six months for every planting month, including leap years', () => {
+  for (const year of [2024, 2025, 2026]) for (let month = 0; month < 12; month++) {
+    const plantedAt = new Date(year, month + 1, 0, 12).getTime();
+    const anniversary = addCalendarMonths(plantedAt, 6);
+    const weeks = Math.floor((anniversary - plantedAt) / (7 * treeDay)) + 1;
+    assert.equal(treeStatus(caredTree(weeks, plantedAt), anniversary).isSage, true);
+    assert.equal(treeStatus(caredTree(weeks, plantedAt), anniversary - 1).isSage, false);
+  }
 });

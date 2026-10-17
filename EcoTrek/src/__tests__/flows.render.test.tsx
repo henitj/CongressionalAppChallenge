@@ -731,7 +731,7 @@ describe('gems and the tree', () => {
 
 
 describe('the real-time virtual tree lifecycle', () => {
-  it('takes a full year to mature and 18 months to become sage; apples and archiving cannot be duplicated', async () => {
+  it('takes four months to mature and six months to become sage; apples and archiving cannot be duplicated', async () => {
     const plantedAt = new Date(2025, 0, 1, 12).getTime();
     let time = plantedAt;
     const clock = jest.spyOn(Date, 'now').mockImplementation(() => time);
@@ -739,23 +739,23 @@ describe('the real-time virtual tree lifecycle', () => {
       await boot();
       await act(async () => { await harness.gems.adjust(5000, 'Test balance'); });
       let expectedSpend = 0;
-      for (let week = 0; week < 78; week++) {
+      for (let week = 0; week < 26; week++) {
         time = plantedAt + week * 7 * 86400000;
         await act(async () => {
           await harness.tree.recordOutdoorWeek(time);
           for (const kind of CARE_KINDS) { expect(await harness.tree.addCare(kind)).toBe(true); expectedSpend += 1; }
         });
-        if (week <= 52) expect(harness.tree.isFullyGrown).toBe(false);
-        if (week === 53) expect(harness.tree.stage.id).toBe('mature');
+        if (week <= 17) expect(harness.tree.isFullyGrown).toBe(false);
+        if (week === 18) expect(harness.tree.stage.id).toBe('mature');
       }
       expect(harness.tree.stage.id).toBe('old');
-      time = addCalendarMonths(plantedAt, 18);
+      time = addCalendarMonths(plantedAt, 6);
       await act(async () => {
         await harness.tree.recordOutdoorWeek(time);
         for (const kind of CARE_KINDS) { expect(await harness.tree.addCare(kind)).toBe(true); expectedSpend += 1; }
       });
       expect(harness.tree.stage.id).toBe('sage');
-      expect(harness.tree.growthWeeks).toBe(79);
+      expect(harness.tree.growthWeeks).toBe(27);
       expect(harness.gems.totalGems).toBe(5000 - expectedSpend);
       let apples: boolean[] = [];
       await act(async () => { apples = await Promise.all([harness.tree.harvestApple(), harness.tree.harvestApple()]); });
