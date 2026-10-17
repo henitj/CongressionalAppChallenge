@@ -7,7 +7,7 @@ import {
   Trail,
   type TrailSource,
 } from '../constants/austinTrails';
-import { inServiceBbox, isNearAustin, withDistances } from '../services/nearbyTrails';
+import { hasValidCoordinates, isNearAustin, withDistances } from '../services/nearbyTrails';
 import { catalogueMatches, loadSavedTrailCatalogue, saveTrailCatalogue, type SavedTrailCatalogue } from '../services/trailCatalogueStorage';
 import { alert } from '../services/alert';
 
@@ -25,9 +25,6 @@ import { alert } from '../services/alert';
  */
 
 export type Coords = { latitude: number; longitude: number };
-
-/** Fallback so weather and trails still work if permission is refused. */
-export const DEFAULT_LOCATION: Coords = { latitude: 30.2672, longitude: -97.7431 }; // Austin
 
 function openDeviceLocationSettings() {
   if (Platform.OS === 'android' && typeof Linking.sendIntent === 'function') {
@@ -50,8 +47,6 @@ type AppContextType = {
   refreshTrails: () => Promise<void>;
 
   coords: Coords | null;
-  /** coords if we have them, otherwise Austin — safe to use anywhere. */
-  effectiveCoords: Coords;
   usingFallbackLocation: boolean;
   permission: PermissionState;
   locating: boolean;
@@ -70,11 +65,11 @@ type AppContextType = {
 const AppContext = createContext<AppContextType | undefined>(undefined);
 
 export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [trails, setTrails] = useState<Trail[]>(AUSTIN_TRAILS);
+  const [trails, setTrails] = useState<Trail[]>([]);
   const [trailsLoading, setTrailsLoading] = useState(false);
   const [trailsError, setTrailsError] = useState<string | null>(null);
-  const [trailsRegion, setTrailsRegion] = useState<string | null>('Austin, TX');
-  const [trailsSource, setTrailsSource] = useState<TrailSource>('collection');
+  const [trailsRegion, setTrailsRegion] = useState<string | null>(null);
+  const [trailsSource, setTrailsSource] = useState<TrailSource>('need-location');
 
   const [coords, setCoords] = useState<Coords | null>(null);
   const [permission, setPermission] = useState<PermissionState>('unknown');
@@ -99,10 +94,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       positionFix.current = Location.getCurrentPositionAsync({
         accuracy: Location.Accuracy.Balanced,
       })
-        .then((pos) => ({
-          latitude: pos.coords.latitude,
-          longitude: pos.coords.longitude,
-        }))
+        .then((pos) => {
+          const fix = { latitude: pos.coords.latitude, longitude: pos.coords.longitude };
+          if (!hasValidCoordinates(fix.latitude, fix.longitude)) throw new Error('Invalid GPS coordinates');
+          return fix;
+        })
         .catch((e) => {
           console.warn('[location] fix failed', e);
           return null;
@@ -138,9 +134,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setTrailsError(null);
     const latitude = coords?.latitude, longitude = coords?.longitude;
     if (latitude == null || longitude == null) {
-      // Useful on the very first visit, without inventing the user's location:
-      // browse the clearly-labelled offline Austin collection (no distances),
-      // or saved trails. Live nearby discovery still needs a genuine fix.
+      // Never infer Austin for a person who has not shared a location. A saved
+      // catalogue can still be browsed while the location prompt is pending.
       setTrailsLoading(false);
       return;
     }
@@ -158,18 +153,23 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     } else {
       setTrails([]);
       setTrailsRegion(null);
-      setTrailsSource(inServiceBbox(latitude, longitude) ? 'live' : 'unsupported');
+      setTrailsSource(hasValidCoordinates(latitude, longitude) ? 'live' : 'unsupported');
     }
     // Background enrichment must not hold offline/cached cards behind a
     // spinner. A single bounded lookup replaces the old nested retry queues.
-    setTrailsLoading(!immediate && inServiceBbox(latitude, longitude));
+    setTrailsLoading(!immediate && hasValidCoordinates(latitude, longitude));
     try {
       const data = await fetchNearbyTrails(latitude, longitude);
       if (!mounted.current || request !== catalogueRequest.current) return;
+      if (data.error && immediate) {
+        setTrailsError('Could not refresh nearby trails. Your saved list is still available.');
+        return;
+      }
       if (data.trails.length === 0 && data.source === 'live' && immediate) {
         setTrailsError('Could not update nearby trails. Your saved list is still available.');
         return;
       }
+      if (data.error) setTrailsError(data.error);
       setTrails(data.trails);
       setTrailsRegion(data.region);
       setTrailsSource(data.source);
@@ -193,9 +193,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     (async () => {
       if (Platform.OS === 'web') {
         setPermission('unknown');
-        // A browser that already allowed location can be asked quietly, so the
-        // trail list (and the assistant that reads it) is ready without a visit
-        // to Trails first. Without a grant we never prompt on start-up.
+        // A browser that already allowed location can be asked quietly, so
+        // nearby trail data is ready before the user opens Trails. Without a
+        // grant we never prompt on start-up.
         try {
           const status = await navigator.permissions?.query({ name: 'geolocation' });
           if (status?.state === 'granted') requestLocation({ silent: true });
@@ -293,7 +293,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                 const access = await navigator.permissions.query({ name: 'geolocation' });
                 if (access.state === 'granted') {
                   setPermission('granted');
-                  return coordsRef.current ?? DEFAULT_LOCATION;
+                  return coordsRef.current;
                 }
               } catch { /* Older WebViews obtain the grant through a fix. */ }
             }
@@ -306,6 +306,11 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                     latitude: pos.coords.latitude,
                     longitude: pos.coords.longitude,
                   };
+                  if (!hasValidCoordinates(c.latitude, c.longitude)) {
+                    setPermission('unavailable');
+                    resolve(null);
+                    return;
+                  }
                   setPermission('granted');
                   setCoords(c);
                   resolve(c);
@@ -338,7 +343,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
                       );
                     }
                   }
-                  resolve(opts.permissionOnly && Platform.OS !== 'web' ? DEFAULT_LOCATION : null);
+                  resolve(null);
                 },
                 { enableHighAccuracy: false, timeout: 30000, maximumAge: 300000 }
               );
@@ -423,19 +428,21 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
               const last = await Location.getLastKnownPositionAsync();
               if (last) {
                 const c = { latitude: last.coords.latitude, longitude: last.coords.longitude };
+                if (!hasValidCoordinates(c.latitude, c.longitude)) return null;
                 setCoords(c);
                 return c;
               }
             } catch {
               /* ignore */
             }
-            return DEFAULT_LOCATION;
+            return coordsRef.current;
           }
 
           try {
             const last = await Location.getLastKnownPositionAsync();
             if (last && Date.now() - last.timestamp < 180_000) {
               const c = { latitude: last.coords.latitude, longitude: last.coords.longitude };
+              if (!hasValidCoordinates(c.latitude, c.longitude)) return null;
               setCoords(c);
               return c;
             }
@@ -526,7 +533,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
       trailsSource,
       refreshTrails,
       coords,
-      effectiveCoords: coords ?? DEFAULT_LOCATION,
       usingFallbackLocation: coords == null,
       permission,
       locating,

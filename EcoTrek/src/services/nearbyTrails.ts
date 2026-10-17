@@ -2,22 +2,13 @@ import type { Trail } from '../constants/austinTrails';
 import { haversineMiles } from './geo';
 
 /**
- * Live trail lookup for the US, Canada and Mexico.
+ * Live, worldwide trail lookup from OpenStreetMap. The bundled Austin list is
+ * only used when the coordinates actually land near Austin; every other valid
+ * location is looked up live, with a device cache available while offline.
  *
- * EcoTrek used to ship a fixed Austin catalogue. That meant a walker in
- * New York opened Trails and saw Lady Bird Lake. This module looks up real
- * named hiking routes, parks and cycleways around the phone, using
- * OpenStreetMap (no API key, works without our backend).
- *
- * Service area is the United States, Canada and Mexico. Anywhere else we
- * return an empty list instead of inventing or shipping Austin trails.
- *
- * Austin's bundled list is still used when the phone is actually in the
- * Austin area (the bundled cards are richer). Without a GPS fix we wait —
- * we do not pretend the user is in Texas.
- *
- * A language model is deliberately not the source of the catalogue — models
- * invent trails. OSM reports trails that exist.
+ * We deliberately do not reverse-geocode or gate by country. That avoids an
+ * extra service dependency and prevents international walkers from being
+ * shown Austin data or blocked by a regional allow-list.
  */
 
 export const AUSTIN_CENTER = { latitude: 30.2672, longitude: -97.7431 };
@@ -25,41 +16,10 @@ export const AUSTIN_CENTER = { latitude: 30.2672, longitude: -97.7431 };
 /** Inside this radius we treat the user as an Austin walker. */
 export const AUSTIN_RADIUS_MI = 40;
 
-/** ISO country codes EcoTrek serves. Puerto Rico counts as the US. */
-export const SERVICE_COUNTRY_CODES = ['us', 'ca', 'mx', 'pr'] as const;
-
-export type PlaceInfo = {
-  name: string | null;
-  countryCode: string | null;
-  country: string | null;
-};
-
-export function isSupportedCountry(code: string | null | undefined): boolean {
-  if (!code) return false;
-  return (SERVICE_COUNTRY_CODES as readonly string[]).includes(code.toLowerCase());
-}
-
-/**
- * Cheap reject for points that are clearly not in North America, so we do
- * not spend an Overpass round-trip on London or Tokyo. Hawaii, Alaska,
- * Puerto Rico, northern Canada and southern Mexico are included.
- */
-export function inServiceBbox(lat: number, lon: number): boolean {
-  if (!Number.isFinite(lat) || !Number.isFinite(lon)) return false;
-  if (lat >= 18.5 && lat <= 22.6 && lon >= -160.6 && lon <= -154.4) return true; // Hawaii
-  if (lat >= 51 && lat <= 72 && lon >= -170 && lon <= -129) return true; // Alaska
-  if (lat >= 14.5 && lat <= 83.5 && lon >= -141 && lon <= -52) return true; // CONUS + Canada + Mexico + PR
-  return false;
-}
-
-/**
- * Nominatim country_code wins when we have it (drops Cuba, Greenland, etc.
- * that sit near the bbox). If the geocoder is down we fall back to the bbox
- * so a New Yorker is not locked out of trails because OSM reverse failed.
- */
-export function isInServiceArea(lat: number, lon: number, countryCode?: string | null): boolean {
-  if (countryCode) return isSupportedCountry(countryCode);
-  return inServiceBbox(lat, lon);
+/** Validate GPS coordinates without restricting the user's country. */
+export function hasValidCoordinates(lat: number, lon: number): boolean {
+  return Number.isFinite(lat) && Number.isFinite(lon)
+    && Math.abs(lat) <= 90 && Math.abs(lon) <= 180;
 }
 
 const OVERPASS_ENDPOINTS = [
@@ -68,12 +28,7 @@ const OVERPASS_ENDPOINTS = [
   'https://overpass.private.coffee/api/interpreter',
 ];
 
-const NOMINATIM_URL = 'https://nominatim.openstreetmap.org/reverse';
-
-const FETCH_HEADERS = {
-  Accept: 'application/json',
-  'User-Agent': 'EcoTrek/1.0 (congressional-app-challenge)',
-};
+const FETCH_HEADERS = { Accept: 'application/json' };
 
 const MAX_TRAILS = 24;
 const CACHE_MS = 30 * 60 * 1000;
@@ -93,6 +48,8 @@ export type TrailCatalogue = {
   trails: Trail[];
   region: string | null;
   source: TrailSource;
+  /** Present only when all live lookups failed; empty coverage is not an error. */
+  error?: string;
 };
 
 type CacheEntry = { key: string; at: number; catalogue: TrailCatalogue };
@@ -303,32 +260,6 @@ export function mergeTrailLists(primary: Trail[], extra: Trail[]): Trail[] {
   return [...byId.values()];
 }
 
-export async function fetchPlace(lat: number, lon: number): Promise<PlaceInfo> {
-  const empty: PlaceInfo = { name: null, countryCode: null, country: null };
-  try {
-    const url =
-      `${NOMINATIM_URL}?lat=${lat.toFixed(5)}&lon=${lon.toFixed(5)}` +
-      `&format=json&zoom=10&addressdetails=1`;
-    const data = await fetchJSON(url, 3500);
-    const a = data?.address ?? {};
-    const nameRaw =
-      a.city || a.town || a.village || a.municipality || a.suburb || a.county || a.state || null;
-    const name = typeof nameRaw === 'string' && nameRaw.trim() ? nameRaw.trim() : null;
-    const countryCode =
-      typeof a.country_code === 'string' && a.country_code.trim()
-        ? a.country_code.trim().toLowerCase()
-        : null;
-    const country = typeof a.country === 'string' && a.country.trim() ? a.country.trim() : null;
-    return { name, countryCode, country };
-  } catch {
-    return empty;
-  }
-}
-
-export async function fetchPlaceName(lat: number, lon: number): Promise<string | null> {
-  return (await fetchPlace(lat, lon)).name;
-}
-
 function overpassQuery(lat: number, lon: number): string {
   const la = lat.toFixed(5);
   const lo = lon.toFixed(5);
@@ -346,30 +277,42 @@ out center tags 50;
 }
 
 export async function fetchOsmTrails(lat: number, lon: number, area: string): Promise<Trail[]> {
+  if (!hasValidCoordinates(lat, lon)) return [];
+  if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+    throw new Error('offline');
+  }
+
   const query = overpassQuery(lat, lon);
   let lastError: unknown = null;
+  let emptyMirrorTried = false;
   const clock = () => typeof performance !== 'undefined' && typeof performance.now === 'function' ? performance.now() : Date.now();
   const deadline = clock() + 12_000;
 
+  // Mirrors are fallbacks, not a request queue: each attempt is bounded by a
+  // shared deadline. If a mirror responds successfully but has no named routes,
+  // try one more mirror in case that service has a stale/partial extract.
   for (const endpoint of OVERPASS_ENDPOINTS) {
     const remaining = deadline - clock();
     if (remaining <= 0) break;
     try {
       const url = `${endpoint}?data=${encodeURIComponent(query)}`;
-      const data = await fetchJSON(url, Math.min(7000, remaining));
+      const data = await fetchJSON(url, Math.min(6500, remaining));
       const elements: OsmElement[] = Array.isArray(data?.elements) ? data.elements : [];
       const mapped = elements
         .map((el) => trailFromOsmElement(el, lat, lon, area))
         .filter((t): t is Trail => t != null);
-      return dedupe(mapped)
+      const trails = dedupe(mapped)
         .sort((a, b) => scoreTrail(b) - scoreTrail(a) || (a.distanceFromUserMi ?? 0) - (b.distanceFromUserMi ?? 0))
         .slice(0, MAX_TRAILS);
+      if (trails.length) return trails;
+      if (emptyMirrorTried) return [];
+      emptyMirrorTried = true;
     } catch (e) {
       lastError = e;
     }
   }
 
-  if (lastError) throw lastError;
+  if (lastError && !emptyMirrorTried) throw lastError;
   return [];
 }
 

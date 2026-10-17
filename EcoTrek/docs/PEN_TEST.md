@@ -161,7 +161,7 @@ and statically scans the client for XSS/injection primitives.
 | R2-2 | `POST /api/streak/check-in` forwarded unclamped `longestStreak` / `lastBonusStreak` (1e308 accepted) and hostile `days` shapes into `unnest` array casts | Medium | streaks clamped `0..3650`; `days` must be a plain object; day keys validated `YYYY-MM-DD`; per-entry numbers clamped |
 | R2-3 | `POST /api/points` forwarded a garbage `timestamp` to `to_timestamp()` and an uncapped `id` idempotency key | Low | timestamps clamped; idempotency key capped 120 |
 | R2-4 | `POST /api/challenges/:id/complete` and clubs `contribute` forwarded uncapped slugs/weekIds (1 MB accepted) | Low | capped 120 / 40 |
-| R2-5 | `POST /api/assistant` forwarded a 1.5 MB prompt to the paid upstream API (cost-abuse vector) | Medium | question capped 500 chars; context JSON capped 20k chars |
+| R2-5 | The old `POST /api/assistant` accepted an oversized free-form prompt for a paid provider | Medium | The chat endpoint is removed. The optional public `POST /api/trail-intel` accepts only bounded catalogue fields, rejects missing trail names, uses an 8-second upstream timeout, and is limited to eight requests per IP per minute. Its handler regression test stubs the provider call; it does not prove live model quality or availability. |
 | R2-6 | Client: `ActivityDetailScreen` mounted with hostile `activityId` params (object / number / 1 MB string) | Info | screen handles all gracefully ("Activity not found"); pinned by tests |
 
 ## Verified clean again (round 2)

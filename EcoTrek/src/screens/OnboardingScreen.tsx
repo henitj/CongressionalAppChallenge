@@ -50,8 +50,9 @@ const PAGES: Page[] = [
 
 export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   const { colors, typography } = useTheme();
-  const styles = useMemo(() => makeStyles(colors), [colors]);
-  const { width } = useWindowDimensions();
+  const { width, height } = useWindowDimensions();
+  const compact = height < 760;
+  const styles = useMemo(() => makeStyles(colors, compact), [colors, compact]);
   const [page, setPage] = useState(0);
   const scrollRef = useRef<ScrollView>(null);
   // `page` state can only be trusted once React has re-rendered with it, but
@@ -60,6 +61,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   // goes stale, and use that (not the possibly-one-tick-behind state) to
   // decide where "Next" should land.
   const pageRef = useRef(0);
+  const finishRef = useRef(false);
   const widthRef = useRef(width);
   widthRef.current = width;
   const last = page === PAGES.length - 1;
@@ -72,9 +74,19 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   };
 
   const goTo = (index: number) => {
+    if (finishRef.current) return;
     const clamped = Math.max(0, Math.min(PAGES.length - 1, index));
     setCurrentPage(clamped);
-    scrollRef.current?.scrollTo({ x: clamped * widthRef.current, animated: true });
+    // A button press is an explicit page change. Jump directly rather than
+    // queueing native scroll animations when someone taps Next quickly; swipe
+    // gestures still retain their natural paging motion.
+    scrollRef.current?.scrollTo({ x: clamped * widthRef.current, animated: false });
+  };
+
+  const finish = () => {
+    if (finishRef.current) return;
+    finishRef.current = true;
+    onDone();
   };
 
   // Fires continuously while dragging (not just once momentum settles — on
@@ -90,7 +102,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
 
   const handleNext = () => {
     if (pageRef.current >= PAGES.length - 1) {
-      onDone();
+      finish();
       return;
     }
     goTo(pageRef.current + 1);
@@ -101,7 +113,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
       <SafeAreaView style={{ flex: 1 }} edges={['top', 'bottom']}>
         <View style={styles.topBar}>
           <Logo size={46} />
-          <Pressable onPress={onDone} hitSlop={16} accessibilityLabel="Skip introduction">
+          <Pressable onPress={finish} hitSlop={16} accessibilityRole="button" accessibilityLabel="Skip introduction">
             <Text style={[styles.skip, typography.smallMed]}>Skip</Text>
           </Pressable>
         </View>
@@ -127,10 +139,17 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
             // That is what read as "the trash icon pops out of its box."
             const hasDemo = p.icon === 'trash';
             return (
-            <View key={p.title} style={[styles.page, { width }]}>
+            <ScrollView
+              key={p.title}
+              style={[styles.page, { width }]}
+              contentContainerStyle={styles.pageContent}
+              showsVerticalScrollIndicator={false}
+              bounces={false}
+              nestedScrollEnabled
+            >
               <View style={styles.tourPanel}>
                 <Text style={[styles.stepLabel, typography.overline]}>INTRODUCTION · {index + 1} OF {PAGES.length}</Text>
-                <View style={[styles.picture, hasDemo && styles.pictureCompact]}>
+                <View style={[styles.picture, (compact || hasDemo) && styles.pictureCompact]}>
                   <Icon name={p.icon} size={hasDemo ? 56 : 72} color={colors.primaryGlow} strokeWidth={1.5} />
                 </View>
                 <Text style={[styles.title, typography.h1]}>{p.title}</Text>
@@ -146,7 +165,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
                 </View>
                 ) : null}
               </View>
-            </View>
+            </ScrollView>
             );
           })}
         </ScrollView>
@@ -173,7 +192,7 @@ export default function OnboardingScreen({ onDone }: { onDone: () => void }) {
   );
 }
 
-function makeStyles(c: ColorPalette) {
+function makeStyles(c: ColorPalette, compact: boolean) {
   return StyleSheet.create({
 
   root: { flex: 1, backgroundColor: c.primaryDark },
@@ -185,20 +204,16 @@ function makeStyles(c: ColorPalette) {
     paddingVertical: SPACING.md,
   },
   skip: { color: 'rgba(255,255,255,0.8)' },
-  page: {
-    // Equal left/right padding with the panel centred on this axis — this
-    // used to be flex-end with mismatched padding (32 vs 16), which shoved
-    // the whole panel, and every icon inside it, ~36px right of centre on a
-    // typical phone. That read as "the icons look shifted right."
+  page: { flex: 1 },
+  pageContent: {
+    flexGrow: 1,
     paddingHorizontal: SPACING.lg,
     justifyContent: 'center',
     alignItems: 'center',
-    flex: 1,
   },
   tourPanel: {
     width: '94%',
     maxWidth: 440,
-    maxHeight: '96%',
     alignItems: 'center',
     justifyContent: 'center',
     backgroundColor: 'rgba(255,255,255,0.08)',
@@ -206,17 +221,17 @@ function makeStyles(c: ColorPalette) {
     borderColor: 'rgba(255,255,255,0.14)',
     borderRadius: 28,
     paddingHorizontal: SPACING.lg,
-    paddingVertical: SPACING.lg,
+    paddingVertical: compact ? SPACING.sm + 4 : SPACING.lg,
   },
   stepLabel: { color: 'rgba(255,255,255,0.62)', marginBottom: SPACING.md },
   picture: {
-    width: 180,
-    height: 180,
-    borderRadius: 90,
+    width: compact ? 132 : 180,
+    height: compact ? 132 : 180,
+    borderRadius: compact ? 66 : 90,
     backgroundColor: 'rgba(255,255,255,0.1)',
     alignItems: 'center',
     justifyContent: 'center',
-    marginBottom: SPACING.xl,
+    marginBottom: compact ? SPACING.md : SPACING.xl,
   },
   // The trash page has an extra block below (the honesty-policy demo), so
   // its icon circle is smaller to keep total panel height in line with
@@ -231,7 +246,6 @@ function makeStyles(c: ColorPalette) {
     color: '#fff',
     textAlign: 'center',
     letterSpacing: -0.4,
-    lineHeight: 38,
   },
   body: {
     color: 'rgba(255,255,255,0.8)',

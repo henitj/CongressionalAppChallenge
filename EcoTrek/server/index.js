@@ -8,19 +8,19 @@ import { routes } from './routes.js';
  * A single Node HTTP server, no framework. It runs anywhere that can run
  * Node — Render, Railway, Fly, a Raspberry Pi — and needs no build step.
  *
- *   npm install
- *   cp .env.example .env     # paste your Neon URL + Google client IDs
+ *   npm ci
+ *   cp .env.example .env     # set DATABASE_URL; OAuth IDs are optional
  *   npm run migrate          # creates the tables
  *   npm start
  *
- * Then put the public URL in the app's .env as EXPO_PUBLIC_API_URL and the
- * app switches from on-device storage to this server automatically.
+ * The app remains local-first. EXPO_PUBLIC_API_URL enables public catalogue
+ * requests; protected cloud routes require a supported verified user token.
  */
 
 const PORT = process.env.PORT ?? 8787;
 
 /** Routes that do not require a signed-in user. */
-const PUBLIC_ROUTES = new Set(['GET /api/trails', 'GET /api/health']);
+const PUBLIC_ROUTES = new Set(['GET /api/trails', 'GET /api/health', 'POST /api/trail-intel']);
 
 /**
  * Basic per-IP rate limit. The app makes short bursts (a sync is ~10
@@ -45,6 +45,25 @@ function isRateLimited(ip) {
   }
   h.count += 1;
   return h.count > RATE_LIMIT;
+}
+
+// Trail intel can call a paid optional provider. Give that endpoint a much
+// lower per-IP ceiling than the inexpensive public trail catalogue.
+const TRAIL_INTEL_LIMIT = 8;
+const TRAIL_INTEL_WINDOW_MS = 60_000;
+const trailIntelHits = new Map();
+function isTrailIntelRateLimited(ip) {
+  const now = Date.now();
+  const hit = trailIntelHits.get(ip);
+  if (!hit || now > hit.resetAt) {
+    if (trailIntelHits.size > 10_000) {
+      for (const [key, value] of trailIntelHits) if (now > value.resetAt) trailIntelHits.delete(key);
+    }
+    trailIntelHits.set(ip, { count: 1, resetAt: now + TRAIL_INTEL_WINDOW_MS });
+    return false;
+  }
+  hit.count += 1;
+  return hit.count > TRAIL_INTEL_LIMIT;
 }
 
 function send(res, status, body, extraHeaders = {}) {
@@ -144,6 +163,9 @@ const server = createServer(async (req, res) => {
     return send(res, 400, { error: 'bad_request' });
   }
   if (!matched) return send(res, 404, { error: 'not_found' });
+  if (key === 'POST /api/trail-intel' && isTrailIntelRateLimited(req.socket?.remoteAddress ?? 'unknown')) {
+    return send(res, 429, { error: 'trail_intel_rate_limited', retryAfterSeconds: 60 }, { 'Retry-After': '60' });
+  }
 
   try {
     let user = null;

@@ -17,7 +17,6 @@ import ChallengesScreen from '../screens/ChallengesScreen';
 import TreeScreen from '../screens/TreeScreen';
 import ConditionsScreen from '../screens/ConditionsScreen';
 import StreakScreen from '../screens/StreakScreen';
-import AssistantScreen from '../screens/AssistantScreen';
 import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 import RecapScreen from '../screens/RecapScreen';
 import HistoryScreen from '../screens/HistoryScreen';
@@ -55,7 +54,6 @@ export const linking: LinkingOptions<any> = {
       Tree: 'tree',
       Conditions: 'conditions',
       Streak: 'streak',
-      Assistant: 'assistant',
       ActivityDetail: 'activity/:activityId',
       Recap: 'recap',
       Safety: 'safety',
@@ -157,7 +155,6 @@ export default function RootNavigator() {
       <Stack.Screen name="Tree" component={TreeScreen} />
       <Stack.Screen name="Conditions" component={ConditionsScreen} />
       <Stack.Screen name="Streak" component={StreakScreen} />
-      <Stack.Screen name="Assistant" component={AssistantScreen} />
       <Stack.Screen name="ActivityDetail" component={ActivityDetailScreen} />
       <Stack.Screen name="Recap" component={RecapScreen} />
       <Stack.Screen name="Safety" component={SafetyScreen} />

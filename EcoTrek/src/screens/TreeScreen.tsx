@@ -1,7 +1,8 @@
-import React, { useMemo, useRef, useState } from 'react';
-import { View, Text, StyleSheet, Pressable } from 'react-native';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
+import { ActivityIndicator, View, Text, StyleSheet, Pressable } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
 import Header from '../components/Header';
+import TreeIntroduction from '../components/TreeIntroduction';
 import Icon from '../components/Icon';
 import Slider from '../components/Slider';
 import TreeGrowthScene, { type TreeCareEffect } from '../components/TreeGrowthScene';
@@ -10,6 +11,8 @@ import PostcardSheet from '../components/PostcardSheet';
 import { Screen, Button, ProgressBar, Sheet } from '../components/ui';
 import { SPACING, type ColorPalette } from '../constants/theme';
 import { useTheme, type Typography } from '../context/ThemeContext';
+import { useAuth } from '../context/AuthContext';
+import { keyFor, loadJSON, saveJSON } from '../services/storage';
 import { useGems } from '../context/GemsContext';
 import { useTreeGrowth } from '../context/TreeGrowthContext';
 import { useApp } from '../context/AppContext';
@@ -19,11 +22,14 @@ import { stageForImage, treeSeason } from '../services/treeGrowth';
 export default function TreeScreen() {
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
+  const { user } = useAuth();
+  const introKey = keyFor(user?.id, 'tree-introduction-seen');
+  const [introComplete, setIntroComplete] = useState<boolean | null>(null);
   const navigation = useNavigation<any>();
   const { totalGems } = useGems();
   const tree = useTreeGrowth();
-  const { effectiveCoords } = useApp();
-  const season = treeSeason(tree.now, effectiveCoords.latitude);
+  const { coords } = useApp();
+  const season = treeSeason(tree.now, coords?.latitude ?? 0);
   const [busy, setBusy] = useState<CareKind | 'plant' | 'harvest' | null>(null);
   const lock = useRef(false);
   const [careEffect, setCareEffect] = useState<TreeCareEffect | null>(null);
@@ -37,6 +43,20 @@ export default function TreeScreen() {
   const date = (time: number) => new Date(time).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' });
   const missing = tree.missingCare.map((kind) => CARE_LABEL[kind].toLowerCase());
   const previewStep = (direction: number) => setPreviewImage((image) => Math.max(0, Math.min(TREE_IMAGE_COUNT - 1, image + direction)));
+
+  useEffect(() => {
+    let active = true;
+    setIntroComplete(null);
+    void loadJSON<boolean>(introKey, false, (value) => typeof value === 'boolean').then((seen) => {
+      if (active) setIntroComplete(seen);
+    });
+    return () => { active = false; };
+  }, [introKey]);
+
+  const finishIntro = async () => {
+    setIntroComplete(true);
+    await saveJSON(introKey, true);
+  };
 
   const handleCare = async (kind: CareKind) => {
     if (lock.current || tree.isCareDone(kind)) return;
@@ -65,6 +85,18 @@ export default function TreeScreen() {
     finally { lock.current = false; setBusy(null); }
   };
 
+  if (introComplete === null) {
+    return (
+      <Screen>
+        <Header title="Your tree" subtitle="A story in slow, steady growth" hideAvatar />
+        <View style={{ minHeight: 220, alignItems: 'center', justifyContent: 'center' }}>
+          <ActivityIndicator color={colors.primary} />
+        </View>
+      </Screen>
+    );
+  }
+  if (!introComplete) return <TreeIntroduction onDone={finishIntro} />;
+
   return (
     <Screen>
       <Header title="Your tree" subtitle="Patient care. Gradual growth." back />
@@ -75,7 +107,7 @@ export default function TreeScreen() {
             <Text style={styles.walletValue}>{totalGems}</Text><Text style={styles.small}>gems</Text>
           </View>
           <Pressable accessibilityRole="button" onPress={() => { setPreviewImage(tree.imageIndex); setPreview(true); }} style={styles.linkButton}>
-            <Text style={styles.link}>Explore 100 images</Text><Icon name="chevron-right" size={16} color={colors.primary} />
+            <Text style={styles.link}>Explore growth stages</Text><Icon name="chevron-right" size={16} color={colors.primary} />
           </Pressable>
         </View>
 
@@ -83,7 +115,7 @@ export default function TreeScreen() {
           <View style={styles.sceneLabel} pointerEvents="none"><Icon name={season === 'winter' ? 'cloud-snow' : 'leaf'} size={14} color={colors.textSecondary} /><Text style={styles.season}>{season === 'fall' ? 'Autumn' : season.charAt(0).toUpperCase() + season.slice(1)} · Apple tree</Text></View>
           <TreeGrowthScene imageIndex={tree.imageIndex} careEffect={careEffect} season={season} isFullyGrown={tree.isFullyGrown} />
           <View style={styles.heroCopy}>
-            <View style={styles.stageHeader}><Text style={styles.stageName}>{tree.stage.name}</Text><Text style={styles.small}>Growth image {tree.imageIndex + 1} / {tree.imageCount}</Text></View>
+            <View style={styles.stageHeader}><Text style={styles.stageName}>{tree.stage.name}</Text><Text style={styles.small}>{tree.growthPercent}% growth pace</Text></View>
             <Text style={styles.bodyText}>{tree.stage.blurb}</Text>
             <ProgressBar percent={tree.overallProgress * 100} />
             <View style={styles.stageHeader}><Text style={styles.small}>Next: {tree.nextStage?.name ?? 'A tree to keep caring for'}</Text><Text style={styles.small}>{tree.ageDays} days old</Text></View>
@@ -123,7 +155,7 @@ export default function TreeScreen() {
 
         <Pressable style={styles.howToggle} onPress={() => setShowHow((value) => !value)} accessibilityRole="button" accessibilityState={{ expanded: showHow }}><Text style={styles.link}>How your tree grows</Text><Icon name={showHow ? 'chevron-down' : 'chevron-right'} size={17} color={colors.primary} /></Pressable>
         {showHow ? <View style={styles.explanation}>
-          <Text style={styles.bodyText}>100 separately rendered growth images show the same apple tree adding leaves, side shoots, branches, flower buds, blossoms and fruit. Seventeen milestones describe those changes. Young nursery images are close-ups for detail; they are not resized copies of an adult tree.</Text>
+          <Text style={styles.bodyText}>The illustrations follow one apple tree as it adds leaves, side shoots, branches, flower buds, blossoms and fruit. Growth milestones describe those changes. Young nursery scenes are close-ups for detail, not resized copies of an adult tree.</Text>
           <Text style={styles.bodyText}>Water, sunlight and soil are each needed once a week. With an outing, all three give 100% growth, two give 60%, one gives 25%, and none give 5%. Without an outing, the pace is multiplied by 75%. Missing care slows new growth, never reverses old growth. Extra taps cannot buy more care or skip time.</Text>
           <Text style={styles.bodyText}>Full growth needs both a full calendar year and 52 full-speed-equivalent growth weeks. Sage needs 18 calendar months and 78 growth weeks. Incomplete care therefore takes longer. The virtual timeline is compressed for the game—not a claim that real apple trees mature this quickly.</Text>
           <Text style={styles.bodyText}>Save a valid walk or ride of at least 0.1 mile and 1 minute for the weekly outdoor boost. Care may happen before or after the outing. A one-mile walk normally earns the three gems for the week’s care.</Text>
@@ -143,25 +175,25 @@ export default function TreeScreen() {
           headline={`My tree is a ${tree.stage.name}! 🌳`}
           subline={tree.stage.blurb}
           stats={[
-            { value: `${tree.imageIndex + 1}/${tree.imageCount}`, label: 'growth image' },
+            { value: tree.stage.name, label: 'current stage' },
             { value: String(tree.ageDays), label: 'days old' },
             { value: String(tree.goldenApples), label: 'golden apples' },
             { value: `${Math.round(tree.overallProgress * 100)}%`, label: 'grown' },
           ]}
-          shareMessage={`My EcoTrek tree reached ${tree.stage.name} — growth image ${tree.imageIndex + 1} of ${tree.imageCount}, ${tree.ageDays} days old! 🌳`}
+          shareMessage={`My EcoTrek tree reached ${tree.stage.name} — ${tree.ageDays} days of steady growth! 🌳`}
         >
           <TreeGrowthScene imageIndex={tree.imageIndex} season={season} isFullyGrown={tree.isFullyGrown} ambient={false} style={{ minHeight: 180 }} />
         </PostcardSheet>
       </View>
 
-      {preview ? <Sheet visible onClose={() => setPreview(false)} title="100 small steps of growth" subtitle="Illustrations only · not your live progress">
+      {preview ? <Sheet visible onClose={() => setPreview(false)} title="Tree growth stages" subtitle="Illustrations only · not your live progress">
         <View style={styles.preview}>
           <TreeGrowthScene imageIndex={previewImage} isFullyGrown={previewImage >= MATURE_IMAGE} season={season} ambient={false} style={{ minHeight: 200 }} />
-          <View style={{ gap: 5, alignItems: 'center' }}><Text style={styles.stageName}>{previewStage.name}</Text><Text style={styles.bodyText}>Image {previewImage + 1} of {TREE_IMAGE_COUNT} · {previewStage.timeLabel}</Text></View>
-          <Slider label="Growth image" value={previewImage} min={0} max={TREE_IMAGE_COUNT - 1} step={1} onChange={setPreviewImage} valueLabel={`${previewImage + 1} / ${TREE_IMAGE_COUNT}`} />
-          <View style={styles.previewControls}><Button label="Previous image" icon="chevron-left" variant="secondary" onPress={() => previewStep(-1)} disabled={previewImage === 0} style={{ flex: 1 }} /><Button label="Next image" icon="chevron-right" variant="secondary" onPress={() => previewStep(1)} disabled={previewImage === TREE_IMAGE_COUNT - 1} style={{ flex: 1 }} /></View>
+          <View style={{ gap: 5, alignItems: 'center' }}><Text style={styles.stageName}>{previewStage.name}</Text><Text style={styles.bodyText}>{previewStage.timeLabel}</Text></View>
+          <Slider label="Growth preview" value={previewImage} min={0} max={TREE_IMAGE_COUNT - 1} step={1} onChange={setPreviewImage} valueLabel={previewStage.name} />
+          <View style={styles.previewControls}><Button label="Previous stage" icon="chevron-left" variant="secondary" onPress={() => previewStep(-1)} disabled={previewImage === 0} style={{ flex: 1 }} /><Button label="Next stage" icon="chevron-right" variant="secondary" onPress={() => previewStep(1)} disabled={previewImage === TREE_IMAGE_COUNT - 1} style={{ flex: 1 }} /></View>
           <View style={styles.milestones}>{TREE_STAGES.map((milestone) => <Pressable key={milestone.id} onPress={() => setPreviewImage(milestone.firstImage)} accessibilityRole="button" accessibilityLabel={`Preview ${milestone.name}`} accessibilityState={{ selected: previewStage.id === milestone.id }} style={[styles.milestone, { backgroundColor: previewStage.id === milestone.id ? colors.primary : colors.surfaceSunken }]}><Text style={[typography.micro, { color: previewStage.id === milestone.id ? colors.textInverse : colors.textSecondary }]}>{milestone.name}</Text></Pressable>)}</View>
-          <Text style={styles.disclaimer}>All 100 images can be explored. Your real tree still needs calendar age and consistent weekly care. Previewing spends nothing and changes no progress.</Text>
+          <Text style={styles.disclaimer}>Browse every illustrated stage without changing your real tree. Progress still needs calendar time and consistent weekly care.</Text>
         </View>
       </Sheet> : null}
       <Sheet visible={confirmPlant} onClose={() => setConfirmPlant(false)} title="Begin another tree?" subtitle="Your sage and golden apples stay in your grove."><View style={styles.explanation}><Text style={styles.bodyText}>The new seedling begins today. It needs a fresh year of gradual growth and care. Keeping your sage is also perfectly fine.</Text><Button label="Save sage & plant seed" onPress={plant} loading={busy === 'plant'} disabled={busy !== null} full /><Button label="Keep my sage" onPress={() => setConfirmPlant(false)} variant="secondary" full /></View></Sheet>

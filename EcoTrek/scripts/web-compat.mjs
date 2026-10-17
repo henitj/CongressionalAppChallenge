@@ -188,185 +188,6 @@ const BOOTSTRAP_SCRIPT = `<script id="${BOOTSTRAP_MARKER}">
 })();
 </script>`;
 
-/*
- * Phone visitors to the public app pages are moved to the install guide for
- * their platform: Android to /install/android.html, iPhone, iPod and iPad
- * (iPadOS in desktop mode included) to /install/ios.html. They came for an
- * app, and a browser tab is not the same thing. It runs in <head>, before the
- * first paint, and it steps aside for
- *   - the APK itself (virtual origin), where there is nothing to install;
- *   - "?web=1" and the cookie it sets, i.e. "I want the browser version";
- *   - an installed app (standalone display mode, or iOS navigator.standalone),
- *     which would otherwise be sent to the install page on every launch.
- * vercel.json (user-agent redirects) and serve-site.mjs carry the same rules,
- * so the local preview routes exactly like the live site. The script has no
- * backslashes on purpose: it lives in a template literal.
- */
-const APP_REDIRECT_SCRIPT = `<script id="ecotrek-redirect">
-(function () {
-  if (location.hostname === 'appassets.ecotrek.app') return;
-  if (location.protocol === 'file:') return;
-  var roots = ['/', '/index.html', '/app', '/app/'];
-  if (roots.indexOf(location.pathname) === -1) return;
-
-  if (/(^|[?&])web=1(&|$)/.test(location.search)) {
-    try {
-      document.cookie = 'ecotrek_web=1; path=/; max-age=31536000; SameSite=Lax';
-    } catch (error) {
-      /* cookies blocked: the query string still works for this visit */
-    }
-    if (window.history && history.replaceState) history.replaceState(null, '', location.pathname);
-    return;
-  }
-  if (/(^|; ?)ecotrek_web=1/.test(document.cookie)) return;
-
-  try {
-    if (window.matchMedia && window.matchMedia('(display-mode: standalone)').matches) return;
-  } catch (error) {
-    /* no matchMedia: carry on */
-  }
-  if (navigator.standalone === true) return;
-
-  var ua = navigator.userAgent || '';
-  // iPadOS 13+ asks for the desktop site and reports itself as a touch Mac.
-  var touchMac = /Macintosh/.test(ua) && navigator.maxTouchPoints > 1;
-  if (/iPhone|iPad|iPod/.test(ua) || touchMac) location.replace('/install/ios.html');
-  else if (/Android/i.test(ua)) location.replace('/install/android.html');
-})();
-</script>`;
-
-/*
- * The site bar: a slim strip at the bottom of the public app pages with the
- * two things the app itself cannot show — the Android install guide and the
- * iPhone/iPad guide — plus a dismiss button.
- *
- * It is a *bar*, not a floating pill, on purpose. The app owns the whole
- * viewport, and anything floating over it covers a tab, a button or (on the
- * sign-in screen) a line of text. This reserves its own height instead: the
- * app is laid out above it, so nothing overlaps anything.
- *
- * It is switched off inside the Android APK, where the app is served from the
- * virtual origin https://appassets.ecotrek.app.
- */
-const LAUNCHER_STYLE = `<style id="ecotrek-launcher-style">
-  html.ecotrek-launcher-open { padding-bottom: calc(50px + env(safe-area-inset-bottom, 0px)); box-sizing: border-box; }
-  html.ecotrek-launcher-open body { box-sizing: border-box; }
-  #ecotrek-launcher {
-    position: fixed;
-    left: 0;
-    right: 0;
-    bottom: 0;
-    /* Above the app, but below RN-web modals (z-index 9999): a sheet must never
-       open underneath the bar, or its lower fields and Save button are lost. */
-    z-index: 9000;
-    display: flex;
-    align-items: center;
-    gap: 10px;
-    min-height: 50px;
-    padding: 6px 10px calc(6px + env(safe-area-inset-bottom, 0px));
-    border-top: 1px solid rgba(16, 35, 25, .12);
-    background: rgba(255, 253, 248, .97);
-    box-shadow: 0 -6px 18px rgba(13, 72, 50, .08);
-    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-    box-sizing: border-box;
-  }
-  #ecotrek-launcher[hidden] { display: none; }
-  #ecotrek-launcher .ecotrek-launcher-label {
-    flex: none;
-    color: #52655b;
-    font-size: 11px;
-    font-weight: 600;
-    letter-spacing: .06em;
-    text-transform: uppercase;
-  }
-  #ecotrek-launcher .ecotrek-launcher-links {
-    display: flex;
-    flex: 1 1 auto;
-    gap: 6px;
-    min-width: 0;
-    overflow-x: auto;
-    scrollbar-width: none;
-  }
-  #ecotrek-launcher .ecotrek-launcher-links::-webkit-scrollbar { display: none; }
-  #ecotrek-launcher a {
-    flex: none;
-    padding: 7px 12px;
-    border-radius: 999px;
-    color: #0d4832;
-    background: rgba(23, 104, 72, .08);
-    font-size: 13px;
-    font-weight: 700;
-    text-decoration: none;
-    white-space: nowrap;
-  }
-  #ecotrek-launcher a:hover { background: rgba(23, 104, 72, .15); }
-  #ecotrek-launcher a:focus-visible,
-  #ecotrek-launcher-close:focus-visible { outline: 3px solid rgba(13, 72, 50, .55); outline-offset: 2px; }
-  #ecotrek-launcher-close {
-    flex: none;
-    width: 32px;
-    height: 32px;
-    border: 0;
-    border-radius: 50%;
-    color: #52655b;
-    background: rgba(16, 35, 25, .06);
-    font: inherit;
-    font-size: 15px;
-    line-height: 1;
-    cursor: pointer;
-  }
-  #ecotrek-launcher-close:hover { background: rgba(16, 35, 25, .12); }
-  @media (max-width: 560px) {
-    #ecotrek-launcher { gap: 8px; padding-left: 8px; }
-    #ecotrek-launcher .ecotrek-launcher-label { display: none; }
-    #ecotrek-launcher a { padding: 7px 10px; font-size: 12.5px; }
-  }
-</style>`;
-
-const LAUNCHER_MARKUP = `<div id="ecotrek-launcher" hidden>
-  <span class="ecotrek-launcher-label">EcoTrek</span>
-  <div class="ecotrek-launcher-links">
-    <a href="/install/android.html">Android app</a>
-    <a href="/install/ios.html">iPhone &amp; iPad</a>
-  </div>
-  <button type="button" id="ecotrek-launcher-close" aria-label="Hide this bar" title="Hide this bar">&#215;</button>
-</div>
-<script id="ecotrek-launcher-script">
-(function () {
-  // Inside the Android build the page is served from the app's own virtual
-  // origin; there is nothing to install and nothing to explain.
-  if (location.hostname === 'appassets.ecotrek.app') return;
-  if (location.protocol === 'file:') return;
-
-  var bar = document.getElementById('ecotrek-launcher');
-  if (!bar) return;
-  var storageKey = 'ecotrek.launcher.dismissed';
-  try {
-    if (window.localStorage && localStorage.getItem(storageKey) === '1') return;
-  } catch (error) {
-    /* private mode: show it anyway */
-  }
-
-  // Reserving the space is what keeps the bar off the app's own controls: the
-  // app is laid out above it instead of underneath it.
-  document.documentElement.className += ' ecotrek-launcher-open';
-  bar.hidden = false;
-
-  var close = document.getElementById('ecotrek-launcher-close');
-  if (close) {
-    close.onclick = function () {
-      bar.hidden = true;
-      document.documentElement.className = document.documentElement.className.replace(' ecotrek-launcher-open', '');
-      try {
-        localStorage.setItem(storageKey, '1');
-      } catch (error) {
-        /* ignore */
-      }
-    };
-  }
-})();
-</script>`;
-
 function hash(content) {
   return createHash('sha256').update(content).digest('hex').slice(0, 32);
 }
@@ -391,7 +212,7 @@ async function loadTooling() {
 
 /** The splash + watchdog markup, shared by every generated page. */
 export function bootstrapMarkup() {
-  return `${SPLASH_STYLE}\n${LAUNCHER_STYLE}\n${SPLASH_MARKUP}\n${LAUNCHER_MARKUP}\n${BOOTSTRAP_SCRIPT}`;
+  return `${SPLASH_STYLE}\n${SPLASH_MARKUP}\n${BOOTSTRAP_SCRIPT}`;
 }
 
 /**
@@ -486,7 +307,7 @@ export async function patchIndexHtml(
   html = html.replace(/^\s*<script[^>]*id="ecotrek-redirect"[\s\S]*?<\/script>\n?/m, '');
   html = html.replace(/^\s*<style id="ecotrek-(bootstrap|launcher)-style"[\s\S]*?<\/style>\n?/gm, '');
   html = html.replace(/^\s*<div id="ecotrek-splash"[\s\S]*?\n<\/div>\n?/m, '');
-  html = html.replace(/^\s*<div id="ecotrek-launcher"[\s\S]*?\n<\/div>\n?<script id="ecotrek-launcher-script"[\s\S]*?<\/script>\n?/m, '');
+  html = html.replace(/^\s*<div id="ecotrek-launcher"[\s\S]*?\n<\/div>\n?/m, '');
 
   // Any previous bundle tag is replaced, whatever it is called.
   // Every previous bundle/polyfill tag goes, not just the first one: re-running
@@ -504,10 +325,10 @@ export async function patchIndexHtml(
   ].join('\n');
   html = html.slice(0, firstTag) + tags + html.slice(firstTag).replace(new RegExp(tagSource, 'g'), '');
 
-  const publicSiteHead = standalone ? '' : `\n${LAUNCHER_STYLE}\n${APP_REDIRECT_SCRIPT}`;
-  const publicSiteBody = standalone ? '' : `\n    ${LAUNCHER_MARKUP}`;
-  html = html.replace('</head>', `${SPLASH_STYLE}${publicSiteHead}\n</head>`);
-  html = html.replace('<body>', `<body>\n    ${SPLASH_MARKUP}${publicSiteBody}`);
+  // Every deployment opens the app directly. No install/API launcher or
+  // platform redirect is injected into the web entry page.
+  html = html.replace('</head>', `${SPLASH_STYLE}\n</head>`);
+  html = html.replace('<body>', `<body>\n    ${SPLASH_MARKUP}`);
   html = html.replace('</body>', `${BOOTSTRAP_SCRIPT}\n</body>`);
 
   if (!dryRun) await fs.writeFile(htmlPath, html);
@@ -517,15 +338,10 @@ export async function patchIndexHtml(
 /**
  * Write the repository-root page: the same app, addressed from `/` instead of
  * `/app/`, so the website *is* the app. Asset URLs are re-pointed at the
- * export directory (which stays the single source of truth) and the site's
- * launcher links are added for the pages the app does not contain.
+ * export directory (which stays the single source of truth). This is the
+ * direct app entry; no install or API landing page is inserted.
  */
-/*
- * Tags that only make sense on the public site: an iPhone Home Screen
- * installation should get the app icon and open without Safari's chrome, and
- * the manifest lets Android/desktop browsers offer the same thing. The manifest
- * asks for "?web=1" so an installed copy never gets sent to the install guide.
- */
+/* PWA metadata for browsers that let users install this web app. */
 const SITE_HEAD_TAGS = `<meta name="theme-color" content="#102319">
     <link rel="manifest" href="/manifest.webmanifest">
     <link rel="apple-touch-icon" href="/EcoTrek/assets/icon.png">

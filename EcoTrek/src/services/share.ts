@@ -1,4 +1,7 @@
 import { Platform, Share } from 'react-native';
+import type { Trail } from '../constants/austinTrails';
+import type { TrailPhoto } from './trailPhotos';
+import { buildTrailShareMessage } from './trailShare';
 import { alert } from './alert';
 
 /**
@@ -30,6 +33,11 @@ export async function shareText(message: string, title = 'EcoTrek'): Promise<boo
   } catch {
     return false;
   }
+}
+
+/** Share only the selected trail, its useful details, map pin, and best photos. */
+export async function shareTrail(trail: Trail, photos: TrailPhoto[] = []): Promise<boolean> {
+  return shareText(buildTrailShareMessage(trail, photos), `Share ${trail.name}`);
 }
 
 /**

@@ -109,29 +109,3 @@
 
     return v3
 .end method
-
-# Preserve window.opener for the user-initiated Puter sign-in popup.
-.method public onCreateWindow(Landroid/webkit/WebView;ZZLandroid/os/Message;)Z
-    .locals 4
-    if-eqz p3, :blocked
-    iget-object v0, p4, Landroid/os/Message;->obj:Ljava/lang/Object;
-    instance-of v1, v0, Landroid/webkit/WebView$WebViewTransport;
-    if-eqz v1, :blocked
-    check-cast v0, Landroid/webkit/WebView$WebViewTransport;
-    iget-object v1, p0, Lcom/ecotrek/app/AppChromeClient;->act:Lcom/ecotrek/app/MainActivity;
-    new-instance v2, Lcom/ecotrek/app/AuthPopup;
-    invoke-direct {v2, v1}, Lcom/ecotrek/app/AuthPopup;-><init>(Landroid/content/Context;)V
-    invoke-virtual {v2}, Landroid/app/Dialog;->show()V
-    invoke-virtual {v2}, Landroid/app/Dialog;->getWindow()Landroid/view/Window;
-    move-result-object v1
-    const/4 v3, -0x1
-    invoke-virtual {v1, v3, v3}, Landroid/view/Window;->setLayout(II)V
-    iget-object v1, v2, Lcom/ecotrek/app/AuthPopup;->webView:Landroid/webkit/WebView;
-    invoke-virtual {v0, v1}, Landroid/webkit/WebView$WebViewTransport;->setWebView(Landroid/webkit/WebView;)V
-    invoke-virtual {p4}, Landroid/os/Message;->sendToTarget()V
-    const/4 v0, 0x1
-    return v0
-    :blocked
-    const/4 v0, 0x0
-    return v0
-.end method

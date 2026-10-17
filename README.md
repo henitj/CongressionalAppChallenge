@@ -1,245 +1,116 @@
 # EcoTrek
 
-[![TypeScript](https://img.shields.io/badge/TypeScript-5.9-blue.svg)](https://www.typescriptlang.org/)
-[![Expo](https://img.shields.io/badge/Expo-SDK%2057-black.svg)](https://expo.dev/)
-[![React Native](https://img.shields.io/badge/React%20Native-0.86-61dafb.svg)](https://reactnative.dev/)
-[![Tests](https://img.shields.io/badge/Tests-255%20passing-success.svg)](https://jestjs.io/)
+EcoTrek is a local-first outdoor activity tracker and conservation companion built for the **Congressional App Challenge** by Henit Jain, Matan Heber, Arjun Averineni, and Basil Vinesh.
 
-EcoTrek is a local-first, high-performance React Native / Expo outdoor activity tracker and conservation companion for iOS, Android, and web. It enables users to record GPS walks, hikes, and bike rides, discover nearby trails, assess live weather safety, track environmental impact, and build healthy outdoor habits.
+The Expo / React Native app runs on web, iOS, and Android. People can record outdoor activities, discover nearby trails, check conditions, browse trail photos, and grow a virtual tree through steady weekly care.
 
-Built for the **Congressional App Challenge** by Henit Jain, Matan Heber, Arjun Averineni, and Basil Vinesh.
+## The website opens the app
 
----
+The repository’s Vercel root (`/`) launches EcoTrek directly on every platform. There is no platform chooser, marketing home page, Android/iPhone install page, or Grok chat page in the launch flow. The exported app lives in `app/`; `index.html` at the repository root is generated from the same export. `/app/` is an additional direct app entry point. `/download` is a direct APK file download, not an install landing page. `/privacy` is the privacy policy.
 
-## Key Features
+Build the web export and regenerate the root entry from the app directory:
 
-- **GPS Activity Tracking**: Walk, hike, and bike recording with accuracy-weighted GPS smoothing, stationary-drift rejection, speed-jump checks, and a clear retry flow for location permissions/settings.
-- **Maps & Trail Discovery**: Bundled Leaflet and keyless OpenStreetMap tiles on the website/WebView APK. The map gets about two-thirds of the tracking area, with independent scrolling stats, zoom/recenter controls, and a route-only fallback with retry. Native Android still uses Google Maps when configured.
-- **Trail Photos & Completion**: Wikimedia Commons/admin-approved trail photos with a local illustrated fallback, trail details, ratings, and automatic completion detection.
-- **EcoPoints & Environmental Impact**: Log cleanups and wildlife sightings, and unlock symbolic trees and badges; self-reported cleanup rewards are capped at 10 points per activity.
-- **Streaks & Challenges**: Weekly streaks with freeze protection, community leaderboards, and rotating weekly challenges.
-- **Offline-First & Local-First**: Zero required server dependencies — all user data, activity logs, streaks, and settings are saved locally with bounded storage retention.
-- **Trail assistant**: Available from Trails. Connect your Puter account, then test an actual Grok reply. Account/credit requirements, blocked popups, timeouts and offline answers are explicit; only an actual model response gets a Grok label. A personal OpenAI-compatible key remains optional.
-- **Accessible & Responsive Design**: Dynamic light and dark themes, scalable typography, reduced motion support, tablet and phone responsive layouts, and hardware keyboard clearance.
+```bash
+cd EcoTrek
+npm ci
+npm run export:web
+```
 
----
+Preview the full repository site after exporting:
 
-## Performance & Resilience Hardening
+```bash
+cd ..
+node serve-site.mjs
+```
 
-EcoTrek has been optimized for speed, battery life, and crash resilience:
+Then open `http://localhost:8000/`. Vercel’s root configuration is in `vercel.json`; it serves the app at `/`, rewrites valid app routes to the export, retains the direct `/download` endpoint, and has no platform install redirects.
 
-1. **Rendering Performance**:
-   - `React.memo` and fine-grained `useMemo` / `useCallback` implementations across all list items, cards, and data badges.
-   - Cached style creation preventing thousands of duplicate stylesheet allocations on every render tick.
-   - Virtualized list rendering (`FlatList`) with optimized `initialNumToRender`, `windowSize`, `maxToRenderPerBatch`, and `removeClippedSubviews`.
-2. **Crash-Proof Math & Data Operations**:
-   - Defensive mathematical guards protecting against division by zero (e.g., zero-distance pace calculations, challenge progress percentages).
-   - `NaN` and `Infinity` sanitization in GPS geodesy (`haversineMiles`, `smoothDelta`, `instantMph`).
-   - Safe CSS/layout dimension calculations preventing invalid percentage styles in weather bars and progress indicators.
-3. **Defensive State & Storage Management**:
-   - Fault-tolerant JSON serialization (`safeParse` / `safeStringify`) with fallback defaults for corrupt or legacy storage schemas.
-   - Global and component-level React `ErrorBoundary` handlers with user-friendly recovery flows.
-   - Safe asynchronous cleanup and teardown routines preventing unmount race conditions on maps and GPS listeners.
-4. **Activity artwork and a growing oak**:
-   - The approved AI-generated hiker and cyclist cutouts appear only in the activity pickers; the extra Start hero illustration is removed.
-   - A persistent branching oak grows with every care step, with six stages, care effects, reduced-motion support, a free preview and saved forest progress. Costs and rewards are unchanged.
+## Product features
 
----
+- **Activity tracking:** GPS walks, hikes, and rides with location-retry handling, route recording, distance and duration summaries, and an offline route sketch if map tiles fail.
+- **Worldwide trail discovery:** When location is granted, EcoTrek looks up named OpenStreetMap trails around the device. Austin’s richer bundled catalogue is used only when coordinates are actually near Austin. Successful results are cached on-device; failed empty lookups remain retryable. No location is silently replaced with Austin.
+- **Trail details and sharing:** Trail-specific photo browsing with a local illustration and retry when Commons photos are unavailable; share a selected trail’s details, map pin, and up to two related photo links.
+- **Local conditions:** Location-based forecasts and safety information when a real location is available. The app never requests background location in the website or WebView APK.
+- **Tree growth:** A one-time introduction previews gradual growth and the oldest sage stage. The tree page shows growth pace and care milestones, without exposing illustration-image counts.
+- **Local-first progress:** Profiles, walks, points, tree care, ratings, and settings are stored on-device by default. An optional API can provide a public approved-trail catalogue; this build has no Google sign-in, so it does not sync a guest profile’s private data to a cloud account.
+- **Accessible layouts:** Scalable typography, responsive screens, reduced-motion support, keyboard-aware inputs, and mobile/tablet layouts.
 
-## The website *is* the app
+There is **no user-facing Grok or AI chatbot**. The optional backend’s trail-intelligence service is separate from chat and can continue to provide background trail-data enrichment. Location, map, photo, weather, and backend requests are described in [`EcoTrek/docs/PRIVACY_POLICY.md`](EcoTrek/docs/PRIVACY_POLICY.md) and [`privacy.html`](privacy.html).
 
-There is no separate marketing page. `index.html` at the repository root is the
-full EcoTrek app (the same Expo web build that ships inside the Android APK), so
-opening the site puts the actual product in front of the visitor.
+## Development and checks
 
-| URL | What it is |
-| --- | --- |
-| `/` | The full app. |
-| `/app/` | The same app with a permanent address (also the PWA `start_url`). |
-| `/install/android.html` | Android install guide: the signed APK, the Play Protect prompts, hashes and permissions, plus a browser-install fallback. |
-| `/download` | Short, direct URL that downloads the Android APK as `EcoTrek.apk`. |
-| `/install/ios.html` | iPhone / iPad guide: run the app in Safari and add it to the Home Screen. |
-| `/api-key.html` | Optional bring-your-own-key instructions. The website and Android WebView APK use Grok through Puter without a personal AI key. |
-| `/privacy` | Privacy policy, including map tiles, trail/photo providers, and online assistant data flow. |
+Requirements: Node.js 20+ and npm.
 
-**Platform routing.** Android visitors to `/` are sent to the Android install
-guide (a Vercel redirect rule on the User-Agent, with the same logic repeated in
-the page, so it also works on static hosts that ignore `vercel.json`). Apple and
-desktop visitors get the app itself. Nobody is trapped: `/install/android.html`
-links to `/?web=1`, which sets an `ecotrek_web` cookie that the redirect respects
-from then on.
+```bash
+cd EcoTrek
+npm ci
+npm run typecheck
+npm test
+npm run verify
+```
 
-**Deployment.** The site is plain static files (no build step) with routing in
-`vercel.json`:
+To test the generated website and routes from the repository root:
 
-- `/assets/*` is rewritten to `/app/assets/*`, because the app bundle addresses
-  its own images with root-absolute URLs;
-- `/privacy`, `/app`, `/download`, and `/apk` are rewritten to their files;
-- `/download` returns the APK as a no-transform attachment with revalidation
-  headers, while `/downloads/*` exposes the release facts;
-- `/_expo/*` and `/assets/*` are served `immutable`;
-- `Permissions-Policy` allows geolocation for the site itself — the app cannot
-  record a walk without it.
+```bash
+node --test tests/*.test.mjs
+```
 
-To deploy only the Expo app rather than the full website/install pages, set
-Vercel **Root Directory** to `EcoTrek`. That folder has its own `vercel.json`,
-standalone export command, SPA fallback, and environment-variable guidance in
-[`EcoTrek/README.md`](EcoTrek/README.md#deploy-this-folder-to-vercel).
+For browser checks, export the web app, start `node serve-site.mjs` from the repository root, then run:
 
-### Android APK
+```bash
+cd EcoTrek
+npx playwright install chromium
+npm run test:web
+```
 
-`downloads/ecotrek.apk` is the direct-download package, built by
-`android-shell/build.sh` (see `android-shell/README.md`). It is signed with
-**APK Signature Scheme v1 + v2 + v3**, 4-byte aligned, and targets API 34:
+Browser tests mock location, maps, and external services; they are regression checks, not proof that live third-party services or physical devices work.
+
+## Android package
+
+`downloads/ecotrek.apk` is served directly at `/download`. Rebuild it from the latest app export before distributing updates; do not assume a prebuilt APK contains recent source changes.
+
+The shell build and APK verification tools live in [`android-shell/README.md`](android-shell/README.md). A build may require Java, `apktool`, Python dependencies, and the signing configuration described there. Typical source-build command:
 
 ```bash
 APKTOOL=/path/to/apktool.jar android-shell/build.sh
 ```
 
-The build prints the release facts and writes them next to the download, where
-the install page reads them:
-
-- `downloads/ecotrek-apk.json` — version, size, SHA-256, signing certificate
-  fingerprint, signature schemes;
-- `downloads/ecotrek.apk.sha256` — a `sha256sum`-format line for manual checks.
-
-Verify a published APK at any time (no Android SDK required). Install the
-Python helpers once, then run the validator:
+Verify the resulting package with:
 
 ```bash
 python3 -m pip install -r android-shell/requirements.txt
 python3 android-shell/tools/validate_apk.py downloads/ecotrek.apk
 ```
 
-The website download route can be smoke-tested locally with
-`node --test tests/site-download.test.mjs`; it checks the attachment headers,
-APK bytes, release size and SHA-256.
-
-The APK validator re-derives the v2/v3 content digests from the file on disk,
-verifies the signatures and the v1 JAR chain, checks that v1/v2/v3 agree and
-that the two v3 SDK ranges match, confirms every web-bundle asset is bundled,
-and checks that uncompressed entries are aligned. The Android build also runs
-a v3 signer-format regression test before publishing the APK.
-
-> **Play Protect.** Sideloaded apps are signed by a key Google has never
-> attested, so Android may show *“Play Protect doesn’t recognise this app”* or
-> *“Unsafe app blocked”* with **More details → Install anyway**. That prompt is
-> inherent to distributing outside Google Play; `install/android.html` walks
-> through it and documents exactly what is in the file. What *can* be fixed is
-> has been: modern signature schemes, a current `targetSdk`, no cleartext
-> traffic, no debug flag, no compressed resource table.
-
-For a Google Play release, build the native app instead:
-
-```bash
-cd EcoTrek && npx eas build --platform android --profile production
-```
-
-For iPhone, distribute through the App Store / TestFlight; until that listing
-exists, `install/ios.html` explains the Safari "Add to Home Screen" route. Paste
-a published store URL into `iosUrl` in `site-config.js` and the iPhone page
-switches to it automatically.
-
-The shipped app has **no EcoTrek account sign-in** (optional Puter sign-in connects online AI): walks, points and settings are stored on the device under a local profile. Cross-device progress needs a deployed API/Neon database plus an OAuth provider; see `EcoTrek/docs/GOOGLE_OAUTH_SETUP.md` and `EcoTrek/docs/NEON_SETUP.md` before enabling that.
-
-### Maps and trail API configuration
-
-The website and downloadable WebView APK need **no map API key**. Leaflet 1.9.4 is bundled and tiles load from `https://tile.openstreetmap.org` with attribution and standard browser caching. Tile access needs a network; if unavailable, GPS recording continues with a route sketch and a Retry map action. Do not prefetch/bulk-download OSM tiles. A larger deployment should use a tile provider appropriate to its usage.
-
-For a separate native Android/EAS build, `GOOGLE_MAPS_ANDROID_KEY` still configures the Android Maps SDK. Never commit `.env` or an unrestricted key. Puter/Grok needs no app-owned key, but the user must connect Puter and may need credits. `EXPO_PUBLIC_PUTER_GROK_MODEL` optionally overrides `x-ai/grok-4.7`.
-
-Nearby trail catalogue searches still use OpenStreetMap's Overpass service. A TrailSplits adapter is **not** wired in: this checkout contains no TrailSplits API schema/endpoint or configured key, so no TrailSplits request is being made. The linked API must be verified and configured before claiming that integration.
-
-#### Prerequisites
-- Node.js 20+
-- npm (or yarn / pnpm)
-- Expo Go app on mobile (optional, for physical device preview)
-
-#### Installation
-
-```bash
-# Clone the repository
-git clone https://github.com/henitj/CongressionalAppChallenge.git
-cd CongressionalAppChallenge/EcoTrek
-
-# Install dependencies
-npm install
-
-# Start development server
-npm start          # Expo interactive CLI (scan QR code with Expo Go)
-npm run web        # Run in browser
-```
-
-#### Validation & Testing
-
-```bash
-# Type check with strict TypeScript
-npm run typecheck
-
-# Run Jest unit and component test suites (120+ tests)
-npm test
-
-# Run complete verification suite
-npm run verify
-```
-
----
-
-## Repository Structure
+## Repository layout
 
 ```text
 CongressionalAppChallenge/
-├── README.md                  # Project overview and quick start
-├── index.html                 # The website: the full app (generated from the export)
-├── install/                   # Android / iOS install guides
-├── api-key.html               # Where to get an AI key and where it goes
-├── site.css / site.js         # Shared styling + release details for those pages
-├── app/                       # The exported web app (assets the site root points at)
-├── android-shell/             # APK build project + signing/validation tools
-├── downloads/                 # The published APK + release facts
-└── EcoTrek/                   # Main Expo / React Native application
-    ├── assets/                # App icons, approved character PNGs, and license notices
-    ├── db/                    # PostgreSQL schemas and seed datasets
-    ├── docs/                  # Architecture, privacy, penetration testing, and setup guides
-    ├── server/                # Optional Node.js / Express backend with Neon PostgreSQL
-    └── src/
-        ├── __tests__/         # Unit, integration, and UI component tests
-        ├── components/        # Reusable UI widgets, error boundaries, and illustrations
-        ├── constants/         # Theme tokens, trail data, badge rules, and constants
-        ├── context/           # React context state managers (Activity, Theme, Weather, etc.)
-        ├── hooks/             # Custom hooks for responsiveness, location, and animations
-        ├── navigation/        # React Navigation stacks and tab bar configurations
-        ├── screens/           # Application screens (Home, Record, Trails, Impact, etc.)
-        ├── services/          # Pure domain services (GPS, storage, weather, assistant, sync)
-        └── types/             # TypeScript definitions and interface declarations
+├── index.html                 # Generated app entry; Vercel opens EcoTrek here
+├── app/                       # Exported web app and static assets
+├── vercel.json                # App-first routes, privacy page and direct APK download
+├── privacy.html               # Website privacy policy
+├── serve-site.mjs              # Local preview server for Vercel-style paths
+├── tests/                     # Website and direct-download regression tests
+├── downloads/                 # APK artifact and release metadata
+├── android-shell/              # APK build and validation tools
+└── EcoTrek/                    # Expo / React Native app, tests and optional API
+    ├── src/components/         # UI, trail photo gallery, maps and illustrations
+    ├── src/context/            # Local application state and providers
+    ├── src/navigation/         # App navigation
+    ├── src/screens/            # User-facing screens
+    ├── src/services/           # Location, trails, weather, sharing and local data
+    ├── src/__tests__/          # Unit and render tests
+    ├── tests/web/              # Playwright browser regression tests
+    └── server/                 # Optional API and database adapter
 ```
 
----
+## Privacy and security
 
-## Regression checks
-
-```bash
-(cd EcoTrek && npm ci && npm run verify) # strict TS, 110 logic + 145 render/flow tests
-# Export/sync first (android-shell/build.sh does both); serve from repo root:
-node serve-site.mjs
-# In another terminal:
-(cd EcoTrek && npx playwright install chromium && npm run test:web)
-# From repository root:
-node --test tests/*.test.mjs
-python3 -m unittest discover -s android-shell/tests -p 'test_*.py'
-```
-
-Browser checks cover selected images/navigation, persisted care, free preview, small/large/landscape tracking, tile failure/retry, SDK loading and controlled AI success/error paths. **Mocked provider/tile responses are not live-service proof.** See [release validation](EcoTrek/docs/RELEASE_1.3.0.md) for outstanding physical-device and authenticated-service checks.
-
-## Privacy & Security
-
-- Location is used for nearby trail discovery and while recording; EcoTrek does not request background location.
-- The local profile and recorded activity log stay on-device by default. Approximate coordinates are sent to the selected trail/weather/map services when those features are used.
-- Online Grok answers send the question and relevant trail/weather facts to Puter; the app does not include GPS coordinates or profile details in that prompt. A personal provider key is optional and stored locally.
-- See `EcoTrek/docs/PRIVACY_POLICY.md` for the provider-by-provider data flow and `/api-key.html` for optional key setup.
-- Refer to [`EcoTrek/docs/PRIVACY_POLICY.md`](EcoTrek/docs/PRIVACY_POLICY.md) for our full privacy commitment.
-
----
+- Location is requested only when a nearby feature or activity needs it; background location is not requested by the web app or WebView APK.
+- Personal profiles and activity data are local by default. Configured third-party features make network requests as described in the privacy policy.
+- Trail results and photos are supplied by OpenStreetMap/Overpass and Wikimedia Commons; map and weather services receive the requests needed for those features.
+- The app does not sell data or show ads. A custom backend deployment may have different storage and retention behavior; operators should document it.
 
 ## License
 

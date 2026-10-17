@@ -1,197 +1,63 @@
 {
   "cleanUrls": true,
-  "redirects": [
-    {
-      "source": "/(index\\.html)?",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*Android.*"
-        }
-      ],
-      "missing": [
-        {
-          "type": "cookie",
-          "key": "ecotrek_web"
-        },
-        {
-          "type": "query",
-          "key": "web"
-        }
-      ],
-      "destination": "/install/android.html",
-      "permanent": false
-    },
-    {
-      "source": "/app",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*Android.*"
-        }
-      ],
-      "missing": [
-        {
-          "type": "cookie",
-          "key": "ecotrek_web"
-        },
-        {
-          "type": "query",
-          "key": "web"
-        }
-      ],
-      "destination": "/install/android.html",
-      "permanent": false
-    },
-    {
-      "source": "/app/",
-      "has": [
-        {
-          "type": "header",
-          "key": "user-agent",
-          "value": ".*Android.*"
-        }
-      ],
-      "missing": [
-        {
-          "type": "cookie",
-          "key": "ecotrek_web"
-        },
-        {
-          "type": "query",
-          "key": "web"
-        }
-      ],
-      "destination": "/install/android.html",
-      "permanent": false
-    }
-  ],
   "headers": [
     {
       "source": "/(.*)",
       "headers": [
-        {
-          "key": "X-Content-Type-Options",
-          "value": "nosniff"
-        },
-        {
-          "key": "Referrer-Policy",
-          "value": "strict-origin-when-cross-origin"
-        },
-        {
-          "key": "Permissions-Policy",
-          "value": "geolocation=(self), camera=(), microphone=(), payment=()"
-        }
+        { "key": "X-Content-Type-Options", "value": "nosniff" },
+        { "key": "Referrer-Policy", "value": "strict-origin-when-cross-origin" },
+        { "key": "Permissions-Policy", "value": "geolocation=(self), camera=(), microphone=(), payment=()" }
       ]
     },
     {
       "source": "/download",
       "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/vnd.android.package-archive"
-        },
-        {
-          "key": "Content-Disposition",
-          "value": "attachment; filename=\"EcoTrek.apk\""
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate, no-transform"
-        }
+        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"EcoTrek.apk\"" },
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate, no-transform" }
       ]
     },
     {
       "source": "/downloads/ecotrek\\.apk",
       "headers": [
-        {
-          "key": "Content-Type",
-          "value": "application/vnd.android.package-archive"
-        },
-        {
-          "key": "Content-Disposition",
-          "value": "attachment; filename=\"EcoTrek.apk\""
-        },
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=0, must-revalidate, no-transform"
-        }
+        { "key": "Content-Type", "value": "application/vnd.android.package-archive" },
+        { "key": "Content-Disposition", "value": "attachment; filename=\"EcoTrek.apk\"" },
+        { "key": "Cache-Control", "value": "public, max-age=0, must-revalidate, no-transform" }
       ]
     },
     {
       "source": "/downloads/(.*)",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=3600"
-        }
+        { "key": "Cache-Control", "value": "public, max-age=3600" }
       ]
     },
     {
       "source": "/app/_expo/(.*)",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     },
     {
       "source": "/app/assets/(.*)",
       "headers": [
-        {
-          "key": "Cache-Control",
-          "value": "public, max-age=31536000, immutable"
-        }
+        { "key": "Cache-Control", "value": "public, max-age=31536000, immutable" }
       ]
     }
   ],
   "rewrites": [
+    { "source": "/privacy", "destination": "/privacy.html" },
+    { "source": "/app", "destination": "/app/index.html" },
+    { "source": "/app/", "destination": "/app/index.html" },
+    { "source": "/download", "destination": "/downloads/ecotrek.apk" },
+    { "source": "/apk", "destination": "/downloads/ecotrek.apk" },
+    { "source": "/_expo/:path*", "destination": "/app/_expo/:path*" },
+    { "source": "/favicon.ico", "destination": "/app/favicon.ico" },
+    { "source": "/metadata.json", "destination": "/app/metadata.json" },
+    { "source": "/assets/:path*", "destination": "/app/assets/:path*" },
     {
-      "source": "/privacy",
-      "destination": "/privacy.html"
-    },
-    {
-      "source": "/app",
+      "source": "/:screen(home|track|more|active-tracking|trails|profile|impact|challenges|tree|conditions|streak|recap|safety|settings|history|badges|social)",
       "destination": "/app/index.html"
     },
-    {
-      "source": "/app/",
-      "destination": "/app/index.html"
-    },
-    {
-      "source": "/download",
-      "destination": "/downloads/ecotrek.apk"
-    },
-    {
-      "source": "/apk",
-      "destination": "/downloads/ecotrek.apk"
-    },
-    {
-      "source": "/_expo/:path*",
-      "destination": "/app/_expo/:path*"
-    },
-    {
-      "source": "/favicon.ico",
-      "destination": "/app/favicon.ico"
-    },
-    {
-      "source": "/metadata.json",
-      "destination": "/app/metadata.json"
-    },
-    {
-      "source": "/assets/:path*",
-      "destination": "/app/assets/:path*"
-    },
-    {
-      "source": "/:screen(home|track|more|active-tracking|trails|profile|impact|challenges|tree|conditions|streak|assistant|recap|safety|settings|history|badges|social)",
-      "destination": "/app/index.html"
-    },
-    {
-      "source": "/activity/:activityId",
-      "destination": "/app/index.html"
-    }
+    { "source": "/activity/:activityId", "destination": "/app/index.html" }
   ]
 }

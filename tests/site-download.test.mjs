@@ -35,7 +35,7 @@ async function waitForDownload(url, child) {
   throw new Error('Site server did not start in time.');
 }
 
-test('the website serves a fresh, complete APK from /download', async (t) => {
+test('the direct download route serves the APK without an install landing page', async (t) => {
   const port = await unusedPort();
   const child = spawn(process.execPath, ['serve-site.mjs'], {
     cwd: repoRoot,
@@ -48,25 +48,19 @@ test('the website serves a fresh, complete APK from /download', async (t) => {
   const head = await waitForDownload(url, child);
   const releaseInfo = JSON.parse(await readFile(releaseInfoPath, 'utf8'));
   const vercel = JSON.parse(await readFile(path.join(repoRoot, 'vercel.json'), 'utf8'));
-  const siteConfig = await readFile(path.join(repoRoot, 'site-config.js'), 'utf8');
-  const installPage = await readFile(path.join(repoRoot, 'install', 'android.html'), 'utf8');
+  const artifact = await readFile(artifactPath);
+  const response = await fetch(url);
+  const installRoutes = ['/install/android.html', '/install/ios.html', '/api-key.html'];
   const downloadRewrite = vercel.rewrites.find((rule) => rule.source === '/download');
   const downloadHeaders = vercel.headers.find((rule) => rule.source === '/download')?.headers ?? [];
   const configuredHeaders = Object.fromEntries(downloadHeaders.map(({ key, value }) => [key.toLowerCase(), value]));
-  const artifact = await readFile(artifactPath);
-  const response = await fetch(url);
 
   assert.equal(downloadRewrite?.destination, '/downloads/ecotrek.apk');
-  assert.match(siteConfig, /apkUrl:\s*'\/download'/);
-  assert.match(siteConfig, new RegExp(`apkBytes:\\s*${releaseInfo.bytes}\\b`));
-  assert.match(siteConfig, new RegExp(`apkSha256:\\s*'${releaseInfo.sha256}'`));
-  assert.match(installPage, /package appears to be invalid/);
-  assert.match(installPage, /id="download-button" href="\/download"/);
-  assert.match(installPage, /href="\/\?web=1"/);
-  assert.match(installPage, /Install from the website instead/);
+  assert.ok(!vercel.redirects?.some(({ destination = '' }) => /install\/(android|ios)|api-key/i.test(destination)));
   assert.equal(configuredHeaders['content-type'], 'application/vnd.android.package-archive');
   assert.match(configuredHeaders['content-disposition'] ?? '', /attachment;\s*filename="EcoTrek\.apk"/i);
   assert.match(configuredHeaders['cache-control'] ?? '', /no-transform/);
+  for (const route of installRoutes) assert.equal((await fetch(`http://127.0.0.1:${port}${route}`)).status, 404, route);
   const downloaded = Buffer.from(await response.arrayBuffer());
 
   assert.equal(head.status, 200);

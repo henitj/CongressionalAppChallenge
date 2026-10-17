@@ -1,9 +1,10 @@
 import React, { useEffect, useState } from 'react';
-import { Image, ScrollView, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Image, ScrollView, StyleSheet, Text, View } from 'react-native';
 
 import type { Trail } from '../constants/austinTrails';
 import { useTheme } from '../context/ThemeContext';
-import { getTrailCover, getTrailPhotos, TrailPhotoSet } from '../services/trailPhotos';
+import { getTrailCover, getTrailPhotos, type TrailPhoto, type TrailPhotoSet } from '../services/trailPhotos';
+import { Button } from './ui';
 import TrailScene from './TrailScene';
 
 type TrailPhotoProps = { trail: Trail };
@@ -58,10 +59,11 @@ export function TrailCover({ trail, loadRemote = true }: TrailPhotoProps & { loa
 }
 
 /** Horizontal detail gallery; if the photo source is offline, show a clear local illustration. */
-export function TrailPhotoGallery({ trail }: TrailPhotoProps) {
+export function TrailPhotoGallery({ trail, onPhotosChange }: TrailPhotoProps & { onPhotosChange?: (photos: TrailPhoto[]) => void }) {
   const { colors, typography } = useTheme();
   const [photos, setPhotos] = useState<TrailPhotoSet | null>(null);
   const [loading, setLoading] = useState(true);
+  const [attempt, setAttempt] = useState(0);
 
   useEffect(() => {
     let active = true;
@@ -70,34 +72,43 @@ export function TrailPhotoGallery({ trail }: TrailPhotoProps) {
     getTrailPhotos(trail).then((result) => {
       if (!active) return;
       setPhotos(result);
+      onPhotosChange?.(result.all);
       setLoading(false);
     });
     return () => {
       active = false;
     };
-  }, [trail.id]);
+  }, [trail.id, attempt, onPhotosChange]);
 
   const items = photos?.all ?? [];
   if (items.length === 0) {
     return (
       <View style={styles.gallerySection}>
-        <Text style={[typography.overline, { color: colors.textMuted }]}>Trail illustration</Text>
+        <Text style={[typography.overline, { color: colors.textMuted }]}>Trail photo preview</Text>
         <View style={[styles.galleryFallback, { backgroundColor: colors.primarySurface }]}>
           <TrailScene
             mode={trail.type === 'bike' ? 'bike' : 'hike'}
             style={{ height: 168, minHeight: 0, flexGrow: 0, flexShrink: 0 }}
           />
         </View>
-        <Text style={[typography.micro, { color: colors.textLight }]}>
-          {loading ? 'Loading trail photos…' : 'Photos are unavailable offline; this illustration is a preview.'}
-        </Text>
+        {loading ? (
+          <View style={styles.galleryLoading}>
+            <ActivityIndicator size="small" color={colors.primary} />
+            <Text style={[typography.micro, { color: colors.textMuted }]}>Looking for this trail’s photos…</Text>
+          </View>
+        ) : (
+          <>
+            <Text style={[typography.micro, { color: colors.textMuted }]}>Community photos aren’t available right now; this local illustration is a preview.</Text>
+            <Button label="Try photos again" variant="ghost" size="sm" onPress={() => setAttempt((value) => value + 1)} />
+          </>
+        )}
       </View>
     );
   }
 
   return (
     <View style={styles.gallerySection}>
-      <Text style={[typography.overline, { color: colors.textMuted }]}>Trail photos</Text>
+      <Text style={[typography.overline, { color: colors.textMuted }]}>Photos of this trail</Text>
       <ScrollView horizontal showsHorizontalScrollIndicator={false} contentContainerStyle={styles.galleryRow}>
         {items.slice(0, 10).map((photo, index) => (
           <GalleryImage
@@ -110,7 +121,7 @@ export function TrailPhotoGallery({ trail }: TrailPhotoProps) {
         ))}
       </ScrollView>
       <Text style={[typography.micro, { color: colors.textLight }]}>
-        Community photos via Wikimedia Commons; view the trail conditions before you go.
+        Community photos from Wikimedia Commons. Check current trail conditions before you go.
       </Text>
     </View>
   );
@@ -164,6 +175,7 @@ const styles = StyleSheet.create({
     borderRadius: 999,
   },
   gallerySection: { gap: 8 },
+  galleryLoading: { flexDirection: 'row', alignItems: 'center', gap: 8 },
   galleryRow: { gap: 10, paddingRight: 8 },
   galleryTile: { width: 224, height: 150, borderRadius: 14, overflow: 'hidden' },
   photoCaption: {

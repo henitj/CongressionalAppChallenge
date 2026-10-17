@@ -5,7 +5,8 @@ import { OAuth2Client } from 'google-auth-library';
 /**
  * Database + auth plumbing.
  *
- * Two environment variables run this whole thing:
+ * DATABASE_URL is required for the API to start. GOOGLE_CLIENT_IDS is
+ * optional at startup, but required for protected account routes:
  *   DATABASE_URL              — Neon connection string (Dashboard → Connect)
  *   GOOGLE_CLIENT_IDS         — comma-separated OAuth client IDs to accept
  */

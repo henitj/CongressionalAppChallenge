@@ -12,20 +12,17 @@
  *      System WebViews, adds the ES5 polyfill prelude, and injects the boot
  *      watchdog (a branded splash that turns into an explanation if the app
  *      ever fails to start, instead of a white screen).
- *   5. Writes the repository-root page for the full site. A standalone Vercel
- *      build skips that side effect and omits install-page redirects/links.
- *   6. Checks that every asset the bundle asks for exists in the export; a
+ *   5. Checks that every asset the bundle asks for exists in the export; a
+ *      missing file fails the export instead of leaving a stale deployment.
+ *   6. Writes the repository-root page and syncs the /app asset tree so both
+ *      Vercel app entry paths stay in lockstep.
  *      missing icon is a silent 404 on the site and inside the APK.
  *
  * Run automatically by `npm run export:web`.
  */
 import fs from 'node:fs';
 import path from 'node:path';
-import { createHash } from 'node:crypto';
-import { createRequire } from 'node:module';
-import { transformAsync } from '@babel/core';
 import {
-  COMPAT_TARGETS,
   patchIndexHtml,
   transpileBundles,
   writePolyfills,
@@ -92,34 +89,7 @@ if (standalone) {
   console.log('standalone: omitted repository install redirect and launcher.');
 }
 
-// Pin and serve Puter locally. A blocked third-party script CDN must not
-// prevent the assistant's Connect button from ever becoming usable. It is
-// loaded lazily on Assistant, not at app startup; no app-owned key is bundled.
-const require = createRequire(import.meta.url);
-const sdkSource = fs.readFileSync(require.resolve('@heyputer/puter.js/dist/puter.cjs'), 'utf8');
-const sdkResult = await transformAsync(sdkSource, {
-  presets: [['@babel/preset-env', { targets: COMPAT_TARGETS, modules: false, bugfixes: true }]],
-  configFile: false, babelrc: false, compact: true, comments: false,
-});
-if (!sdkResult?.code) throw new Error('Could not prepare the Puter SDK');
-const sdkCode = '// Puter.js — Copyright Puter Technologies Inc. Apache-2.0.\n' + sdkResult.code;
-const sdkHash = createHash('sha256').update(sdkCode).digest('hex').slice(0, 16);
-const sdkPath = `assets/vendor/puter-${sdkHash}.js`;
-fs.mkdirSync(path.join(dist, 'assets', 'vendor'), { recursive: true });
-fs.writeFileSync(path.join(dist, sdkPath), sdkCode);
-fs.copyFileSync(path.join(process.cwd(), 'assets', 'THIRD_PARTY_NOTICES.txt'), path.join(dist, 'assets', 'vendor', 'THIRD_PARTY_NOTICES.txt'));
-const sdkConfig = `<script id="ecotrek-puter-sdk-config">window.__ECOTREK_PUTER_SDK_URL__=${JSON.stringify('/' + sdkPath)};</script>`;
-fs.writeFileSync(indexPath, fs.readFileSync(indexPath, 'utf8').replace('</head>', `${sdkConfig}</head>`));
-console.log(`assistant: bundled same-origin Puter SDK (${sdkCode.length.toLocaleString()} bytes).`);
-
-// --- 5. the repository website front door is the app ------------------------
-const rootPage = path.join(repoRoot, 'index.html');
-if (!standalone && (await pathExists(path.join(repoRoot, '.git')) || await pathExists(path.join(repoRoot, 'vercel.json')))) {
-  await writeRootAppPage(dist, { destination: rootPage });
-  console.log(`wrote ${path.relative(process.cwd(), rootPage)} (the site root serves this app build).`);
-}
-
-// --- 6. every asset the bundle asks for must exist --------------------------
+// --- 5. every asset the bundle asks for must exist --------------------------
 const bundleSource = fs.readFileSync(path.join(dist, '_expo', 'static', 'js', 'web', bundleName), 'utf8');
 const assetUrls = new Set(
   (bundleSource.match(/"(?:\.\/|\/)?assets\/[A-Za-z0-9@._/\[\]#+-]+"/g) ?? []).map((value) =>
@@ -149,12 +119,26 @@ if (repaired.length) {
   console.log(`assets: copied ${repaired.length} app asset(s) the bundler does not emit: ${repaired.join(', ')}`);
 }
 if (missing.length) {
-  console.warn(
-    `\nWarning: ${missing.length} asset file(s) the bundle requests are missing from dist/.\n` +
-      'They will 404 on the website and inside the APK. Run the export again from a machine\n' +
-      'with node_modules installed (the bundler copies these files into dist/assets/):'
+  console.error(
+    `\nExport blocked: ${missing.length} asset file(s) requested by the app are missing from dist/.\n` +
+      'The root site and /app build were not updated. Run the export again with app assets available:'
   );
-  for (const url of missing.slice(0, 10)) console.warn(`  - ${url}`);
-} else {
-  console.log(`assets: all ${assetUrls.size} referenced asset files are present in the export.`);
+  for (const url of missing.slice(0, 10)) console.error(`  - ${url}`);
+  process.exit(1);
+}
+console.log(`assets: all ${assetUrls.size} referenced asset files are present in the export.`);
+
+// --- 6. keep both Vercel entry paths on the same fresh app build ------------
+if (!standalone && (await pathExists(path.join(repoRoot, '.git')) || await pathExists(path.join(repoRoot, 'vercel.json')))) {
+  // The root host page deliberately loads assets from /app/_expo and /app/assets
+  // so existing Vercel cache rules remain safe. Keep that static tree in sync;
+  // otherwise a fresh HTML shell can silently execute an old JavaScript bundle.
+  const appOutput = path.join(repoRoot, 'app');
+  await fs.promises.rm(appOutput, { recursive: true, force: true });
+  await fs.promises.cp(dist, appOutput, { recursive: true });
+  console.log(`synced ${path.relative(process.cwd(), appOutput)} with this app export.`);
+
+  const rootPage = path.join(repoRoot, 'index.html');
+  await writeRootAppPage(dist, { destination: rootPage });
+  console.log(`wrote ${path.relative(process.cwd(), rootPage)} (the site root serves this app build).`);
 }

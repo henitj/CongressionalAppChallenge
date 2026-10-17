@@ -36,7 +36,6 @@ const SECTIONS: Section[] = [
       { icon: 'target', label: 'Weekly goals', hint: 'Five small things this week', to: 'Challenges' },
       { icon: 'users', label: 'Friends & plans', hint: 'Plan hikes, challenge friends, share', to: 'Social' },
       { icon: 'tree', label: 'Your tree', hint: 'A little care, week by week', to: 'Tree' },
-      { icon: 'sparkles', label: 'Assistant', hint: 'Ask Grok when you need a hand', to: 'Assistant' },
     ],
   },
   {

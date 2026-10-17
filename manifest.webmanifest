@@ -2,7 +2,7 @@
   "name": "EcoTrek",
   "short_name": "EcoTrek",
   "description": "Move with purpose. Leave a lighter trail.",
-  "start_url": "/?web=1",
+  "start_url": "/",
   "scope": "/",
   "display": "standalone",
   "background_color": "#fbfaf5",

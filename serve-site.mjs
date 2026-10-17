@@ -21,7 +21,7 @@ const port = Number(process.env.PORT || 8000);
 const rewrites = [
   [/^\/privacy$/, '/privacy.html'],
   [/^\/app\/?$/, '/app/index.html'],
-  [/^\/(?:home|track|more|active-tracking|trails|profile|impact|challenges|tree|conditions|streak|assistant|recap|safety|settings|history|badges|social)\/?$/, '/app/index.html'],
+  [/^\/(?:home|track|more|active-tracking|trails|profile|impact|challenges|tree|conditions|streak|recap|safety|settings|history|badges|social)\/?$/, '/app/index.html'],
   [/^\/activity\/[^/]+\/?$/, '/app/index.html'],
   [/^\/download$/, '/downloads/ecotrek.apk'],
   [/^\/apk$/, '/downloads/ecotrek.apk'],
@@ -60,7 +60,7 @@ function resolve(urlPath) {
   let file = path.join(root, path.normalize(target).replace(/^(\.\.[/\\])+/, ''));
   if (!file.startsWith(root)) return null;
   if (existsSync(file) && statSync(file).isDirectory()) file = path.join(file, 'index.html');
-  // clean URLs: /install/android serves install/android.html
+  // clean URLs: /privacy serves privacy.html
   if (!existsSync(file) && !path.extname(file) && existsSync(`${file}.html`)) file = `${file}.html`;
   return existsSync(file) && statSync(file).isFile() ? file : null;
 }
@@ -74,8 +74,7 @@ const server = createServer((request, response) => {
       `<!doctype html><meta charset="utf-8"><title>404 · EcoTrek</title>` +
         `<body style="font:16px system-ui;padding:40px;max-width:40rem;margin:auto">` +
         `<h1>404</h1><p><code>${urlPath}</code> is not part of the site.</p>` +
-        `<p>Try the <a href="/">app</a>, <a href="/install/android.html">Android install guide</a>, ` +
-        `<a href="/install/ios.html">iPhone guide</a> or <a href="/api-key.html">AI key page</a>.</p></body>`
+        `<p>Open the <a href="/">EcoTrek app</a> from the site root.</p></body>`
     );
     return;
   }
@@ -102,5 +101,5 @@ const server = createServer((request, response) => {
 });
 
 server.listen(port, '0.0.0.0', () => {
-  console.log(`EcoTrek site preview: http://localhost:${port}  (app: / · Android guide: /install/android.html)`);
+  console.log(`EcoTrek app preview: http://localhost:${port}`);
 });

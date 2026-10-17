@@ -1,5 +1,7 @@
 # EcoTrek 1.5.0 validation
 
+> Historical validation of the 1.5.0 artifact. The current source has since changed the onboarding, trail, sharing, and assistant behavior; regenerate the APK before treating it as the current release. Historical notes below apply to the artifact at the time of that build.
+
 Release date: **15 October 2026** (America/Chicago). Android shell **1.5.0 / versionCode 7**.
 
 ## Realistic, gradual tree growth
