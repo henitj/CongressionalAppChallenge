@@ -10,6 +10,13 @@ import { treeImage } from '../constants/treeImages';
 
 export type TreeCareEffect = { kind: CareKind; nonce: number };
 const LEAF = 'M2 7Q4 0 13 2Q13 10 5 11Q1 11 2 7Z';
+// Fixed placement keeps the grove stable across care updates and rerenders.
+const GROVE = [
+  { x: -0.07, bottom: 0.26, size: 0.45, frame: 91, opacity: 0.24 },
+  { x: 0.14, bottom: 0.29, size: 0.31, frame: 83, opacity: 0.17 },
+  { x: 0.70, bottom: 0.28, size: 0.36, frame: 96, opacity: 0.20 },
+  { x: 0.88, bottom: 0.22, size: 0.48, frame: 88, opacity: 0.30 },
+] as const;
 const COLORS = ['#B87935', '#D59D45', '#BC633D', '#D5AD52'];
 
 /** 100 geometry-grown, ray-traced images of one consistent apple tree.
@@ -88,6 +95,23 @@ export default function TreeGrowthScene({ stageId, imageIndex, season = treeSeas
         <Ellipse cx="240" cy="359" rx={32 + stage.heightRatio * 48} ry="8" fill={night ? '#122619' : '#7B8960'} opacity={0.15} />
         <Path d="M153 360Q170 340 240 343Q308 340 327 360Q283 379 240 377Q195 379 153 360Z" fill={behavior.snow ? night ? '#CBDADF' : '#FDFEFC' : night ? '#454535' : '#CFBF9E'} opacity={0.88} />
         {!behavior.snow && <Path d="M190 357q-2-8-8-11m8 11q3-9 8-12M279 357q2-11 8-15m-8 15q-4-6-8-7" stroke={night ? '#7E9264' : '#8B9D6C'} strokeWidth="1.2" fill="none" />}
+      </Svg>
+      <View pointerEvents="none" accessible={false} testID="tree-background-grove" style={StyleSheet.absoluteFill}>
+        {GROVE.map((tree, index) => <Image key={index} testID="grove-tree" source={treeImage(tree.frame, season, true)} resizeMode="contain" accessibilityIgnoresInvertColors style={{ position: 'absolute', left: layout.width * tree.x - layout.height * tree.size / 2, bottom: layout.height * tree.bottom, width: layout.height * tree.size, height: layout.height * tree.size, opacity: tree.opacity * (night ? 0.7 : 1) }} />)}
+      </View>
+      <Svg pointerEvents="none" width="100%" height="100%" viewBox="0 0 480 400" preserveAspectRatio="none" style={StyleSheet.absoluteFill} testID="tree-ground-details">
+        {/* A soft contact shadow anchors the growing tree in its soil. */}
+        <Ellipse cx="240" cy="359" rx={18 + frame * 0.45} ry="5" fill={night ? '#14291D' : '#5C6245'} opacity={0.18} />
+        {[{ x: 116, y: 354, r: 5 }, { x: 344, y: 366, r: 7 }, { x: 302, y: 350, r: 3 }, { x: 168, y: 377, r: 4 }].map((stone, i) => <React.Fragment key={i}>
+          <Ellipse cx={stone.x + 2} cy={stone.y + 2} rx={stone.r + 2} ry="2" fill="#263C2A" opacity={0.12} />
+          <Ellipse cx={stone.x} cy={stone.y} rx={stone.r} ry={stone.r * 0.48} fill={behavior.snow ? '#F8FCFD' : night ? '#7F8981' : '#AAA99A'} />
+          <Path d={`M${stone.x - stone.r * 0.5} ${stone.y - 1}q${stone.r * 0.5} -2 ${stone.r} 0`} stroke={behavior.snow ? '#FFFFFF' : '#D1CEBC'} strokeWidth="0.8" fill="none" />
+        </React.Fragment>)}
+        {!behavior.snow && Array.from({ length: 22 }, (_, i) => {
+          const x = 18 + (i * 79) % 445, y = 342 + (i * 17) % 53, height = 4 + i % 6;
+          return <Path key={i} d={`M${x} ${y}q-1 -${height} -4 -${height + 2}m4 ${height + 2}q2 -${height + 3} 5 -${height + 4}m-5 ${height + 4}v-${height + 1}`} stroke={night ? '#718567' : season === 'fall' ? '#A49A62' : '#81965D'} strokeWidth="1" opacity={0.65} fill="none" />;
+        })}
+        {season === 'fall' && Array.from({ length: 12 }, (_, i) => <Path key={i} d={LEAF} transform={`translate(${36 + i * 36} ${365 + (i * 13) % 27}) rotate(${i * 37}) scale(0.5)`} fill={COLORS[i % COLORS.length]} opacity={0.65} />)}
       </Svg>
       <Animated.View pointerEvents="none" style={{ position: 'absolute', left: (layout.width - h) / 2, bottom: rootBottom - h * 0.05, width: h, height: h, transformOrigin: '50% 95%', transform: [{ rotate: sway.interpolate({ inputRange: [-1, 1], outputRange: ['-0.28deg', '0.28deg'] }) }] }}>
         <Image source={art} resizeMode="contain" testID="tree-growth-image" style={{ width: '100%', height: '100%' }} accessibilityIgnoresInvertColors />

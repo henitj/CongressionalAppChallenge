@@ -8,7 +8,7 @@ EcoTrek is an Expo / React Native outdoor activity tracker and conservation comp
 - Find named trails worldwide using OpenStreetMap/Overpass. The bundled Austin catalogue is used only for a real location near Austin; there is no default-city trail list.
 - Browse multiple trail photos when available, see a local illustration and retry when photo services are unavailable, and share one selected trail with its details, map pin, and up to two photo links.
 - Check nearby weather and safety information when a real device location is available.
-- Grow a virtual tree through weekly care. A one-time introduction previews growth and the oldest sage stage; the interface does not show illustration-image counts.
+- Grow a virtual tree to Sage in six calendar months with weekly care and outdoor activity. A one-time introduction previews growth and the oldest sage stage; the interface does not show illustration-image counts.
 - Keep a local profile, activities, points, ratings, and settings on-device by default. A configured API can provide a public approved-trail catalogue; this build has no Google sign-in, so guest profiles do not sync private data to cloud accounts.
 
 There is **no user-facing Grok or AI chat experience**. The optional `trailIntel` service remains available for background trail-data enrichment; it is not a conversation UI. The app does not request background location in the website or WebView APK.

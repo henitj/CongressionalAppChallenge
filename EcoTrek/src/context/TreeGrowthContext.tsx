@@ -15,7 +15,7 @@ type TreeGrowthState = ReturnType<typeof treeStatus> & {
   /** A compact permanent ledger, independent of the one-year raw logbook. */
   recordOutdoorWeek: (finishedAt: number) => Promise<boolean>;
   harvestApple: () => Promise<boolean>;
-  /** Optional only after 18 months + 78 qualifying weeks. */
+  /** Optional only after six calendar months + 26 equivalent growth weeks. */
   plantNew: () => Promise<boolean>;
   /**
    * Developer/demo only (the UI only shows this in developer mode): grow the

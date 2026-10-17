@@ -95,7 +95,7 @@ export default function TreeIntroduction({ onDone }: Props) {
             <Text style={styles.eyebrow}>THE LONG VIEW</Text>
             <Text style={styles.title}>The oldest sage tree</Text>
             <Text style={styles.body}>
-              This is a preview of what patient care can become. A sage tree takes at least 18 months and steady weekly care to reach. Your own tree starts as a small seedling and grows at its own pace.
+              This is a preview of what patient care can become. A sage tree takes six months and steady weekly care to reach. Your own tree starts as a small seedling and grows at its own pace.
             </Text>
             <Text style={styles.note}>
               When you tap Done, you’ll see your tree and the care you can give it each week.
