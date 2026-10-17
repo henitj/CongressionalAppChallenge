@@ -1,5 +1,5 @@
 /**
- * EcoTrek AI penetration test — runnable attack suite.
+ * EcoTrek API security test — runnable attack suite.
  *
  *   npm run pentest
  *
@@ -75,6 +75,23 @@ async function liveServerAttacks(port) {
   await check('health endpoint answers', async () => {
     const res = await fetch(`${base}/api/health`);
     expect(res.status === 200, `expected 200, got ${res.status}`);
+  });
+
+  await check('trail intel is public but capped at eight requests per IP per minute', async () => {
+    for (let i = 0; i < 8; i += 1) {
+      const res = await fetch(`${base}/api/trail-intel`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: '{}',
+      });
+      expect(res.status !== 401 && res.status !== 429, `request ${i + 1} unexpectedly returned ${res.status}`);
+    }
+    const limited = await fetch(`${base}/api/trail-intel`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: '{}',
+    });
+    expect(limited.status === 429, `expected model endpoint limit 429, got ${limited.status}`);
   });
 
   await check('protected route rejects anonymous caller (401)', async () => {
@@ -560,21 +577,22 @@ async function handlerAttacks() {
   }
 
   {
-    const route = findRoute('POST', '/api/assistant');
-    await check('assistant: 501 when unconfigured (no key leaked)', async () => {
+    const route = findRoute('POST', '/api/trail-intel');
+    await check('trail intel: 501 when unconfigured (no key leaked)', async () => {
       const savedKey = process.env.GROQ_API_KEY;
       delete process.env.GROQ_API_KEY;
       let threw = null;
       try {
-        await route.handler({ user: ATTACK_USER, body: { question: 'hi' }, params: {}, query: new URLSearchParams(), sql: makeStubSql() });
+        await route.handler({ user: ATTACK_USER, body: { trail: { name: 'Local trail' } }, params: {}, query: new URLSearchParams(), sql: makeStubSql() });
       } catch (e) {
         threw = e;
       }
-      process.env.GROQ_API_KEY = savedKey;
+      if (savedKey === undefined) delete process.env.GROQ_API_KEY;
+      else process.env.GROQ_API_KEY = savedKey;
       expect(threw && threw.status === 501, `expected 501, got ${threw ? threw.status : 'success'}`);
     });
 
-    await check('assistant: hostile oversized question is capped before upstream call', async () => {
+    await check('trail intel: accepts bounded catalogue facts only (no chat question)', async () => {
       const savedKey = process.env.GROQ_API_KEY;
       process.env.GROQ_API_KEY = 'test-key';
       const savedFetch = globalThis.fetch;
@@ -586,14 +604,26 @@ async function handlerAttacks() {
       try {
         const res = await route.handler({
           user: ATTACK_USER,
-          body: { question: huge, context: { blob: 'B'.repeat(500_000) } },
+          body: {
+            question: huge,
+            trail: {
+              name: huge,
+              area: huge,
+              type: 'hike',
+              difficulty: 'Moderate',
+              distanceMiles: 1e9,
+              description: 'B'.repeat(500_000),
+            },
+          },
           params: {},
           query: new URLSearchParams(),
           sql: makeStubSql(),
         });
-        expect(res.text === 'answer', 'assistant response not trimmed');
+        expect(res.text === 'answer', 'trail-intel response not trimmed');
         const userMsg = upstreamBody.messages[1].content;
-        expect(userMsg.length <= 40_000, `upstream prompt length ${userMsg.length} not capped (cost abuse)`);
+        expect(userMsg.length <= 1_200, `upstream trail facts length ${userMsg.length} not bounded`);
+        expect(!userMsg.includes('question'), 'free-form question reached the model');
+        expect(userMsg.length < huge.length, 'oversized untrusted fields reached the model');
       } finally {
         globalThis.fetch = savedFetch;
         if (savedKey === undefined) delete process.env.GROQ_API_KEY;
@@ -733,7 +763,7 @@ async function staticClientScan() {
       try {
         out = execFileSync(
           'grep',
-          ['-rnE', pattern, 'src', 'App.tsx', '--include=*.ts', '--include=*.tsx'],
+          ['-rnE', pattern, 'src', 'App.tsx', '--include=*.ts', '--include=*.tsx', '--exclude-dir=__tests__'],
           { encoding: 'utf8', cwd: '..' }
         );
       } catch {
@@ -772,7 +802,7 @@ async function bootServer(port) {
 }
 
 async function main() {
-  console.log('\n  EcoTrek AI penetration test\n  ═══════════════════════════');
+  console.log('\n  EcoTrek API security test\n  ════════════════════════');
 
   // Import routes with env configured for the auth tests.
   process.env.DATABASE_URL ??= 'postgresql://pen:test@ep-pentest-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require';

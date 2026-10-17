@@ -1,5 +1,7 @@
 # EcoTrek 1.4.0 validation
 
+> Historical 1.4.0 record. The optional Assistant mentioned in that release was removed from the current source; this is not the present feature list or proof of a current APK rebuild.
+
 Release date: **14 October 2026** (America/Chicago).
 Android shell: **1.4.0 / versionCode 6**. Expo app configuration: 1.4.0 / Android code 6.
 

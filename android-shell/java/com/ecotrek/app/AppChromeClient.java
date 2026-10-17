@@ -6,7 +6,7 @@ import android.webkit.WebChromeClient;
 import android.webkit.WebView;
 
 /**
- * Bridges web geolocation to the Android runtime permission dialog, and the
+ * Bridges web geolocation to the Android runtime permission dialog and the
  * web <input type="file"> (profile photo) to the system picker. Reference
  * source for `smali/com/ecotrek/app/AppChromeClient.smali`.
  */
@@ -32,22 +32,6 @@ public class AppChromeClient extends WebChromeClient {
                     "android.permission.ACCESS_COARSE_LOCATION"
                 },
                 MainActivity.REQ_LOCATION);
-    }
-
-    /** Auth popups must remain real child windows, not external browser tabs. */
-    @Override
-    public boolean onCreateWindow(WebView view, boolean isDialog, boolean isUserGesture,
-                                  android.os.Message resultMsg) {
-        if (!isUserGesture || !(resultMsg.obj instanceof WebView.WebViewTransport)) {
-            return false;
-        }
-        AuthPopup popup = new AuthPopup(act);
-        popup.show();
-        popup.getWindow().setLayout(-1, -1);
-        WebView.WebViewTransport transport = (WebView.WebViewTransport) resultMsg.obj;
-        transport.setWebView(popup.webView);
-        resultMsg.sendToTarget();
-        return true;
     }
 
     @Override

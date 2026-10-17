@@ -58,10 +58,7 @@ export default function SocialScreen() {
   const tree = useTreeGrowth();
 
   const hostName = cleanText(profile.firstName || 'Me', 40) || 'Me';
-  const trailOptions: Trail[] = useMemo(
-    () => (trails.length ? trails : AUSTIN_TRAILS).slice(0, 12),
-    [trails]
-  );
+  const trailOptions: Trail[] = useMemo(() => trails.slice(0, 12), [trails]);
 
   // ---- plan a hike form ----
   // Keep the chosen trail OBJECT, not just an id: when live trails replace
@@ -147,7 +144,7 @@ export default function SocialScreen() {
 
   const createPlan = async () => {
     const trail = selectedTrail;
-    if (!trail) { setFeedback('Trails are still loading — try again in a moment.'); return; }
+    if (!trail) { setFeedback('Find nearby trails first, then choose one to plan with friends.'); return; }
     const startsAt = new Date(`${date}T${time}:00`).getTime();
     if (!Number.isFinite(startsAt) || startsAt < Date.now() - 3600000) {
       setFeedback('Pick a day and time in the future for your hike.');
@@ -244,7 +241,7 @@ export default function SocialScreen() {
     const code = encodeSapling(gift);
     setFeedback('Sapling ready — send it to a friend!');
     await shareText(
-      `🌱 ${hostName} is passing you a sapling from their EcoTrek tree (${gift.stageName}, growth ${gift.imageIndex + 1}/${tree.imageCount})! Plant it and it'll give your own tree a head start.\nOpen it in EcoTrek: ${shareLinkFor('sapling', code)}\nOr paste this code in EcoTrek → Friends & plans: ${code}`,
+      `🌱 ${hostName} is passing you a sapling from their EcoTrek tree, now at ${gift.stageName}! Plant it and it’ll give your own tree a head start.\nOpen it in EcoTrek: ${shareLinkFor('sapling', code)}\nOr paste this code in EcoTrek → Friends & plans: ${code}`,
       'EcoTrek sapling'
     );
   };
@@ -276,6 +273,9 @@ export default function SocialScreen() {
         <Card style={{ gap: SPACING.sm }}>
           <Text style={styles.cardTitle}>🥾 Plan a hike</Text>
           <Text style={styles.label}>Trail</Text>
+          {trailOptions.length === 0 ? (
+            <Text style={styles.hint}>Find trails near you before planning a hike with friends.</Text>
+          ) : null}
           <View style={styles.chips}>
             {trailOptions.map((t) => (
               <Pressable key={t.id} onPress={() => setSelectedTrail(t)} style={[styles.chip, selectedTrail?.id === t.id && styles.chipActive]} accessibilityRole="button" accessibilityState={{ selected: selectedTrail?.id === t.id }}>
@@ -429,13 +429,13 @@ export default function SocialScreen() {
         <Card style={{ gap: SPACING.sm }}>
           <Text style={styles.cardTitle}>🌱 Pass the sapling</Text>
           <Text style={styles.hint}>
-            Send a friend a sapling from your tree ({tree.stage.name}, growth {tree.imageIndex + 1}/{tree.imageCount}).
+            Send a friend a sapling from your tree at {tree.stage.name}.
             When they plant it, their own tree gets a 4-week head start — and yours keeps growing untouched.
           </Text>
           <Button label="Share a sapling" icon="share" full variant="secondary" onPress={shareSapling} />
           {social.saplings.map((s) => (
             <View key={s.id} style={styles.rowBetween}>
-              <Text style={styles.hint}>🌱 From {s.fromName} · {s.stageName} (growth {s.imageIndex + 1}){s.planted ? ' · Planted 🎉' : ''}</Text>
+              <Text style={styles.hint}>🌱 From {s.fromName} · {s.stageName}{s.planted ? ' · Planted 🎉' : ''}</Text>
               {!s.planted ? (
                 <Button
                   label="Plant it"

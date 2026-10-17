@@ -1,6 +1,7 @@
 import React from 'react';
 import { render, waitFor, fireEvent } from '@testing-library/react-native';
 import { Linking, Alert, View, Text, Pressable } from 'react-native';
+import * as Location from 'expo-location';
 import { NavigationContainer } from '@react-navigation/native';
 import { createNativeStackNavigator } from '@react-navigation/native-stack';
 import { SafeAreaProvider } from 'react-native-safe-area-context';
@@ -43,7 +44,6 @@ import ConditionsScreen from '../screens/ConditionsScreen';
 import SafetyScreen from '../screens/SafetyScreen';
 import SettingsScreen from '../screens/SettingsScreen';
 import StreakScreen from '../screens/StreakScreen';
-import AssistantScreen from '../screens/AssistantScreen';
 import ActivityDetailScreen from '../screens/ActivityDetailScreen';
 import RecapScreen from '../screens/RecapScreen';
 import HistoryScreen from '../screens/HistoryScreen';
@@ -55,7 +55,6 @@ import MoreScreen from '../screens/MoreScreen';
 import ActiveTrackingScreen from '../screens/ActiveTrackingScreen';
 import CleanupSheet from '../components/CleanupSheet';
 import FeedbackSheet from '../components/FeedbackSheet';
-import { askPuterModel, extractPuterReply } from '../services/aiProvider';
 
 /**
  * Render smoke tests.
@@ -73,8 +72,14 @@ const TEST_USER = {
 };
 
 beforeEach(async () => {
+  jest.restoreAllMocks();
   await AsyncStorage.clear();
   await AsyncStorage.setItem('@ecotrek/auth_user', JSON.stringify(TEST_USER));
+  await AsyncStorage.setItem('@ecotrek/test-user/tree-introduction-seen', JSON.stringify(true));
+  jest.spyOn(Location, 'getForegroundPermissionsAsync').mockResolvedValue({ status: 'denied' } as any);
+  jest.spyOn(Location, 'requestForegroundPermissionsAsync').mockResolvedValue({ status: 'denied' } as any);
+  jest.spyOn(Location, 'getLastKnownPositionAsync').mockResolvedValue(null);
+  jest.spyOn(Location, 'getCurrentPositionAsync').mockResolvedValue({ coords: { latitude: 30.2672, longitude: -97.7431 }, timestamp: Date.now() } as any);
   jest.clearAllMocks();
 });
 
@@ -158,12 +163,11 @@ const SCREENS: [string, React.ComponentType<any>, string | RegExp][] = [
   ['Profile', ProfileScreen, /earned/],
   ['Impact', ImpactScreen, /Everything you have logged/i],
   ['Challenges', ChallengesScreen, /Completed this week/i],
-  ['Conditions', ConditionsScreen, /Conditions unavailable|Today and the next few hours/i],
+  ['Conditions', ConditionsScreen, /Location needed|Conditions unavailable|Today and the next few hours/i],
   ['Badges', BadgesScreen, /of .* badges earned/i],
   ['Safety', SafetyScreen, 'Emergency numbers'],
   ['Settings', SettingsScreen, 'Units'],
   ['Streak', StreakScreen, 'Weekly Streak'],
-  ['Assistant', AssistantScreen, /What do you want to know/i],
   ['ActivityDetail', ActivityDetailScreen, /Activity not found/i],
   ['Recap', RecapScreen, /Nothing logged last week/i],
   ['History', HistoryScreen, 'No walks yet'],
@@ -179,37 +183,36 @@ describe('every screen renders on an empty account', () => {
 });
 
 describe('trail discovery upgrades', () => {
-  it('Home does not expose the AI entry point', async () => {
-    const utils = await mount(HomeScreen, 'A little time outside.');
-    expect(utils.queryByTestId('assistant-fab')).toBeNull();
+  it('More does not expose a user-facing assistant or Grok chat', async () => {
+    const utils = await mount(MoreScreen, 'My walks');
+    expect(utils.queryByText(/Assistant|Grok|Puter/i)).toBeNull();
   });
 
-  it('Trails is immediately browsable and has no automatic AI UI', async () => {
+  it('asks for a real location instead of showing Austin to a new international user', async () => {
     const utils = await mount(TrailsScreen, 'Trails');
-    expect(utils.queryByTestId('assistant-fab')).toBeNull();
-    expect(utils.getAllByLabelText(/^Open /).length).toBeGreaterThan(0);
-    expect(utils.queryByText('AI trail notes')).toBeNull();
+    await waitFor(() => expect(utils.queryByText('Find trails near you')).toBeTruthy());
+    expect(utils.queryByText(AUSTIN_TRAILS[0].name)).toBeNull();
+    expect(utils.getByText('Use location')).toBeTruthy();
   });
 
-  it('trail details put ratings first and only load photos/extra notes on request', async () => {
+  it('trail details lead with the selected trail photos and useful actions', async () => {
     const intel = jest.spyOn(TrailIntelService, 'getTrailIntel');
     const cover = jest.spyOn(TrailPhotosService, 'getTrailCover');
-    const gallery = jest.spyOn(TrailPhotosService, 'getTrailPhotos');
+    const photo = { url: 'https://commons.wikimedia.org/trail-view.jpg', thumbUrl: 'https://commons.wikimedia.org/trail-view.jpg', title: 'Trail view', kind: 'scenery' as const };
+    const gallery = jest.spyOn(TrailPhotosService, 'getTrailPhotos').mockResolvedValue({ scenery: [photo], path: [], all: [photo] });
+    const permission = jest.spyOn(Location, 'getForegroundPermissionsAsync').mockResolvedValue({ status: 'granted' } as any);
     try {
       const utils = await mount(TrailsScreen, 'Trails');
-      // Card covers DO load (trail photos should be visible in the list),
-      // but the detail gallery/intel stay lazy until requested.
-      expect(cover).toHaveBeenCalled();
-      fireEvent.press(utils.getAllByLabelText(/^Rate /)[0]);
-      await waitFor(() => expect(utils.queryByText('Your rating')).toBeTruthy());
-      expect(utils.getByLabelText('5 stars')).toBeTruthy();
-      expect(intel).not.toHaveBeenCalled();
+      await waitFor(() => expect(cover).toHaveBeenCalled(), { timeout: 4000 });
       expect(gallery).not.toHaveBeenCalled();
-      expect(utils.queryByText('Ask AI about it')).toBeNull();
-      fireEvent.press(utils.getByText('Photos'));
+      fireEvent.press(utils.getAllByLabelText(/^Open /)[0]);
       await waitFor(() => expect(gallery).toHaveBeenCalledTimes(1));
+      expect(utils.getByText('Photos of this trail')).toBeTruthy();
+      expect(utils.getByText('Share with friends')).toBeTruthy();
+      expect(utils.getByText('Rate this trail')).toBeTruthy();
       expect(intel).not.toHaveBeenCalled();
-    } finally { intel.mockRestore(); cover.mockRestore(); gallery.mockRestore(); }
+      expect(utils.queryByText('Ask AI about it')).toBeNull();
+    } finally { permission.mockRestore(); intel.mockRestore(); cover.mockRestore(); gallery.mockRestore(); }
   });
 
   it('Trails filter chips are multi-select and stack', async () => {
@@ -322,8 +325,8 @@ describe('navigation and trail imagery fixes', () => {
         </View>
       );
       const utils = await mount(TrailPreview, 'Photos preview test ready');
-      await waitFor(() => expect(utils.queryByText(/Photos are unavailable offline/i)).toBeTruthy());
-      expect(utils.queryByText('Trail photos')).toBeFalsy();
+      await waitFor(() => expect(utils.queryByText(/Community photos aren’t available right now/i)).toBeTruthy());
+      expect(utils.queryByText('Trail photo preview')).toBeTruthy();
     } finally {
       cover.mockRestore();
       gallery.mockRestore();
@@ -401,41 +404,6 @@ describe('the post-walk feedback popup', () => {
     fireEvent.press(utils.getByText('Give feedback'));
     expect(openURL).toHaveBeenCalledWith('https://forms.gle/mt4x5mzAyaG2xFEE6');
     openURL.mockRestore();
-  });
-});
-
-describe('online Grok assistant provider', () => {
-  it('accepts Puter reply shapes without rejecting valid long answers', () => {
-    expect(extractPuterReply({ message: { content: '  A custom answer.  ' } })).toBe('A custom answer.');
-    expect(extractPuterReply({ message: { content: [{ text: 'Hello' }, { text: 'there' }] } })).toBe('Hello there');
-    expect(extractPuterReply({ message: { content: '' } })).toBeNull();
-    expect(extractPuterReply({ text: 'x'.repeat(2001) })).toHaveLength(2001);
-    expect(extractPuterReply({ text: 'x'.repeat(9000) })).toContain('Reply shortened.');
-  });
-
-  it('sends custom questions and relevant trail facts to Puter Grok', async () => {
-    const previousWindow = (globalThis as any).window;
-    const chat = jest.fn().mockResolvedValue({ message: { content: 'A real model answer.' } });
-    Object.defineProperty(globalThis, 'window', {
-      configurable: true,
-      writable: true,
-      value: { puter: { ai: { chat } } },
-    });
-    try {
-      const answer = await askPuterModel(
-        'Can you invent a funny name for a hiking club?',
-        { trail: { name: 'Walnut Creek' }, allTrails: [], weather: null }
-      );
-      expect(answer).toBe('A real model answer.');
-      expect(chat).toHaveBeenCalledTimes(1);
-      const [messages, options] = chat.mock.calls[0];
-      expect(messages[messages.length - 1].content).toContain('funny name');
-      expect(messages[0].content).toContain('Walnut Creek');
-      expect(options.model).toBe('x-ai/grok-4.7');
-    } finally {
-      if (previousWindow === undefined) delete (globalThis as any).window;
-      else Object.defineProperty(globalThis, 'window', { configurable: true, writable: true, value: previousWindow });
-    }
   });
 });
 
@@ -638,24 +606,43 @@ describe('empty states say something useful', () => {
 
 
 describe('the redesigned tree page', () => {
-  it('shows affordable-care requirements and previews growth without spending', async () => {
+  it('shows gradual growth without exposing image counts or spending on preview', async () => {
     const utils = await mount(TreeScreen, 'This week’s care');
     expect(utils.getByLabelText('Add water for 1 gem')).toBeDisabled();
-    expect(utils.getByText('Growth image 1 / 100')).toBeTruthy();
-    fireEvent.press(utils.getByText('Explore 100 images'));
-    await waitFor(() => expect(utils.queryByText('100 small steps of growth')).toBeTruthy());
+    expect(utils.getByText('New seedling')).toBeTruthy();
+    expect(utils.queryByText(/Growth image \d+ \/ \d+/i)).toBeNull();
+    fireEvent.press(utils.getByText('Explore growth stages'));
+    await waitFor(() => expect(utils.queryByText('Tree growth stages')).toBeTruthy());
     fireEvent.press(utils.getByLabelText('Preview Sage tree'));
-    expect(utils.getByText('All 100 images can be explored. Your real tree still needs calendar age and consistent weekly care. Previewing spends nothing and changes no progress.')).toBeTruthy();
+    expect(utils.getByText('Browse every illustrated stage without changing your real tree. Progress still needs calendar time and consistent weekly care.')).toBeTruthy();
     expect(utils.getByLabelText('0 gems available')).toBeTruthy();
     fireEvent.press(utils.getByLabelText('Close'));
-    expect(utils.getByText('Growth image 1 / 100')).toBeTruthy();
+    expect(utils.getByText('New seedling')).toBeTruthy();
+  });
+
+  it('introduces growth and the oldest sage before Done opens the live tree', async () => {
+    await AsyncStorage.removeItem('@ecotrek/test-user/tree-introduction-seen');
+    const utils = await mount(TreeScreen, 'A little care grows a tree');
+    expect(utils.getByText('A little care grows a tree')).toBeTruthy();
+    fireEvent.press(utils.getByText('Next'));
+    await waitFor(() => expect(utils.getByText('The oldest sage tree')).toBeTruthy());
+    expect(utils.getByText(/at least 18 months/i)).toBeTruthy();
+    fireEvent.press(utils.getByText('Done'));
+    await waitFor(() => expect(utils.getByText('This week’s care')).toBeTruthy());
   });
 });
 
 
 describe('friends & plans (database-free social)', () => {
-  it('creates a hike plan, imports a challenge code, and tracks RSVP state', async () => {
+  it('does not offer a sample trail when location discovery has not found one', async () => {
     const utils = await mount(SocialScreen, /Plan a hike/);
+    expect(utils.getByText('Find trails near you before planning a hike with friends.')).toBeTruthy();
+    fireEvent.press(utils.getByText('Create hike & share invite'));
+    expect(utils.getByText('Find nearby trails first, then choose one to plan with friends.')).toBeTruthy();
+  });
+
+  it('creates a hike plan from a selected trail, imports a challenge code, and tracks RSVP state', async () => {
+    const utils = await mount(SocialScreen, /Plan a hike/, { trailId: 'barton-creek' });
     expect(utils.queryByText(/Plan a hike/)).toBeTruthy();
     expect(utils.queryByText(/Challenge a friend/)).toBeTruthy();
     fireEvent.press(utils.getByText('Create hike & share invite'));
@@ -686,7 +673,7 @@ describe('friends & plans (database-free social)', () => {
     const utils = await mount(SocialScreen, /Plan a hike/, { plan: code });
     await waitFor(() => expect(utils.queryByText(/You're invited: Barton Creek/)).toBeTruthy());
     fireEvent.press(utils.getByLabelText(/I'm out for Barton Creek/));
-    await waitFor(() => expect(utils.getAllByText('Barton Creek Greenbelt').length).toBeGreaterThan(1));
+    await waitFor(() => expect(utils.getAllByText('Barton Creek Greenbelt').length).toBe(1));
   });
 });
 
@@ -721,7 +708,7 @@ describe('social v2: cleanup challenges, results, RSVP, sapling', () => {
   });
 
   it('applies an RSVP code to my own hike plan', async () => {
-    const utils = await mount(SocialScreen, /Plan a hike/);
+    const utils = await mount(SocialScreen, /Plan a hike/, { trailId: 'barton-creek' });
     fireEvent.press(utils.getByText('Create hike & share invite'));
     await waitFor(() => expect(utils.queryByText(/I'm in/)).toBeTruthy());
     const now = Date.now();

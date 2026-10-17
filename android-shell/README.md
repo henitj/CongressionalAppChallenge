@@ -1,109 +1,67 @@
-# EcoTrek Android shell
+# EcoTrek Android WebView shell
 
-This folder builds `downloads/ecotrek.apk` — the direct-download Android
-package served from the install guide.
+`downloads/ecotrek.apk` is a direct file download from `/download`; this folder contains the reproducible sideload shell source. It is separate from the Vercel website entry, which opens the web app directly at `/`.
 
-## What it is
+## What ships
 
-A ~2.8 MB **WebView shell** around the Expo *web* export of
-the app in `../EcoTrek`. It contains small bridge classes (readable sources in
-`java/`, the shipped smali in `smali/`):
+The APK is a small Android WebView around the Expo web export in `../EcoTrek`.
 
-| Class | Job |
+| Component | Responsibility |
 | --- | --- |
-| `MainActivity` | Creates the WebView, locks `textZoom` to 100, enables standard viewport behaviour, sends Android back presses to React Navigation before exiting at Home, clears cached WebView location permission on resume, and handles permission/file-picker results. |
-| `AppWebViewClient` | Serves the bundled web app from `assets/` on the **virtual secure origin** `https://appassets.ecotrek.app`, and opens external links in the browser. |
-| `AppChromeClient` | Bridges web geolocation to the Android permission dialog, `<input type="file">` to the system photo picker, and user-gesture child windows to Puter authentication. |
-| `AuthPopup` / `AuthPopupChromeClient` | A restricted child WebView preserves `window.opener`/`postMessage` for auth and destroys itself on close; it has no app bridge, asset interceptor or local file access. |
+| `MainActivity` | Hosts the web app on a virtual HTTPS origin, keeps Android text zoom at 100%, forwards Back to React Navigation, and handles location/photo-picker results. |
+| `AppWebViewClient` | Serves the packaged app assets from `https://appassets.ecotrek.app` and opens external links in the browser. |
+| `AppChromeClient` | Bridges foreground geolocation requests to Android permission prompts and the web profile-photo picker to the system picker. |
+
+Readable Java references are in `java/`; the equivalent classes assembled into the APK are in `smali/`. There is no child authentication window or user-facing Grok/AI chat in the current app.
 
 ## Why the virtual HTTPS origin matters
 
-The previous shell loaded `file:///android_asset/index.html`. From a `file://`
-origin, Android WebView blocks cross-origin `fetch()` (so trail search,
-weather and AI calls all failed) and refuses geolocation (not a secure
-context). Serving the same files through `shouldInterceptRequest` on an
-`https://` origin makes the app behave exactly like it does in Chrome:
-network calls, GPS, and localStorage all work.
+The previous shell loaded `file:///android_asset/index.html`. From a `file://` origin, Android WebView blocks cross-origin `fetch()` and geolocation because it is not a secure context. Serving the same files through `shouldInterceptRequest` on an HTTPS origin lets the app use its online trail, photo, weather, and map providers and request foreground GPS. The app does not request background location.
 
-It also fixes the "stretched / shifted" rendering: `setTextZoom(100)`
-disables Android's font boosting and `setUseWideViewPort(true)` makes the
-WebView honour the page's `<meta name="viewport">`.
+`setTextZoom(100)` prevents Android font boosting from distorting layouts, while the exported HTML includes a viewport reset and compatibility prelude for older System WebViews. Trail maps use OpenStreetMap tiles with attribution; if tiles fail, the recorded route remains available as a local sketch with retry.
 
-The WebView uses bundled Leaflet and OpenStreetMap tiles, with no Google browser key. Attribution and ordinary browser caching are retained; tiles are not prefetched. If tiles are unreachable, the recorded route remains visible as a local sketch with Retry map.
+User profile and activity data remain local by default. Optional server-side trail information is configured separately; the app has no user question/chat flow. See [`../EcoTrek/docs/PRIVACY_POLICY.md`](../EcoTrek/docs/PRIVACY_POLICY.md) for provider and optional-backend details.
 
-The Trails assistant connects Grok through Puter without an app-owned key. Users must connect their Puter account; credits/limits can apply. The SDK is pinned and bundled locally, but sign-in/chat still need the network. A deliberate Connect tap opens a **real child auth window**, not an unrelated browser that loses the return channel. Only a successful model reply marks the connection as working. Questions and relevant trail/weather facts are sent to Puter as described in the privacy policy. Physical-device popup/sign-in and live-service checks are still required; successful smali assembly is not a runtime test.
-
-> **One branch, one white screen.** The interceptor rewrites the requested path
-> to `/index.html` for *one* case only — a request for `/`. If that comparison
-> is inverted, every request (the JS bundle included) is answered with
-> `index.html` as `text/html`, the app never boots, and all the user sees is a
-> white screen. `smali/com/ecotrek/app/AppWebViewClient.smali` carries a comment
-> on that line; keep it in step with `java/AppWebViewClient.java`, which is the
-> readable reference.
-
-## Rebuilding
+## Rebuild the APK
 
 ```bash
 APKTOOL=/path/to/apktool.jar ./build.sh
 ```
 
-The script exports the web app (`npm run export:web` in `../EcoTrek`),
-transpiles the bundle for older Android System WebViews and adds the ES5
-polyfill prelude and boot watchdog (that work lives in
-`../EcoTrek/scripts/postexport-web.mjs` + `web-compat.mjs`), copies the export
-to `../app`, assembles this project with apktool, then aligns and signs with
-`signing/ecotrek-release.key.pem` using **v1 + v2 + v3**. Install the Python
-helpers once with `python3 -m pip install -r requirements.txt`; the release
-validator needs both `cryptography` and `asn1crypto`.
+Requirements: Node.js and `npm ci` in `../EcoTrek`, a Java runtime, apktool 2.4+, and the Python packages in `requirements.txt` (`cryptography` and `asn1crypto`). The build exports the web app, transpiles it for older Android WebViews, validates referenced assets, syncs the generated app tree to `../app`, assembles the shell, signs it v1 + v2 + v3, and validates the final APK. `downloads/ecotrek-apk.json` and `downloads/ecotrek.apk.sha256` are refreshed by the release-info step.
 
-Useful switches:
+Useful environment variables:
 
 | Variable | Meaning |
 | --- | --- |
-| `SKIP_WEB_EXPORT=1` | reuse the existing `../app` export — no npm install needed |
-| `ASSETS_DIR=...` | stage the web assets from somewhere else (must be `../app` or `../EcoTrek/dist`) |
-| `OUT=...` | write the APK somewhere other than `downloads/ecotrek.apk` |
-| `JAVA=...`, `PYTHON=...`, `APKTOOL=...` | tool paths (a pip-installed JDK via `jdk4py` is detected automatically) |
+| `SKIP_WEB_EXPORT=1` | Reuse the existing web export in `../app`; does not run the Expo export. |
+| `ASSETS_DIR=...` | Use `../app`, `../EcoTrek/dist`, or an absolute export directory as staged APK assets. |
+| `OUT=...` | Write the APK somewhere other than `downloads/ecotrek.apk`. |
+| `JAVA=...`, `PYTHON=...`, `APKTOOL=...` | Select tool locations. |
 
-Every build runs the v3 signer-format regression tests, then
-`tools/validate_apk.py` (which re-derives the signatures and content digests,
-checks that the v3 SDK range outside the signed data matches its signed copy,
-and validates the finished file) and `tools/apk_release_info.py` (which writes
-`../downloads/ecotrek-apk.json` and
-`../downloads/ecotrek.apk.sha256`). Copy the printed `size`, `sha-256` and
-certificate fingerprint into `../site-config.js` and the facts on the install
-page update with them.
-
-> **Keep the signing key.** Installing an update signed with a different key
-> forces users to uninstall first. The key here is a self-signed sideload key
-> (like a debug keystore), not a Play Store credential.
-
-If you later publish to Google Play, build the real native app instead:
+To verify the exported web app without building Android, run from `../EcoTrek`:
 
 ```bash
-cd ../EcoTrek && npx eas build --platform android --profile production
+npm ci
+npm run typecheck
+npm test
+npm run verify
+npm run export:web
 ```
+
+To publish to Google Play, build and review a native EAS Android release separately; this WebView APK is a sideload artifact, not a Play Store approval.
 
 ## Editing the shell
 
-Edit the `.java` reference files first, then mirror the change into the
-matching `.smali` file (they are deliberately kept line-for-line parallel).
-apktool assembles `smali/` into `classes.dex` during `build.sh` — no Android
-SDK or Gradle required. After a build you can prove what shipped with:
+Edit the `.java` reference files first, then mirror the change into the matching `.smali` file. `apktool` assembles `smali/` into `classes.dex`; no Android SDK or Gradle is required.
 
 ```bash
-java -jar APKTOOL.jar d ../downloads/ecotrek.apk -o /tmp/apkverify -f
-diff smali/com/ecotrek/app/AppWebViewClient.smali /tmp/apkverify/smali/com/ecotrek/app/AppWebViewClient.smali
+java -jar APKTOOL.jar d ../downloads/ecotrek.apk -o /tmp/ecotrek-apk-check -f
+diff smali/com/ecotrek/app/AppWebViewClient.smali /tmp/ecotrek-apk-check/smali/com/ecotrek/app/AppWebViewClient.smali
 ```
 
-(the only differences should be apktool's renamed labels).
+The diff should contain only apktool-renamed labels. A successful assembly or source-contract test is not a substitute for testing GPS, permissions, file picking, network access, and navigation on a physical Android device.
 
-## Tools
+## Signing
 
-| Tool | What it does |
-| --- | --- |
-| `tools/sign_apk.py` | 4-byte aligns uncompressed entries, then signs v1 (JAR) + v2 + v3. Pure Python + `cryptography`. |
-| `tools/validate_apk.py` | Independent verifier: v2/v3 content digests, signatures, v1 chain, cert agreement, bundled assets, alignment, `resources.arsc`. |
-| `tools/apk_release_info.py` | Reads the binary `AndroidManifest.xml` and the signing block to print version, SDK levels, size, SHA-256 and certificate fingerprint. |
-| `tools/apksig.py` | The APK Signature Scheme v1/v2/v3 primitives the two tools above share. |
-| `tools/sign_v1.py`, `tools/verify_v1.py` | The original JAR-signing-only scripts, kept for reference and for old test vectors. |
+The checked-in release key is for sideload updates; changing it requires users to uninstall the old APK before installing a newly signed one. It is not a Play Store credential. The build validates signatures and content digests, but do not describe an APK as newly verified unless a current build was run.

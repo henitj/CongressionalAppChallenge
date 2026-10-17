@@ -35,7 +35,6 @@ import {
   perfectWeeks,
   streakRuns,
 } from '../services/streaks';
-import { answerQuestion, AssistantContext, resolveTrail, STARTER_QUESTIONS } from '../services/assistant';
 import {
   CLEANUP_PROMPT_SEC,
   MAX_CLEANUP_PIECES,
@@ -65,12 +64,11 @@ import {
   parseOsmDistanceMiles,
   trailFromOsmElement,
   AUSTIN_CENTER,
-  inServiceBbox,
-  isSupportedCountry,
-  isInServiceArea,
+  hasValidCoordinates,
 } from '../services/nearbyTrails';
 import { classifyPhotos, pagesToPhotos, throttled } from '../services/trailPhotos';
 import { estimateElevationFt, estimateMinutes, formatMinutes } from '../services/trailIntel';
+import { buildTrailShareMessage } from '../services/trailShare';
 
 let passed = 0;
 const results: string[] = [];
@@ -420,96 +418,6 @@ test('service and inline streak maths agree', () => {
 });
 
 
-const ctx: AssistantContext = {
-  trails: AUSTIN_TRAILS,
-  weather: null,
-  completedTrailIds: new Set<string>(),
-  userCoords: null,
-  focus: null,
-  units: 'imperial',
-};
-
-test('resolves a trail from its nickname', () => {
-  assert.equal(resolveTrail('how long is the greenbelt', AUSTIN_TRAILS)?.id, 'barton-creek');
-  assert.equal(resolveTrail('is the stairmaster hard', AUSTIN_TRAILS)?.id, 'river-place');
-  assert.equal(resolveTrail('parking at mount bonnell', AUSTIN_TRAILS)?.id, 'mount-bonnell');
-});
-
-test('resolves a trail from its real name', () => {
-  assert.equal(
-    resolveTrail('tell me about the Barton Creek Greenbelt', AUSTIN_TRAILS)?.id,
-    'barton-creek'
-  );
-});
-
-test('does not invent a trail from an unrelated question', () => {
-  assert.equal(resolveTrail('what is the weather like', AUSTIN_TRAILS), null);
-});
-
-test('carries the subject across a follow-up question', () => {
-  const barton = AUSTIN_TRAILS.find((t) => t.id === 'barton-creek')!;
-  const answer = answerQuestion('are dogs allowed there', { ...ctx, focus: barton });
-  assert.equal(answer.trail?.id, 'barton-creek');
-  assert.match(answer.text, /Barton Creek/);
-});
-
-test('answers a distance question with the real number', () => {
-  const a = answerQuestion('how long is the greenbelt', ctx);
-  assert.match(a.text, /7\.9 mi/);
-});
-
-test('answers dog questions correctly per trail', () => {
-  const yes = answerQuestion('can I bring my dog to turkey creek', ctx);
-  assert.match(yes.text, /^Yes/);
-
-  const no = answerQuestion('dogs on slaughter creek', ctx);
-  assert.match(no.text, /^No/);
-});
-
-test('recommendation respects hard constraints', () => {
-  const a = answerQuestion('easy trail where I can bring my dog', ctx);
-  assert.ok(a.results.length > 0, 'should return options');
-  for (const t of a.results) {
-    assert.equal(t.petFriendly, true, `${t.name} must allow dogs`);
-    assert.equal(t.difficulty, 'Easy', `${t.name} must be easy`);
-  }
-});
-
-test('recommendation excludes trails that fail the filter', () => {
-  const a = answerQuestion('where can I go mountain biking', ctx);
-  for (const t of a.results) {
-    assert.notEqual(t.type, 'hike', `${t.name} is hiking only`);
-  }
-});
-
-test('impossible requests say so instead of guessing', () => {
-  const a = answerQuestion('a hard stroller friendly swimming trail under 1 mile', ctx);
-  assert.equal(a.results.length, 0);
-  assert.match(a.text, /Nothing in the catalogue/);
-});
-
-test('assistant answers in the user\'s chosen units', () => {
-  const imperial = answerQuestion('how long is the greenbelt', ctx);
-  assert.match(imperial.text, /7\.9 mi/);
-
-  const metric = answerQuestion('how long is the greenbelt', { ...ctx, units: 'metric' });
-  assert.match(metric.text, /12\.7 km/);
-  assert.doesNotMatch(metric.text, /\bmi\b/, 'metric users should never see miles');
-});
-
-test('assistant never returns an empty answer', () => {
-  const questions = [
-    'hi', 'help', 'how far is walnut creek', 'is it shaded', 'where can I swim',
-    'restrooms at mckinney falls', 'what animals live on the greenbelt',
-    'best trail for kids', 'nearest trail', 'how much climbing on river place',
-  ];
-  for (const q of questions) {
-    const a = answerQuestion(q, ctx);
-    assert.ok(a.text.trim().length > 10, `empty answer for: ${q}`);
-  }
-});
-
-
 test('catalogue is built from the trail data', () => {
   assert.ok(TOTAL_SPECIES > 50, 'should have a real number of species');
   assert.equal(TOTAL_PLANTS + TOTAL_ANIMALS, TOTAL_SPECIES);
@@ -784,24 +692,31 @@ test('Austin is near Austin, New York is not', () => {
   assert.equal(isNearAustin(51.5074, -0.1278), false);
 });
 
-test('the service area is the US, Canada and Mexico', () => {
-  assert.equal(inServiceBbox(30.2672, -97.7431), true); // Austin
-  assert.equal(inServiceBbox(40.7128, -74.006), true); // New York
-  assert.equal(inServiceBbox(43.6532, -79.3832), true); // Toronto
-  assert.equal(inServiceBbox(19.4326, -99.1332), true); // Mexico City
-  assert.equal(inServiceBbox(21.3069, -157.8583), true); // Honolulu
-  assert.equal(inServiceBbox(61.2181, -149.9003), true); // Anchorage
-  assert.equal(inServiceBbox(51.5074, -0.1278), false); // London
-  assert.equal(inServiceBbox(-33.8688, 151.2093), false); // Sydney
-  assert.equal(isSupportedCountry('us'), true);
-  assert.equal(isSupportedCountry('CA'), true);
-  assert.equal(isSupportedCountry('mx'), true);
-  assert.equal(isSupportedCountry('gb'), false);
-  // Nominatim country wins over the bbox (Cuba sits near Florida).
-  assert.equal(isInServiceArea(23.1136, -82.3666, 'cu'), false);
-  assert.equal(isInServiceArea(40.7128, -74.006, 'us'), true);
-  // Geocoder down: bbox is enough so NYC is not locked out.
-  assert.equal(isInServiceArea(40.7128, -74.006, null), true);
+test('valid coordinates work globally; only malformed locations are rejected', () => {
+  assert.equal(hasValidCoordinates(30.2672, -97.7431), true); // Austin
+  assert.equal(hasValidCoordinates(51.5074, -0.1278), true); // London
+  assert.equal(hasValidCoordinates(-33.8688, 151.2093), true); // Sydney
+  assert.equal(hasValidCoordinates(35.6762, 139.6503), true); // Tokyo
+  assert.equal(hasValidCoordinates(91, 0), false);
+  assert.equal(hasValidCoordinates(0, 181), false);
+  assert.equal(hasValidCoordinates(Number.NaN, 0), false);
+  assert.equal(hasValidCoordinates(0, Number.POSITIVE_INFINITY), false);
+});
+
+test('trail sharing contains only the selected trail, useful details and up to two safe photo links', () => {
+  const selected = AUSTIN_TRAILS.find((trail) => trail.id === 'barton-creek')!;
+  const message = buildTrailShareMessage(selected, [
+    { url: 'https://commons.wikimedia.org/barton-falls.jpg', thumbUrl: 'https://commons.wikimedia.org/barton-falls.jpg', title: 'Barton Creek falls', kind: 'scenery' },
+    { url: 'https://commons.wikimedia.org/barton-path.jpg', thumbUrl: 'https://commons.wikimedia.org/barton-path.jpg', title: 'Barton Creek path', kind: 'path' },
+    { url: 'https://commons.wikimedia.org/nearby-park.jpg', thumbUrl: 'https://commons.wikimedia.org/nearby-park.jpg', title: 'Nearby park', kind: 'scenery' },
+    { url: 'javascript:alert(1)', thumbUrl: '', title: 'Unsafe', kind: 'path' },
+  ]);
+  assert.match(message, /Barton Creek Greenbelt/);
+  assert.match(message, /7\.9 mi \(/);
+  assert.match(message, /Trailhead map: https:\/\/www\.openstreetmap\.org/);
+  assert.match(message, /barton-falls\.jpg/);
+  assert.match(message, /barton-path\.jpg/);
+  assert.doesNotMatch(message, /nearby-park|javascript:|Ann and Roy Butler/);
 });
 
 test('OSM distance tags parse as miles', () => {
@@ -1036,10 +951,6 @@ test('GPS filter: the path points are the smoothed anchors, and altitude wobble 
   assert.ok(state.gainFt > 80 && state.gainFt < 100, `a 30 m climb should be about 98 ft, got ${state.gainFt}`);
 });
 
-test('assistant starter questions are non-empty', () => {
-  assert.ok(STARTER_QUESTIONS.length >= 4);
-  for (const q of STARTER_QUESTIONS) assert.ok(q.length > 8);
-});
 
 test('Austin catalogue still has every named trail', () => {
   const ids = [

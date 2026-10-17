@@ -1,5 +1,7 @@
 # EcoTrek 1.3.0 validation
 
+> Historical 1.3.0 record only. The current source removes the user-facing assistant, Grok/Puter sign-in, and chatbot UI described below. Do not use this document as the current feature list or as proof that the present APK has been rebuilt.
+
 Updated **14 October 2026**. This describes the checked-in web export and direct-download WebView APK, not a Play Store/native-EAS release.
 
 ## What changed

@@ -17,11 +17,9 @@ export type LiveMapProps = {
 };
 
 const AUSTIN: L.LatLngTuple = [30.2672, -97.7431];
-// Google Maps tiles (the web build previously rendered OpenStreetMap here,
-// which is why Start appeared to "pop up in OpenStreetMap"). No API key is
-// needed for tile display; the "Google Maps" button below opens the real
-// Google Maps site/app for directions.
-const TILE_URL = 'https://mt1.google.com/vt/lyrs=m&x={x}&y={y}&z={z}';
+// OpenStreetMap's public tiles have worldwide coverage and require no browser
+// API key. The separate Google Maps button opens directions only.
+const TILE_URL = 'https://tile.openstreetmap.org/{z}/{x}/{y}.png';
 
 // Bundle the small amount of Leaflet CSS we use with the app. No CDN scripts,
 // icon downloads, map API keys, or billing setup are needed to render this map.
@@ -60,7 +58,7 @@ function valid(point: Coord | undefined): point is Coord {
 }
 const position = (point: Coord): L.LatLngTuple => [point.latitude, point.longitude];
 
-/** Interactive Google Maps basemap. GPS recording is independent of tiles. */
+/** Interactive worldwide OpenStreetMap basemap. GPS recording is independent of tiles. */
 export default function LiveMap({ path, current, height = 260, follow = true }: LiveMapProps) {
   const { colors, typography } = useTheme();
   const containerRef = useRef<HTMLDivElement>(null);
@@ -98,9 +96,9 @@ export default function LiveMap({ path, current, height = 260, follow = true }: 
       mapRef.current = map;
       map.attributionControl.setPrefix(false);
       L.tileLayer(TILE_URL, {
-        attribution: '© <a href="https://www.google.com/maps" target="_blank" rel="noopener noreferrer">Google Maps</a>',
-        maxZoom: 20,
-        // Standard browser caching, a single tile host, and no prefetch/offline downloads.
+        attribution: '© <a href="https://www.openstreetmap.org/copyright" target="_blank" rel="noopener noreferrer">OpenStreetMap contributors</a>',
+        maxZoom: 19,
+        // Standard browser caching and no prefetch/offline downloads.
         keepBuffer: 1,
       }).on('tileload', () => {
         if (!active) return;

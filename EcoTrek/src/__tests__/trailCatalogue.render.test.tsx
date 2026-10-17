@@ -20,11 +20,11 @@ describe('instant, truthful trail browsing', () => {
   beforeEach(async () => { await AsyncStorage.clear(); existing.mockResolvedValue({ status: 'denied' }); permission.mockResolvedValue({ status: 'denied' }); });
   afterEach(() => { jest.restoreAllMocks(); });
 
-  it('has useful offline cards immediately, without claiming Austin is the current location', () => {
+  it('does not invent Austin trails before the person shares a location', () => {
     const view = render(<AppProvider><Probe /></AppProvider>);
     expect(view.getByText('CATALOGUE READY')).toBeTruthy();
-    expect(app.trails.length).toBe(AUSTIN_TRAILS.length);
-    expect(app.trailsSource).toBe('collection');
+    expect(app.trails).toEqual([]);
+    expect(app.trailsSource).toBe('need-location');
     expect(app.usingFallbackLocation).toBe(true);
     expect(app.coords).toBeNull();
     expect(app.trailsLoading).toBe(false);
@@ -39,7 +39,7 @@ describe('instant, truthful trail browsing', () => {
     expect(app.trailsLoading).toBe(false);
   });
 
-  it('renders Austin cards while the live provider is unresolved; no retry is needed', async () => {
+  it('keeps the nearby Austin bundle visible while a live refresh is unresolved', async () => {
     permission.mockResolvedValue({ status: 'granted' });
     const lookup = deferred<TrailCatalogue>();
     const service = jest.spyOn(Catalogue, 'fetchNearbyTrails').mockReturnValue(lookup.promise);

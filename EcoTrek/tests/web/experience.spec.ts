@@ -4,7 +4,7 @@ const PREFIX = '@ecotrek/experience-test/';
 const transparentTile = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVQIHWP4z8DwHwAFgAI/ScLbtAAAAABJRU5ErkJggg==', 'base64');
 
 async function enter(page: Page, route: string) {
-  await page.goto(`${route}?web=1`);
+  await page.goto(route);
   await page.locator('#ecotrek-splash').waitFor({ state: 'hidden' });
 }
 
@@ -16,8 +16,8 @@ test.beforeEach(async ({ context, baseURL }) => {
       localStorage.setItem('@ecotrek/auth_user', JSON.stringify({ id: 'experience-test', name: 'Alex', email: 'test@example.com', provider: 'guest' }));
       localStorage.setItem('@ecotrek/experience-test/user_profile', JSON.stringify({ firstName: 'Alex', lastName: '', weightHistory: [] }));
       localStorage.setItem('@ecotrek/experience-test/start_tutorial_complete', 'true');
+      localStorage.setItem('@ecotrek/experience-test/tree-introduction-seen', 'true');
       localStorage.setItem('@ecotrek/experience-test/gems', JSON.stringify([{ id: 'fixture', reason: 'activity', amount: 5000, timestamp: Date.now(), label: 'Test fixture' }]));
-      localStorage.setItem('ecotrek.launcher.dismissed', '1');
     }
   }, appOrigin);
   // Offline by default. Individual tests simulate a successful tile/provider
@@ -47,29 +47,29 @@ test('Start has only the two selected character cutouts and an unmistakable acti
 
 test('weekly care persists, cannot be repeated or rush age, and life-stage illustrations are free', async ({ page }) => {
   await enter(page, '/tree');
-  await expect(page.getByText('Growth image 1 / 100', { exact: true })).toBeVisible();
+  await expect(page.getByText('New seedling', { exact: true })).toBeVisible();
   await page.getByRole('button', { name: 'Add water for 1 gem', exact: true }).click();
   await expect(page.getByRole('button', { name: 'Water complete this week', exact: true })).toBeDisabled();
   for (const kind of ['sunlight', 'soil']) await page.getByRole('button', { name: `Add ${kind} for 1 gem`, exact: true }).click();
-  await expect(page.getByText('Growth image 1 / 100', { exact: true })).toBeVisible();
+  await expect(page.getByText('New seedling', { exact: true })).toBeVisible();
   await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).reduce((sum: number, event: { amount: number }) => sum + event.amount, 0), `${PREFIX}gems`)).toBe(4997);
   const stored = await page.evaluate((key) => localStorage.getItem(key), `${PREFIX}tree-growth`);
-  await page.getByRole('button', { name: 'Explore 100 images', exact: true }).click();
+  await page.getByRole('button', { name: 'Explore growth stages', exact: true }).click();
   await expect(page.getByText('Illustrations only · not your live progress')).toBeVisible();
   await page.getByRole('button', { name: 'Preview Sage tree', exact: true }).click();
-  await expect(page.getByText('Image 100 of 100 · At least 18 months')).toBeVisible();
+  await expect(page.getByText('At least 18 months')).toBeVisible();
   await page.getByLabel('Close', { exact: true }).click();
   expect(await page.evaluate((key) => localStorage.getItem(key), `${PREFIX}tree-growth`)).toBe(stored);
   await page.reload();
   await expect(page.getByRole('button', { name: 'Water complete this week', exact: true })).toBeDisabled();
   await expect(page.getByText('4997', { exact: true })).toBeVisible();
-  await expect(page.getByText('Growth image 1 / 100', { exact: true })).toBeVisible();
+  await expect(page.getByText('New seedling', { exact: true })).toBeVisible();
   await expect(page.getByTestId('autumn-leaves')).toHaveCount(0);
 });
 
-test('weekly water, soil and sunlight improve growth pace once each; the preview exposes all 100 values', async ({ page }) => {
+test('weekly care improves growth pace once each; growth preview has no image counts', async ({ page }) => {
   await enter(page, '/tree');
-  await expect(page.getByText('Growth image 1 / 100', { exact: true })).toBeVisible();
+  await expect(page.getByText('New seedling', { exact: true })).toBeVisible();
   await expect(page.getByTestId('tree-growth-factor').getByText('4% pace')).toBeVisible();
   await page.getByRole('button', { name: 'Add water for 1 gem', exact: true }).click();
   await expect(page.getByTestId('tree-growth-factor').getByText('19% pace')).toBeVisible();
@@ -78,21 +78,21 @@ test('weekly water, soil and sunlight improve growth pace once each; the preview
   await page.getByRole('button', { name: 'Add sunlight for 1 gem', exact: true }).click();
   await expect(page.getByTestId('tree-growth-factor').getByText('75% pace')).toBeVisible();
   const stored = await page.evaluate((key) => localStorage.getItem(key), `${PREFIX}tree-growth`);
-  await page.getByRole('button', { name: 'Explore 100 images', exact: true }).click();
+  await page.getByRole('button', { name: 'Explore growth stages', exact: true }).click();
   await page.getByRole('button', { name: 'Preview Little sapling', exact: true }).click();
   const sapling = await page.getByTestId('tree-growth-image').last().locator('img').getAttribute('src');
-  await page.getByRole('button', { name: 'Next image', exact: true }).click();
+  await page.getByRole('button', { name: 'Next stage', exact: true }).click();
   const next = await page.getByTestId('tree-growth-image').last().locator('img').getAttribute('src');
   expect(next).not.toBe(sapling);
   await page.getByRole('button', { name: 'Preview First flower', exact: true }).click();
-  await expect(page.getByText('Image 53 of 100 · 7 months')).toBeVisible();
+  await expect(page.getByText('7 months')).toBeVisible();
   await page.getByRole('button', { name: 'Preview Sage tree', exact: true }).click();
-  await expect(page.getByText('Image 100 of 100 · At least 18 months')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Next image', exact: true })).toBeDisabled();
+  await expect(page.getByText('At least 18 months')).toBeVisible();
+  await expect(page.getByRole('button', { name: 'Next stage', exact: true })).toBeDisabled();
   await page.getByRole('button', { name: 'Close', exact: true }).click();
   expect(await page.evaluate((key) => localStorage.getItem(key), `${PREFIX}tree-growth`)).toBe(stored);
   await page.reload();
-  await expect(page.getByText('Growth image 1 / 100', { exact: true })).toBeVisible();
+  await expect(page.getByText('New seedling', { exact: true })).toBeVisible();
   await expect(page.getByTestId('tree-growth-factor').getByText('75% pace')).toBeVisible();
 });
 
@@ -108,6 +108,23 @@ function treeFixture(plantedAt: number, credited: number, now: number) {
   return { version: 2, plantedAt, lastSeenAt: now, careWeek: isoWeek(now), care: { water: 1, sun: 1, nutrients: 1 }, careWeeks: keys, outdoorWeeks: keys, forest: 0, goldenApples: 0, harvestedWeeks: [] };
 }
 
+test('the first tree visit introduces patient growth and previews sage before Done', async ({ page }) => {
+  await enter(page, '/tree');
+  await page.evaluate((key) => localStorage.removeItem(key), `${PREFIX}tree-introduction-seen`);
+  await page.reload();
+  await expect(page.getByText('A little care grows a tree', { exact: true })).toBeVisible();
+  await expect(page.getByText(/Growth image \d+ \/ 100/i)).toHaveCount(0);
+  await page.getByRole('button', { name: 'Next', exact: true }).click();
+  await expect(page.getByText('The oldest sage tree', { exact: true })).toBeVisible();
+  await expect(page.getByText(/at least 18 months/i)).toBeVisible();
+  await page.getByRole('button', { name: 'Done', exact: true }).click();
+  await expect(page.getByText('This week’s care', { exact: true })).toBeVisible();
+  await expect(page.getByText('New seedling', { exact: true })).toBeVisible();
+  await page.reload();
+  await expect(page.getByText('This week’s care', { exact: true })).toBeVisible();
+  await expect(page.getByText('A little care grows a tree', { exact: true })).toHaveCount(0);
+});
+
 // Fixtures are test-only persisted histories, not an age bypass in the app.
 test('the actual calendar birthday gates maturity and automatic autumn shedding', async ({ context, page, baseURL }) => {
   const anniversary = new Date(2026, 9, 14, 12).getTime();
@@ -117,12 +134,12 @@ test('the actual calendar birthday gates maturity and automatic autumn shedding'
     if (location.origin === origin && !localStorage.getItem('@ecotrek/experience-test/tree-growth')) localStorage.setItem('@ecotrek/experience-test/tree-growth', JSON.stringify(tree));
   }, { origin: new URL(baseURL!).origin, tree: treeFixture(birthday, 52, anniversary - 1) });
   await enter(page, '/tree');
-  await expect(page.getByText('Growth image 80 / 100', { exact: true })).toBeVisible();
+  await expect(page.getByText('Young bearing tree', { exact: true })).toBeVisible();
   await expect(page.getByTestId('autumn-leaves')).toHaveCount(0);
   await expect(page.getByRole('button', { name: 'Collect golden apple', exact: true })).toHaveCount(0);
   await page.clock.setFixedTime(anniversary);
   await page.reload();
-  await expect(page.getByText('Growth image 81 / 100', { exact: true })).toBeVisible();
+  await expect(page.getByText('Full-grown tree', { exact: true })).toBeVisible();
   await expect(page.getByTestId('autumn-leaves')).toBeVisible();
   await expect(page.getByRole('button', { name: 'Collect golden apple', exact: true })).toBeVisible();
   await expect(page.getByRole('button', { name: 'Save sage & plant a new seed', exact: true })).toHaveCount(0);
@@ -136,14 +153,14 @@ test('sage takes 18 months; golden apples survive a confirmed new planting witho
     if (location.origin === origin && !localStorage.getItem('@ecotrek/experience-test/tree-growth')) localStorage.setItem('@ecotrek/experience-test/tree-growth', JSON.stringify(tree));
   }, { origin: new URL(baseURL!).origin, tree: treeFixture(birthday, 78, now) });
   await enter(page, '/tree');
-  await expect(page.getByText('Growth image 100 / 100', { exact: true })).toBeVisible();
+  await expect(page.getByText('Sage tree', { exact: true })).toBeVisible();
   await expect(page.getByTestId('autumn-leaves')).toBeVisible();
   await page.getByRole('button', { name: 'Collect golden apple', exact: true }).click();
   await expect.poll(() => page.evaluate((key) => JSON.parse(localStorage.getItem(key)!).goldenApples, `${PREFIX}tree-growth`)).toBe(1);
   await expect(page.getByRole('button', { name: 'Collect golden apple', exact: true })).toHaveCount(0);
   await page.getByRole('button', { name: 'Save sage & plant a new seed', exact: true }).click();
   await page.getByRole('button', { name: 'Save sage & plant seed', exact: true }).click();
-  await expect(page.getByText('Growth image 1 / 100', { exact: true })).toBeVisible();
+  await expect(page.getByText('New seedling', { exact: true })).toBeVisible();
   const saved = await page.evaluate((key) => JSON.parse(localStorage.getItem(key)!), `${PREFIX}tree-growth`);
   expect(saved.forest).toBe(1); expect(saved.goldenApples).toBe(1); expect(saved.plantedAt).toBe(now);
   await expect(page.getByTestId('autumn-leaves')).toHaveCount(0);
@@ -158,45 +175,57 @@ test('young trees retain their leaves in winter and everyone gets calendar snow 
     if (location.origin === origin) localStorage.setItem('@ecotrek/experience-test/tree-growth', JSON.stringify(tree));
   }, { origin: new URL(baseURL!).origin, tree: treeFixture(birthday, 8, now) });
   await enter(page, '/tree');
-  await expect(page.getByText(/Growth image (2[0-5]) \/ 100/)).toBeVisible();
+  await expect(page.getByText(/Growth image \d+ \/ 100/i)).toHaveCount(0);
   await expect(page.getByTestId('winter-snow')).toBeVisible();
   await expect(page.getByTestId('autumn-leaves')).toHaveCount(0);
   await expect(page.getByTestId('tree-growth-scene').locator('img')).toHaveAttribute('src', /growth-02[0-4]/);
   await page.evaluate((key) => { const store = JSON.parse(localStorage.getItem(key)!); store.plantedAt = new Date(2025, 0, 14, 12).getTime(); localStorage.setItem(key, JSON.stringify(store)); }, `${PREFIX}tree-growth`);
   // A calendar year with only eight cared-for weeks is still not mature.
   await page.reload();
-  await expect(page.getByText(/Growth image (2[0-5]) \/ 100/)).toBeVisible();
+  await expect(page.getByText(/Growth image \d+ \/ 100/i)).toHaveCount(0);
   await expect(page.getByTestId('winter-snow')).toBeVisible();
 });
 
-test('cold Trails is usable before GPS/network; ratings are visible, editable and persist with no automatic AI', async ({ context, page }) => {
+test('Trails asks for real worldwide location and shows a retryable permission-empty state', async ({ context, page }) => {
   await context.clearPermissions();
-  await context.addInitScript(() => { navigator.geolocation.getCurrentPosition = () => {}; });
+  await context.addInitScript(() => {
+    navigator.geolocation.getCurrentPosition = (_success, error) => error?.({ code: 1, message: 'permission denied' } as GeolocationPositionError);
+  });
   const requests: string[] = [];
   page.on('request', (request) => requests.push(request.url()));
   await enter(page, '/trails');
-  await expect(page.getByText('Offline collection · Austin, TX')).toBeVisible();
-  const rate = page.getByRole('button', { name: /^Rate / }).first();
-  await expect(rate).toBeVisible({ timeout: 1500 });
-  const illustration = await page.getByTestId('trail-illustration').first().locator('svg').boundingBox();
-  expect(illustration!.height).toBeGreaterThan(120);
-  await rate.click();
-  await expect(page.getByText('Your rating', { exact: true })).toBeVisible();
-  await expect(page.getByText('AI trail notes', { exact: true })).toHaveCount(0);
-  await expect(page.getByRole('button', { name: 'Ask AI about it' })).toHaveCount(0);
-  await expect(page.getByText('Photos are unavailable offline')).toHaveCount(0);
+  await expect(page.getByText('Find trails near you', { exact: true })).toBeVisible({ timeout: 8000 });
+  await expect(page.getByText('Ann and Roy Butler Hike-and-Bike Trail', { exact: true })).toHaveCount(0);
+  await expect(page.getByRole('button', { name: 'Use location', exact: true })).toBeVisible();
+  await expect(page.getByRole('button', { name: /^Rate / })).toHaveCount(0);
   expect(requests.some((url) => /puter\.com|api\.puter|commons\.wikimedia|nominatim|overpass/.test(url))).toBe(false);
-  await page.getByRole('radio', { name: '5 stars', exact: true }).click();
-  await expect(page.getByText('5 out of 5 · saved')).toBeVisible();
-  await page.getByRole('button', { name: 'Close', exact: true }).click();
-  await expect(page.getByText('Your rating: 5/5', { exact: true })).toBeVisible();
-  await page.reload();
-  await page.getByRole('button', { name: /^Rate / }).first().click();
-  await expect(page.getByRole('radio', { name: '5 stars', exact: true })).toBeChecked();
-  await page.getByRole('button', { name: 'Remove your rating', exact: true }).click();
-  await expect(page.getByText('Rating removed.')).toBeVisible();
-  await page.getByRole('button', { name: 'Before you go', exact: true }).click();
-  await expect(page.getByText(/Check opening hours, closures/)).toBeVisible();
+});
+
+test('an international GPS fix queries nearby OSM data instead of showing Austin trails', async ({ context, page }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 40.7128, longitude: -74.0060 });
+  const queries: string[] = [];
+  await context.route('https://overpass-api.de/api/interpreter?**', async (route) => {
+    const url = new URL(route.request().url());
+    queries.push(url.searchParams.get('data') ?? '');
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ elements: [{
+        type: 'relation',
+        id: 99101,
+        center: { lat: 40.7132, lon: -74.0064 },
+        tags: { name: 'Hudson River Greenway', route: 'hiking', distance: '2 km', 'addr:city': 'New York', surface: 'paved', description: 'A mapped riverside walking route.' },
+      }] }),
+    });
+  });
+  await enter(page, '/trails');
+  await expect(page.getByRole('button', { name: 'Open Hudson River Greenway', exact: true })).toBeVisible({ timeout: 8000 });
+  await expect(page.getByText('New York', { exact: true })).toBeVisible();
+  await expect(page.getByText('Ann and Roy Butler Hike-and-Bike Trail', { exact: true })).toHaveCount(0);
+  expect(queries.length).toBe(1);
+  expect(queries[0]).toContain('40.7128');
+  expect(queries[0]).toContain('-74.006');
 });
 
 test('saved trails reopen without a location fix and stay clearly labelled saved', async ({ context, page }) => {
@@ -210,6 +239,34 @@ test('saved trails reopen without a location fix and stay clearly labelled saved
   await expect(page.getByText(/Saved trails, not a current location lookup\.|Finding nearby trails\. Keep browsing meanwhile\./)).toBeVisible();
 });
 
+test('a temporary international trail-provider failure remains retryable and then recovers', async ({ context, page }) => {
+  await context.grantPermissions(['geolocation']);
+  await context.setGeolocation({ latitude: 51.5072, longitude: -0.1276 });
+  let attempts = 0;
+  await context.route('https://**/api/interpreter**', async (route) => {
+    attempts += 1;
+    if (attempts <= 3) {
+      await route.fulfill({ status: 503, contentType: 'text/plain', body: 'temporarily unavailable' });
+      return;
+    }
+    await route.fulfill({
+      status: 200,
+      contentType: 'application/json',
+      body: JSON.stringify({ elements: [{
+        type: 'relation',
+        id: 88201,
+        center: { lat: 51.5080, lon: -0.1280 },
+        tags: { name: 'Riverside Walk', route: 'hiking', distance: '1 km', 'addr:city': 'London' },
+      }] }),
+    });
+  });
+  await enter(page, '/trails');
+  await expect(page.getByText('Could not load nearby trails', { exact: true })).toBeVisible({ timeout: 8000 });
+  await page.getByRole('button', { name: 'Try again', exact: true }).click();
+  await expect(page.getByRole('button', { name: 'Open Riverside Walk', exact: true })).toBeVisible({ timeout: 8000 });
+  expect(attempts).toBeGreaterThan(3);
+});
+
 test('a delayed browser GPS fix updates Trails automatically without a second retry', async ({ context, page }) => {
   await context.addInitScript(() => {
     (window as any).__geoCalls = 0;
@@ -219,10 +276,10 @@ test('a delayed browser GPS fix updates Trails automatically without a second re
     };
   });
   await enter(page, '/trails');
-  await expect(page.getByText('Offline collection · Austin, TX')).toBeVisible();
+  await expect(page.getByText('Finding nearby trails…')).toBeVisible({ timeout: 1500 });
+  await expect(page.getByText('Ann and Roy Butler Hike-and-Bike Trail', { exact: true })).toHaveCount(0);
+  await expect.poll(() => page.evaluate(() => !!localStorage.getItem('@ecotrek/trail-catalogue-v1')), { timeout: 10000 }).toBe(true);
   await expect(page.getByRole('button', { name: /^Rate / }).first()).toBeVisible();
-  await expect.poll(() => page.evaluate(() => !!localStorage.getItem('@ecotrek/trail-catalogue-v1')), { timeout: 8000 }).toBe(true);
-  await expect(page.getByText('Offline collection · Austin, TX')).toHaveCount(0);
   expect(await page.evaluate(() => (window as any).__geoCalls)).toBe(1);
 });
 
@@ -270,69 +327,14 @@ test('failed tiles fall back without an endless spinner, and retry recovers', as
   await expect(page.getByText('Map tiles unavailable', { exact: true })).toHaveCount(0);
 });
 
-test('the pinned SDK loads locally even when every external script request is blocked', async ({ page }) => {
-  await enter(page, '/assistant');
-  await expect(page.getByRole('button', { name: 'Connect Grok', exact: true })).toBeVisible({ timeout: 15000 });
-  const sdk = await page.evaluate(() => ({ url: window.__ECOTREK_PUTER_SDK_URL__, chat: typeof window.puter?.ai?.chat }));
-  expect(sdk.url).toMatch(/^\/assets\/vendor\/puter-.*\.js$/);
-  expect(sdk.chat).toBe('function');
-});
-
-test('the bundled SDK opens a child window from Connect and reports cancellation honestly', async ({ page }) => {
-  await enter(page, '/assistant');
-  await expect(page.getByRole('button', { name: 'Connect Grok', exact: true })).toBeVisible();
-  const opened = page.waitForEvent('popup');
-  const destination = page.context().waitForEvent('request', { predicate: (request) => request.url().startsWith('https://puter.com/action/sign-in?') });
-  await page.getByRole('button', { name: 'Connect Grok', exact: true }).click();
-  const popup = await opened;
-  // External requests are blocked; inspect the attempted URL rather than the
-  // browser's resulting chrome-error document. No live sign-in is asserted.
-  const authUrl = new URL((await destination).url());
-  expect(authUrl.searchParams.get('request_auth')).toBe('true');
-  expect(await popup.opener()).toBe(page);
-  await popup.close();
-  await expect(page.getByText('Puter sign-in was cancelled. Your on-device trail answers still work.')).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Connect Grok', exact: true })).toBeEnabled();
-});
-
-test('Grok requires a connection and labels an SDK response separately from offline facts', async ({ context, page }) => {
-  await context.addInitScript(() => {
-    let connected = false;
-    (window as any).__puterCalls = [];
-    window.puter = {
-      auth: {
-        isSignedIn: () => connected,
-        signIn: () => { connected = true; return Promise.resolve({ success: true }); },
-      },
-      ai: { chat: async (messages, options) => {
-        (window as any).__puterCalls.push({ messages, options });
-        return { message: { content: messages[messages.length - 1].content.includes('single word') ? 'ready' : 'Leaves change colour as chlorophyll breaks down.' } };
-      } },
-    };
-  });
-  await enter(page, '/assistant');
-  await page.getByPlaceholder('Ask about a trail…').fill('Tell me about nearby trails');
-  await page.getByLabel('Send question', { exact: true }).click();
-  await expect(page.getByText('On-device trail answer', { exact: true })).toBeVisible();
-  await expect(page.getByRole('button', { name: 'Connect Grok', exact: true })).toBeEnabled();
-  expect(await page.evaluate(() => (window as any).__puterCalls)).toHaveLength(0);
-  await page.getByRole('button', { name: 'Connect Grok', exact: true }).click();
-  await expect(page.getByText('Grok replied successfully. Online answers are connected through Puter.')).toBeVisible();
-  await page.getByPlaceholder('Ask about a trail…').fill('Why do leaves change colour?');
-  await page.getByLabel('Send question', { exact: true }).click();
-  await expect(page.getByText('Leaves change colour as chlorophyll breaks down.', { exact: true })).toBeVisible();
-  const calls = await page.evaluate(() => (window as any).__puterCalls);
-  expect(calls).toHaveLength(2);
-  expect(calls[1].options.model).toBe('x-ai/grok-4.7');
-  expect(calls[1].messages.at(-1).content).toBe('Why do leaves change colour?');
-  await page.evaluate(() => { window.puter!.ai!.chat = async () => { throw { code: 'insufficient_funds' }; }; });
-  await page.getByPlaceholder('Ask about a trail…').fill('Which trail is easy?');
-  await page.getByLabel('Send question', { exact: true }).click();
-  await expect(page.getByText('On-device trail answer', { exact: true }).last()).toBeVisible();
-  await expect(page.getByText(/Check your Puter credits or usage limits/).first()).toBeVisible();
-  await page.evaluate(() => { window.puter!.ai!.chat = async () => ({ message: { content: 'ready' } }); });
-  await page.getByRole('button', { name: 'Retry AI connection', exact: true }).click();
-  await expect(page.getByText('Grok replied successfully. Online answers are connected through Puter.')).toBeVisible();
+test('the root URL opens the app directly and More has no assistant or Grok entry', async ({ page }) => {
+  await page.goto('/');
+  await page.locator('#ecotrek-splash').waitFor({ state: 'hidden' });
+  expect(new URL(page.url()).pathname).toBe('/');
+  await expect(page.getByTestId('tab-home-active')).toBeVisible();
+  await page.getByRole('tab', { name: 'More', exact: true }).click();
+  await expect(page.getByText(/Assistant|Grok|Puter/i)).toHaveCount(0);
+  await expect(page.getByRole('button', { name: /Android app|iPhone|Install/i })).toHaveCount(0);
 });
 
 test('large-text dark mode keeps the active navigation and controls visible', async ({ context, page }) => {
@@ -346,12 +348,11 @@ test('large-text dark mode keeps the active navigation and controls visible', as
 });
 
 
-test('the /app/ entry and old-WebView UUID polyfill support the bundled SDK', async ({ context, page }) => {
-  await context.addInitScript(() => Object.defineProperty(Crypto.prototype, 'randomUUID', { value: undefined, configurable: true }));
+test('the app route and PWA root both open the same app without an install chooser', async ({ page }) => {
   await enter(page, '/app/');
-  await page.getByRole('tab', { name: 'More', exact: true }).click();
-  await page.getByRole('button', { name: 'Assistant', exact: true }).click();
-  await expect(page.getByRole('button', { name: 'Connect Grok', exact: true })).toBeVisible();
-  expect(await page.evaluate(() => crypto.randomUUID())).toMatch(/^[0-9a-f]{8}-(?:[0-9a-f]{4}-){3}[0-9a-f]{12}$/);
-  expect(await page.evaluate(() => typeof window.puter?.ai?.chat)).toBe('function');
+  await expect(page.getByTestId('tab-home-active')).toBeVisible();
+  await expect(page.getByText(/Install EcoTrek|Android app|iPhone.*iPad/i)).toHaveCount(0);
+  await page.goto('/');
+  await page.locator('#ecotrek-splash').waitFor({ state: 'hidden' });
+  await expect(page.getByTestId('tab-home-active')).toBeVisible();
 });

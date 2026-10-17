@@ -9,17 +9,9 @@ On web this is browser-local storage. Units, appearance and text size are
 device preferences. Signing out preserves these records; clearing app/browser
 storage or uninstalling can remove them.
 
-Google OAuth identifies the account. **It is not a Google Drive backup.**
-No Drive scope, refresh-token flow, cloud backup or cross-device restore was
-added in this change. When OAuth isn't configured, the web account chooser is
-explicitly a local demo profile, not verified Google authentication.
+The current app uses a local guest profile and does not initiate Google OAuth. Older stored profiles may contain legacy Google provider fields, but they are not a supported sign-in or cross-device backup flow. **There is no Google Drive backup.**
 
-The optional existing EcoTrek API is separate from Google storage and supports
-only some datasets. It must not be described as a full Google-account backup.
-Weekly streaks remain local because the legacy server streak route uses a
-different, daily schema. Local point history is merged, not replaced by a remote
-response. Activity, point, weight and cleanup histories no longer silently drop
-the oldest records at their former count limits.
+The optional EcoTrek API is separate from local storage. It can serve the public approved-trail catalogue, while protected data routes require a verified Google token that the current guest flow does not provide. Do not describe guest profiles as syncing to a cloud account. Weekly streaks remain local; local point history is merged, not replaced by a remote response. Activity, point, weight and cleanup histories no longer silently drop the oldest records at their former count limits.
 
 Guest upgrades copy all user-scoped keys and merge existing logs by ID. Existing
 profile choices win, missing profile fields are filled, and the source remains

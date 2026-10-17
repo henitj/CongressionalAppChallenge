@@ -98,4 +98,4 @@ echo "==> 5/5 Verifying signer regression tests, signatures and release facts"
 
 echo
 echo "Done: $OUT"
-echo "Copy the values above into site-config.js (apkBytes, apkSha256, signingCertSha256) before publishing."
+echo "Review the generated downloads/ecotrek-apk.json and checksum before distributing this build."

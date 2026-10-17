@@ -1,102 +1,80 @@
-# EcoTrek API
+# Optional EcoTrek API
 
-The thin layer between the app and Neon Postgres. Plain Node, no framework, no
-build step.
+The website and Android WebView app run local-first without this service, a database, or an EcoTrek account. Their live nearby-trail discovery contacts OpenStreetMap Overpass directly. Deploy this API only if you are intentionally enabling server-backed catalogue data or existing authenticated cloud features.
 
-## Why it exists
+This is a small Node HTTP server backed by Neon Postgres. It does **not** serve the website or provide a user-facing chatbot.
 
-The app must never hold your Neon connection string. Anything shipped in an
-Expo app is readable by anyone who downloads the APK — that includes every
-`EXPO_PUBLIC_*` variable. If the database URL were in there, someone could
-connect directly and drop your tables.
-
-So the app talks to this, and only this holds the credentials.
-
-```
-  Phone  ──HTTPS + Google ID token──▶  this API  ──DATABASE_URL──▶  Neon
-```
-
-## Run it
+## Configure and run
 
 ```bash
-cd server
-npm install
-cp .env.example .env      # paste DATABASE_URL and GOOGLE_CLIENT_IDS
-npm run migrate           # creates every table, seeds badges + trails
-npm start                 # http://localhost:8787
+cd EcoTrek/server
+npm ci
+cp .env.example .env
+# Set DATABASE_URL. Set GOOGLE_CLIENT_IDS only for protected account routes.
+npm run migrate
+npm start
 ```
 
-Check it: `curl http://localhost:8787/api/health`
+The service listens on `0.0.0.0:${PORT:-8787}`. Check health at `/api/health`.
 
-## Connect the app
+Example server-only environment:
 
-Put the public URL in the **app's** `.env`:
-
-```
-EXPO_PUBLIC_API_URL=https://your-api.onrender.com
-```
-
-That is the entire integration. Every context in the app already tries the API
-first and falls back to on-device storage if it is unreachable, so a backend
-outage degrades quietly instead of crashing.
-
-## Deploy
-
-Anywhere that runs Node 20+. Free options:
-
-- **Render** — New Web Service, point at this repo, root directory `EcoTrek/server`,
-  build `npm install`, start `npm start`.
-- **Railway** — same idea, detects Node automatically.
-
-Set `DATABASE_URL` and `GOOGLE_CLIENT_IDS` in the host's environment variables.
-Do not commit `.env`.
-
-## How auth works
-
-Every protected request carries the user's **Google ID token**:
-
-```
-Authorization: Bearer <id_token>
+```dotenv
+DATABASE_URL=postgresql://...
+GOOGLE_CLIENT_IDS=your-google-oauth-client-id
+GROQ_API_KEY=
+GROQ_MODEL=llama-3.1-8b-instant
 ```
 
-`db.js` verifies that token's signature against Google's public keys and checks
-it was issued for one of your client IDs, then upserts the user row keyed on
-`google_sub`.
+`DATABASE_URL`, OAuth IDs, and `GROQ_API_KEY` belong only in the server environment. Never place them in a client `.env`, `EXPO_PUBLIC_*` variable, or committed file. Without a Groq key, the optional trail-intelligence route returns `501`; the app uses its local catalogue-derived fallback.
 
-The API never trusts a user id sent in a request body. If it did, anyone could
-POST someone else's id and write to their account.
+## Client configuration
+
+The app reads the optional API origin from `EXPO_PUBLIC_API_URL`. Leave it blank for the default local-first experience. If configured, the client can fetch the public approved trail catalogue; it does not send the user’s GPS coordinates with that catalogue request. Nearby OSM lookup and location-specific filtering remain on-device.
+
+This app build uses local guest profiles and does not offer Google sign-in. Protected data-sync routes therefore are not available to a newly created guest profile. Do not describe cloud sync as working unless you deliberately add and test a supported sign-in flow. Existing protected routes still require a verified Google token for deployments that use them.
+
+## Authentication and route visibility
+
+`GET /api/health`, `GET /api/trails`, and `POST /api/trail-intel` are public. Other data routes require a bearer Google ID or access token that the server verifies against `GOOGLE_CLIENT_IDS`. The API never trusts a user ID supplied in a request body.
+
+`POST /api/trail-intel` accepts only bounded public catalogue fields for one selected trail. It does not accept or forward user questions, profiles, precise GPS, or activity routes. When `GROQ_API_KEY` is set, the server can send those catalogue facts to Groq to produce a concise summary; the public route is limited to eight requests per IP per minute in addition to the general API limiter. This is background trail-data enrichment, not a chat API. Do not configure it unless the provider, cost, and retention implications are acceptable to the deployment operator.
 
 ## Endpoints
 
-| Method | Path | Notes |
-|---|---|---|
-| GET | `/api/health` | public |
-| GET | `/api/me` | current user |
-| POST | `/api/me/sync` | upsert from token |
-| GET/POST | `/api/activities` | POST is idempotent on `client_id` |
-| DELETE | `/api/activities/:id` | `:id` is the client id (`act-…`) |
-| GET/POST | `/api/cleanups` | nonzero honest 1–99 piece counts, idempotent on `client_id`; the app's 0 / “None this time” answer creates no record |
-| GET/POST | `/api/points` | points ledger |
-| GET | `/api/streak` | day map + longest streak |
-| POST | `/api/streak/check-in` | upserts recent days |
-| GET | `/api/challenges` | completions for a week |
-| POST | `/api/challenges/:slug/complete` | |
-| GET/POST | `/api/clubs` | list / create |
-| POST | `/api/clubs/join` | by code |
-| POST | `/api/clubs/:id/leave` | reassigns ownership |
-| PATCH | `/api/clubs/:id/lock` | owner only |
-| DELETE | `/api/clubs/:id` | owner only, soft delete |
-| POST | `/api/clubs/:id/contribute` | adds points/trees/miles |
-| GET | `/api/leaderboard/clubs` · `/users` | |
-| GET | `/api/trails` | public; includes active approved `trail_photos` metadata |
-| POST | `/api/devices` | push token registration |
+| Method | Path | Access | Notes |
+|---|---|---|---|
+| GET | `/api/health` | Public | Process health. |
+| GET | `/api/trails` | Public | Active approved catalogue and photo metadata. No location query is needed. |
+| POST | `/api/trail-intel` | Public, rate-limited | Optional model summary from bounded catalogue facts; `501` when no Groq key is configured. |
+| GET/POST | `/api/activities` | Google token | Activity records. |
+| DELETE | `/api/activities/:id` | Google token | Delete by client activity ID. |
+| GET/POST | `/api/cleanups` | Google token | Cleanup records. |
+| GET/POST | `/api/points` | Google token | Points ledger. |
+| GET | `/api/streak` | Google token | Streak history. |
+| POST | `/api/streak/check-in` | Google token | Recent-day upsert. |
+| GET | `/api/challenges` | Google token | Weekly completion data. |
+| POST | `/api/challenges/:slug/complete` | Google token | Record completion. |
+| GET/POST | `/api/clubs` | Google token | List or create clubs. |
+| POST | `/api/clubs/join` | Google token | Join by code. |
+| POST | `/api/clubs/:id/leave` | Google token | Leave a club. |
+| PATCH | `/api/clubs/:id/lock` | Google token | Owner-only lock change. |
+| DELETE | `/api/clubs/:id` | Google token | Owner-only soft delete. |
+| POST | `/api/clubs/:id/contribute` | Google token | Add club contributions. |
+| GET | `/api/leaderboard/clubs`, `/api/leaderboard/users` | Google token | Leaderboard reads. |
+| POST | `/api/devices` | Google token | Push-token registration. |
 
-Paths are defined once in `routes.js` and mirrored in the app at
-`src/services/api.ts` → `ROUTES`, so the two cannot drift apart silently.
+The route list is defined in `routes.js`; client path constants are in `src/services/api.ts`.
 
-## Files
+## Deploying
 
-- `index.js` — HTTP server, routing, CORS, error handling
-- `db.js` — Neon client + Google token verification
-- `routes.js` — every handler, and the row → app-shape mappers
-- `migrate.js` — applies `../db/schema.sql` and `../db/seed.sql`
+Use a Node 20+ host (for example, Render or Railway) with `EcoTrek/server` as the service directory. Set the required server variables in the host dashboard and keep `.env` out of Git. Restrict CORS with `CORS_ORIGIN` for the deployed app origin where appropriate, and use the platform’s rate limiting and secret-management features as well.
+
+## Verification
+
+```bash
+npm run check      # database-backed check; requires configured DATABASE_URL
+npm run pentest    # route validation and hostile-input checks
+```
+
+`npm run migrate` applies `../db/schema.sql` and `../db/seed.sql`. The `.env.example` file documents optional settings.

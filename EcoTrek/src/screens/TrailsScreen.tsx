@@ -34,6 +34,8 @@ import {
 } from '../services/trailIntel';
 import { Linking } from 'react-native';
 import { googleMapsDirectionsUrl } from '../services/maps';
+import { shareTrail } from '../services/share';
+import type { TrailPhoto } from '../services/trailPhotos';
 
 type SortKey = 'nearest' | 'shortest' | 'longest' | 'easiest' | 'rating';
 
@@ -123,8 +125,8 @@ export default function TrailsScreen() {
   const { isTablet } = useResponsive();
   const openedRef = useRef(false);
 
-  // The offline collection/saved cards are already usable. Opening Trails
-  // requests a real fix once and enriches the list without blocking it.
+  // Saved cards stay browsable, but a first visit with no saved list waits for
+  // a real location rather than inventing a city. Opening Trails requests one fix.
   useFocusEffect(
     useCallback(() => {
       if (openedRef.current) return;
@@ -184,7 +186,7 @@ export default function TrailsScreen() {
     });
   }, []);
 
-  // The assistant can deep-link straight to a trail.
+  // Shared/direct trail links can open one selected trail.
   useEffect(() => {
     const id = route.params?.focusTrailId;
     if (!id) return;
@@ -253,7 +255,7 @@ export default function TrailsScreen() {
     if (stars) next[id] = stars; else delete next[id];
     return next;
   });
-  const subtitle = trailsSource === 'collection' ? 'Offline collection · Austin, TX' : trailsSource === 'cached' ? `${trailsRegion ?? 'Saved trails'} · saved` : trailsRegion ?? (trailsSource === 'unsupported' ? 'Outside our discovery area' : 'Walks and rides near you');
+  const subtitle = trailsSource === 'collection' ? 'Offline collection · Austin, TX' : trailsSource === 'cached' ? `${trailsRegion ?? 'Saved trails'} · saved` : trailsRegion ?? (trailsSource === 'unsupported' ? 'Location needs attention' : 'Walks and rides near you');
 
   return (
     <Screen refreshControl={<RefreshControl refreshing={trailsLoading && trails.length === 0} onRefresh={refreshTrails} tintColor={colors.textMuted} />}>
@@ -263,18 +265,44 @@ export default function TrailsScreen() {
           <View style={styles.search}><Icon name="search" size={17} color={colors.textMuted} /><TextInput value={query} onChangeText={setQuery} placeholder="Search trails" accessibilityLabel="Search trails" placeholderTextColor={colors.textMuted} style={styles.searchInput} autoCorrect={false} returnKeyType="search" />{query ? <Pressable onPress={() => setQuery('')} hitSlop={8} accessibilityRole="button" accessibilityLabel="Clear search"><Icon name="x" size={16} color={colors.textMuted} /></Pressable> : null}</View>
           <Pressable onPress={() => setShowFilters(true)} style={styles.sortBtn} accessibilityRole="button" accessibilityLabel="Filters and sort"><Icon name="filter" size={19} color={colors.primary} />{activeFilterCount > 0 ? <View style={styles.filterBadge}><Text style={styles.filterBadgeText}>{activeFilterCount}</Text></View> : null}</Pressable>
         </View>
-        {usingFallbackLocation ? <View style={styles.locationRow}>
+        {usingFallbackLocation && trails.length > 0 ? <View style={styles.locationRow}>
           <Icon name="map-pin" size={17} color={colors.textMuted} />
-          <Text style={[styles.locationText, { flex: 1 }]}>{locating ? 'Finding nearby trails. Keep browsing meanwhile.' : trailsSource === 'cached' ? 'Saved trails, not a current location lookup.' : 'Browse Austin offline, or find trails near you.'}</Text>
+          <Text style={[styles.locationText, { flex: 1 }]}>{locating ? 'Finding nearby trails. Keep browsing meanwhile.' : trailsSource === 'cached' ? 'Saved trails, not a current location lookup.' : 'Browse saved trails, or use your location for worldwide discovery.'}</Text>
           <Pressable onPress={() => requestLocation({ explain: true })} style={{ minHeight: 44, justifyContent: 'center' }} accessibilityRole="button"><Text style={styles.bannerAction}>{permission === 'denied' ? 'Settings' : 'Use location'}</Text></Pressable>
         </View> : null}
-        {trailsError ? <Text style={styles.locationText} accessibilityLiveRegion="polite">{trailsError}</Text> : null}
+        {trailsError && trails.length > 0 ? <Text style={styles.locationText} accessibilityLiveRegion="polite">{trailsError}</Text> : null}
         <View style={styles.filterRow}>
           <Pressable onPress={resetFilters} style={[styles.chip, activeFilterCount === 0 && styles.chipActive]} accessibilityRole="button" accessibilityState={{ selected: activeFilterCount === 0 }}><Text style={[styles.chipText, activeFilterCount === 0 && styles.chipTextActive]}>All</Text></Pressable>
           {FILTERS.slice(0, 3).map((filter) => { const active = filters.has(filter.value); return <Pressable key={filter.value} onPress={() => toggleFilter(filter.value)} style={[styles.chip, active && styles.chipActive]} accessibilityRole="button" accessibilityState={{ selected: active }}><Icon name={active ? 'check' : filter.icon} size={14} color={active ? colors.textInverse : colors.textMuted} /><Text style={[styles.chipText, active && styles.chipTextActive]}>{filter.label}</Text></Pressable>; })}
         </View>
         <View style={styles.resultRow}><Text style={styles.resultCount}>{filtered.length} trail{filtered.length === 1 ? '' : 's'}{activeFilterCount ? ' · filtered' : ''}</Text><Pressable onPress={() => setShowFilters(true)} style={styles.sortLabel} accessibilityRole="button" accessibilityLabel="Change trail sorting"><Text style={styles.sortLabelText}>{sort === 'nearest' && usingFallbackLocation ? 'Collection order' : SORTS.find((item) => item.value === sort)?.label}</Text><Icon name="chevron-down" size={14} color={colors.primary} /></Pressable></View>
-        {trails.length === 0 && trailsSource === 'unsupported' ? <EmptyState icon="globe" title="This region isn’t supported yet" message="Nearby discovery currently covers the US, Canada and Mexico." /> : trails.length === 0 && (trailsLoading || locating) ? <View style={{ gap: 14 }}><View style={styles.loadingRow}><ActivityIndicator size="small" color={colors.primary} /><Text style={styles.locationText}>Finding nearby trails…</Text></View>{[0, 1].map((i) => <View key={i} style={styles.skeleton}><View style={styles.skeletonCover} /><View style={styles.skeletonLine} /><View style={[styles.skeletonLine, { width: '55%' }]} /></View>)}</View> : trails.length === 0 ? <EmptyState icon="map-pin" title="No trails found here yet" message="The trail service may be offline, or there may be no named routes nearby." action="Refresh nearby trails" onAction={refreshTrails} /> : filtered.length === 0 ? <EmptyState icon="map" title="No trails match" message="Try clearing the search or removing a filter." action="Reset" onAction={() => { resetFilters(); setQuery(''); }} /> : <View style={[styles.grid, isTablet && styles.gridTablet]}>{filtered.map((trail) => <View key={trail.id} style={isTablet ? styles.gridHalf : styles.gridFull}><TrailCard trail={trail} completed={completedIds.has(trail.id)} visited={visitedIds.has(trail.id)} showDistance={!usingFallbackLocation && trailsSource !== 'collection'} rating={ratings[trail.id]} onPress={() => setSelected(trail)} formatDistance={formatDistanceCompact} unit={formatDistanceUnit()} styles={styles} colors={colors} /></View>)}</View>}
+        {trails.length === 0 && (trailsLoading || locating) ? (
+          <View style={{ gap: 14 }}>
+            <View style={styles.loadingRow}>
+              <ActivityIndicator size="small" color={colors.primary} />
+              <Text style={styles.locationText}>Finding nearby trails…</Text>
+            </View>
+            {[0, 1].map((i) => <View key={i} style={styles.skeleton}><View style={styles.skeletonCover} /><View style={styles.skeletonLine} /><View style={[styles.skeletonLine, { width: '55%' }]} /></View>)}
+          </View>
+        ) : trails.length === 0 && trailsSource === 'need-location' ? (
+          <EmptyState icon="map-pin" title="Find trails near you" message="Use your location to look up named trails around you. If you prefer not to share it, you can still use trails saved on this device." action="Use location" onAction={() => requestLocation({ explain: true })} />
+        ) : trails.length === 0 && trailsSource === 'unsupported' ? (
+          <EmptyState icon="map-pin" title="Location unavailable" message="Check location access and try again to find trails around you." action="Try location again" onAction={() => requestLocation({ explain: true })} />
+        ) : trails.length === 0 ? (
+          <EmptyState
+            icon="map-pin"
+            title={trailsError ? 'Could not load nearby trails' : 'No trails found here yet'}
+            message={trailsError ?? 'There may be no named routes nearby. You can refresh to check again.'}
+            action={trailsError ? 'Try again' : 'Refresh nearby trails'}
+            onAction={refreshTrails}
+          />
+        ) : filtered.length === 0 ? (
+          <EmptyState icon="map" title="No trails match" message="Try clearing the search or removing a filter." action="Reset" onAction={() => { resetFilters(); setQuery(''); }} />
+        ) : (
+          <View style={[styles.grid, isTablet && styles.gridTablet]}>
+            {filtered.map((trail) => <View key={trail.id} style={isTablet ? styles.gridHalf : styles.gridFull}><TrailCard trail={trail} completed={completedIds.has(trail.id)} visited={visitedIds.has(trail.id)} showDistance={!usingFallbackLocation && trailsSource !== 'collection'} rating={ratings[trail.id]} onPress={() => setSelected(trail)} formatDistance={formatDistanceCompact} unit={formatDistanceUnit()} styles={styles} colors={colors} /></View>)}
+          </View>
+        )}
       </View>
       {/* Filters & sort */}
       <Sheet visible={showFilters} onClose={() => setShowFilters(false)} title="Filter trails">
@@ -371,21 +399,20 @@ export default function TrailsScreen() {
       </Sheet>
 
       <Sheet visible={!!selected} onClose={() => setSelected(null)} title={selected?.name ?? ''} subtitle={selected ? `${selected.area} · ${selected.difficulty}` : undefined}>
-        {selected ? <TrailDetail key={selected.id} userId={userId} trail={selected} rating={ratings[selected.id]} completed={completedIds.has(selected.id)} onRatingSaved={(stars) => saveRating(selected.id, stars)} onStart={() => { setSelected(null); navigation.navigate('Tabs', { screen: 'Track', params: { mode: selected.type === 'bike' ? 'bike' : 'hike' } }); }} onPlan={() => { setSelected(null); navigation.navigate('Social', { trailId: selected.id }); }} formatDistance={formatDistanceCompact} unit={formatDistanceUnit()} /> : null}
+        {selected ? <TrailDetail key={selected.id} userId={userId} trail={selected} rating={ratings[selected.id]} completed={completedIds.has(selected.id)} onRatingSaved={(stars) => saveRating(selected.id, stars)} onStart={() => { setSelected(null); navigation.navigate('Tabs', { screen: 'Track', params: { mode: selected.type === 'bike' ? 'bike' : 'hike' } }); }} formatDistance={formatDistanceCompact} unit={formatDistanceUnit()} /> : null}
       </Sheet>
     </Screen>
   );
 }
 
-/** Only the essentials open by default. No AI request or article is fetched. */
-function TrailDetail({ trail, userId, completed, rating, onRatingSaved, onStart, onPlan, formatDistance, unit }: {
+/** Compact, trail-specific detail: photos first, essential stats, then actions. */
+function TrailDetail({ trail, userId, completed, rating, onRatingSaved, onStart, formatDistance, unit }: {
   trail: Trail;
   userId: string | null;
   completed: boolean;
   rating?: number;
   onRatingSaved: (stars: number) => void;
   onStart: () => void;
-  onPlan: () => void;
   formatDistance: (miles: number) => string;
   unit: string;
 }) {
@@ -393,36 +420,64 @@ function TrailDetail({ trail, userId, completed, rating, onRatingSaved, onStart,
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
   const [notes, setNotes] = useState(false);
   const [before, setBefore] = useState(false);
-  const [photos, setPhotos] = useState(false);
-  return <View style={{ gap: 18 }}>
+  const [ratingOpen, setRatingOpen] = useState(false);
+  const [sharePhotos, setSharePhotos] = useState<TrailPhoto[]>(trail.photos ?? []);
+  const [photosReady, setPhotosReady] = useState(Boolean(trail.photos?.length || trail.imageUrl));
+  const [sharing, setSharing] = useState(false);
+  const shareLock = useRef(false);
+  const onPhotosLoaded = useCallback((photos: TrailPhoto[]) => {
+    setSharePhotos(photos);
+    setPhotosReady(true);
+  }, []);
+  const shareSelectedTrail = async () => {
+    if (shareLock.current || !photosReady) return;
+    shareLock.current = true;
+    setSharing(true);
+    try {
+      await shareTrail(trail, sharePhotos);
+    } finally {
+      shareLock.current = false;
+      setSharing(false);
+    }
+  };
+
+  return <View style={{ gap: 16 }}>
+    <TrailPhotoGallery trail={trail} onPhotosChange={onPhotosLoaded} />
     <View style={styles.detailStats}>
       <DetailStat value={`${trail.id.startsWith('osm-') ? '~' : ''}${formatDistance(trail.distanceMiles)} ${unit}`} label="Length" />
       <DetailStat value={formatMinutes(estimateMinutes(trail))} label="Est. time" />
       <DetailStat value={`${trail.elevationGainFt == null ? '~' : ''}${estimateElevationFt(trail)} ft`} label="Climb" />
     </View>
-    <Text style={styles.detailDescription} numberOfLines={2}>{trail.description}</Text>
+    <Text style={styles.detailDescription} numberOfLines={3}>{trail.description}</Text>
     {completed ? <View style={styles.loadingRow}><Icon name="check-circle" size={17} color={colors.primary} /><Text style={styles.locationText}>You’ve completed this trail.</Text></View> : null}
-    <View style={styles.ratingPanel}><TrailRatingControls userId={userId} trailId={trail.id} initialRating={rating} onSaved={onRatingSaved} /></View>
-    <Button label={trail.type === 'bike' ? 'Start a ride here' : 'Start a walk here'} icon="play" full onPress={onStart} />
-    <Button label="Plan a hike here with friends" icon="calendar" variant="secondary" full onPress={onPlan} />
+    <Button label={trail.type === 'bike' ? 'Start a ride here' : 'Start a walk here'} icon="play" size="lg" full onPress={onStart} />
     <Button
-      label="Directions in Google Maps"
-      icon="navigation"
+      label={!photosReady ? 'Preparing trail photos…' : 'Share with friends'}
+      icon="share"
       variant="secondary"
       full
-      onPress={() => Linking.openURL(googleMapsDirectionsUrl(trail)).catch(() => {})}
+      loading={sharing || !photosReady}
+      disabled={sharing || !photosReady}
+      onPress={shareSelectedTrail}
     />
+    <Pressable
+      onPress={() => Linking.openURL(googleMapsDirectionsUrl(trail)).catch(() => {})}
+      accessibilityRole="link"
+      style={styles.directionsLink}
+    >
+      <Icon name="navigation" size={16} color={colors.primary} />
+      <Text style={[typography.smallMed, { color: colors.primary }]}>Directions in Google Maps</Text>
+    </Pressable>
     <View>
+      <Disclosure label="Rate this trail" open={ratingOpen} toggle={() => setRatingOpen((value) => !value)} />
+      {ratingOpen ? <View style={[styles.ratingPanel, styles.disclosed]}><TrailRatingControls userId={userId} trailId={trail.id} initialRating={rating} onSaved={onRatingSaved} /></View> : null}
       <Disclosure label="Before you go" open={before} toggle={() => setBefore((value) => !value)} />
       {before ? <View style={styles.disclosed}><Text style={styles.tipText}>Check opening hours, closures and current conditions before heading out. Catalogue distances and facilities can be approximate.</Text>{trail.safetyTips.map((tip, i) => <Text key={i} style={styles.tipText}>• {tip}</Text>)}<Text style={styles.tipText}>For automatic recognition, start within about a third of a mile of the trailhead. Cover 70% of its recorded length to log a completion.</Text></View> : null}
       <Disclosure label="Trail notes & amenities" open={notes} toggle={() => setNotes((value) => !value)} />
       {notes ? <View style={styles.disclosed}>
-        <Text style={styles.detailDescription}>{trail.description}</Text>
         <View style={styles.amenities}>{trail.petFriendly ? <Pill label="Dogs allowed" tone="primary" size="sm" /> : null}{trail.familyFriendly ? <Pill label="Family friendly" tone="primary" size="sm" /> : null}{trail.strollerFriendly ? <Pill label="Stroller OK" tone="neutral" size="sm" /> : null}{trail.restroomsAvailable ? <Pill label="Restrooms" tone="neutral" size="sm" /> : null}{trail.waterStations ? <Pill label="Water" tone="neutral" size="sm" /> : null}{trail.isLoop ? <Pill label="Loop" tone="neutral" size="sm" /> : null}</View>
         {trail.plants?.length ? <Text style={styles.tipText}>Plants: {trail.plants.join(', ')}</Text> : null}{trail.animals?.length ? <Text style={styles.tipText}>Wildlife: {trail.animals.join(', ')}</Text> : null}
       </View> : null}
-      <Disclosure label="Photos" open={photos} toggle={() => setPhotos((value) => !value)} />
-      {photos ? <View style={styles.disclosed}><TrailPhotoGallery trail={trail} /></View> : null}
     </View>
   </View>;
 }
@@ -481,6 +536,7 @@ function makeStyles(c: ColorPalette, t: Typography) {
     detailStats: { flexDirection: 'row', flexWrap: 'wrap', gap: 10 },
     detailDescription: { ...t.small, color: c.textSecondary, lineHeight: Math.max(22, t.small.lineHeight ?? 22) },
     ratingPanel: { padding: 14, borderRadius: 18, backgroundColor: c.surfaceSunken },
+    directionsLink: { flexDirection: 'row', alignItems: 'center', justifyContent: 'center', gap: 8, minHeight: 44 },
     amenities: { flexDirection: 'row', flexWrap: 'wrap', gap: 6 },
     tipText: { ...t.small, color: c.textSecondary, lineHeight: Math.max(22, t.small.lineHeight ?? 22) },
     disclosed: { gap: 12, paddingBottom: 18, paddingTop: 6 },

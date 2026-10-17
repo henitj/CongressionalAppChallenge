@@ -44,6 +44,7 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
   const [weight, setWeight] = useState('');
   const [stepLength, setStepLength] = useState('');
   const [busy, setBusy] = useState(false);
+  const submitRef = useRef(false);
   const scrollRef = useRef<ScrollView>(null);
 
   // Developer/demo backdoor: the exact secret in the name fields forces
@@ -57,47 +58,62 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
   }, [developer]);
 
   const handleComplete = async () => {
+    if (submitRef.current) return;
+    submitRef.current = true;
     setBusy(true);
-    const totalInches = (parseInt(heightFt, 10) || 0) * 12 + (parseInt(heightIn, 10) || 0);
-    const defaultStepLength = totalInches > 0 ? Math.round(totalInches * 0.413) : 28;
-    const first = firstName.trim();
-    const last = lastName.trim();
+    try {
+      const totalInches = (parseInt(heightFt, 10) || 0) * 12 + (parseInt(heightIn, 10) || 0);
+      const defaultStepLength = totalInches > 0 ? Math.round(totalInches * 0.413) : 28;
+      const first = firstName.trim();
+      const last = lastName.trim();
 
-    await setProfile({
-      firstName: first,
-      lastName: last,
-      age: developer ? DEVELOPER_AGE : parseInt(age, 10) || 30,
-      heightInches: totalInches || 67,
-      weightPounds: parseInt(weight, 10) || 155,
-      stepLengthInches: developer
-        ? DEVELOPER_STEP_LENGTH_INCHES
-        : parseInt(stepLength, 10) || defaultStepLength,
-      developerMode: developer,
-    });
+      await setProfile({
+        firstName: first,
+        lastName: last,
+        age: developer ? DEVELOPER_AGE : parseInt(age, 10) || 30,
+        heightInches: totalInches || 67,
+        weightPounds: parseInt(weight, 10) || 155,
+        stepLengthInches: developer
+          ? DEVELOPER_STEP_LENGTH_INCHES
+          : parseInt(stepLength, 10) || defaultStepLength,
+        developerMode: developer,
+      });
 
-    const full = `${first} ${last}`.trim();
-    if (full) await updateUser({ name: full });
-
-    setBusy(false);
-    onDone();
+      const full = `${first} ${last}`.trim();
+      if (full) await updateUser({ name: full });
+      onDone();
+    } catch (error) {
+      console.warn('[setup] unable to save profile', error);
+      submitRef.current = false;
+      setBusy(false);
+    }
   };
 
   const skipSetup = async () => {
-    const first = firstName.trim() || (user?.name ?? '').trim().split(/\s+/)[0] || 'Friend';
-    const last = lastName.trim();
-    const totalInches = (parseInt(heightFt, 10) || 0) * 12 + (parseInt(heightIn, 10) || 0);
-    await setProfile({
-      firstName: first,
-      lastName: last,
-      age: developer ? DEVELOPER_AGE : parseInt(age, 10) || 0,
-      heightInches: totalInches,
-      weightPounds: parseInt(weight, 10) || 0,
-      stepLengthInches: developer ? DEVELOPER_STEP_LENGTH_INCHES : parseInt(stepLength, 10) || 0,
-      developerMode: developer,
-    });
-    const full = `${first} ${last}`.trim();
-    if (full) await updateUser({ name: full });
-    onDone();
+    if (submitRef.current) return;
+    submitRef.current = true;
+    setBusy(true);
+    try {
+      const first = firstName.trim() || (user?.name ?? '').trim().split(/\s+/)[0] || 'Friend';
+      const last = lastName.trim();
+      const totalInches = (parseInt(heightFt, 10) || 0) * 12 + (parseInt(heightIn, 10) || 0);
+      await setProfile({
+        firstName: first,
+        lastName: last,
+        age: developer ? DEVELOPER_AGE : parseInt(age, 10) || 0,
+        heightInches: totalInches,
+        weightPounds: parseInt(weight, 10) || 0,
+        stepLengthInches: developer ? DEVELOPER_STEP_LENGTH_INCHES : parseInt(stepLength, 10) || 0,
+        developerMode: developer,
+      });
+      const full = `${first} ${last}`.trim();
+      if (full) await updateUser({ name: full });
+      onDone();
+    } catch (error) {
+      console.warn('[setup] unable to save skipped profile', error);
+      submitRef.current = false;
+      setBusy(false);
+    }
   };
 
   const canProceedName = firstName.trim().length > 0;
@@ -121,7 +137,7 @@ export default function SetupScreen({ onDone }: { onDone: () => void }) {
               <ProgressLine />
               <ProgressDot active={step === 'activity'} done={false} />
             </View>
-            <Button label="Skip" variant="ghost" onPress={skipSetup} />
+            <Button label="Skip" variant="ghost" onPress={skipSetup} loading={busy} disabled={busy} />
           </View>
 
           <ScrollView
@@ -422,10 +438,12 @@ function makeStyles(c: ColorPalette, t: Typography) {
     borderWidth: 1.5,
     borderColor: c.borderStrong,
     paddingHorizontal: SPACING.md,
-    paddingVertical: 16,
-    minHeight: 56,
-    fontSize: 18,
+    paddingVertical: 14,
+    minHeight: Math.max(56, (t.body.lineHeight ?? t.body.fontSize + 8) + 28),
+    fontSize: t.body.fontSize,
+    lineHeight: t.body.lineHeight,
     fontWeight: '500',
+    textAlignVertical: 'center',
     color: c.text,
   },
   inputHint: { ...t.small, color: c.textMuted, textAlign: 'center', marginTop: 6 },

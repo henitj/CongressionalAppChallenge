@@ -2,9 +2,7 @@ import { apiRequest, isBackendConfigured, ROUTES } from '../services/api';
 import { haversineMiles } from '../services/geo';
 import {
   fetchOsmTrails,
-  fetchPlace,
-  inServiceBbox,
-  isInServiceArea,
+  hasValidCoordinates,
   isNearAustin,
   mergeTrailLists,
   readTrailCache,
@@ -474,100 +472,77 @@ export const AUSTIN_TRAILS: Trail[] = [
 export type { TrailCatalogue, TrailSource };
 
 /**
- * Returns trails around the user.
+ * Returns trails around any valid user location.
  *
  *   • No GPS yet                 → empty. Ask for location.
- *   • GPS outside US/CA/MX       → empty. EcoTrek does not cover that country.
- *   • GPS in Austin              → bundled list plus any extra OSM routes.
- *   • GPS elsewhere in US/CA/MX  → live OSM lookup for that city.
- *   • Backend configured         → nearby server rows merged in, never
- *                                  replacing a live local list with Austin seed.
+ *   • GPS near Austin            → rich bundled list plus live OSM results.
+ *   • GPS anywhere else          → live worldwide OSM lookup, plus optional
+ *                                  nearby rows from the configured backend.
+ *   • Offline / temporary outage → last saved catalogue remains available.
  *
- * Never throws. A failed lookup falls back to cache, then to Austin only
- * if the phone is actually there.
+ * Never invents an Austin location or serves Austin trails to another city.
+ * A failed live lookup is not cached, so a retry can recover immediately.
  */
 export async function fetchNearbyTrails(
   lat?: number,
   lon?: number
 ): Promise<TrailCatalogue> {
-  if (lat == null || lon == null) {
+  if (lat == null || lon == null || !hasValidCoordinates(lat, lon)) {
     return { trails: [], region: null, source: 'need-location' };
   }
 
   const cached = readTrailCache(lat, lon);
   if (cached) return cached;
 
-  const outsideBbox = !inServiceBbox(lat, lon);
-  if (outsideBbox) {
-    const place = await fetchPlace(lat, lon).catch(() => ({
-      name: null,
-      countryCode: null,
-      country: null,
-    }));
-    const catalogue: TrailCatalogue = {
-      trails: [],
-      region: place.country ?? place.name ?? 'Outside the US, Canada, and Mexico',
-      source: 'unsupported',
-    };
-    writeTrailCache(lat, lon, catalogue);
-    return catalogue;
-  }
-
   const nearAustin = isNearAustin(lat, lon);
-  const serverTask = isBackendConfigured() ? apiRequest<Trail[]>(`${ROUTES.trails}?lat=${lat}&lon=${lon}`, { method: 'GET', timeoutMs: 6000 }) : Promise.resolve(null);
-  const [place, osmResult, serverResult] = await Promise.all([
-    fetchPlace(lat, lon).catch(() => ({ name: null, countryCode: null, country: null })),
-    fetchOsmTrails(lat, lon, nearAustin ? 'Austin' : 'Nearby').catch((e) => {
-      console.warn('[trails] OSM lookup failed', e);
-      return [] as Trail[];
+  const area = nearAustin ? 'Austin' : 'Nearby';
+  const hasServer = isBackendConfigured();
+  // The server response is a public catalogue, not a location lookup. Do not
+  // put the user's precise coordinates in its URL; nearby filtering stays on-device.
+  const serverTask = hasServer
+    ? apiRequest<Trail[]>(ROUTES.trails, { method: 'GET', timeoutMs: 6000 }).catch(() => null)
+    : Promise.resolve(null);
+  const [osmResult, serverResult] = await Promise.all([
+    fetchOsmTrails(lat, lon, area).then((trails) => ({ trails, failed: false })).catch((error) => {
+      console.warn('[trails] OSM lookup failed; keeping saved trails and allowing retry', error);
+      return { trails: [] as Trail[], failed: true };
     }),
     serverTask,
   ]);
+  const liveTrails = osmResult.trails;
 
-  if (!isInServiceArea(lat, lon, place.countryCode)) {
-    const catalogue: TrailCatalogue = {
-      trails: [],
-      region: place.country ?? place.name ?? 'Outside the US, Canada, and Mexico',
-      source: 'unsupported',
-    };
-    writeTrailCache(lat, lon, catalogue);
-    return catalogue;
-  }
-
-  const region = place.name ?? (nearAustin ? 'Austin, TX' : 'Nearby');
-  const live = osmResult.map((t) => (t.area === 'Nearby' && region !== 'Nearby' ? { ...t, area: region } : t));
+  const region = nearAustin ? 'Austin, TX' : null;
+  const live = liveTrails.map((trail) =>
+    trail.area === 'Nearby' && region ? { ...trail, area: region } : trail
+  );
 
   let fromServer: Trail[] = [];
-  if (serverResult) {
-    if (serverResult.ok && Array.isArray(serverResult.data)) {
-      // Only keep server rows that are actually near the user. An old API
-      // that ignores lat/lon would otherwise dump Austin onto a NYC phone.
-      fromServer = serverResult.data.filter((t) => {
-        if (t.startLat == null || t.startLng == null) return false;
-        return haversineMiles({ latitude: lat, longitude: lon }, { latitude: t.startLat, longitude: t.startLng }) <= 40;
-      });
-    }
+  if (serverResult?.ok && Array.isArray(serverResult.data)) {
+    // An older API may ignore lat/lon; only merge rows close to this user.
+    fromServer = serverResult.data.filter((trail) =>
+      hasValidCoordinates(trail.startLat, trail.startLng)
+      && haversineMiles(
+        { latitude: lat, longitude: lon },
+        { latitude: trail.startLat, longitude: trail.startLng }
+      ) <= 40
+    );
   }
+  const serverFailed = hasServer && !serverResult?.ok;
 
   let trails = mergeTrailLists(fromServer, live);
-
-  if (nearAustin) {
-    trails = mergeTrailLists(withDistances(AUSTIN_TRAILS, lat, lon), trails);
-  }
-
+  if (nearAustin) trails = mergeTrailLists(withDistances(AUSTIN_TRAILS, lat, lon), trails);
   trails = withDistances(trails, lat, lon);
+  if (trails.length === 0 && nearAustin) trails = withDistances(AUSTIN_TRAILS, lat, lon);
 
-  if (trails.length === 0 && nearAustin) {
-    trails = withDistances(AUSTIN_TRAILS, lat, lon);
-  }
-
+  const lookupFailed = trails.length === 0 && (osmResult.failed || serverFailed);
   const catalogue: TrailCatalogue = {
     trails,
     region,
     source: live.length || fromServer.length ? 'live' : nearAustin ? 'bundled' : 'live',
+    ...(lookupFailed ? { error: 'Trail lookup is temporarily unavailable. Check your connection and retry.' } : {}),
   };
-  // Cache hits and unsupported-region answers. Do not cache an empty live
-  // miss — Overpass blips should not hide a city for half an hour.
+  // Keep successes, but not empty live misses. A temporary Overpass outage
+  // must never block the user from succeeding on the next Retry action.
   if (trails.length || catalogue.source === 'bundled') writeTrailCache(lat, lon, catalogue);
   return catalogue;
 }

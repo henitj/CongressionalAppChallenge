@@ -137,7 +137,7 @@ export function treeStatus(saved: TreeGrowthStore, time = Date.now()) {
   return { stage, stageNumber: index + 1, stageCount: TREE_STAGES.length, nextStage: next, care: store.care, careHistory: store.careHistory, growthWeeks, effectiveGrowthWeeks: effort, progress, imageIndex, imageCount: TREE_IMAGE_COUNT, overallProgress: imageIndex / (TREE_IMAGE_COUNT - 1), outdoorThisWeek, careComplete, careUnits: careUnits(store.care), missingCare, growthFactor, growthPercent: Math.round(growthFactor * 100), carePercent: Math.round(CARE_GROWTH_FACTORS[careUnits(store.care)] * 100), isFullyGrown, isSage: imageIndex === TREE_IMAGE_COUNT - 1, plantedAt: store.plantedAt, ageDays: Math.max(0, daysBetween(dayKey(store.plantedAt), dayKey(now))), nextStageAt: next ? stageReadyAt(next, store.plantedAt) : null, weeksToNext: next ? Math.max(0, next.minWeeks - effort) : 0, canHarvest: isFullyGrown && outdoorThisWeek && careComplete && !store.harvestedWeeks.includes(store.careWeek), harvestedThisWeek: store.harvestedWeeks.includes(store.careWeek), forest: store.forest, goldenApples: store.goldenApples, legacyMigrated: !!store.legacyMigrated, now };
 }
 export function treeGrowthAge(id: TreeStage['id'], progress: number) { return Math.max(0, TREE_STAGES.findIndex((stage) => stage.id === id)) + (Number.isFinite(progress) ? Math.max(0, Math.min(1, progress)) : 0); }
-export function treeSeason(time = Date.now(), latitude = 30): TreeSeason {
+export function treeSeason(time = Date.now(), latitude = 0): TreeSeason {
   const north: TreeSeason[] = ['winter', 'winter', 'spring', 'spring', 'spring', 'summer', 'summer', 'summer', 'fall', 'fall', 'fall', 'winter'];
   return north[(new Date(time).getMonth() + (latitude < 0 ? 6 : 0)) % 12];
 }

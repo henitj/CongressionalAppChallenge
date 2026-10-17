@@ -5,10 +5,9 @@ import { api, isBackendConfigured, ROUTES } from './api';
  * AI-enriched trail intel for the detail sheet.
  *
  * The catalogue rows (especially the live OSM ones) are thin: a name, a
- * length, maybe an elevation tag. This module asks the backend's language
- * model to fill in the parts a hiker actually wants before setting off —
- * what the terrain underfoot is like, what scenery the trail leads to, and
- * an honest time estimate.
+ * length, maybe an elevation tag. If a deployment enables the optional
+ * backend, this module can enrich those public facts with a short trail
+ * summary. This is background data enrichment, not user-facing chat.
  *
  * Grounding rules match the rest of the app: the model only ever REPHRASES
  * and EXTENDS facts we hand it (name, area, distance, difficulty, climb).
@@ -89,31 +88,27 @@ export function getTrailIntel(trail: Trail): Promise<TrailIntel> {
   const cached = intelCache.get(trail.id);
   if (cached) return cached;
 
-  const promise = (async (): Promise<TrailIntel> => {
-    const fallback = localIntel(trail);
-    if (!isBackendConfigured()) return fallback;
+  const fallback = localIntel(trail);
+  if (!isBackendConfigured()) {
+    const local = Promise.resolve(fallback);
+    intelCache.set(trail.id, local);
+    return local;
+  }
 
-    const res = await api.post<{ text: string }>(ROUTES.assistant, {
-      question:
-        'Write three short sections about this trail for a hiker, separated by the lines ' +
-        '"TERRAIN:" and "HIGHLIGHTS:". First an overall 2-sentence summary of what to expect, ' +
-        'then TERRAIN: one or two sentences on what the surface underfoot is like, ' +
-        'then HIGHLIGHTS: one or two sentences on the scenery and where the trail can take you. ' +
-        'Use only the data provided. No headings other than those two markers, no bullet points.',
-      context: {
-        trail: {
-          name: trail.name,
-          area: trail.area,
-          type: trail.type,
-          distanceMiles: trail.distanceMiles,
-          difficulty: trail.difficulty,
-          elevationGainFt: trail.elevationGainFt ?? null,
-          estimatedMinutes: estimateMinutes(trail),
-          isLoop: !!trail.isLoop,
-          strollerFriendly: !!trail.strollerFriendly,
-          waterStations: !!trail.waterStations,
-          description: trail.description,
-        },
+  const promise = (async (): Promise<TrailIntel> => {
+    const res = await api.post<{ text: string }>(ROUTES.trailIntel, {
+      trail: {
+        name: trail.name,
+        area: trail.area,
+        type: trail.type,
+        distanceMiles: trail.distanceMiles,
+        difficulty: trail.difficulty,
+        elevationGainFt: trail.elevationGainFt ?? null,
+        estimatedMinutes: estimateMinutes(trail),
+        isLoop: !!trail.isLoop,
+        strollerFriendly: !!trail.strollerFriendly,
+        waterStations: !!trail.waterStations,
+        description: trail.description,
       },
     });
 
@@ -134,7 +129,14 @@ export function getTrailIntel(trail: Trail): Promise<TrailIntel> {
       highlights: highlights || fallback.highlights,
       fromAI: true,
     };
-  })().catch(() => localIntel(trail));
+  })()
+    .catch(() => fallback)
+    .then((result) => {
+      // Cache successful server enrichment, but leave failures retryable rather
+      // than turning one outage into a permanently stale local result.
+      if (!result.fromAI) intelCache.delete(trail.id);
+      return result;
+    });
 
   intelCache.set(trail.id, promise);
   return promise;

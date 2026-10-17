@@ -17,15 +17,16 @@ export function useStartActivity(initial: ActivityMode = 'hike') {
   const start = useCallback(async () => {
     // Re-check on every deliberate Start tap. This handles a permission or
     // device-location switch changed in Settings while EcoTrek was open, and
-    // ensures the web APK gets the real browser/WebView permission prompt.
+    // ensures the browser/WebView gets the real location prompt and a genuine
+    // fix. Never substitute a city-wide fallback for missing GPS.
     setStarting(true);
     let coords: { latitude: number; longitude: number } | null = null;
     try {
-      coords = await requestLocation({ permissionOnly: true, explain: true });
+      coords = await requestLocation({ explain: true });
     } finally {
       setStarting(false);
     }
-    if (!coords) return; // requestLocation already explains how to restore access.
+    if (!coords) return; // requestLocation explains denied access and offers retry.
 
     if (report?.level === 'danger') {
       alert('Stay inside today', `${report.headline}\n\n${report.summary}`, [

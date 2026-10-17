@@ -47,10 +47,13 @@ export default function ConditionsScreen() {
         <Header title="Conditions" back />
         <EmptyState
           icon="cloud"
-          title="Conditions unavailable"
-          message={error ?? 'Could not reach the weather service.'}
-          action="Try again"
-          onAction={() => refresh(true)}
+          title={usingFallbackLocation ? 'Location needed' : 'Conditions unavailable'}
+          message={usingFallbackLocation ? 'Use your location to load nearby weather and safety alerts.' : error ?? 'Could not reach the weather service.'}
+          action={usingFallbackLocation ? 'Use location' : 'Try again'}
+          onAction={() => {
+            if (usingFallbackLocation) void requestLocation({ explain: true });
+            else void refresh(true);
+          }}
         />
       </Screen>
     );

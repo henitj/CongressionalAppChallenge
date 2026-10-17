@@ -33,7 +33,7 @@ export function WeatherProvider({
   children: React.ReactNode;
   notificationsEnabled?: boolean;
 }) {
-  const { effectiveCoords } = useApp();
+  const { coords } = useApp();
   const { tempUnit, formatTemp } = useSettings();
   const [report, setReport] = useState<WeatherReport | null>(null);
   const [loading, setLoading] = useState(true);
@@ -50,14 +50,21 @@ export function WeatherProvider({
 
   const refresh = useCallback(
     async (force = false) => {
+      if (!coords) {
+        lastFetch.current = 0;
+        setReport(null);
+        setError('Use your location to load local weather and safety conditions.');
+        setLoading(false);
+        return;
+      }
       if (!force && Date.now() - lastFetch.current < 60_000) return;
       lastFetch.current = Date.now();
       setLoading(true);
       setError(null);
       try {
         const r = await getWeatherReport(
-          effectiveCoords.latitude,
-          effectiveCoords.longitude,
+          coords.latitude,
+          coords.longitude,
           { force, tempUnit, formatTemp: formatTempRef.current }
         );
         setReport(r);
@@ -80,7 +87,7 @@ export function WeatherProvider({
         setLoading(false);
       }
     },
-    [effectiveCoords.latitude, effectiveCoords.longitude, tempUnit]
+    [coords?.latitude, coords?.longitude, tempUnit]
   );
 
   // Re-fetch (forced, so the request actually goes out) whenever location or

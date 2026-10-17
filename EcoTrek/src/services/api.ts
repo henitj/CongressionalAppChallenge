@@ -2,23 +2,15 @@
  * Backend adapter.
  *
  * ── How this works ────────────────────────────────────────────────────────
- * EcoTrek is designed to run in two modes with the SAME code:
+ * The app is local-first. With no EXPO_PUBLIC_API_URL it does not contact the
+ * EcoTrek API and personal data stays in on-device storage. A configured API
+ * can provide the public approved-trail catalogue and optional deployment
+ * endpoints. The current app uses local guest profiles and has no Google
+ * sign-in, so do not assume protected account data synchronizes to the server.
  *
- *   1. LOCAL MODE (default, no setup)   — every context falls back to
- *      AsyncStorage. The whole app works offline and on a fresh install with
- *      zero configuration. This is what runs today.
- *
- *   2. CLOUD MODE (set one env var)     — when EXPO_PUBLIC_API_URL points at
- *      your API in front of Neon Postgres, the same contexts read/write the
- *      server instead, and data syncs across devices.
- *
- * To switch modes you never touch this file or any screen. You add one line
- * to `.env`:
- *
- *      EXPO_PUBLIC_API_URL=https://your-api.vercel.app
- *
- * Requests never throw. They return { ok: false } and the caller silently
- * falls back to local data, so a backend outage can never crash the app.
+ * Set EXPO_PUBLIC_API_URL only for an intentionally configured deployment.
+ * Requests return { ok: false } on network/provider failures; callers may then
+ * retain or fall back to local data rather than crashing the app.
  */
 
 export const API_URL = (process.env.EXPO_PUBLIC_API_URL ?? '').replace(/\/+$/, '');
@@ -118,7 +110,7 @@ export const ROUTES = {
   leaderboardUsers: '/api/leaderboard/users',
 
   trails: '/api/trails',
-  assistant: '/api/assistant',
+  trailIntel: '/api/trail-intel',
   trailCompletions: '/api/trail-completions',
 
   devices: '/api/devices',

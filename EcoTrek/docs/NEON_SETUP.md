@@ -1,89 +1,52 @@
-# Link EcoTrek to Neon — step by step
+# Optional Neon/API setup
 
-The app already works fully offline with on-device storage. Linking Neon
-switches on the cloud: sign-in that syncs, clubs, leaderboards, and walks
-stored safely across devices. It takes about five minutes.
+The website and Android WebView app work without Neon or a backend. Profiles, activities, tree care, ratings, and settings are local to the device by default. The current app has local guest profiles and no Google sign-in; configuring an API does **not** make guest data sync across devices.
 
----
+This guide is for a deployment operator who intentionally wants the optional server API, for example to serve an approved trail catalogue or support protected routes in a future/authenticated build. See [`../server/README.md`](../server/README.md) for current endpoint access and security details.
 
-## 1. Create the database (2 minutes)
+## 1. Create the database
 
-1. Go to **[console.neon.com](https://console.neon.com)** and sign up (free —
-   no credit card).
-2. Click **Create project**. Name it `ecotrek`. Leave the region Neon picks
-   (or choose one close to your users, e.g. US East).
-3. After it creates the project, click the **Connect** button (or
-   **Dashboard → Connection Details**).
+1. Create a project at [console.neon.com](https://console.neon.com).
+2. Choose a region appropriate for the API operator and users.
+3. Copy the pooled connection string from Neon’s Connect panel. It typically contains `-pooler` and `?sslmode=require`.
 
-## 2. Copy the POOLED connection string
-
-In the Connect panel:
-
-- Choose **Pooled connection** (the host contains `-pooler`).
-- Copy the string. It looks like:
-
-  ```
-  postgresql://user:password@ep-cool-name-a1b2c3d4-pooler.us-east-2.aws.neon.tech/neondb?sslmode=require
-  ```
-
-Keep `?sslmode=require` on the end — Neon requires TLS.
-
-## 3. Paste it into the server
+## 2. Configure and migrate the API
 
 ```bash
 cd EcoTrek/server
+npm ci
 cp .env.example .env
 ```
 
-Open `server/.env` and paste your string as `DATABASE_URL`. That is the only
-line you must change. (Optionally set `GOOGLE_CLIENT_IDS` later — it gates
-Google sign-in on the API, but the app works locally without it.)
-
-## 4. Run the setup + check
+Set `DATABASE_URL` in the server-only `.env`. Keep it out of Git and out of all `EXPO_PUBLIC_*` variables. `GOOGLE_CLIENT_IDS` is only for protected routes that receive verified Google tokens; the current local-profile app does not initiate Google sign-in. `GROQ_API_KEY` is optional and enables only the bounded public trail-intelligence enrichment endpoint; it does not add chat to the app.
 
 ```bash
-npm install
-npm run migrate     # creates the EcoTrek tables (safe to run more than once)
-npm run check       # proves the connection + tables are ready
+npm run migrate
+npm run check
+npm run pentest
+npm start
 ```
 
-`npm run check` prints exactly what is wrong if anything is missing — a bad
-string, a missing table, an archived branch — and what to do next. When it
-says **READY**, you are done.
+Deploy `EcoTrek/server` on a Node 20+ host, set the server secrets in its dashboard, and configure CORS for the intended app origin where possible.
 
-## 5. Run the API
+## 3. Optionally point a web build at the API
 
-```bash
-npm start           # EcoTrek API listening on http://0.0.0.0:8787
-```
+Set `EXPO_PUBLIC_API_URL` to the deployed API origin before building the app:
 
-For real phones to reach it, deploy it somewhere public — Render, Railway or
-Fly all run it with zero changes (they inject `DATABASE_URL` themselves, which
-the server also accepts). Then put that public URL in the app's `.env`:
-
-```
+```dotenv
 EXPO_PUBLIC_API_URL=https://your-api.example.com
 ```
 
-Rebuild the app, and clubs / sign-in / leaderboards switch to the cloud. With
-`EXPO_PUBLIC_API_URL` empty the app silently stays local-first, so nothing
-breaks while the server is down or not yet linked.
+The public approved-trail catalogue request does not send the user’s GPS coordinates. Nearby trail discovery remains a direct OpenStreetMap/Overpass lookup and filters results on-device. Protected routes continue to require a valid Google token; with local guest profiles, those private sync features are not available.
 
----
+If `EXPO_PUBLIC_API_URL` is empty, the app does not contact the EcoTrek API. This is the default and no Neon setup is needed.
 
 ## Troubleshooting
 
-| Symptom | Fix |
+| Symptom | Check |
 | --- | --- |
-| `password authentication failed` | Re-copy the string from the Connect panel — the password is generated per-branch. |
-| `fetch failed` / connect timeout | Use the **pooled** host (`-pooler`); check the branch isn't suspended in Neon. |
-| `sslmode` error | Keep `?sslmode=require` at the end of the string. |
-| `Missing tables: users, clubs…` | Run `npm run migrate`, then `npm run check` again. |
-| Works locally, fails deployed | Set `DATABASE_URL` in the hosting platform's env vars (it overrides `.env`). |
-
-## Where this leaves the app
-
-- **No `EXPO_PUBLIC_API_URL`** → the app stores everything on the device. The
-  Play Store build works exactly the same. This is the current default.
-- **With it** → the same screens read/write your Neon database through the
-  API. Nothing else about the app changes.
+| `DATABASE_URL is not set` | Set the Neon pooled URL in the backend environment, not in the app. |
+| `password authentication failed` | Re-copy the current connection string from Neon. |
+| `Missing tables` | Run `npm run migrate`, then `npm run check`. |
+| `401 unauthorized` on protected routes | The request needs a verified bearer token and matching server `GOOGLE_CLIENT_IDS`; local guest profiles do not provide one. |
+| The app still works locally after API failure | This is expected; local data and fallback behavior should remain usable. |
