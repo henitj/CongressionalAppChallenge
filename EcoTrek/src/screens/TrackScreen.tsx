@@ -23,7 +23,8 @@ export default function TrackScreen() {
   const { width, height } = useWindowDimensions();
   const { colors, typography } = useTheme();
   const styles = useMemo(() => makeStyles(colors, typography), [colors, typography]);
-  const artHeight = Math.min(214, Math.max(140, height * 0.25));
+  // Short phones keep the Start button on screen instead of below the fold.
+  const artHeight = height < 700 ? Math.max(96, height * 0.2) : Math.min(214, Math.max(140, height * 0.25));
   const artWidth = Math.min(240, (Math.min(width, 720) - 80) / 2);
 
   useEffect(() => {

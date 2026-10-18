@@ -19,6 +19,7 @@ import { challengesForWeek, CHALLENGE_CATALOG, CHALLENGES_PER_WEEK } from '../co
 import { detectTrail, evaluateCompletion, validateActivity } from '../services/trailDetection';
 import { AUSTIN_TRAILS, getTrailById } from '../constants/austinTrails';
 import { advanceTrack, Coord, EMPTY_TRACK, haversineMiles } from '../services/geo';
+import { combineMiles, createStepDetector, stepMph, stepsToMiles, strideMetres } from '../services/steps';
 import { computeTrees, speciesFor, TREES_DISCLAIMER } from '../services/trees';
 import { firstNameOf, fullNameOf } from '../services/displayName';
 import { LEVELS, TREE_RULES, fontScaleFor } from '../constants/theme';
@@ -951,6 +952,59 @@ test('GPS filter: the path points are the smoothed anchors, and altitude wobble 
   assert.ok(state.gainFt > 80 && state.gainFt < 100, `a 30 m climb should be about 98 ft, got ${state.gainFt}`);
 });
 
+
+/** A walker's vertical acceleration (g): a bump per step, on top of 1 g of gravity, 50 Hz. */
+function walkSamples(det: ReturnType<typeof createStepDetector>, startMs: number, seconds: number, stepsPerSec: number, amplitudeG: number) {
+  let counted = 0;
+  for (let t = 0; t < seconds * 1000; t += 20) {
+    const phase = (t / 1000) * stepsPerSec * 2 * Math.PI;
+    counted += det.push(startMs + t, 1 + amplitudeG * Math.sin(phase));
+  }
+  return counted;
+}
+
+test('Step counter: a walk around the house is counted step for step', () => {
+  for (const [rate, amp] of [[1.6, 0.12], [1.9, 0.2], [2.2, 0.35], [1.5, 0.09]]) {
+    const det = createStepDetector();
+    walkSamples(det, 1000, 60, rate, amp);
+    const truth = 60 * rate;
+    assert.ok(Math.abs(det.steps - truth) / truth < 0.08, `${rate} steps/s at ${amp} g: counted ${det.steps}, walked ${truth}`);
+  }
+});
+
+test('Step counter: a phone lying still or being tapped counts nothing', () => {
+  const still = createStepDetector();
+  for (let t = 0; t < 120_000; t += 20) still.push(t, 1 + 0.004 * Math.sin(t / 37));
+  assert.equal(still.steps, 0);
+
+  // Three bumps with long gaps (picking the phone up) are not a walk.
+  const bumps = createStepDetector();
+  for (let t = 0; t < 30_000; t += 20) {
+    const bump = [2000, 6000, 11000].some((b) => t >= b && t < b + 120) ? 0.3 : 0;
+    bumps.push(t, 1 + bump);
+  }
+  assert.equal(bumps.steps, 0);
+});
+
+test('Step counter: steps turn into distance and combine with GPS without double counting', () => {
+  assert.equal(strideMetres(0), 0.74);
+  assert.ok(Math.abs(strideMetres(70) - 0.734) < 0.01);
+  // 2,000 steps at a 70-inch stride is about 0.91 mile.
+  assert.ok(Math.abs(stepsToMiles(2000, strideMetres(70)) - 0.912) < 0.01);
+  assert.equal(stepsToMiles(-5, 0.7), 0);
+  assert.equal(combineMiles(0, 0.4), 0.4, 'indoors GPS saw nothing, steps did');
+  assert.equal(combineMiles(1.0, 0.95), 1.0, 'outdoors GPS is the ruler; steps are not added on top');
+  assert.equal(combineMiles(NaN, 0.2), 0.2);
+});
+
+test('Step counter: pace reads about 3 mph for a normal walk and falls to zero when you stop', () => {
+  const stride = strideMetres(68);
+  const times: number[] = [];
+  for (let i = 0; i < 20; i++) times.push(i * 600); // 100 steps a minute
+  const walking = stepMph(times, 12_000, stride);
+  assert.ok(walking > 2 && walking < 3.6, `pace was ${walking}`);
+  assert.equal(stepMph(times, 60_000, stride), 0);
+});
 
 test('Austin catalogue still has every named trail', () => {
   const ids = [

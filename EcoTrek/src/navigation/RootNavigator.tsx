@@ -105,7 +105,10 @@ function Tabs() {
   const { colors, fontScale } = useTheme();
   // Large text grows the tab labels, so the bar has to grow
   // with them — otherwise the words are clipped by the bar's fixed height.
-  const barHeight = Math.round((Platform.OS === 'ios' ? 94 : 78) + (fontScale - 1) * 34);
+  // Bar = top + bottom padding + the pill (icon + label + its own padding),
+  // all of which scale with the text size.
+  const pill = 18 + 41 * Math.max(1, fontScale);
+  const barHeight = Math.round((Platform.OS === 'ios' ? 28 : 12) + 6 + Math.max(56, pill) + 4);
   return (
     <Tab.Navigator
       screenOptions={({ route }) => {

@@ -4,6 +4,7 @@ import { useNavigation } from '@react-navigation/native';
 
 import { useApp } from '../context/AppContext';
 import { useWeather } from '../context/WeatherContext';
+import { primeMotionPermission } from '../services/stepSensor';
 
 export type ActivityMode = 'hike' | 'bike';
 
@@ -20,6 +21,8 @@ export function useStartActivity(initial: ActivityMode = 'hike') {
     // ensures the browser/WebView gets the real location prompt and a genuine
     // fix. Never substitute a city-wide fallback for missing GPS.
     setStarting(true);
+    // Must run inside the tap itself: iPhones only ask about motion from a tap.
+    if (mode === 'hike') await primeMotionPermission().catch(() => false);
     let coords: { latitude: number; longitude: number } | null = null;
     try {
       coords = await requestLocation({ explain: true });
