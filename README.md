@@ -28,6 +28,7 @@ Then open `http://localhost:8000/`. Vercel’s root configuration is in `vercel.
 ## Product features
 
 - **Activity tracking:** GPS walks, hikes, and rides with location-retry handling, route recording, distance and duration summaries, and an offline route sketch if map tiles fail.
+- **Step counting:** walks also count footsteps from the phone's motion sensor (`EcoTrek/src/services/steps.ts`), so a lap around the house is measured even when GPS cannot see it. Distance is whichever of GPS and steps saw more; nothing from the sensor is stored.
 - **Worldwide trail discovery:** When location is granted, EcoTrek looks up named OpenStreetMap trails around the device. Austin’s richer bundled catalogue is used only when coordinates are actually near Austin. Successful results are cached on-device; failed empty lookups remain retryable. No location is silently replaced with Austin.
 - **Trail details and sharing:** Trail-specific photo browsing with a local illustration and retry when Commons photos are unavailable; share a selected trail’s details, map pin, and up to two related photo links.
 - **Local conditions:** Location-based forecasts and safety information when a real location is available. The app never requests background location in the website or WebView APK.
