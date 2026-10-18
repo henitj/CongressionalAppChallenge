@@ -23,6 +23,8 @@ import { Button } from '../components/ui';
 import { RADIUS, SPACING, ColorPalette } from '../constants/theme';
 import { getCurrentPosition, startTracking, Subscription } from '../services/location';
 import { advanceTrack, Coord, EMPTY_TRACK, TrackState } from '../services/geo';
+import { combineMiles, stepMph, stepsToMiles, strideMetres } from '../services/steps';
+import { startStepCounting, StepSensorStatus, StepSubscription } from '../services/stepSensor';
 import { computeTrees, useActivity } from '../context/ActivityContext';
 import { useSettings } from '../context/SettingsContext';
 import { useEcoPoints } from '../context/EcoPointsContext';
@@ -52,6 +54,9 @@ export default function ActiveTrackingScreen() {
   const { width: windowWidth, height: windowHeight } = useWindowDimensions();
   const wide = windowWidth > windowHeight && (windowWidth >= 840 || windowHeight < 520);
   const compactLandscape = wide && windowWidth < 840;
+  // Small phones: give the stats and buttons the room they need instead of
+  // handing two thirds of a short screen to the map.
+  const smallScreen = !wide && (windowHeight < 700 || windowWidth < 370);
   const mode: Mode = route.params?.mode ?? 'hike';
   const { formatDistance, formatDistanceUnit, formatTemp } = useSettings();
   const { trails, coords, requestLocation } = useApp();
@@ -66,7 +71,11 @@ export default function ActiveTrackingScreen() {
   const [current, setCurrent] = useState<Coord | undefined>(() => coords ? { ...coords, timestamp: Date.now() } : undefined);
   const [gpsError, setGpsError] = useState<string | null>(null);
   const [gpsAttempt, setGpsAttempt] = useState(0);
-  const [miles, setMiles] = useState(0);
+  // GPS distance, and footsteps from the motion sensor. GPS cannot see a lap
+  // around the house, so the walk's distance is whichever of the two saw more.
+  const [gpsMiles, setGpsMiles] = useState(0);
+  const [steps, setSteps] = useState(0);
+  const [stepStatus, setStepStatus] = useState<StepSensorStatus | 'starting'>('starting');
   const [paused, setPaused] = useState(false);
   const [elapsed, setElapsed] = useState(0);
   const [startedAt] = useState(() => Date.now());
@@ -93,6 +102,10 @@ export default function ActiveTrackingScreen() {
   const pausedAtRef = useRef<number | null>(null);
   const strikesRef = useRef(0);
   const finishInFlightRef = useRef(false);
+  const stepSubRef = useRef<StepSubscription | null>(null);
+  const stepTimesRef = useRef<number[]>([]);
+  const lastSensorTotalRef = useRef(0);
+  const lastGpsMoveAtRef = useRef(0);
 
   // Ending the walk always wins. If the GPS watch is still starting, it is
   // removed as soon as it arrives instead of recording behind the summary.
@@ -100,6 +113,8 @@ export default function ActiveTrackingScreen() {
     stoppedRef.current = true;
     subRef.current?.remove();
     subRef.current = null;
+    stepSubRef.current?.remove();
+    stepSubRef.current = null;
   }, []);
 
   const nearbyTrail: Trail | null = useMemo(
@@ -107,8 +122,15 @@ export default function ActiveTrackingScreen() {
     [current, trails]
   );
 
+  const strideM = strideMetres(profile?.heightInches);
+  const miles = mode === 'hike' ? combineMiles(gpsMiles, stepsToMiles(steps, strideM)) : gpsMiles;
   const trees = computeTrees(mode, miles);
   const speedLimit = SPEED_LIMITS[mode];
+  // GPS speed while GPS is seeing movement; otherwise the pace of the footsteps.
+  const paceMph = !paused && Date.now() - lastGpsMoveAtRef.current > 6000
+    ? stepMph(stepTimesRef.current, Date.now(), strideM)
+    : 0;
+  const liveMph = Math.max(currentMph, paceMph);
   const avgMph = elapsed > 0 ? miles / (elapsed / 3600) : 0;
   const calories = estimateCalories(mode, elapsed, avgMph, profile);
   const { report } = useWeather();
@@ -174,8 +196,9 @@ export default function ActiveTrackingScreen() {
         return;
       }
       setCurrentMph(step.mph);
+      lastGpsMoveAtRef.current = Date.now();
       setPath((p) => [...p, step.point as Coord]);
-      setMiles(step.state.miles);
+      setGpsMiles(step.state.miles);
       setElevationGain(step.state.gainFt);
       setElevationLoss(step.state.lossFt);
       if (step.status === 'moved' && step.mph > speedLimit) {
@@ -198,6 +221,38 @@ export default function ActiveTrackingScreen() {
       stopTracking();
     };
   }, [speedLimit, stopTracking, gpsAttempt]);
+
+  // Footsteps. Hiking only: pedalling is not walking. Steps taken while paused
+  // are not counted, and the sensor total is turned into deltas to allow that.
+  useEffect(() => {
+    if (mode !== 'hike') return;
+    let cancelled = false;
+    lastSensorTotalRef.current = 0;
+    startStepCounting((total, at) => {
+      const delta = total - lastSensorTotalRef.current;
+      lastSensorTotalRef.current = total;
+      if (cancelled || stoppedRef.current || pausedRef.current || delta <= 0) return;
+      const times = stepTimesRef.current;
+      for (let i = 0; i < delta; i++) times.push(delta > 1 ? at - (delta - 1 - i) * 500 : at);
+      if (times.length > 60) times.splice(0, times.length - 60);
+      setSteps((n) => n + delta);
+    }, (status) => {
+      if (!cancelled) setStepStatus(status);
+    }).then((sub) => {
+      if (cancelled || stoppedRef.current) {
+        sub.remove();
+        return;
+      }
+      stepSubRef.current = sub;
+    }).catch(() => {
+      if (!cancelled) setStepStatus('nosignal');
+    });
+    return () => {
+      cancelled = true;
+      stepSubRef.current?.remove();
+      stepSubRef.current = null;
+    };
+  }, [mode, gpsAttempt]);
 
   const retryGps = async () => {
     const point = await requestLocation({ explain: true });
@@ -456,7 +511,7 @@ export default function ActiveTrackingScreen() {
           </Pressable>
         </View>
         <View style={[styles.trackingLayout, wide && { flexDirection: 'row' }]}>
-          <View testID="tracking-map-area" style={[styles.mapContainer, wide && { marginRight: 0, flex: 2.5 }]}>
+          <View testID="tracking-map-area" style={[styles.mapContainer, wide && { marginRight: 0, flex: 2.5 }, smallScreen && { flex: 1, minHeight: 90, marginBottom: 8 }]}>
             <LiveMap path={path} current={current} height="100%" follow={!paused} />
             {nearbyTrail ? (
               <View style={styles.trailBadge} pointerEvents="none">
@@ -465,7 +520,7 @@ export default function ActiveTrackingScreen() {
               </View>
             ) : null}
           </View>
-          <View style={[styles.statsPanel, { minHeight: wide ? 0 : Math.min(Math.round(200 * Math.min(fontScale, 1.4)), Math.max(100, Math.floor((windowHeight - 68) / 3))) }, wide && { maxWidth: 400, margin: 12, borderRadius: 24 }]}>
+          <View style={[styles.statsPanel, { minHeight: wide ? 0 : smallScreen ? Math.max(210, Math.round(windowHeight * 0.44)) : Math.min(Math.round(200 * Math.min(fontScale, 1.4)), Math.max(100, Math.floor((windowHeight - 68) / 3))) }, wide && { maxWidth: 400, margin: 12, borderRadius: 24 }]}>
             <ScrollView style={{ flex: 1 }} contentContainerStyle={styles.metricsScroll} showsVerticalScrollIndicator={false}>
               <View style={[styles.mainMetrics, compactLandscape && { flexDirection: 'column', alignItems: 'stretch', gap: 4 }]}>
                 <View style={[styles.mainMetric, compactLandscape && { flex: 0, flexDirection: 'row', justifyContent: 'space-between' }]}>
@@ -489,6 +544,12 @@ export default function ActiveTrackingScreen() {
                   <Text style={styles.gpsWarningText}>{gpsError} Tap to retry GPS.</Text>
                 </Pressable>
               ) : null}
+              {mode === 'hike' && stepStatus === 'nosignal' ? (
+                <View style={styles.gpsWarning}>
+                  <Icon name="alert-circle" size={16} color={colors.warning} />
+                  <Text style={styles.gpsWarningText}>Your phone is not sharing its motion sensor, so steps cannot be counted. Indoors, distance may stay at zero. Check motion access in your browser or phone settings.</Text>
+                </View>
+              ) : null}
               {showRest ? (
                 <Pressable style={styles.gpsWarning} onPress={() => setShowRest(false)} accessibilityRole="button" accessibilityLabel="Dismiss rest reminder">
                   <Icon name="clock" size={16} color={colors.accentDark} />
@@ -504,8 +565,9 @@ export default function ActiveTrackingScreen() {
               </Pressable>
               {showDetails ? (
                 <View style={styles.statsGrid}>
-                  <StatBox icon="activity" value={currentMph.toFixed(1)} label="mph now" iconColor={currentMph > speedLimit ? colors.danger : colors.primary} />
+                  <StatBox icon="activity" value={liveMph.toFixed(1)} label="mph now" iconColor={liveMph > speedLimit ? colors.danger : colors.primary} />
                   <StatBox icon="activity" value={avgMph.toFixed(1)} label="avg mph" />
+                  {mode === 'hike' ? <StatBox icon="activity" value={String(steps)} label="Steps" /> : null}
                   <StatBox icon="zap" value={String(calories)} label="Calories" />
                   <StatBox icon="trending-up" value={String(Math.round(elevationGain))} label="Gain (ft)" />
                   <StatBox icon="trending-up" value={String(Math.round(elevationLoss))} label="Loss (ft)" />
@@ -517,7 +579,7 @@ export default function ActiveTrackingScreen() {
                 <Icon name={paused ? 'play' : 'pause'} size={20} color={colors.primary} />
                 <Text style={styles.pauseLabel}>{paused ? 'Resume' : 'Pause'}</Text>
               </Pressable>
-              <Button label={mode === 'bike' ? 'Stop and save ride' : 'Stop and save walk'} icon="stop" size="md" loading={saving} disabled={saving} onPress={handleFinish} style={{ flex: 1 }} />
+              <Button label={smallScreen ? 'Stop & save' : mode === 'bike' ? 'Stop and save ride' : 'Stop and save walk'} icon="stop" size="md" loading={saving} disabled={saving} onPress={handleFinish} style={{ flex: 1 }} />
             </View>
           </View>
         </View>

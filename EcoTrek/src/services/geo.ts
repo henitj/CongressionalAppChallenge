@@ -49,7 +49,7 @@ export function haversineMiles(
 // A phone that stays put therefore never moves its anchor and counts nothing.
 
 /** Fixes less accurate than this are ignored outright. */
-export const MAX_FIX_ACCURACY_M = 20;
+export const MAX_FIX_ACCURACY_M = 30;
 /** A raw step faster than this is a GPS jump, not a walk or ride. */
 export const MAX_STEP_MPH = 35;
 /** Fixes averaged together to damp GPS wobble. */
